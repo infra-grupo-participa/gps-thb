@@ -51,7 +51,9 @@ liberadas uma por dia, com calma.
 
 ## Stack
 
-- **Next.js 16 (App Router) + TypeScript + Tailwind v4 + shadcn/ui**. Deploy Vercel.
+- **Next.js 16 (App Router) + TypeScript + Tailwind v4 + shadcn/ui**.
+- **Deploy: Hostinger (app Node)** via `server.js` (Passenger, escuta `PORT`). Ver `DEPLOY.md`.
+- **Repo**: `github.com/infra-grupo-participa/gps-thb` (branch `main`).
 - **Supabase** (`@supabase/ssr`) — **mesmo projeto do sip**: ref `mbvybujpkwuorhtdzcde`
   ("Sistema Grupo Participa", sa-east-1). Tabelas do GPS com prefixo **`gps_`**.
 - Marca **laranja** (`#F97316` / `#EA580C`).
@@ -90,8 +92,17 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
 - `/etapa-1` — workspace da Etapa 01 do próprio aluno.
 - `/admin` — lista de alunos no GPS + "Adicionar aluno" (busca em `thb_alunos`).
 - `/admin/aluno/[alunoId]` — admin dentro do ambiente do aluno (modo assistência, editável).
+- `/cadastro` — auto-cadastro do aluno (Supabase signUp, metadata `origem=gps`).
+- `/admin/solicitacoes` — fila de solicitações de acesso (aprovar/recusar, match por e-mail).
 - `/captacao` — bloqueado (placeholder "em breve").
-- `src/proxy.ts` — proteção de sessão (Next 16 usa `proxy`, não `middleware`).
+- `src/proxy.ts` — proteção de sessão (Next 16 usa `proxy`, não `middleware`). Públicas: `/login`, `/cadastro`, `/auth/*`.
+
+## Onboarding do aluno (modelo definido)
+
+Alunos **não** são provisionados em massa. Fluxo padrão: aluno faz **auto-cadastro** em
+`/cadastro` → gatilho `on_auth_user_created_gps` cria `gps.solicitacoes_acesso` (pendente) →
+aluno vê "aguardando liberação" → **admin aprova** em `/admin/solicitacoes` (vincula a um
+`thb_alunos`, por match de e-mail, e cria `gps.membros`). Enquanto pendente, papel = `sem_acesso`.
 
 ## ⚠️ Pendências de segurança (antes de dar login a alunos)
 
@@ -111,12 +122,14 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
       (CRUD via diálogo), data de agendamento. Etapas 2–6 bloqueadas.
 - [x] Admin: lista de alunos com resumo + entrar no ambiente do aluno (editável).
 - [x] Portal de captação bloqueado.
+- [x] Auto-cadastro + solicitação de acesso + aprovação pelo admin (fila `/admin/solicitacoes`).
 - [x] `npm run build` passa (typecheck + lint OK).
-- [ ] **Provisionar login de alunos** (criar `auth.users` + preencher `gps.membros.user_id`) —
-      exige service role / fluxo de convite. Ainda não feito.
-- [ ] Endurecer RLS de `thb_alunos` (ver acima) antes do login de alunos.
-- [ ] Verificação end-to-end autenticada (logar como admin real e exercitar o CRUD).
-- [ ] Deploy na Vercel.
+- [x] Deploy Node na Hostinger configurado (`server.js`, `DEPLOY.md`).
+- [x] Código versionado e enviado para `github.com/infra-grupo-participa/gps-thb` (main).
+- [ ] Endurecer RLS de `thb_alunos` (ver acima) antes de abrir o cadastro a alunos reais.
+- [ ] Verificar cadastro real ponta a ponta (depende da config de confirmação de e-mail do GoTrue).
+- [ ] Executar o deploy na Hostinger (clonar, `npm install`, `npm run build`, iniciar app).
+- [ ] Deixar o repositório privado, se desejado (`gh repo edit --visibility private`).
 
 ### Como testar agora
 Admin já pode entrar: os 16 `perfis` (incl. marcio@advmais.com, cargo dev) usam a **senha

@@ -1,19 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import {
-  getAlunoById,
-  getClientesEtapa1,
-  getEtapas,
-  getMembro,
-  getProgressoEtapa,
-} from "@/lib/data";
+import { getAlunoById, getEtapas, getMembro } from "@/lib/data";
 import { conteudoEtapa } from "@/lib/etapas";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
-import { Etapa1Guide } from "@/components/etapa1/etapa1-guide";
-import { EtapaGuide } from "@/components/etapa/etapa-guide";
+import { EtapaConteudo } from "@/components/etapa/etapa-conteudo";
 import { Badge } from "@/components/ui/badge";
 
 export default async function AdminAlunoEtapaPage({
@@ -34,10 +27,9 @@ export default async function AdminAlunoEtapaPage({
   if (!membro) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapas, progresso] = await Promise.all([
+  const [aluno, etapas] = await Promise.all([
     getAlunoById(alunoId),
     getEtapas(),
-    getProgressoEtapa(alunoId, n),
   ]);
   const etapaInfo = etapas.find((e) => e.id === n);
 
@@ -70,23 +62,7 @@ export default async function AdminAlunoEtapaPage({
           </div>
         </div>
 
-        {n === 1 ? (
-          <Etapa1Guide
-            alunoId={alunoId}
-            clientesIniciais={await getClientesEtapa1(alunoId)}
-            progressoInicial={progresso}
-            dataAgendamentoInicial={membro.data_agendamento_disponivel}
-            clientesHref={`${base}/clientes`}
-          />
-        ) : (
-          <EtapaGuide
-            alunoId={alunoId}
-            etapa={n}
-            tarefas={conteudo.tarefas}
-            meta={conteudo.meta}
-            progressoInicial={progresso}
-          />
-        )}
+        <EtapaConteudo alunoId={alunoId} n={n} basePath={base} isAdmin />
       </main>
     </>
   );

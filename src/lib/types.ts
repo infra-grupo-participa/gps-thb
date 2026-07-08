@@ -90,6 +90,24 @@ export interface Documento {
   criado_em: string;
 }
 
+export interface Etapa3Agendamento {
+  id: string;
+  aluno_id: string;
+  cliente_id: string | null;
+  descricao: string | null;
+  data: string | null;
+  horario: string | null;
+  equipe_participa: boolean;
+  criado_em: string;
+}
+
+export interface Etapa3Revisao {
+  aluno_id: string;
+  duvidas: string | null;
+  correcoes: string | null;
+  atualizado_em: string;
+}
+
 export interface ProgressoTarefa {
   id: string;
   aluno_id: string;

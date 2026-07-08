@@ -204,6 +204,29 @@ export async function getDocumentos(clienteId: string) {
   return data ?? [];
 }
 
+export async function getAgendamentosEtapa3(alunoId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("etapa3_agendamentos")
+    .select("*")
+    .eq("aluno_id", alunoId)
+    .order("data", { ascending: true, nullsFirst: false })
+    .order("criado_em");
+  return data ?? [];
+}
+
+export async function getRevisaoEtapa3(alunoId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("etapa3_revisao")
+    .select("*")
+    .eq("aluno_id", alunoId)
+    .maybeSingle();
+  return data ?? null;
+}
+
 export async function getProgressoEtapa(
   alunoId: string,
   etapa: number,

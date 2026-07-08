@@ -33,7 +33,12 @@ bloqueadas em `/admin/aluno/<id>/etapa/<n>`.
 (`conteudoEtapa(n)`). Rota única `/etapa/[etapa]` (e admin `.../etapa/[etapa]`): etapa 1 usa o guia
 rico (`Etapa1Guide`, com métricas/clientes/tarefas automáticas); etapas ≥ 2 usam `EtapaGuide`
 (checklist manual + tutoriais/modelos/info). Tarefa: `TarefaItem` (compartilhado).
-**Etapa 02 (Reunião Preliminar)** já cadastrada em `src/lib/etapa2.ts` — bloqueada até liberar.
+**Etapa 02 (Reunião Preliminar)** em `src/lib/etapa2.ts` — bloqueada até liberar.
+**Etapa 03 (Croqui Estrutural)** em `src/lib/etapa3.ts` (13 tarefas) + guia especial
+`Etapa3Guide`: **agendamentos** da apresentação com "a equipe participa de apenas UM"
+(`gps.etapa3_agendamentos`, flag `equipe_participa`) e **revisão** dúvidas do parceiro/correções
+da equipe (`gps.etapa3_revisao`). Etapa 1 e 3 têm guias próprios; demais usam `EtapaGuide`.
+O fetch/branch por etapa fica em `EtapaConteudo` (server). Actions de etapa em `src/app/etapa/actions.ts`.
 
 ### Etapa 01 — checklist do aluno (da planilha oficial)
 1. Listar **30 clientes potenciais** com ≥1 dos **7 problemas** (dividendos, lucro presumido,

@@ -1,18 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import {
-  getAlunoById,
-  getClientesEtapa1,
-  getEtapas,
-  getMembro,
-  getProgressoEtapa,
-} from "@/lib/data";
+import { getAlunoById, getEtapas } from "@/lib/data";
 import { conteudoEtapa } from "@/lib/etapas";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
-import { Etapa1Guide } from "@/components/etapa1/etapa1-guide";
-import { EtapaGuide } from "@/components/etapa/etapa-guide";
+import { EtapaConteudo } from "@/components/etapa/etapa-conteudo";
 
 export default async function EtapaAlunoPage({
   params,
@@ -35,10 +28,7 @@ export default async function EtapaAlunoPage({
   // Aluno só acessa etapa liberada.
   if (!etapaInfo?.liberada) redirect("/");
 
-  const [aluno, progresso] = await Promise.all([
-    getAlunoById(alunoId),
-    getProgressoEtapa(alunoId, n),
-  ]);
+  const aluno = await getAlunoById(alunoId);
 
   return (
     <>
@@ -61,25 +51,7 @@ export default async function EtapaAlunoPage({
           </h1>
         </div>
 
-        {n === 1 ? (
-          <Etapa1Guide
-            alunoId={alunoId}
-            clientesIniciais={await getClientesEtapa1(alunoId)}
-            progressoInicial={progresso}
-            dataAgendamentoInicial={
-              (await getMembro(alunoId))?.data_agendamento_disponivel ?? null
-            }
-            clientesHref="/clientes"
-          />
-        ) : (
-          <EtapaGuide
-            alunoId={alunoId}
-            etapa={n}
-            tarefas={conteudo.tarefas}
-            meta={conteudo.meta}
-            progressoInicial={progresso}
-          />
-        )}
+        <EtapaConteudo alunoId={alunoId} n={n} basePath="" isAdmin={false} />
       </main>
     </>
   );

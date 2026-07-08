@@ -39,8 +39,10 @@ rico (`Etapa1Guide`, com métricas/clientes/tarefas automáticas); etapas ≥ 2 
 (`gps.etapa3_agendamentos`, flag `equipe_participa`) e **revisão** dúvidas do parceiro/correções
 da equipe (`gps.etapa3_revisao`). Etapa 1 e 3 têm guias próprios; demais usam `EtapaGuide`.
 O fetch/branch por etapa fica em `EtapaConteudo` (server). Actions de etapa em `src/app/etapa/actions.ts`.
-**Etapa 04 (Contrato)** em `src/lib/etapa4.ts` (3 tarefas: contrato de honorários, cronograma,
-certificados digitais) — checklist simples, sem campos especiais.
+**Etapa 04 (Contrato)** em `src/lib/etapa4.ts` (3 tarefas). **Etapa 05 (Execução)** em
+`src/lib/etapa5.ts` (26 tarefas). **Etapa 06 (Fechamento)** em `src/lib/etapa6.ts` (2 tarefas).
+**As 6 etapas estão estruturadas.** Só a 1 está liberada; 2–6 bloqueadas até
+`update gps.etapas set liberada=true where id=<n>`.
 
 ### Etapa 01 — checklist do aluno (da planilha oficial)
 1. Listar **30 clientes potenciais** com ≥1 dos **7 problemas** (dividendos, lucro presumido,

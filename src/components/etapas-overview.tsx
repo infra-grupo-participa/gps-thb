@@ -5,30 +5,34 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
 /**
- * Visão geral das 6 etapas. A Etapa 01 é clicável; as demais aparecem
- * bloqueadas até serem liberadas.
+ * Visão geral das 6 etapas. Etapas liberadas são clicáveis; as bloqueadas
+ * aparecem como "Em breve" (ou clicáveis para preview, no modo admin).
  */
 export function EtapasOverview({
   etapas,
-  etapa1Pct,
-  etapa1Href,
+  basePath,
+  pctPorEtapa = {},
+  allowLockedPreview = false,
 }: {
   etapas: Etapa[];
-  etapa1Pct: number;
-  etapa1Href: string;
+  /** "" para aluno; "/admin/aluno/<id>" para admin. */
+  basePath: string;
+  pctPorEtapa?: Record<number, number>;
+  allowLockedPreview?: boolean;
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {etapas.map((etapa) => {
         const liberada = etapa.liberada;
-        const isEtapa1 = etapa.id === 1;
-        const pct = isEtapa1 ? etapa1Pct : 0;
+        const clicavel = liberada || allowLockedPreview;
+        const href = `${basePath}/etapa/${etapa.id}`;
+        const pct = pctPorEtapa[etapa.id];
 
         const conteudo = (
           <Card
             className={
               "h-full transition " +
-              (liberada
+              (clicavel
                 ? "hover:border-primary/50 hover:shadow-sm"
                 : "opacity-70")
             }
@@ -63,7 +67,7 @@ export function EtapasOverview({
                 ) : null}
               </div>
 
-              {isEtapa1 && liberada ? (
+              {liberada && pct != null ? (
                 <div>
                   <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                     <span>Progresso</span>
@@ -76,8 +80,8 @@ export function EtapasOverview({
           </Card>
         );
 
-        return liberada && isEtapa1 ? (
-          <Link key={etapa.id} href={etapa1Href} className="block">
+        return clicavel ? (
+          <Link key={etapa.id} href={href} className="block">
             {conteudo}
           </Link>
         ) : (

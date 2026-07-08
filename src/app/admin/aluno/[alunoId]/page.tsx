@@ -66,8 +66,9 @@ export default async function AdminAlunoInicioPage({
 
         <EtapasOverview
           etapas={etapas}
-          etapa1Pct={metricas.pct}
-          etapa1Href={`${base}/etapa-1`}
+          basePath={base}
+          pctPorEtapa={{ 1: metricas.pct }}
+          allowLockedPreview
         />
       </main>
     </>

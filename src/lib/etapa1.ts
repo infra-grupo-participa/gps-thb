@@ -77,17 +77,19 @@ export const PERFIS_DISC: { id: PerfilDisc; rotulo: string }[] = [
   { id: "C", rotulo: "C — Conformidade" },
 ];
 
-/** As 10 tarefas da Etapa 01. */
+/** Definição de uma tarefa de etapa. */
 export interface TarefaDef {
   num: number;
   titulo: string;
   descricao: string;
-  /** Tarefa medida automaticamente pela tabela de clientes (não é checkbox manual). */
+  /** Tarefa medida automaticamente (não é checkbox manual). */
   automatica?: boolean;
   /** Link da aula/tutorial (coluna "Aula" da planilha), quando houver. */
   tutorialUrl?: string;
   /** Modelo/arquivo de apoio (coluna "Modelo" da planilha), quando houver. */
   modelo?: { nome: string; url?: string };
+  /** Observação/informação extra exibida ao aluno (coluna "Informações"). */
+  info?: string;
 }
 
 export const TAREFAS_ETAPA1: TarefaDef[] = [

@@ -96,6 +96,7 @@ export async function removerCliente(clienteId: string, alunoId: string) {
 
 export async function marcarTarefa(
   alunoId: string,
+  etapa: number,
   tarefa: number,
   concluida: boolean,
 ) {
@@ -106,7 +107,7 @@ export async function marcarTarefa(
     .upsert(
       {
         aluno_id: alunoId,
-        etapa: 1,
+        etapa,
         tarefa,
         concluida,
         concluida_em: concluida ? new Date().toISOString() : null,

@@ -103,8 +103,8 @@ export default async function HomePage() {
 
         <EtapasOverview
           etapas={etapas}
-          etapa1Pct={metricas.pct}
-          etapa1Href="/etapa-1"
+          basePath=""
+          pctPorEtapa={{ 1: metricas.pct }}
         />
       </main>
     </>

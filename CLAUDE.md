@@ -24,8 +24,16 @@ O negócio tem **duas frentes**:
 5. Execução
 6. Entrega
 
-**Regra de liberação:** só a Etapa 01 vai ao ar agora. Etapas 2–6 ficam **bloqueadas** e são
-liberadas uma por dia, com calma.
+**Regra de liberação:** liberação controlada por `gps.etapas.liberada`. Só a Etapa 01 está
+liberada; as demais ficam bloqueadas e são liberadas uma por dia. Para liberar:
+`update gps.etapas set liberada = true where id = <n>`. Admin pode pré-visualizar etapas
+bloqueadas em `/admin/aluno/<id>/etapa/<n>`.
+
+**Sistema de etapas (genérico):** conteúdo em `src/lib/etapaN.ts` + registro em `src/lib/etapas.ts`
+(`conteudoEtapa(n)`). Rota única `/etapa/[etapa]` (e admin `.../etapa/[etapa]`): etapa 1 usa o guia
+rico (`Etapa1Guide`, com métricas/clientes/tarefas automáticas); etapas ≥ 2 usam `EtapaGuide`
+(checklist manual + tutoriais/modelos/info). Tarefa: `TarefaItem` (compartilhado).
+**Etapa 02 (Reunião Preliminar)** já cadastrada em `src/lib/etapa2.ts` — bloqueada até liberar.
 
 ### Etapa 01 — checklist do aluno (da planilha oficial)
 1. Listar **30 clientes potenciais** com ≥1 dos **7 problemas** (dividendos, lucro presumido,

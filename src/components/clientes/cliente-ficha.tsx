@@ -15,7 +15,7 @@ import {
   moedaParaNumero,
   numeroParaMoeda,
 } from "@/lib/masks";
-import { MessageCircle, Star } from "lucide-react";
+import { MessageCircle, Star, Phone, Calendar, User } from "lucide-react";
 import { atualizarCliente, definirClienteEquipe } from "@/app/etapa-1/actions";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { DocumentosSection } from "./documentos-section";
@@ -142,24 +142,32 @@ export function ClienteFicha({
         <CardContent className="grid gap-5">
           <div className="grid gap-2">
             <Label htmlFor="f-nome">Nome</Label>
-            <Input
-              id="f-nome"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Nome do cliente"
-            />
+            <div className="relative">
+              <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="f-nome"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Nome do cliente"
+                className="pl-9"
+              />
+            </div>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="f-tel">Telefone</Label>
-              <Input
-                id="f-tel"
-                inputMode="tel"
-                value={telefone}
-                onChange={(e) => setTelefone(mascaraTelefone(e.target.value))}
-                placeholder="(00) 00000-0000"
-              />
+              <div className="relative">
+                <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="f-tel"
+                  inputMode="tel"
+                  value={telefone}
+                  onChange={(e) => setTelefone(mascaraTelefone(e.target.value))}
+                  placeholder="(00) 00000-0000"
+                  className="pl-9"
+                />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label>Nível de relacionamento</Label>
@@ -228,12 +236,16 @@ export function ClienteFicha({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="f-data">Data da reunião preliminar</Label>
-              <Input
-                id="f-data"
-                type="date"
-                value={dataReuniao}
-                onChange={(e) => setDataReuniao(e.target.value)}
-              />
+              <div className="relative">
+                <Calendar className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="f-data"
+                  type="date"
+                  value={dataReuniao}
+                  onChange={(e) => setDataReuniao(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </div>
           </div>
 

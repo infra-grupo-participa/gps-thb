@@ -2,10 +2,21 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  Upload,
+  FolderOpen,
+  FileText,
+  FileImage,
+  FileSpreadsheet,
+  FileArchive,
+  File as FileIcon,
+  Download,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Documento } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 const BUCKET = "gps-documentos";
 
@@ -14,6 +25,65 @@ function formatarTamanho(bytes: number | null): string {
   const kb = bytes / 1024;
   if (kb < 1024) return `${Math.round(kb)} KB`;
   return `${(kb / 1024).toFixed(1)} MB`;
+}
+
+interface MetaTipo {
+  label: string;
+  Icon: LucideIcon;
+  strip: string;
+  chip: string;
+  icon: string;
+}
+
+function metaArquivo(nome: string): MetaTipo {
+  const ext = (nome.split(".").pop() || "").toLowerCase();
+  if (ext === "pdf")
+    return {
+      label: "PDF",
+      Icon: FileText,
+      strip: "bg-red-500",
+      chip: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+      icon: "text-red-500",
+    };
+  if (["doc", "docx", "txt", "rtf", "odt"].includes(ext))
+    return {
+      label: "DOC",
+      Icon: FileText,
+      strip: "bg-blue-500",
+      chip: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+      icon: "text-blue-500",
+    };
+  if (["xls", "xlsx", "csv"].includes(ext))
+    return {
+      label: "PLANILHA",
+      Icon: FileSpreadsheet,
+      strip: "bg-green-500",
+      chip: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
+      icon: "text-green-500",
+    };
+  if (["png", "jpg", "jpeg", "gif", "webp", "heic"].includes(ext))
+    return {
+      label: "IMAGEM",
+      Icon: FileImage,
+      strip: "bg-purple-500",
+      chip: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+      icon: "text-purple-500",
+    };
+  if (["zip", "rar", "7z"].includes(ext))
+    return {
+      label: "ZIP",
+      Icon: FileArchive,
+      strip: "bg-amber-500",
+      chip: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+      icon: "text-amber-500",
+    };
+  return {
+    label: "ARQUIVO",
+    Icon: FileIcon,
+    strip: "bg-slate-400",
+    chip: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+    icon: "text-slate-500",
+  };
 }
 
 export function DocumentosSection({
@@ -29,6 +99,7 @@ export function DocumentosSection({
   const inputRef = useRef<HTMLInputElement>(null);
   const [docs, setDocs] = useState<Documento[]>(documentosIniciais);
   const [enviando, setEnviando] = useState(false);
+  const [arrastando, setArrastando] = useState(false);
 
   async function enviarArquivos(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -104,14 +175,52 @@ export function DocumentosSection({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-4">
-        <div>
-          <CardTitle className="text-base">Documentos do cliente</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Guarde aqui os documentos deste cliente (RG, contrato, comprovantes…).
-          </p>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <FolderOpen className="size-5 text-primary" />
+          <div>
+            <CardTitle className="text-base">Fichário do cliente</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {docs.length} documento{docs.length === 1 ? "" : "s"} arquivado
+              {docs.length === 1 ? "" : "s"}
+            </p>
+          </div>
         </div>
-        <div>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        {/* Dropzone */}
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setArrastando(true);
+          }}
+          onDragLeave={() => setArrastando(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setArrastando(false);
+            enviarArquivos(e.dataTransfer.files);
+          }}
+          disabled={enviando}
+          className={
+            "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition " +
+            (arrastando
+              ? "border-primary bg-primary/5"
+              : "border-border hover:border-primary/50 hover:bg-muted/40")
+          }
+        >
+          <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Upload className="size-5" />
+          </div>
+          <div className="text-sm font-medium">
+            {enviando
+              ? "Enviando..."
+              : "Arraste arquivos aqui ou clique para enviar"}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            RG, contrato, comprovantes, IPTU… tudo guardado neste fichário.
+          </div>
           <input
             ref={inputRef}
             type="file"
@@ -119,50 +228,73 @@ export function DocumentosSection({
             className="hidden"
             onChange={(e) => enviarArquivos(e.target.files)}
           />
-          <Button
-            onClick={() => inputRef.current?.click()}
-            disabled={enviando}
-          >
-            {enviando ? "Enviando..." : "Enviar documento"}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
+        </button>
+
+        {/* Fichas */}
         {docs.length === 0 ? (
-          <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-            Nenhum documento ainda.
+          <div className="flex flex-col items-center gap-1 py-6 text-center text-sm text-muted-foreground">
+            <FolderOpen className="size-8 opacity-40" />
+            Nenhum documento arquivado ainda.
           </div>
         ) : (
-          <ul className="divide-y">
-            {docs.map((doc) => (
-              <li
-                key={doc.id}
-                className="flex items-center justify-between gap-3 py-2.5"
-              >
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{doc.nome}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatarTamanho(doc.tamanho)}
-                    {doc.tamanho ? " · " : ""}
-                    {new Date(doc.criado_em).toLocaleDateString("pt-BR")}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {docs.map((doc) => {
+              const m = metaArquivo(doc.nome);
+              return (
+                <div
+                  key={doc.id}
+                  className="group relative overflow-hidden rounded-lg border bg-card shadow-sm transition hover:shadow-md"
+                >
+                  {/* faixa colorida por tipo */}
+                  <div className={"h-1 w-full " + m.strip} />
+                  {/* canto dobrado */}
+                  <span className="absolute right-0 top-1 h-0 w-0 border-l-[14px] border-t-[14px] border-l-transparent border-t-muted" />
+
+                  <div className="flex items-start gap-3 p-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted">
+                      <m.Icon className={"size-5 " + m.icon} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span
+                        className={
+                          "inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold " +
+                          m.chip
+                        }
+                      >
+                        {m.label}
+                      </span>
+                      <div
+                        className="mt-1 truncate text-sm font-medium"
+                        title={doc.nome}
+                      >
+                        {doc.nome}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {formatarTamanho(doc.tamanho)}
+                        {doc.tamanho ? " · " : ""}
+                        {new Date(doc.criado_em).toLocaleDateString("pt-BR")}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex divide-x border-t text-xs">
+                    <button
+                      onClick={() => baixar(doc)}
+                      className="flex flex-1 items-center justify-center gap-1 py-2 font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                      <Download className="size-3.5" /> Baixar
+                    </button>
+                    <button
+                      onClick={() => excluir(doc)}
+                      className="flex flex-1 items-center justify-center gap-1 py-2 font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="size-3.5" /> Excluir
+                    </button>
                   </div>
                 </div>
-                <div className="flex shrink-0 gap-1">
-                  <Button variant="outline" size="sm" onClick={() => baixar(doc)}>
-                    Baixar
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => excluir(doc)}
-                  >
-                    Excluir
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+              );
+            })}
+          </div>
         )}
       </CardContent>
     </Card>

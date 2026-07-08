@@ -57,6 +57,8 @@ liberadas uma por dia, com calma.
 - **Supabase** (`@supabase/ssr`) — **mesmo projeto do sip**: ref `mbvybujpkwuorhtdzcde`
   ("Sistema Grupo Participa", sa-east-1). Tabelas do GPS com prefixo **`gps_`**.
 - Marca **laranja** (`#F97316` / `#EA580C`).
+- **Fontes padrão dos sistemas do Grupo Participa**: **Inter** (corpo) + **Space Grotesk**
+  (títulos `h1–h4`), via `next/font/google` (variáveis `--font-sans` / `--font-display`).
 
 ## Convenções e regras
 

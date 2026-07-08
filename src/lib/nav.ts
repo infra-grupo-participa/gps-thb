@@ -6,7 +6,8 @@ import type { NavItem } from "@/components/nav-tabs";
  */
 export function alunoNavItems(basePath: string): NavItem[] {
   return [
-    { href: basePath || "/", label: "Início", exact: true },
-    { href: `${basePath}/clientes`, label: "Clientes" },
+    { href: basePath || "/", label: "Início", icon: "inicio", exact: true },
+    { href: `${basePath}/clientes`, label: "Clientes", icon: "clientes" },
+    { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" },
   ];
 }

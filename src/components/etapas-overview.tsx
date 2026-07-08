@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Lock, ArrowRight } from "lucide-react";
 import type { Etapa } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +53,9 @@ export function EtapasOverview({
                 {liberada ? (
                   <Badge variant="secondary">Disponível</Badge>
                 ) : (
-                  <Badge variant="outline">Em breve</Badge>
+                  <Badge variant="outline" className="gap-1">
+                    <Lock className="size-3" /> Em breve
+                  </Badge>
                 )}
               </div>
 
@@ -74,6 +77,12 @@ export function EtapasOverview({
                     <span>{pct}%</span>
                   </div>
                   <Progress value={pct} />
+                </div>
+              ) : null}
+
+              {clicavel ? (
+                <div className="flex items-center gap-1 text-xs font-medium text-primary">
+                  Abrir <ArrowRight className="size-3" />
                 </div>
               ) : null}
             </CardContent>

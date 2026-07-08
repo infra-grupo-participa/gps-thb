@@ -34,9 +34,9 @@ export default async function LoginPage({
         </Card>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          Ainda não tem acesso?{" "}
+          Ainda não tem conta?{" "}
           <Link href="/cadastro" className="text-primary underline">
-            Solicitar cadastro
+            Criar conta
           </Link>
         </p>
       </div>

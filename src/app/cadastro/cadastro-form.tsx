@@ -20,13 +20,14 @@ export function CadastroForm() {
     }
   }, [state, router]);
 
-  if (state.sucesso && state.precisaConfirmar) {
+  if (state.sucesso) {
     return (
       <div className="rounded-md border bg-muted/40 p-4 text-sm">
-        <p className="font-medium">Cadastro recebido!</p>
+        <p className="font-medium">Cadastro concluído!</p>
         <p className="mt-1 text-muted-foreground">
-          Enviamos um e-mail de confirmação. Confirme seu e-mail e depois faça
-          login para acompanhar sua solicitação de acesso.
+          {state.precisaConfirmar
+            ? "Enviamos um e-mail de confirmação. Confirme seu e-mail e faça login para acessar o programa."
+            : "Redirecionando para o seu portal..."}
         </p>
       </div>
     );
@@ -35,8 +36,18 @@ export function CadastroForm() {
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="nome">Nome completo</Label>
-        <Input id="nome" name="nome" required autoFocus />
+        <Label htmlFor="documento">CPF ou CNPJ</Label>
+        <Input
+          id="documento"
+          name="documento"
+          inputMode="numeric"
+          placeholder="Somente números"
+          required
+          autoFocus
+        />
+        <p className="text-xs text-muted-foreground">
+          Usamos seu CPF/CNPJ para localizar seu cadastro no Time Holding Brasil.
+        </p>
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="email">E-mail</Label>
@@ -50,15 +61,6 @@ export function CadastroForm() {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="telefone">WhatsApp / Telefone</Label>
-        <Input
-          id="telefone"
-          name="telefone"
-          placeholder="(00) 00000-0000"
-          autoComplete="tel"
-        />
-      </div>
-      <div className="flex flex-col gap-2">
         <Label htmlFor="senha">Senha</Label>
         <Input
           id="senha"
@@ -69,13 +71,33 @@ export function CadastroForm() {
           minLength={6}
         />
       </div>
+      <details className="text-sm">
+        <summary className="cursor-pointer text-muted-foreground">
+          Não é aluno ainda? Informe seus dados
+        </summary>
+        <div className="mt-3 flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="nome">Nome completo</Label>
+            <Input id="nome" name="nome" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="telefone">WhatsApp / Telefone</Label>
+            <Input
+              id="telefone"
+              name="telefone"
+              placeholder="(00) 00000-0000"
+              autoComplete="tel"
+            />
+          </div>
+        </div>
+      </details>
 
       {state.erro ? (
         <p className="text-sm text-destructive">{state.erro}</p>
       ) : null}
 
       <Button type="submit" disabled={pending} className="mt-2">
-        {pending ? "Enviando..." : "Solicitar acesso"}
+        {pending ? "Criando..." : "Criar minha conta"}
       </Button>
     </form>
   );

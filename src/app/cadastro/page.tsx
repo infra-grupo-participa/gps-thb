@@ -19,9 +19,10 @@ export default function CadastroPage() {
 
         <Card>
           <CardHeader>
-            <h2 className="text-base font-medium">Solicitar acesso</h2>
+            <h2 className="text-base font-medium">Criar conta</h2>
             <p className="text-sm text-muted-foreground">
-              Crie sua conta. A equipe vai liberar seu acesso ao programa.
+              Cadastre-se com seu CPF/CNPJ e e-mail. Seus dados são vinculados
+              automaticamente e você já acessa o programa.
             </p>
           </CardHeader>
           <CardContent>

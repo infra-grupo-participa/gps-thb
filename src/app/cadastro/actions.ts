@@ -18,9 +18,14 @@ export async function cadastrar(
     .toLowerCase();
   const telefone = String(formData.get("telefone") ?? "").trim();
   const senha = String(formData.get("senha") ?? "");
+  const documentoRaw = String(formData.get("documento") ?? "");
+  const documento = documentoRaw.replace(/\D/g, "");
 
-  if (!nome || !email || !senha) {
-    return { erro: "Preencha nome, e-mail e senha." };
+  if (!email || !senha || !documento) {
+    return { erro: "Preencha e-mail, CPF/CNPJ e senha." };
+  }
+  if (documento.length !== 11 && documento.length !== 14) {
+    return { erro: "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido." };
   }
   if (senha.length < 6) {
     return { erro: "A senha deve ter ao menos 6 caracteres." };
@@ -31,7 +36,7 @@ export async function cadastrar(
     email,
     password: senha,
     options: {
-      data: { nome, telefone, origem: "gps" },
+      data: { nome, telefone, documento, origem: "gps" },
     },
   });
 

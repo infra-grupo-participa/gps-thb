@@ -99,10 +99,14 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
 
 ## Onboarding do aluno (modelo definido)
 
-Alunos **não** são provisionados em massa. Fluxo padrão: aluno faz **auto-cadastro** em
-`/cadastro` → gatilho `on_auth_user_created_gps` cria `gps.solicitacoes_acesso` (pendente) →
-aluno vê "aguardando liberação" → **admin aprova** em `/admin/solicitacoes` (vincula a um
-`thb_alunos`, por match de e-mail, e cria `gps.membros`). Enquanto pendente, papel = `sem_acesso`.
+Alunos **não** são provisionados em massa e a base **não** é importada. Auto-cadastro padrão:
+aluno se cadastra em `/cadastro` com **dados essenciais — CPF/CNPJ, e-mail e senha** →
+o gatilho `on_auth_user_created_gps` (SECURITY DEFINER) **vincula automaticamente** o `thb_alunos`
+correspondente **pelo CPF/CNPJ** (match por `lpad(digitos,14,'0')`, que reconstrói zero à esquerda
+perdido; fallback por e-mail) e cria `gps.membros` → o aluno **já entra no programa** (dados
+pessoais vêm do `thb_alunos` vinculado). Se o documento **não** casar com a base, cai em
+`gps.solicitacoes_acesso` (pendente) para o admin resolver em `/admin/solicitacoes` (exceção, não
+o caminho principal). Documento é enviado em `raw_user_meta_data.documento`.
 
 ## ⚠️ Pendências de segurança (antes de dar login a alunos)
 

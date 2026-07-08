@@ -10,6 +10,12 @@ import {
 } from "@/lib/etapa1";
 import type { PatchCliente } from "@/app/etapa-1/actions";
 import {
+  mascaraMoeda,
+  mascaraTelefone,
+  moedaParaNumero,
+  numeroParaMoeda,
+} from "@/lib/masks";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -47,9 +53,7 @@ export function ClienteDialog({
   const [telefone, setTelefone] = useState(cliente.telefone ?? "");
   const [nivel, setNivel] = useState(cliente.nivel_relacionamento ?? "");
   const [problemas, setProblemas] = useState<string[]>(cliente.problemas ?? []);
-  const [perda, setPerda] = useState(
-    cliente.perda_inercia != null ? String(cliente.perda_inercia) : "",
-  );
+  const [perda, setPerda] = useState(numeroParaMoeda(cliente.perda_inercia));
   const [registro, setRegistro] = useState(cliente.registro_contato ?? "");
   const [status, setStatus] = useState(cliente.status ?? "pendente");
   const [dataReuniao, setDataReuniao] = useState(
@@ -71,7 +75,7 @@ export function ClienteDialog({
       nivel_relacionamento:
         (nivel as ClienteEtapa1["nivel_relacionamento"]) || null,
       problemas,
-      perda_inercia: perda ? Number(perda.replace(",", ".")) : null,
+      perda_inercia: moedaParaNumero(perda),
       registro_contato: registro.trim() || null,
       status: status as ClienteEtapa1["status"],
       data_reuniao_preliminar: dataReuniao || null,
@@ -106,8 +110,9 @@ export function ClienteDialog({
               <Label htmlFor="c-tel">Telefone</Label>
               <Input
                 id="c-tel"
+                inputMode="tel"
                 value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
+                onChange={(e) => setTelefone(mascaraTelefone(e.target.value))}
                 placeholder="(00) 00000-0000"
               />
             </div>
@@ -149,13 +154,13 @@ export function ClienteDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="c-perda">Perda pela inércia (R$)</Label>
+              <Label htmlFor="c-perda">Perda pela inércia</Label>
               <Input
                 id="c-perda"
-                inputMode="decimal"
+                inputMode="numeric"
                 value={perda}
-                onChange={(e) => setPerda(e.target.value)}
-                placeholder="0,00"
+                onChange={(e) => setPerda(mascaraMoeda(e.target.value))}
+                placeholder="R$ 0,00"
               />
             </div>
             <div className="grid gap-2">

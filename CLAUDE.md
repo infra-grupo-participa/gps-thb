@@ -128,6 +128,10 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
       (CRUD via diálogo), data de agendamento. Etapas 2–6 bloqueadas.
 - [x] Admin: lista de alunos com resumo + entrar no ambiente do aluno (editável).
 - [x] Portal de captação bloqueado.
+- [x] UX: máscaras (CPF/CNPJ com detecção, telefone, moeda BRL) em `src/lib/masks.ts`;
+      mostrar/ocultar senha; tutoriais por tarefa (`tutorialUrl`/`modelo` no catálogo, da planilha —
+      tarefas 9 e 10 têm aula, tarefa 1 tem modelo); Etapa 01 como **central de clientes**
+      (funil por status, busca, filtro, troca de status inline na tabela).
 - [x] Auto-cadastro + solicitação de acesso + aprovação pelo admin (fila `/admin/solicitacoes`).
 - [x] `npm run build` passa (typecheck + lint OK).
 - [x] Deploy Node na Hostinger configurado (`server.js`, `DEPLOY.md`).

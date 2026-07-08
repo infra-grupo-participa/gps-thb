@@ -2,18 +2,25 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import type { ClienteEtapa1, ProgressoTarefa } from "@/lib/types";
+import type {
+  ClienteEtapa1,
+  ProgressoTarefa,
+  StatusCliente,
+} from "@/lib/types";
 import {
   META_CLIENTES,
   META_REUNIOES,
   TAREFAS_ETAPA1,
   STATUS_CLIENTE,
   calcularMetricasEtapa1,
+  type TarefaDef,
 } from "@/lib/etapa1";
+import { mascaraTelefone } from "@/lib/masks";
 import {
   atualizarCliente,
   criarCliente,
   marcarTarefa,
+  mudarStatusCliente,
   removerCliente,
   salvarDataAgendamento,
   type PatchCliente,
@@ -26,6 +33,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -65,6 +79,8 @@ export function Etapa1Workspace({
     dataAgendamentoInicial ?? "",
   );
   const [editando, setEditando] = useState<ClienteEtapa1 | null>(null);
+  const [busca, setBusca] = useState("");
+  const [filtro, setFiltro] = useState<"todos" | StatusCliente>("todos");
   const [pending, startTransition] = useTransition();
 
   // ---- Métricas / tarefas automáticas ----
@@ -79,6 +95,27 @@ export function Etapa1Workspace({
     () => calcularMetricasEtapa1(clientes, manual),
     [clientes, manual],
   );
+
+  const contagemStatus = useMemo(
+    () =>
+      STATUS_CLIENTE.map((s) => ({
+        ...s,
+        qtd: clientes.filter((c) => c.status === s.id).length,
+      })),
+    [clientes],
+  );
+
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return clientes.filter((c) => {
+      if (filtro !== "todos" && c.status !== filtro) return false;
+      if (!q) return true;
+      return (
+        (c.nome ?? "").toLowerCase().includes(q) ||
+        (c.telefone ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [clientes, busca, filtro]);
 
   // ---- Ações ----
   function addCliente() {
@@ -125,6 +162,24 @@ export function Etapa1Workspace({
       );
       setEditando(null);
       toast.success("Cliente salvo.");
+    });
+  }
+
+  function mudarStatus(cliente: ClienteEtapa1, novo: StatusCliente) {
+    const anterior = cliente.status;
+    setClientes((prev) =>
+      prev.map((c) => (c.id === cliente.id ? { ...c, status: novo } : c)),
+    );
+    startTransition(async () => {
+      const res = await mudarStatusCliente(cliente.id, alunoId, novo);
+      if (res.erro) {
+        setClientes((prev) =>
+          prev.map((c) =>
+            c.id === cliente.id ? { ...c, status: anterior } : c,
+          ),
+        );
+        toast.error("Erro ao mudar o status.");
+      }
     });
   }
 
@@ -189,46 +244,21 @@ export function Etapa1Workspace({
         />
       </div>
 
-      {/* Checklist */}
+      {/* Checklist com tutoriais */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Checklist da Etapa 01</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-1">
-          {TAREFAS_ETAPA1.map((t) => {
-            const concluida = tarefaConcluida(t.num);
-            return (
-              <div
-                key={t.num}
-                className="flex items-start gap-3 rounded-md px-2 py-2.5 hover:bg-muted/50"
-              >
-                <Checkbox
-                  checked={concluida}
-                  disabled={t.automatica || pending}
-                  onCheckedChange={(v) => toggleTarefa(t.num, Boolean(v))}
-                  className="mt-0.5"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={
-                        "text-sm font-medium " +
-                        (concluida ? "text-muted-foreground line-through" : "")
-                      }
-                    >
-                      {t.num}. {t.titulo}
-                    </span>
-                    {t.automatica ? (
-                      <Badge variant="outline" className="text-[10px]">
-                        automática
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{t.descricao}</p>
-                </div>
-              </div>
-            );
-          })}
+          {TAREFAS_ETAPA1.map((t) => (
+            <TarefaItem
+              key={t.num}
+              tarefa={t}
+              concluida={tarefaConcluida(t.num)}
+              pending={pending}
+              onToggle={(v) => toggleTarefa(t.num, v)}
+            />
+          ))}
         </CardContent>
       </Card>
 
@@ -259,25 +289,62 @@ export function Etapa1Workspace({
         </CardContent>
       </Card>
 
-      {/* Tabela dos 30 clientes */}
+      {/* Central de clientes */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <div>
-            <CardTitle className="text-base">Clientes potenciais</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {preenchidos} de {META_CLIENTES} preenchidos
-            </p>
+        <CardHeader className="gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-base">
+                Central de clientes
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Controle o contato com cada cliente ao longo do processo.
+              </p>
+            </div>
+            <Button onClick={addCliente} disabled={pending}>
+              Adicionar cliente
+            </Button>
           </div>
-          <Button onClick={addCliente} disabled={pending}>
-            Adicionar cliente
-          </Button>
+
+          {/* Funil / filtro por status */}
+          <div className="flex flex-wrap gap-2">
+            <FiltroChip
+              ativo={filtro === "todos"}
+              onClick={() => setFiltro("todos")}
+              rotulo="Todos"
+              qtd={clientes.length}
+            />
+            {contagemStatus.map((s) => (
+              <FiltroChip
+                key={s.id}
+                ativo={filtro === s.id}
+                onClick={() => setFiltro(s.id)}
+                rotulo={s.rotulo}
+                qtd={s.qtd}
+              />
+            ))}
+          </div>
+
+          {clientes.length > 0 ? (
+            <Input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar por nome ou telefone..."
+              className="max-w-xs"
+            />
+          ) : null}
         </CardHeader>
+
         <CardContent>
           {clientes.length === 0 ? (
             <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
               Nenhum cliente ainda. Clique em{" "}
               <span className="font-medium">Adicionar cliente</span> para
               começar sua lista de 30.
+            </div>
+          ) : filtrados.length === 0 ? (
+            <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+              Nenhum cliente encontrado com esse filtro/busca.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -296,76 +363,87 @@ export function Etapa1Workspace({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clientes.map((c, i) => {
-                    const si = statusInfo(c.status);
-                    return (
-                      <TableRow key={c.id}>
-                        <TableCell className="text-muted-foreground">
-                          {i + 1}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {c.nome || (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{c.telefone ?? "—"}</TableCell>
-                        <TableCell className="capitalize">
-                          {c.nivel_relacionamento ?? "—"}
-                        </TableCell>
-                        <TableCell>
-                          {c.problemas.length > 0 ? (
-                            <Badge variant="secondary">
-                              {c.problemas.length}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {c.perda_inercia != null
-                            ? brl.format(c.perda_inercia)
-                            : "—"}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={
-                              "inline-flex rounded-full px-2 py-0.5 text-xs font-medium " +
-                              si.cor
-                            }
-                          >
-                            {si.rotulo}
+                  {filtrados.map((c, i) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="text-muted-foreground">
+                        {i + 1}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {c.nome || (
+                          <span className="text-muted-foreground">
+                            Sem nome
                           </span>
-                        </TableCell>
-                        <TableCell>
-                          {c.data_reuniao_preliminar
-                            ? new Date(
-                                c.data_reuniao_preliminar + "T00:00:00",
-                              ).toLocaleDateString("pt-BR")
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditando(c)}
-                            >
-                              Editar
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => excluirCliente(c.id)}
-                              disabled={pending}
-                            >
-                              Excluir
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {c.telefone ? mascaraTelefone(c.telefone) : "—"}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {c.nivel_relacionamento ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        {c.problemas.length > 0 ? (
+                          <Badge variant="secondary">{c.problemas.length}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {c.perda_inercia != null
+                          ? brl.format(c.perda_inercia)
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={c.status}
+                          onValueChange={(v) =>
+                            v && mudarStatus(c, v as StatusCliente)
+                          }
+                        >
+                          <SelectTrigger
+                            size="sm"
+                            className="h-7 w-[130px] text-xs"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STATUS_CLIENTE.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.rotulo}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {c.data_reuniao_preliminar
+                          ? new Date(
+                              c.data_reuniao_preliminar + "T00:00:00",
+                            ).toLocaleDateString("pt-BR")
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditando(c)}
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => excluirCliente(c.id)}
+                            disabled={pending}
+                          >
+                            Excluir
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -384,6 +462,113 @@ export function Etapa1Workspace({
         />
       ) : null}
     </div>
+  );
+}
+
+function TarefaItem({
+  tarefa: t,
+  concluida,
+  pending,
+  onToggle,
+}: {
+  tarefa: TarefaDef;
+  concluida: boolean;
+  pending: boolean;
+  onToggle: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-md px-2 py-2.5 hover:bg-muted/50">
+      <Checkbox
+        checked={concluida}
+        disabled={t.automatica || pending}
+        onCheckedChange={(v) => onToggle(Boolean(v))}
+        className="mt-0.5"
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={
+              "text-sm font-medium " +
+              (concluida ? "text-muted-foreground line-through" : "")
+            }
+          >
+            {t.num}. {t.titulo}
+          </span>
+          {t.automatica ? (
+            <Badge variant="outline" className="text-[10px]">
+              automática
+            </Badge>
+          ) : null}
+        </div>
+        <p className="text-xs text-muted-foreground">{t.descricao}</p>
+
+        {t.tutorialUrl || t.modelo ? (
+          <div className="mt-1.5 flex flex-wrap items-center gap-3">
+            {t.tutorialUrl ? (
+              <a
+                href={t.tutorialUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                ▶ Ver tutorial
+              </a>
+            ) : null}
+            {t.modelo ? (
+              t.modelo.url ? (
+                <a
+                  href={t.modelo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  ⬇ Modelo: {t.modelo.nome}
+                </a>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  Modelo: {t.modelo.nome}
+                </span>
+              )
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function FiltroChip({
+  ativo,
+  onClick,
+  rotulo,
+  qtd,
+}: {
+  ativo: boolean;
+  onClick: () => void;
+  rotulo: string;
+  qtd: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition " +
+        (ativo
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-background text-muted-foreground hover:bg-muted")
+      }
+    >
+      {rotulo}
+      <span
+        className={
+          "rounded-full px-1.5 text-[10px] " +
+          (ativo ? "bg-primary-foreground/20" : "bg-muted")
+        }
+      >
+        {qtd}
+      </span>
+    </button>
   );
 }
 

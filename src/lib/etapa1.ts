@@ -84,6 +84,10 @@ export interface TarefaDef {
   descricao: string;
   /** Tarefa medida automaticamente pela tabela de clientes (não é checkbox manual). */
   automatica?: boolean;
+  /** Link da aula/tutorial (coluna "Aula" da planilha), quando houver. */
+  tutorialUrl?: string;
+  /** Modelo/arquivo de apoio (coluna "Modelo" da planilha), quando houver. */
+  modelo?: { nome: string; url?: string };
 }
 
 export const TAREFAS_ETAPA1: TarefaDef[] = [
@@ -93,6 +97,7 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     descricao:
       "Liste 30 possíveis clientes do seu círculo de relacionamento que tenham pelo menos um dos sete problemas.",
     automatica: true,
+    modelo: { nome: "Sete Problemas x Sete Clientes.pdf" },
   },
   {
     num: 2,
@@ -142,12 +147,15 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     num: 9,
     titulo: "Criar conta de negócio na Hotmart",
     descricao: "Crie uma conta de negócio na Hotmart.",
+    tutorialUrl: "https://1sh.co/877580e0",
   },
   {
     num: 10,
     titulo: "Criar os produtos na Hotmart",
     descricao:
       "Crie os produtos: Sessão de Viabilidade, Croqui Estrutural e Execução Holding.",
+    tutorialUrl:
+      "https://membros.holdingmasters.com.br/playlist/5EoqQB6Ko0/file/6NKzBzneDz",
   },
 ];
 

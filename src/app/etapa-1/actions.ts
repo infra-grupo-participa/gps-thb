@@ -71,6 +71,14 @@ export async function atualizarCliente(
   return {};
 }
 
+export async function mudarStatusCliente(
+  clienteId: string,
+  alunoId: string,
+  status: ClienteEtapa1["status"],
+) {
+  return atualizarCliente(clienteId, alunoId, { status });
+}
+
 export async function removerCliente(clienteId: string, alunoId: string) {
   const supabase = await createClient();
   const { error } = await supabase

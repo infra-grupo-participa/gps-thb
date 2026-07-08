@@ -26,7 +26,9 @@ export type PatchCliente = Partial<
 
 function revalidar(alunoId: string) {
   revalidatePath("/etapa-1");
-  revalidatePath(`/admin/aluno/${alunoId}`);
+  revalidatePath("/clientes");
+  revalidatePath("/clientes", "layout");
+  revalidatePath(`/admin/aluno/${alunoId}`, "layout");
 }
 
 export async function criarCliente(alunoId: string) {

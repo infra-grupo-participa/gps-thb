@@ -79,6 +79,17 @@ export interface Solicitacao {
   decidido_em: string | null;
 }
 
+export interface Documento {
+  id: string;
+  aluno_id: string;
+  cliente_id: string;
+  nome: string;
+  path: string;
+  tamanho: number | null;
+  mime: string | null;
+  criado_em: string;
+}
+
 export interface ProgressoTarefa {
   id: string;
   aluno_id: string;

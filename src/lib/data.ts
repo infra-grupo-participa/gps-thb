@@ -180,6 +180,30 @@ export async function acharAlunoPorEmail(
   return (data as Aluno) ?? null;
 }
 
+export async function getClienteById(
+  clienteId: string,
+): Promise<ClienteEtapa1 | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("etapa1_clientes")
+    .select("*")
+    .eq("id", clienteId)
+    .maybeSingle();
+  return (data as ClienteEtapa1) ?? null;
+}
+
+export async function getDocumentos(clienteId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("documentos")
+    .select("*")
+    .eq("cliente_id", clienteId)
+    .order("criado_em", { ascending: false });
+  return data ?? [];
+}
+
 export async function getProgressoEtapa(
   alunoId: string,
   etapa: number,

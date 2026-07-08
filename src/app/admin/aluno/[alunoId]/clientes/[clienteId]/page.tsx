@@ -3,23 +3,22 @@ import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import {
   getAlunoById,
-  getClientesEtapa1,
-  getEtapas,
+  getClienteById,
+  getDocumentos,
   getMembro,
-  getProgressoEtapa,
 } from "@/lib/data";
-import { calcularMetricasEtapa1 } from "@/lib/etapa1";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
-import { EtapasOverview } from "@/components/etapas-overview";
 import { AssistBanner } from "@/components/admin/assist-banner";
+import { ClienteFicha } from "@/components/clientes/cliente-ficha";
+import type { Documento } from "@/lib/types";
 
-export default async function AdminAlunoInicioPage({
+export default async function AdminAlunoClienteFichaPage({
   params,
 }: {
-  params: Promise<{ alunoId: string }>;
+  params: Promise<{ alunoId: string; clienteId: string }>;
 }) {
-  const { alunoId } = await params;
+  const { alunoId, clienteId } = await params;
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
@@ -27,17 +26,14 @@ export default async function AdminAlunoInicioPage({
   const membro = await getMembro(alunoId);
   if (!membro) notFound();
 
-  const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapas, clientes, progresso] = await Promise.all([
-    getAlunoById(alunoId),
-    getEtapas(),
-    getClientesEtapa1(alunoId),
-    getProgressoEtapa(alunoId, 1),
-  ]);
+  const cliente = await getClienteById(clienteId);
+  if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
-  const manual: Record<number, boolean> = {};
-  for (const p of progresso) manual[p.tarefa] = p.concluida;
-  const metricas = calcularMetricasEtapa1(clientes, manual);
+  const base = `/admin/aluno/${alunoId}`;
+  const [aluno, documentos] = await Promise.all([
+    getAlunoById(alunoId),
+    getDocumentos(clienteId),
+  ]);
 
   return (
     <>
@@ -50,24 +46,23 @@ export default async function AdminAlunoInicioPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main className="mx-auto w-full max-w-4xl px-4 py-8">
         <div className="mb-6">
           <Link
-            href="/admin"
+            href={`${base}/clientes`}
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            ← Voltar aos alunos
+            ← Voltar aos clientes
           </Link>
           <h1 className="mt-2 text-2xl font-semibold">
-            {aluno?.nome ?? "Aluno"}
+            {cliente.nome || "Novo cliente"}
           </h1>
-          <p className="text-muted-foreground">{aluno?.email}</p>
         </div>
 
-        <EtapasOverview
-          etapas={etapas}
-          etapa1Pct={metricas.pct}
-          etapa1Href={`${base}/etapa-1`}
+        <ClienteFicha
+          cliente={cliente}
+          alunoId={alunoId}
+          documentosIniciais={documentos as Documento[]}
         />
       </main>
     </>

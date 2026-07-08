@@ -87,11 +87,23 @@ Funções: `gps.aluno_atual()` (aluno_id do usuário logado), `gps.touch_atualiz
 RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos próprios registros
 (via `gps.aluno_atual()`).
 
+## Arquitetura de informação (decisão do usuário)
+
+- **Etapas = guia/mapa** (intuitivo): checklist + tutoriais + progresso. NÃO contém gestão.
+- **Clientes = aba separada** (CRM): lista/funil/busca + **ficha** de cada cliente com todos os
+  campos e **documentos** (upload no Storage). Navegação por abas no header (Início / Clientes),
+  espelhada no admin (modo assistência) com `basePath = /admin/aluno/<id>`.
+- Componentes reusados por aluno e admin via `basePath`: `ClientesManager`, `ClienteFicha`,
+  `DocumentosSection`, `Etapa1Guide`, `AppHeader` + `NavTabs`.
+- **Documentos**: bucket privado `gps-documentos` (caminho `<aluno_id>/<cliente_id>/<arquivo>`),
+  índice em `gps.documentos`; RLS de Storage por pasta (aluno só a própria; admin tudo) — testado.
+
 ## Rotas
 
 - `/login` — login e-mail/senha (Supabase Auth). `/auth/signout` (POST).
-- `/` — dashboard do aluno (6 etapas; admin é redirecionado p/ `/admin`; sem vínculo → aviso).
-- `/etapa-1` — workspace da Etapa 01 do próprio aluno.
+- `/` — Início do aluno (mapa das 6 etapas; admin → `/admin`; sem vínculo → aviso).
+- `/etapa-1` — guia da Etapa 01 (checklist + tutoriais). `/clientes` e `/clientes/[id]` (ficha+docs).
+- Admin espelha em `/admin/aluno/[id]`, `/admin/aluno/[id]/etapa-1`, `.../clientes`, `.../clientes/[id]`.
 - `/admin` — lista de alunos no GPS + "Adicionar aluno" (busca em `thb_alunos`).
 - `/admin/aluno/[alunoId]` — admin dentro do ambiente do aluno (modo assistência, editável).
 - `/cadastro` — auto-cadastro do aluno (Supabase signUp, metadata `origem=gps`).

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import {
   getAlunoById,
@@ -9,57 +9,59 @@ import {
 } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { AssistBanner } from "@/components/admin/assist-banner";
 import { Etapa1Guide } from "@/components/etapa1/etapa1-guide";
 
-export const metadata = {
-  title: "Etapa 01 — Estrutura e contato com a base de clientes | GPS",
-};
-
-export default async function Etapa1AlunoPage() {
+export default async function AdminAlunoEtapa1Page({
+  params,
+}: {
+  params: Promise<{ alunoId: string }>;
+}) {
+  const { alunoId } = await params;
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
-  if (ctx.papel === "admin") redirect("/admin");
-  if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
+  if (ctx.papel !== "admin") redirect("/");
 
-  const alunoId = ctx.alunoId;
-  const [aluno, clientes, progresso, membro] = await Promise.all([
+  const membro = await getMembro(alunoId);
+  if (!membro) notFound();
+
+  const base = `/admin/aluno/${alunoId}`;
+  const [aluno, clientes, progresso] = await Promise.all([
     getAlunoById(alunoId),
     getClientesEtapa1(alunoId),
     getProgressoEtapa(alunoId, 1),
-    getMembro(alunoId),
   ]);
 
   return (
     <>
       <AppHeader
-        nome={aluno?.nome ?? ctx.user.email ?? null}
+        nome={ctx.perfil?.nome ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
-        papelRotulo="Aluno"
-        navItems={alunoNavItems("")}
+        papelRotulo="Admin"
+        homeHref="/admin"
+        navItems={alunoNavItems(base)}
       />
+      <AssistBanner aluno={aluno} />
+
       <main className="mx-auto w-full max-w-6xl px-4 py-8">
         <div className="mb-6">
           <Link
-            href="/"
+            href={base}
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            ← Voltar ao início
+            ← Voltar ao início do aluno
           </Link>
           <h1 className="mt-2 text-2xl font-semibold">
             Etapa 01 — Estrutura e contato com a base de clientes
           </h1>
-          <p className="text-muted-foreground">
-            Seu roteiro para listar os 30 clientes potenciais e agendar as
-            reuniões preliminares.
-          </p>
         </div>
 
         <Etapa1Guide
           alunoId={alunoId}
           clientesIniciais={clientes}
           progressoInicial={progresso}
-          dataAgendamentoInicial={membro?.data_agendamento_disponivel ?? null}
-          clientesHref="/clientes"
+          dataAgendamentoInicial={membro.data_agendamento_disponivel}
+          clientesHref={`${base}/clientes`}
         />
       </main>
     </>

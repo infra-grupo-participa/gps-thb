@@ -9,6 +9,7 @@ import {
 } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { calcularMetricasEtapa1 } from "@/lib/etapa1";
+import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { EtapasOverview } from "@/components/etapas-overview";
 import { GpsLogo } from "@/components/gps-logo";
@@ -88,6 +89,7 @@ export default async function HomePage() {
         nome={aluno?.nome ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
         papelRotulo="Aluno"
+        navItems={alunoNavItems("")}
       />
       <main className="mx-auto w-full max-w-6xl px-4 py-8">
         <div className="mb-6">

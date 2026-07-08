@@ -1,28 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import type { ClienteEtapa1 } from "@/lib/types";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import type { ClienteEtapa1, Documento } from "@/lib/types";
 import {
   PROBLEMAS_7,
   NIVEIS_RELACIONAMENTO,
   STATUS_CLIENTE,
   PERFIS_DISC,
 } from "@/lib/etapa1";
-import type { PatchCliente } from "@/app/etapa-1/actions";
 import {
   mascaraMoeda,
   mascaraTelefone,
   moedaParaNumero,
   numeroParaMoeda,
 } from "@/lib/masks";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { atualizarCliente } from "@/app/etapa-1/actions";
+import { DocumentosSection } from "./documentos-section";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,31 +31,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function ClienteDialog({
+export function ClienteFicha({
   cliente,
-  open,
-  onOpenChange,
-  onSalvar,
-  salvando,
+  alunoId,
+  documentosIniciais,
 }: {
   cliente: ClienteEtapa1;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onSalvar: (patch: PatchCliente) => void;
-  salvando: boolean;
+  alunoId: string;
+  documentosIniciais: Documento[];
 }) {
   const [nome, setNome] = useState(cliente.nome ?? "");
-  const [telefone, setTelefone] = useState(cliente.telefone ?? "");
+  const [telefone, setTelefone] = useState(
+    cliente.telefone ? mascaraTelefone(cliente.telefone) : "",
+  );
   const [nivel, setNivel] = useState(cliente.nivel_relacionamento ?? "");
   const [problemas, setProblemas] = useState<string[]>(cliente.problemas ?? []);
   const [perda, setPerda] = useState(numeroParaMoeda(cliente.perda_inercia));
-  const [registro, setRegistro] = useState(cliente.registro_contato ?? "");
   const [status, setStatus] = useState(cliente.status ?? "pendente");
   const [dataReuniao, setDataReuniao] = useState(
     cliente.data_reuniao_preliminar ?? "",
   );
-  const [aderiu, setAderiu] = useState(cliente.aderiu_reuniao);
   const [disc, setDisc] = useState(cliente.perfil_disc ?? "");
+  const [aderiu, setAderiu] = useState(cliente.aderiu_reuniao);
+  const [msgPadrao, setMsgPadrao] = useState(cliente.mensagem_padrao_enviada);
+  const [estudoCaso, setEstudoCaso] = useState(cliente.estudo_caso_enviado);
+  const [ligacao, setLigacao] = useState(cliente.ligacao_realizada);
+  const [registro, setRegistro] = useState(cliente.registro_contato ?? "");
+  const [pending, startTransition] = useTransition();
 
   function toggleProblema(id: string) {
     setProblemas((prev) =>
@@ -69,47 +66,53 @@ export function ClienteDialog({
   }
 
   function salvar() {
-    onSalvar({
-      nome: nome.trim(),
-      telefone: telefone.trim() || null,
-      nivel_relacionamento:
-        (nivel as ClienteEtapa1["nivel_relacionamento"]) || null,
-      problemas,
-      perda_inercia: moedaParaNumero(perda),
-      registro_contato: registro.trim() || null,
-      status: status as ClienteEtapa1["status"],
-      data_reuniao_preliminar: dataReuniao || null,
-      aderiu_reuniao: aderiu,
-      perfil_disc: (disc as ClienteEtapa1["perfil_disc"]) || null,
+    startTransition(async () => {
+      const res = await atualizarCliente(cliente.id, alunoId, {
+        nome: nome.trim(),
+        telefone: telefone.trim() || null,
+        nivel_relacionamento:
+          (nivel as ClienteEtapa1["nivel_relacionamento"]) || null,
+        problemas,
+        perda_inercia: moedaParaNumero(perda),
+        status: status as ClienteEtapa1["status"],
+        data_reuniao_preliminar: dataReuniao || null,
+        perfil_disc: (disc as ClienteEtapa1["perfil_disc"]) || null,
+        aderiu_reuniao: aderiu,
+        mensagem_padrao_enviada: msgPadrao,
+        estudo_caso_enviado: estudoCaso,
+        ligacao_realizada: ligacao,
+        registro_contato: registro.trim() || null,
+      });
+      if (res.erro) {
+        toast.error("Erro ao salvar.");
+        return;
+      }
+      toast.success("Ficha salva.");
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Cliente potencial</DialogTitle>
-          <DialogDescription>
-            Preencha os dados do contato e o andamento da abordagem.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-4">
+    <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Dados do cliente</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-5">
           <div className="grid gap-2">
-            <Label htmlFor="c-nome">Nome</Label>
+            <Label htmlFor="f-nome">Nome</Label>
             <Input
-              id="c-nome"
+              id="f-nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Nome do cliente"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="c-tel">Telefone</Label>
+              <Label htmlFor="f-tel">Telefone</Label>
               <Input
-                id="c-tel"
+                id="f-tel"
                 inputMode="tel"
                 value={telefone}
                 onChange={(e) => setTelefone(mascaraTelefone(e.target.value))}
@@ -135,7 +138,7 @@ export function ClienteDialog({
 
           <div className="grid gap-2">
             <Label>Problemas (marque ao menos um)</Label>
-            <div className="grid gap-2 rounded-md border p-3">
+            <div className="grid gap-2 rounded-md border p-3 sm:grid-cols-2">
               {PROBLEMAS_7.map((p) => (
                 <label
                   key={p.id}
@@ -152,11 +155,11 @@ export function ClienteDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-5 sm:grid-cols-3">
             <div className="grid gap-2">
-              <Label htmlFor="c-perda">Perda pela inércia</Label>
+              <Label htmlFor="f-perda">Perda pela inércia</Label>
               <Input
-                id="c-perda"
+                id="f-perda"
                 inputMode="numeric"
                 value={perda}
                 onChange={(e) => setPerda(mascaraMoeda(e.target.value))}
@@ -181,18 +184,52 @@ export function ClienteDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="c-data">Data da reunião preliminar</Label>
+              <Label htmlFor="f-data">Data da reunião preliminar</Label>
               <Input
-                id="c-data"
+                id="f-data"
                 type="date"
                 value={dataReuniao}
                 onChange={(e) => setDataReuniao(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="grid gap-3 rounded-md border p-3">
+            <span className="text-sm font-medium">Andamento do contato</span>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={msgPadrao}
+                  onCheckedChange={(v) => setMsgPadrao(Boolean(v))}
+                />
+                Mensagem padrão enviada
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={estudoCaso}
+                  onCheckedChange={(v) => setEstudoCaso(Boolean(v))}
+                />
+                Estudo de caso enviado
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={ligacao}
+                  onCheckedChange={(v) => setLigacao(Boolean(v))}
+                />
+                Ligação realizada
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={aderiu}
+                  onCheckedChange={(v) => setAderiu(Boolean(v))}
+                />
+                Aderiu à reunião (grupo de WhatsApp)
+              </label>
+            </div>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label>Perfil DISC</Label>
               <Select value={disc} onValueChange={(v) => setDisc(v ?? "")}>
@@ -210,35 +247,30 @@ export function ClienteDialog({
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={aderiu}
-              onCheckedChange={(v) => setAderiu(Boolean(v))}
-            />
-            Aderiu à reunião (entra no grupo de WhatsApp)
-          </label>
-
           <div className="grid gap-2">
-            <Label htmlFor="c-reg">Registro do contato</Label>
+            <Label htmlFor="f-reg">Registro do contato</Label>
             <Textarea
-              id="c-reg"
+              id="f-reg"
               value={registro}
               onChange={(e) => setRegistro(e.target.value)}
               placeholder="Anotações sobre as conversas, ligações e combinados."
-              rows={3}
+              rows={4}
             />
           </div>
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={salvar} disabled={salvando}>
-            {salvando ? "Salvando..." : "Salvar"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <div className="flex justify-end">
+            <Button onClick={salvar} disabled={pending}>
+              {pending ? "Salvando..." : "Salvar ficha"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <DocumentosSection
+        alunoId={alunoId}
+        clienteId={cliente.id}
+        documentosIniciais={documentosIniciais}
+      />
+    </div>
   );
 }

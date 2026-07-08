@@ -140,10 +140,16 @@ Alunos **não** são provisionados em massa e a base **não** é importada. Auto
 aluno se cadastra em `/cadastro` com **dados essenciais — CPF/CNPJ, e-mail e senha** →
 o gatilho `on_auth_user_created_gps` (SECURITY DEFINER) **vincula automaticamente** o `thb_alunos`
 correspondente **pelo CPF/CNPJ** (match por `lpad(digitos,14,'0')`, que reconstrói zero à esquerda
-perdido; fallback por e-mail) e cria `gps.membros` → o aluno **já entra no programa** (dados
-pessoais vêm do `thb_alunos` vinculado). Se o documento **não** casar com a base, cai em
-`gps.solicitacoes_acesso` (pendente) para o admin resolver em `/admin/solicitacoes` (exceção, não
-o caminho principal). Documento é enviado em `raw_user_meta_data.documento`.
+perdido; fallback por e-mail) e cria `gps.membros` → o aluno **já entra no programa**. Sem match,
+cai em `gps.solicitacoes_acesso` (pendente). Documento em `raw_user_meta_data.documento`.
+
+**Painel admin (`/admin`) com abas**: "Alunos ativos" (em `gps.membros`) x "Solicitações"
+(pendentes). Botão **Criar acesso** (`CriarAcesso`): busca em `thb_alunos` (nome/e-mail/CPF),
+permite **atualizar o e-mail** do cadastro (se antigo) e então **Criar login agora** ou **Só criar
+ambiente** (aluno se cadastra depois). "Criar login agora" (`criarAcessoAluno`) usa `signUp` num
+cliente Supabase **isolado** (sem persistir sessão, não afeta o admin) + gera senha temporária;
+o gatilho/upsert vincula ao aluno escolhido. **Não usa service_role.** Solicitações são aprovadas/
+recusadas em `SolicitacaoCard`.
 
 ## ⚠️ Pendências de segurança (antes de dar login a alunos)
 

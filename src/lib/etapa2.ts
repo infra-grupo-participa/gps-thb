@@ -11,7 +11,10 @@ export const TAREFAS_ETAPA2: TarefaDef[] = [
     descricao:
       "Assista à aula e estude o roteiro sobre a Reunião Preliminar antes de conduzir as suas.",
     tutorialUrl: "https://membros.holdingmasters.com.br/file/32g9eA3RNo",
-    modelo: { nome: "08 - Script Reunião Preliminar" },
+    modelo: {
+      nome: "08 - Script Reunião Preliminar",
+      url: "https://docs.google.com/document/d/1iBoJoI5y2UZMsHgyz0_pnjuErGK72q4K-vzy5nHziJc/edit?usp=drive_link",
+    },
   },
   {
     num: 2,
@@ -20,6 +23,7 @@ export const TAREFAS_ETAPA2: TarefaDef[] = [
       "Envie mensagem ao cliente com 24h de antecedência pedindo que ele confirme a presença na reunião preliminar e que o responsável pela tomada de decisão também esteja presente.",
     modelo: {
       nome: "10 - Mensagens após a contratação da Sessão de Viabilidade",
+      url: "https://docs.google.com/document/d/1pAcqp5cOEL_U6YBR5PpR7-D2cEGWUQgdMl-yLk3CrqA/edit",
     },
   },
   {
@@ -36,6 +40,10 @@ export const TAREFAS_ETAPA2: TarefaDef[] = [
     descricao:
       "Assista ao workshop sobre a Sessão de Viabilidade e o Croqui Estrutural.",
     tutorialUrl: "https://membros.holdingmasters.com.br/file/kqkO17jWq4",
+    modelo: {
+      nome: "Documentos (pasta)",
+      url: "https://drive.google.com/drive/folders/1zpd9aHvpHBYqE47A7KDJKIJpoQp5gx0t",
+    },
   },
   {
     num: 5,

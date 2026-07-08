@@ -107,8 +107,11 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
 ## Arquitetura de informação (decisão do usuário)
 
 - **Etapas = guia/mapa** (intuitivo): checklist + tutoriais + progresso. NÃO contém gestão.
-- **Clientes = aba separada** (CRM): lista/funil/busca + **ficha** de cada cliente com todos os
-  campos e **documentos** (upload no Storage). Navegação por abas no header (Início / Clientes),
+- **Clientes = aba separada** (CRM): **Lista** (funil/busca/ordenação) e **Quadro** (kanban por
+  status com arrastar-e-soltar), atalho de **WhatsApp** (`src/lib/whatsapp.ts`), e destaque do
+  **cliente acompanhado pela equipe** (coluna `acompanhado_equipe`, único por aluno — a estrela).
+  Cada cliente tem **ficha** com todos os campos e **documentos** (upload no Storage).
+  Navegação por abas no header (Início / Clientes / Materiais),
   espelhada no admin (modo assistência) com `basePath = /admin/aluno/<id>`.
 - Componentes reusados por aluno e admin via `basePath`: `ClientesManager`, `ClienteFicha`,
   `DocumentosSection`, `Etapa1Guide`, `AppHeader` + `NavTabs`.

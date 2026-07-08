@@ -7,13 +7,19 @@ export const TAREFAS_ETAPA4: TarefaDef[] = [
     num: 1,
     titulo: "Elabore o Contrato de Honorários",
     descricao: "Elabore o contrato de honorários com o cliente.",
-    modelo: { nome: "05 - Contrato de Prestação de Serviços.pdf" },
+    modelo: {
+      nome: "05 - Contrato de Prestação de Serviços.pdf",
+      url: "https://drive.google.com/file/d/1T3TUF2c-SVvuYj3uHPnq8IaWRUA4k9pT/view?usp=drive_link",
+    },
   },
   {
     num: 2,
     titulo: "Elabore o Cronograma de Entrega da Holding",
     descricao: "Elabore o cronograma de entrega da holding.",
-    modelo: { nome: "Cronograma - Etapas da Holding.pdf" },
+    modelo: {
+      nome: "Cronograma - Etapas da Holding.pdf",
+      url: "https://drive.google.com/file/d/1gGIsP8c7WN48x_cv0FUhsliv9JhMC9vI/view?usp=drive_link",
+    },
   },
   {
     num: 3,

@@ -15,7 +15,9 @@ import {
   moedaParaNumero,
   numeroParaMoeda,
 } from "@/lib/masks";
-import { atualizarCliente } from "@/app/etapa-1/actions";
+import { MessageCircle, Star } from "lucide-react";
+import { atualizarCliente, definirClienteEquipe } from "@/app/etapa-1/actions";
+import { linkWhatsapp } from "@/lib/whatsapp";
 import { DocumentosSection } from "./documentos-section";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,7 +59,22 @@ export function ClienteFicha({
   const [estudoCaso, setEstudoCaso] = useState(cliente.estudo_caso_enviado);
   const [ligacao, setLigacao] = useState(cliente.ligacao_realizada);
   const [registro, setRegistro] = useState(cliente.registro_contato ?? "");
+  const [acompanhado, setAcompanhado] = useState(cliente.acompanhado_equipe);
   const [pending, startTransition] = useTransition();
+
+  const wpp = linkWhatsapp(telefone);
+
+  function toggleEquipe() {
+    const ativar = !acompanhado;
+    setAcompanhado(ativar);
+    startTransition(async () => {
+      const res = await definirClienteEquipe(cliente.id, alunoId, ativar);
+      if (res.erro) {
+        setAcompanhado(!ativar);
+        toast.error("Erro ao marcar o cliente da equipe.");
+      }
+    });
+  }
 
   function toggleProblema(id: string) {
     setProblemas((prev) =>
@@ -93,6 +110,31 @@ export function ClienteFicha({
 
   return (
     <div className="grid gap-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant={acompanhado ? "default" : "outline"}
+          size="sm"
+          onClick={toggleEquipe}
+          disabled={pending}
+        >
+          <Star className={"size-4 " + (acompanhado ? "fill-current" : "")} />
+          {acompanhado
+            ? "Cliente acompanhado pela equipe"
+            : "Marcar como cliente da equipe"}
+        </Button>
+        {wpp ? (
+          <a
+            href={wpp}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-green-600/30 bg-green-600/10 px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-600/20 dark:text-green-400"
+          >
+            <MessageCircle className="size-4" /> WhatsApp
+          </a>
+        ) : null}
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Dados do cliente</CardTitle>

@@ -61,6 +61,7 @@ export interface ClienteEtapa1 {
   data_reuniao_preliminar: string | null;
   aderiu_reuniao: boolean;
   perfil_disc: PerfilDisc | null;
+  acompanhado_equipe: boolean;
   ordem: number;
 }
 

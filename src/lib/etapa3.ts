@@ -14,7 +14,10 @@ export const TAREFAS_ETAPA3: TarefaDef[] = [
     num: 2,
     titulo: "Enviar as mensagens após a Reunião Preliminar",
     descricao: "Envie as mensagens de acompanhamento após a Reunião Preliminar.",
-    modelo: { nome: "07 - Mensagens Após a SV" },
+    modelo: {
+      nome: "07 - Mensagens Após a SV",
+      url: "https://docs.google.com/document/d/1CuFpSTtOLMoSrp9EYTFZ17OQX6dklpByVPVVTb7Jt38/edit",
+    },
   },
   {
     num: 3,
@@ -77,6 +80,7 @@ export const TAREFAS_ETAPA3: TarefaDef[] = [
     info: "Acompanhe o pagamento: após 1h sem pagamento, pergunte se há dificuldade; até o fim do dia, avise que o prazo do benefício está encerrando; se ainda assim não avançar, envie o PDF do Croqui.",
     modelo: {
       nome: "09 - Mensagens após a reunião de apresentação do Croqui Estrutural",
+      url: "https://docs.google.com/document/d/1SsBh4sd7XVuNaGdnbQR_wWmqqbusm3rDztXURqXIEEs/edit",
     },
   },
   {

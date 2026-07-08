@@ -99,7 +99,10 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     descricao:
       "Liste 30 possíveis clientes do seu círculo de relacionamento que tenham pelo menos um dos sete problemas.",
     automatica: true,
-    modelo: { nome: "Sete Problemas x Sete Clientes.pdf" },
+    modelo: {
+      nome: "Sete Problemas x Sete Clientes.pdf",
+      url: "https://drive.google.com/file/d/18rwgOgYjjPXkaxL6qOr-nAZ29sol5v7g/view?usp=drive_link",
+    },
   },
   {
     num: 2,

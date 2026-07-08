@@ -81,6 +81,35 @@ export async function mudarStatusCliente(
   return atualizarCliente(clienteId, alunoId, { status });
 }
 
+/** Define (ou remove) o cliente acompanhado pela equipe — no máximo um por aluno. */
+export async function definirClienteEquipe(
+  clienteId: string,
+  alunoId: string,
+  ativar: boolean,
+) {
+  const supabase = await createClient();
+  const gps = supabase.schema("gps");
+
+  // Desmarca todos primeiro (respeita o índice único parcial).
+  const { error: e1 } = await gps
+    .from("etapa1_clientes")
+    .update({ acompanhado_equipe: false })
+    .eq("aluno_id", alunoId)
+    .eq("acompanhado_equipe", true);
+  if (e1) return { erro: e1.message };
+
+  if (ativar) {
+    const { error: e2 } = await gps
+      .from("etapa1_clientes")
+      .update({ acompanhado_equipe: true })
+      .eq("id", clienteId);
+    if (e2) return { erro: e2.message };
+  }
+
+  revalidar(alunoId);
+  return {};
+}
+
 export async function removerCliente(clienteId: string, alunoId: string) {
   const supabase = await createClient();
   const { error } = await supabase

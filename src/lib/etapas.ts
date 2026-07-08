@@ -3,6 +3,7 @@
 import { TAREFAS_ETAPA1, type TarefaDef } from "@/lib/etapa1";
 import { TAREFAS_ETAPA2, META_ETAPA2 } from "@/lib/etapa2";
 import { TAREFAS_ETAPA3 } from "@/lib/etapa3";
+import { TAREFAS_ETAPA4 } from "@/lib/etapa4";
 import type { ProgressoTarefa } from "@/lib/types";
 
 export interface ConteudoEtapa {
@@ -14,6 +15,7 @@ export const CONTEUDO_ETAPAS: Record<number, ConteudoEtapa> = {
   1: { tarefas: TAREFAS_ETAPA1 },
   2: { tarefas: TAREFAS_ETAPA2, meta: META_ETAPA2 },
   3: { tarefas: TAREFAS_ETAPA3 },
+  4: { tarefas: TAREFAS_ETAPA4 },
 };
 
 export function conteudoEtapa(n: number): ConteudoEtapa | null {

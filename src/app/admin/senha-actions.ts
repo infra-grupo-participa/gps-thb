@@ -18,7 +18,8 @@ export async function enviarRedefinicaoSenha(alunoId: string) {
   if (!aluno?.email) return { erro: "Este aluno não tem e-mail cadastrado." };
 
   const appUrl = (
-    process.env.NEXT_PUBLIC_APP_URL || "https://gps.timeholdingbrasil.com.br"
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://programa.timeholdingbrasil.com.br"
   ).replace(/\/+$/, "");
 
   const sb = createStatelessClient(

@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: [
-        "gps.timeholdingbrasil.com.br",
+        "programa.timeholdingbrasil.com.br",
         ...(APP_HOST ? [APP_HOST] : []),
       ],
     },

@@ -138,13 +138,16 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
 - **Clientes = aba separada** (CRM): **Lista** (funil/busca/ordenação) e **Quadro** (kanban por
   status com arrastar-e-soltar), atalho de **WhatsApp** (`src/lib/whatsapp.ts`), e destaque do
   **cliente acompanhado pela equipe** (coluna `acompanhado_equipe`, único por aluno — a estrela).
-  Cada cliente tem **ficha** com todos os campos e **documentos** (upload no Storage).
-  Navegação por abas no header (Início / Clientes / Materiais),
-  espelhada no admin (modo assistência) com `basePath = /admin/aluno/<id>`.
+  Cada cliente tem **ficha** com todos os campos (apenas dados; o antigo "fichário" de
+  documentos por cliente foi **removido** da UI). Navegação por abas no header
+  (Início / Clientes / Materiais), espelhada no admin (modo assistência) com
+  `basePath = /admin/aluno/<id>`.
 - Componentes reusados por aluno e admin via `basePath`: `ClientesManager`, `ClienteFicha`,
-  `DocumentosSection`, `Etapa1Guide`, `AppHeader` + `NavTabs`.
-- **Documentos**: bucket privado `gps-documentos` (caminho `<aluno_id>/<cliente_id>/<arquivo>`),
-  índice em `gps.documentos`; RLS de Storage por pasta (aluno só a própria; admin tudo) — testado.
+  `Etapa1Guide`, `AppHeader` + `NavTabs`.
+- **Documentos do cliente**: removidos da ficha (componente `DocumentosSection`, helper
+  `getDocumentos` e o tipo `Documento`). O bucket `gps-documentos` e a tabela `gps.documentos`
+  seguem existindo no Supabase, sem uso pelo app — os documentos do aluno vivem na
+  **pasta do Drive**. Se forem descartados de vez, apagar bucket + tabela.
 
 ## Rotas
 
@@ -190,9 +193,24 @@ cliente Supabase **isolado** (sem persistir sessão, não afeta o admin) + gera 
 o gatilho/upsert vincula ao aluno escolhido. **Não usa service_role.** Solicitações são aprovadas/
 recusadas em `SolicitacaoCard`.
 
+**Aluno fora da base (cadastro manual):** se a busca não acha ninguém, o admin cadastra o aluno
+direto em `thb_alunos` pelo `CadastrarAlunoForm` (action `cadastrarAluno`) — identificação,
+contato, endereço, plano/turma e redes. Campos financeiros/Hotmart ficam nulos (pertencem ao
+centro de controle do sip). As linhas nascidas aqui levam `fonte = 'gps_cadastro_manual'`.
+O INSERT passa pelo RLS do próprio admin (policy `thb_alunos_insert_editores` →
+`gp_pode_editar('centro_controle')`, que aceita cargo dev/admin) — **sem service_role**.
+**Duplicatas:** `thb_alunos` tem índice único em `lower(trim(email))`, mas **nenhum único em
+`documento`**. Como o gatilho vincula o login por CPF e, havendo empate, escolhe o `importado_em`
+mais recente, um CPF duplicado grudaria o aluno na linha errada. Por isso `cadastrarAluno` checa
+antes via `gps.aluno_por_documento(text)`, que replica exatamente a normalização do gatilho
+(`lpad(dígitos,14,'0')`). A função é *invoker-rights* de propósito: o RLS de `thb_alunos` continua
+valendo. CPF/CNPJ é validado pelos dígitos verificadores (`documentoValido` em `src/lib/masks.ts`).
+
 ## E-mails transacionais (Resend)
 
-Domínio do portal: **`gps.timeholdingbrasil.com.br`**. Envio via **Resend** (HTTP direto, sem SDK)
+Domínio do portal: **`programa.timeholdingbrasil.com.br`** (antes `gps.`; trocado em 2026-07-09 —
+atualizar também **Site URL / Redirect URLs** no Supabase Auth, senão o link de redefinir senha
+volta para o domínio velho). Envio via **Resend** (HTTP direto, sem SDK)
 em `src/lib/email.ts`. Dois e-mails, ambos com layout laranja: `enviarCredenciaisAcesso`
 (login + senha temporária + link) disparado em `criarAcessoAluno`, e `enviarAcessoLiberado`
 (aluno já tem senha própria) disparado em `aprovarSolicitacao`. Falha de envio **não** bloqueia a
@@ -230,6 +248,8 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
       tarefas 9 e 10 têm aula, tarefa 1 tem modelo); Etapa 01 como **central de clientes**
       (funil por status, busca, filtro, troca de status inline na tabela).
 - [x] Auto-cadastro + solicitação de acesso + aprovação pelo admin (fila `/admin/solicitacoes`).
+- [x] Cadastro manual de aluno fora da base (`CadastrarAlunoForm` + `cadastrarAluno`), com
+      validação de CPF/CNPJ e guarda de duplicata via `gps.aluno_por_documento`.
 - [x] `npm run build` passa (typecheck + lint OK).
 - [x] Deploy Node na Hostinger configurado (`server.js`, `DEPLOY.md`).
 - [x] Código versionado e enviado para `github.com/infra-grupo-participa/gps-thb` (main).
@@ -238,7 +258,20 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
 - [ ] Executar o deploy na Hostinger (clonar, `npm install`, `npm run build`, iniciar app).
 - [ ] Deixar o repositório privado, se desejado (`gh repo edit --visibility private`).
 - [x] E-mails transacionais (Resend): credenciais + acesso liberado (`src/lib/email.ts`).
-- [ ] Verificar o domínio do `EMAIL_FROM` na Resend e configurar `RESEND_API_KEY` na Hostinger.
+- [x] Domínio do portal trocado para `programa.timeholdingbrasil.com.br` (envs, `next.config.ts`,
+      fallbacks de `email.ts` e `senha-actions.ts`).
+- [ ] **Supabase Auth → URL Configuration**: trocar o *Site URL* e incluir
+      `https://programa.timeholdingbrasil.com.br/**` nas *Redirect URLs*. Sem isso, o link de
+      redefinição de senha (`/auth/confirm?next=/auth/redefinir`) volta para o domínio antigo.
+- [x] `RESEND_API_KEY` configurada no painel da Hostinger (prod). **Atenção:** a chave do
+      `.env.local` (dev) continua sendo recusada (`API key is invalid`) — trocar para testar
+      envio localmente.
+- [ ] **Verificar `programa.timeholdingbrasil.com.br` na Resend** (adicionar o domínio no painel
+      e publicar DKIM + SPF + MX). Checado por DNS em 2026-07-09: `resend._domainkey.programa…`
+      dá NXDOMAIN. Já existe DKIM na **raiz** `timeholdingbrasil.com.br` (us-east-1) e no antigo
+      `gps.` (sa-east-1) — mas não no subdomínio novo, que é o do `EMAIL_FROM`. Enquanto não
+      subir, o envio falha em silêncio (as funções de `email.ts` nunca lançam).
+- [ ] Apontar o DNS do novo domínio para a Hostinger e ajustar o vhost/SSL.
 
 ### Como testar agora
 Admin já pode entrar: os 16 `perfis` (incl. marcio@advmais.com, cargo dev) usam a **senha
@@ -246,4 +279,4 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-07-09 — Etapa 01 reestruturada (1.1/1.2, passo 6 absorvido, indicador p/ Clientes); ênfase de tarefas com override do admin (`gps.tarefa_enfase`); home com "continue de onde parou" + cliente favoritado em destaque e agendamento por janelas (`gps.reuniao_janelas`); Etapa 05 travada por favorito; busca de aluno tolerante; mapa da pasta removido. Build verde. Próximo: verificar domínio na Resend + `RESEND_API_KEY` na Hostinger; hardening RLS thb_alunos._
+_Última atualização: 2026-07-09 — fichário de documentos removido da ficha do cliente; Etapa 01 reestruturada (1.1/1.2, passo 6 absorvido, indicador p/ Clientes); ênfase de tarefas com override do admin (`gps.tarefa_enfase`); home com "continue de onde parou" + cliente favoritado em destaque e agendamento por janelas (`gps.reuniao_janelas`); Etapa 05 travada por favorito; busca de aluno tolerante; mapa da pasta removido. **Cadastro manual de aluno fora da base** (`CadastrarAlunoForm` + action `cadastrarAluno` + função `gps.aluno_por_documento`), com validação de dígitos do CPF/CNPJ e guarda contra CPF duplicado. Build verde. Próximo: verificar domínio na Resend + `RESEND_API_KEY` na Hostinger._

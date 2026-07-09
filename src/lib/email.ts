@@ -16,10 +16,11 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 const FROM =
   process.env.EMAIL_FROM ||
-  "GPS — Time Holding Brasil <acesso@gps.timeholdingbrasil.com.br>";
+  "GPS — Time Holding Brasil <acesso@programa.timeholdingbrasil.com.br>";
 
 const APP_URL = (
-  process.env.NEXT_PUBLIC_APP_URL || "https://gps.timeholdingbrasil.com.br"
+  process.env.NEXT_PUBLIC_APP_URL ||
+  "https://programa.timeholdingbrasil.com.br"
 ).replace(/\/+$/, "");
 
 const LARANJA = "#EA580C";

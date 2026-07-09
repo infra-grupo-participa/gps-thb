@@ -37,8 +37,11 @@ rico (`Etapa1Guide`, com métricas/clientes/tarefas automáticas); etapas ≥ 2 
 é só o rótulo exibido (ex.: `1.1`). **Ênfase das tarefas** (`src/lib/enfase.ts`): a tarefa atual
 (1ª não concluída) fica em destaque, futuras esmaecidas, concluídas normais; o admin sobrepõe
 via `TarefaItem` (grava em `gps.tarefa_enfase`; action `definirEnfaseTarefa`).
-**Trava da Etapa 05:** só abre com a etapa liberada **e** um cliente favoritado (`acompanhado_equipe`);
-sem favorito, `EtapaConteudo` mostra o bloqueio `BloqueioFavorito` (admin vê preview com aviso).
+**Trava do favorito (Etapas 04–06):** da Etapa 04 (Contrato) em diante só abre com a etapa liberada
+**e** um cliente favoritado (`acompanhado_equipe`); sem favorito, `EtapaConteudo` mostra o bloqueio
+`BloqueioFavorito` (admin vê preview com aviso). Ao favoritar na aba Clientes, um banner de
+**confirmação** (`ConfirmacaoEquipe`, verde) diz que a equipe vai atender aquele cliente e leva à
+Etapa 04 (CTA só quando a etapa 4 está liberada) + toast de sucesso.
 **Etapa 02 (Reunião Preliminar)** em `src/lib/etapa2.ts` — bloqueada até liberar.
 **Etapa 03 (Croqui Estrutural)** em `src/lib/etapa3.ts` (13 tarefas) + guia especial
 `Etapa3Guide`: **agendamentos** da apresentação com "a equipe participa de apenas UM"

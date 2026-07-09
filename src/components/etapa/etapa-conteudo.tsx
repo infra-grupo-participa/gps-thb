@@ -17,8 +17,11 @@ import { ClienteEquipeBanner } from "@/components/etapa/cliente-equipe-banner";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Etapa3Agendamento, Etapa3Revisao } from "@/lib/types";
 
-/** Etapa que só abre depois que o aluno escolhe o cliente da equipe (favorito). */
-const ETAPA_EXIGE_FAVORITO = 5;
+/**
+ * A partir desta etapa o aluno precisa ter escolhido o cliente que a equipe vai
+ * acompanhar (o favorito). Vale para Contrato (4), Execução (5) e Entrega (6).
+ */
+const ETAPA_MIN_FAVORITO = 4;
 
 /**
  * Renderiza o guia certo para a etapa (etapa 1 e 3 têm campos próprios;
@@ -63,10 +66,11 @@ export async function EtapaConteudo({
 
   // Etapas 2–6 giram em torno do cliente acompanhado pela equipe.
   const clienteEquipe = await getClienteEquipe(alunoId);
+  const exigeFavorito = n >= ETAPA_MIN_FAVORITO;
 
-  // A Etapa 05 fica travada até o aluno escolher o cliente que a equipe
-  // acompanhará. O admin ainda pode pré-visualizar (com aviso).
-  if (n === ETAPA_EXIGE_FAVORITO && !clienteEquipe && !isAdmin) {
+  // Da Etapa 04 em diante, fica travada até o aluno escolher o cliente que a
+  // equipe acompanhará. O admin ainda pode pré-visualizar (com aviso).
+  if (exigeFavorito && !clienteEquipe && !isAdmin) {
     return <BloqueioFavorito basePath={basePath} />;
   }
 
@@ -102,7 +106,7 @@ export async function EtapaConteudo({
 
   return (
     <div className="grid gap-4">
-      {n === ETAPA_EXIGE_FAVORITO && !clienteEquipe && isAdmin ? (
+      {exigeFavorito && !clienteEquipe && isAdmin ? (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-400">
           Para o aluno, esta etapa fica bloqueada até ele escolher o cliente
           acompanhado pela equipe.
@@ -126,7 +130,8 @@ function BloqueioFavorito({ basePath }: { basePath: string }) {
             Escolha o cliente que a equipe vai acompanhar
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            A Execução gira em torno de um cliente. Na aba Clientes, marque com a{" "}
+            Do Contrato em diante, o programa gira em torno de um cliente. Na aba
+            Clientes, marque com a{" "}
             <Star className="inline size-3.5 -translate-y-px fill-primary text-primary" />{" "}
             estrela o cliente em que você quer o apoio da equipe. Assim que
             escolher, esta etapa abre.

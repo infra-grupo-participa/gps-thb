@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getClientesEtapa1 } from "@/lib/data";
+import { getAlunoById, getClientesEtapa1, getEtapas } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { ClientesManager } from "@/components/clientes/clientes-manager";
@@ -14,10 +14,12 @@ export default async function ClientesPage() {
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
   const alunoId = ctx.alunoId;
-  const [aluno, clientes] = await Promise.all([
+  const [aluno, clientes, etapas] = await Promise.all([
     getAlunoById(alunoId),
     getClientesEtapa1(alunoId),
+    getEtapas(),
   ]);
+  const etapa4Liberada = Boolean(etapas.find((e) => e.id === 4)?.liberada);
 
   return (
     <>
@@ -39,6 +41,7 @@ export default async function ClientesPage() {
           alunoId={alunoId}
           clientesIniciais={clientes}
           basePath=""
+          etapa4Liberada={etapa4Liberada}
         />
       </main>
     </>

@@ -9,6 +9,8 @@ import {
   Star,
   LayoutGrid,
   List as ListIcon,
+  CheckCircle2,
+  ArrowRight,
 } from "lucide-react";
 import type { ClienteEtapa1, StatusCliente } from "@/lib/types";
 import { STATUS_CLIENTE, META_CLIENTES } from "@/lib/etapa1";
@@ -51,10 +53,12 @@ export function ClientesManager({
   alunoId,
   clientesIniciais,
   basePath,
+  etapa4Liberada = false,
 }: {
   alunoId: string;
   clientesIniciais: ClienteEtapa1[];
   basePath: string;
+  etapa4Liberada?: boolean;
 }) {
   const router = useRouter();
   const [clientes, setClientes] = useState<ClienteEtapa1[]>(clientesIniciais);
@@ -150,7 +154,15 @@ export function ClientesManager({
     );
     startTransition(async () => {
       const res = await definirClienteEquipe(cliente.id, alunoId, ativar);
-      if (res.erro) toast.error("Erro ao marcar o cliente da equipe.");
+      if (res.erro) {
+        toast.error("Erro ao marcar o cliente da equipe.");
+        return;
+      }
+      if (ativar) {
+        toast.success(
+          `A equipe vai acompanhar ${cliente.nome || "este cliente"}. Você já pode seguir para a Etapa 04.`,
+        );
+      }
     });
   }
 
@@ -166,8 +178,18 @@ export function ClientesManager({
     });
   }
 
+  const favorito = clientes.find((c) => c.acompanhado_equipe) ?? null;
+
   return (
-    <Card>
+    <div className="grid gap-4">
+      {favorito ? (
+        <ConfirmacaoEquipe
+          cliente={favorito}
+          etapa4Href={`${basePath}/etapa/4`}
+          etapa4Liberada={etapa4Liberada}
+        />
+      ) : null}
+      <Card>
       <CardHeader className="gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -388,6 +410,45 @@ export function ClientesManager({
         )}
       </CardContent>
     </Card>
+    </div>
+  );
+}
+
+// ---------- Confirmação do cliente da equipe ----------
+
+function ConfirmacaoEquipe({
+  cliente,
+  etapa4Href,
+  etapa4Liberada,
+}: {
+  cliente: ClienteEtapa1;
+  etapa4Href: string;
+  etapa4Liberada: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+      <div className="flex items-start gap-3">
+        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+        <div>
+          <div className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+            A equipe vai acompanhar {cliente.nome || "este cliente"}
+          </div>
+          <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80">
+            {etapa4Liberada
+              ? "Cliente confirmado para o apoio da equipe. Você já pode prosseguir para a Etapa 04 — Contrato."
+              : "Cliente confirmado para o apoio da equipe. A Etapa 04 — Contrato abre assim que for liberada."}
+          </p>
+        </div>
+      </div>
+      {etapa4Liberada ? (
+        <Link
+          href={etapa4Href}
+          className={buttonVariants({ size: "sm" }) + " shrink-0"}
+        >
+          Ir para a Etapa 04 <ArrowRight className="size-4" />
+        </Link>
+      ) : null}
+    </div>
   );
 }
 

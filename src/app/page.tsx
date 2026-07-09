@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Users, BookOpen, ArrowRight } from "lucide-react";
+import {
+  Users,
+  BookOpen,
+  ArrowRight,
+  FolderOpen,
+  TrendingUp,
+  CalendarCheck,
+  Coins,
+} from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
 import {
   getEtapas,
@@ -14,13 +22,20 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { pctPorEtapa } from "@/lib/etapas";
+import { calcularMetricasEtapa1 } from "@/lib/etapa1";
 import { listarMateriais } from "@/lib/materiais";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { EtapasOverview } from "@/components/etapas-overview";
 import { PerfilHero } from "@/components/perfil/perfil-hero";
+import { StatCard } from "@/components/stat-card";
 import { GpsLogo } from "@/components/gps-logo";
 import type { Aluno } from "@/lib/types";
+
+const brl = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
 
 export default async function HomePage() {
   const ctx = await getContextoSessao();
@@ -89,6 +104,15 @@ export default async function HomePage() {
   const pcts = pctPorEtapa(clientes, progressoTodas);
   const totalMateriais = listarMateriais().length;
 
+  const manual1: Record<number, boolean> = {};
+  for (const p of progressoTodas.filter((p) => p.etapa === 1))
+    manual1[p.tarefa] = p.concluida;
+  const m1 = calcularMetricasEtapa1(clientes, manual1);
+  const valoresPct = Object.values(pcts);
+  const progressoGeral = valoresPct.length
+    ? Math.round(valoresPct.reduce((a, b) => a + b, 0) / valoresPct.length)
+    : 0;
+
   return (
     <>
       <AppHeader
@@ -107,19 +131,54 @@ export default async function HomePage() {
           />
         </div>
 
+        {/* Resumo */}
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            icon={<TrendingUp className="size-4" />}
+            label="Progresso geral"
+            value={`${progressoGeral}%`}
+            hint="média das 6 etapas"
+            destaque
+          />
+          <StatCard
+            icon={<Users className="size-4" />}
+            label="Clientes"
+            value={`${m1.preenchidos}/30`}
+            hint="da sua lista"
+          />
+          <StatCard
+            icon={<CalendarCheck className="size-4" />}
+            label="Reuniões agendadas"
+            value={`${m1.agendados}/15`}
+            hint="meta de 15"
+          />
+          <StatCard
+            icon={<Coins className="size-4" />}
+            label="Perda pela inércia"
+            value={brl.format(m1.perdaTotal)}
+            hint="soma dos clientes"
+          />
+        </div>
+
         {/* Atalhos */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2">
+        <div className="mb-8 grid gap-4 sm:grid-cols-3">
           <AtalhoCard
             href="/clientes"
             icon={<Users className="size-5" />}
             titulo="Clientes"
-            detalhe={`${clientes.length} cadastrado${clientes.length === 1 ? "" : "s"} · gerencie contatos e documentos`}
+            detalhe={`${clientes.length} cadastrado${clientes.length === 1 ? "" : "s"}`}
+          />
+          <AtalhoCard
+            href="/pasta"
+            icon={<FolderOpen className="size-5" />}
+            titulo="Pasta"
+            detalhe="Documentos e arquivos no Drive"
           />
           <AtalhoCard
             href="/materiais"
             icon={<BookOpen className="size-5" />}
             titulo="Materiais"
-            detalhe={`${totalMateriais} aulas e modelos no seu acervo`}
+            detalhe={`${totalMateriais} aulas e modelos`}
           />
         </div>
 

@@ -7,10 +7,12 @@ import {
   acharAlunoPorEmail,
   getEtapas,
 } from "@/lib/data";
+import { Users, UserCheck, UserX, Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { CriarAcesso } from "@/components/admin/criar-acesso";
 import { SolicitacaoCard } from "@/components/admin/solicitacao-card";
 import { EtapasControle } from "@/components/admin/etapas-controle";
+import { StatCard } from "@/components/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -35,6 +37,9 @@ export default async function AdminPage() {
     })),
   );
 
+  const comLogin = alunos.filter((a) => a.membro.user_id).length;
+  const semLogin = alunos.length - comLogin;
+
   return (
     <>
       <AppHeader
@@ -53,6 +58,35 @@ export default async function AdminPage() {
             </p>
           </div>
           <CriarAcesso />
+        </div>
+
+        {/* Resumo */}
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            icon={<Users className="size-4" />}
+            label="Alunos no GPS"
+            value={String(alunos.length)}
+            hint="em implementação assistida"
+            destaque
+          />
+          <StatCard
+            icon={<UserCheck className="size-4" />}
+            label="Com login"
+            value={String(comLogin)}
+            hint="já podem acessar"
+          />
+          <StatCard
+            icon={<UserX className="size-4" />}
+            label="Sem login"
+            value={String(semLogin)}
+            hint="ambiente sem acesso"
+          />
+          <StatCard
+            icon={<Inbox className="size-4" />}
+            label="Solicitações"
+            value={String(pendentes.length)}
+            hint="aguardando decisão"
+          />
         </div>
 
         <Tabs defaultValue="ativos" className="gap-6">

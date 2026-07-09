@@ -8,6 +8,8 @@ import {
   getClientesEtapa1,
   getProgressoAluno,
   getMinhaSolicitacao,
+  getMembro,
+  getTurmaCodigo,
 } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +18,9 @@ import { listarMateriais } from "@/lib/materiais";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { EtapasOverview } from "@/components/etapas-overview";
+import { PerfilHero } from "@/components/perfil/perfil-hero";
 import { GpsLogo } from "@/components/gps-logo";
+import type { Aluno } from "@/lib/types";
 
 export default async function HomePage() {
   const ctx = await getContextoSessao();
@@ -73,17 +77,17 @@ export default async function HomePage() {
 
   // Aluno
   const alunoId = ctx.alunoId!;
-  const [etapas, aluno, clientes, progressoTodas] = await Promise.all([
+  const [etapas, aluno, clientes, progressoTodas, membro] = await Promise.all([
     getEtapas(),
     getAlunoById(alunoId),
     getClientesEtapa1(alunoId),
     getProgressoAluno(alunoId),
+    getMembro(alunoId),
   ]);
+  const turma = await getTurmaCodigo(aluno?.turma_id);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
   const totalMateriais = listarMateriais().length;
-
-  const primeiroNome = (aluno?.nome ?? "").split(" ")[0];
 
   return (
     <>
@@ -94,13 +98,13 @@ export default async function HomePage() {
         navItems={alunoNavItems("")}
       />
       <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold">
-            Olá{primeiroNome ? `, ${primeiroNome}` : ""}!
-          </h1>
-          <p className="text-muted-foreground">
-            Acompanhe aqui a implementação da sua 1ª holding, etapa por etapa.
-          </p>
+        <div className="mb-8">
+          <PerfilHero
+            aluno={(aluno ?? { id: alunoId }) as Aluno}
+            turma={turma}
+            perfil={membro?.perfil ?? {}}
+            editHref="/perfil"
+          />
         </div>
 
         {/* Atalhos */}

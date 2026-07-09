@@ -19,6 +19,13 @@ export interface Aluno {
   plano: string | null;
   status_acesso: string | null;
   eh_socio: boolean | null;
+  profissao?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  instagram_url?: string | null;
+  youtube_url?: string | null;
+  site_profissional?: string | null;
+  link_facebook?: string | null;
 }
 
 export interface Etapa {
@@ -29,12 +36,26 @@ export interface Etapa {
   liberada: boolean;
 }
 
+export interface PerfilAluno {
+  telefone?: string;
+  profissao?: string;
+  cidade?: string;
+  estado?: string;
+  bio?: string;
+  instagram?: string;
+  youtube?: string;
+  linkedin?: string;
+  facebook?: string;
+  site?: string;
+}
+
 export interface Membro {
   id: string;
   aluno_id: string;
   user_id: string | null;
   data_agendamento_disponivel: string | null;
   pasta_drive_url: string | null;
+  perfil: PerfilAluno;
 }
 
 export type NivelRelacionamento = "frio" | "morno" | "quente";

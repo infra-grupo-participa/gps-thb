@@ -25,11 +25,25 @@ export async function getAlunoById(alunoId: string): Promise<Aluno | null> {
   const { data } = await supabase
     .from("thb_alunos")
     .select(
-      "id, nome, email, telefone, turma_id, plano, status_acesso, eh_socio",
+      "id, nome, email, telefone, turma_id, plano, status_acesso, eh_socio, profissao, cidade, estado, instagram_url, youtube_url, site_profissional, link_facebook",
     )
     .eq("id", alunoId)
     .maybeSingle();
   return (data as Aluno) ?? null;
+}
+
+/** Código/nome da turma do aluno (thb_turmas). */
+export async function getTurmaCodigo(
+  turmaId: number | null | undefined,
+): Promise<string | null> {
+  if (turmaId == null) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("thb_turmas")
+    .select("codigo")
+    .eq("id", turmaId)
+    .maybeSingle();
+  return (data?.codigo as string) ?? null;
 }
 
 export async function getMembro(alunoId: string): Promise<Membro | null> {
@@ -38,7 +52,7 @@ export async function getMembro(alunoId: string): Promise<Membro | null> {
     .schema("gps")
     .from("membros")
     .select(
-      "id, aluno_id, user_id, data_agendamento_disponivel, pasta_drive_url",
+      "id, aluno_id, user_id, data_agendamento_disponivel, pasta_drive_url, perfil",
     )
     .eq("aluno_id", alunoId)
     .maybeSingle();

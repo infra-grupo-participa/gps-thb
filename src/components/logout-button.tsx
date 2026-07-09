@@ -26,7 +26,9 @@ export function LogoutButton({
   async function sair() {
     setSaindo(true);
     try {
-      await supabase.auth.signOut();
+      // Escopo LOCAL: encerra só esta sessão. Assim, se mais de uma pessoa
+      // está na mesma conta, sair aqui NÃO desloga as outras.
+      await supabase.auth.signOut({ scope: "local" });
     } finally {
       window.location.assign("/login");
     }

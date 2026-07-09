@@ -10,7 +10,7 @@ import {
   Coins,
 } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
-import { sair } from "@/app/auth/actions";
+import { LogoutButton } from "@/components/logout-button";
 import {
   getEtapas,
   getAlunoById,
@@ -80,11 +80,7 @@ export default async function HomePage() {
                 )}
               </p>
             </div>
-            <form action={sair}>
-              <button className="text-sm text-primary underline" type="submit">
-                Sair
-              </button>
-            </form>
+            <LogoutButton linkStyle />
           </CardContent>
         </Card>
       </main>

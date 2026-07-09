@@ -8,6 +8,7 @@ export function alunoNavItems(basePath: string): NavItem[] {
   return [
     { href: basePath || "/", label: "Início", icon: "inicio", exact: true },
     { href: `${basePath}/clientes`, label: "Clientes", icon: "clientes" },
+    { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta" },
     { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" },
   ];
 }

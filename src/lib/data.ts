@@ -37,7 +37,9 @@ export async function getMembro(alunoId: string): Promise<Membro | null> {
   const { data } = await supabase
     .schema("gps")
     .from("membros")
-    .select("id, aluno_id, user_id, data_agendamento_disponivel")
+    .select(
+      "id, aluno_id, user_id, data_agendamento_disponivel, pasta_drive_url",
+    )
     .eq("aluno_id", alunoId)
     .maybeSingle();
   return (data as Membro) ?? null;
@@ -72,7 +74,9 @@ export async function getAlunosGps(): Promise<AlunoGps[]> {
   const { data: membros } = await supabase
     .schema("gps")
     .from("membros")
-    .select("id, aluno_id, user_id, data_agendamento_disponivel")
+    .select(
+      "id, aluno_id, user_id, data_agendamento_disponivel, pasta_drive_url",
+    )
     .order("criado_em", { ascending: false });
 
   const lista = (membros ?? []) as Membro[];

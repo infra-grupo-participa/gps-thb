@@ -230,6 +230,24 @@ export async function criarAcessoAluno(
   return { email, senha, precisaConfirmar: !signUpData.session };
 }
 
+/** Define/atualiza o link da pasta do Google Drive do aluno (gps.membros). */
+export async function salvarPastaDriveUrl(alunoId: string, url: string) {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  const valor = url.trim();
+  if (valor && !/^https?:\/\/(drive|docs)\.google\.com\//.test(valor)) {
+    return { erro: "Informe um link válido do Google Drive." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .schema("gps")
+    .from("membros")
+    .update({ pasta_drive_url: valor || null })
+    .eq("aluno_id", alunoId);
+  if (error) return { erro: error.message };
+  revalidatePath("/admin", "layout");
+  return {};
+}
+
 /** Remove o vínculo do aluno com o GPS (apaga o ambiente da Etapa 01). */
 export async function removerAlunoGps(alunoId: string) {
   const supabase = await createClient();

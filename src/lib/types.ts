@@ -34,6 +34,7 @@ export interface Membro {
   aluno_id: string;
   user_id: string | null;
   data_agendamento_disponivel: string | null;
+  pasta_drive_url: string | null;
 }
 
 export type NivelRelacionamento = "frio" | "morno" | "quente";

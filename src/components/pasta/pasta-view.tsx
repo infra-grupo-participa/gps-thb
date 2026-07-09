@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FolderOpen, ExternalLink, FolderTree, Eye, EyeOff } from "lucide-react";
-import { ESTRUTURA_PASTA, embedPastaDrive } from "@/lib/pasta";
+import { FolderOpen, ExternalLink, FolderTree } from "lucide-react";
+import { ESTRUTURA_PASTA } from "@/lib/pasta";
 import { salvarPastaDriveUrl } from "@/app/admin/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,7 @@ export function PastaView({
 }) {
   const router = useRouter();
   const [url, setUrl] = useState(pastaUrl ?? "");
-  const [preview, setPreview] = useState(false);
   const [pending, startTransition] = useTransition();
-  const embed = embedPastaDrive(pastaUrl);
 
   function salvar() {
     startTransition(async () => {
@@ -87,39 +85,13 @@ export function PastaView({
               Abrir no Drive <ExternalLink className="size-4" />
             </a>
           </CardHeader>
-          {embed ? (
-            <CardContent>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPreview((v) => !v)}
-              >
-                {preview ? (
-                  <>
-                    <EyeOff className="size-4" /> Ocultar prévia
-                  </>
-                ) : (
-                  <>
-                    <Eye className="size-4" /> Ver prévia dos arquivos aqui
-                  </>
-                )}
-              </Button>
-              {preview ? (
-                <>
-                  <iframe
-                    src={embed}
-                    title="Pasta do aluno no Google Drive"
-                    className="mt-3 h-[460px] w-full rounded-md border bg-muted/30"
-                  />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Se a prévia pedir login ou não carregar, use{" "}
-                    <span className="font-medium">Abrir no Drive</span> — funciona
-                    na conta com acesso à pasta.
-                  </p>
-                </>
-              ) : null}
-            </CardContent>
-          ) : null}
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Sua pasta abre no Google Drive, na conta que tem acesso a ela.
+              Todos os documentos, vídeos e minutas do seu processo ficam
+              organizados lá.
+            </p>
+          </CardContent>
         </Card>
       ) : (
         <Card>

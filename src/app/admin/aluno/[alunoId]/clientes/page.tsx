@@ -1,11 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import {
-  getAlunoById,
-  getClientesEtapa1,
-  getEtapas,
-  getMembro,
-} from "@/lib/data";
+import { getAlunoById, getClientesEtapa1, getMembro } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
@@ -25,12 +20,10 @@ export default async function AdminAlunoClientesPage({
   if (!membro) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, clientes, etapas] = await Promise.all([
+  const [aluno, clientes] = await Promise.all([
     getAlunoById(alunoId),
     getClientesEtapa1(alunoId),
-    getEtapas(),
   ]);
-  const etapa4Liberada = Boolean(etapas.find((e) => e.id === 4)?.liberada);
 
   return (
     <>
@@ -55,7 +48,6 @@ export default async function AdminAlunoClientesPage({
           alunoId={alunoId}
           clientesIniciais={clientes}
           basePath={base}
-          etapa4Liberada={etapa4Liberada}
         />
       </main>
     </>

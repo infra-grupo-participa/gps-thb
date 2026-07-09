@@ -53,12 +53,10 @@ export function ClientesManager({
   alunoId,
   clientesIniciais,
   basePath,
-  etapa4Liberada = false,
 }: {
   alunoId: string;
   clientesIniciais: ClienteEtapa1[];
   basePath: string;
-  etapa4Liberada?: boolean;
 }) {
   const router = useRouter();
   const [clientes, setClientes] = useState<ClienteEtapa1[]>(clientesIniciais);
@@ -160,7 +158,7 @@ export function ClientesManager({
       }
       if (ativar) {
         toast.success(
-          `A equipe vai acompanhar ${cliente.nome || "este cliente"}. Você já pode seguir para a Etapa 04.`,
+          `A equipe vai acompanhar ${cliente.nome || "este cliente"}. Os próximos passos da Etapa 01 estão liberados.`,
         );
       }
     });
@@ -185,8 +183,7 @@ export function ClientesManager({
       {favorito ? (
         <ConfirmacaoEquipe
           cliente={favorito}
-          etapa4Href={`${basePath}/etapa/4`}
-          etapa4Liberada={etapa4Liberada}
+          etapa1Href={`${basePath}/etapa/1`}
         />
       ) : null}
       <Card>
@@ -418,12 +415,10 @@ export function ClientesManager({
 
 function ConfirmacaoEquipe({
   cliente,
-  etapa4Href,
-  etapa4Liberada,
+  etapa1Href,
 }: {
   cliente: ClienteEtapa1;
-  etapa4Href: string;
-  etapa4Liberada: boolean;
+  etapa1Href: string;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
@@ -434,20 +429,17 @@ function ConfirmacaoEquipe({
             A equipe vai acompanhar {cliente.nome || "este cliente"}
           </div>
           <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80">
-            {etapa4Liberada
-              ? "Cliente confirmado para o apoio da equipe. Você já pode prosseguir para a Etapa 04 — Contrato."
-              : "Cliente confirmado para o apoio da equipe. A Etapa 04 — Contrato abre assim que for liberada."}
+            Cliente confirmado para o apoio da equipe. Os próximos passos da
+            Etapa 01 (do passo 4 em diante) estão liberados.
           </p>
         </div>
       </div>
-      {etapa4Liberada ? (
-        <Link
-          href={etapa4Href}
-          className={buttonVariants({ size: "sm" }) + " shrink-0"}
-        >
-          Ir para a Etapa 04 <ArrowRight className="size-4" />
-        </Link>
-      ) : null}
+      <Link
+        href={etapa1Href}
+        className={buttonVariants({ size: "sm" }) + " shrink-0"}
+      >
+        Continuar na Etapa 01 <ArrowRight className="size-4" />
+      </Link>
     </div>
   );
 }

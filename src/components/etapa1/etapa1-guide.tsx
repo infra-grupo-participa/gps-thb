@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import { toast } from "sonner";
 import type {
   ClienteEtapa1,
@@ -40,6 +41,7 @@ export function Etapa1Guide({
   clientesHref,
   enfasesIniciais = {},
   isAdmin = false,
+  temFavorito = false,
 }: {
   alunoId: string;
   clientesIniciais: ClienteEtapa1[];
@@ -48,6 +50,8 @@ export function Etapa1Guide({
   clientesHref: string;
   enfasesIniciais?: Record<number, ModoEnfase>;
   isAdmin?: boolean;
+  /** Aluno já escolheu o cliente acompanhado pela equipe? Libera os passos 4+. */
+  temFavorito?: boolean;
 }) {
   const [manual, setManual] = useState<Record<number, boolean>>(() => {
     const m: Record<number, boolean> = {};
@@ -172,6 +176,25 @@ export function Etapa1Guide({
           </p>
         </CardHeader>
         <CardContent className="grid gap-1">
+          {!temFavorito ? (
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5">
+              <div className="flex items-start gap-2">
+                <Lock className="mt-0.5 size-4 shrink-0 text-primary" />
+                <p className="text-sm">
+                  <span className="font-medium">Do passo 4 em diante</span>, os
+                  passos abrem quando você escolher, na aba Clientes, o cliente
+                  que a equipe vai acompanhar (a{" "}
+                  <span className="text-primary">estrela</span>).
+                </p>
+              </div>
+              <Link
+                href={clientesHref}
+                className={buttonVariants({ size: "sm" })}
+              >
+                Escolher o cliente da equipe
+              </Link>
+            </div>
+          ) : null}
           {TAREFAS_ETAPA1.map((t) => (
             <TarefaItem
               key={t.num}
@@ -184,6 +207,7 @@ export function Etapa1Guide({
               isAdmin={isAdmin}
               overrideAtual={overrides[t.num] ?? null}
               onEnfase={(modo) => setEnfase(t.num, modo)}
+              bloqueada={Boolean(t.exigeFavorito) && !temFavorito}
             />
           ))}
         </CardContent>

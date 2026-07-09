@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, Sparkles, EyeOff, RotateCcw } from "lucide-react";
+import { ArrowUpRight, Sparkles, EyeOff, RotateCcw, Lock } from "lucide-react";
 import type { TarefaDef } from "@/lib/etapa1";
 import type { Enfase } from "@/lib/enfase";
 import type { ModoEnfase } from "@/lib/types";
@@ -18,6 +18,7 @@ export function TarefaItem({
   isAdmin = false,
   overrideAtual = null,
   onEnfase,
+  bloqueada = false,
 }: {
   tarefa: TarefaDef;
   concluida: boolean;
@@ -29,22 +30,25 @@ export function TarefaItem({
   isAdmin?: boolean;
   overrideAtual?: ModoEnfase | null;
   onEnfase?: (modo: ModoEnfase | null) => void;
+  /** Passo travado (aguardando o aluno escolher o cliente da equipe). */
+  bloqueada?: boolean;
 }) {
   const codigo = t.codigo ?? String(t.num);
 
-  const containerCls =
-    "group flex items-start gap-3 rounded-md px-2 py-2.5 transition " +
-    (enfase === "realce"
-      ? "bg-primary/5 ring-1 ring-primary/30"
-      : enfase === "esmaecer"
-        ? "opacity-45 hover:opacity-100 hover:bg-muted/50"
-        : "hover:bg-muted/50");
+  const containerCls = bloqueada
+    ? "group flex items-start gap-3 rounded-md px-2 py-2.5 opacity-60"
+    : "group flex items-start gap-3 rounded-md px-2 py-2.5 transition " +
+      (enfase === "realce"
+        ? "bg-primary/5 ring-1 ring-primary/30"
+        : enfase === "esmaecer"
+          ? "opacity-45 hover:opacity-100 hover:bg-muted/50"
+          : "hover:bg-muted/50");
 
   return (
     <div className={containerCls}>
       <Checkbox
         checked={concluida}
-        disabled={t.automatica || pending}
+        disabled={t.automatica || pending || bloqueada}
         onCheckedChange={(v) => onToggle(Boolean(v))}
         className="mt-0.5"
       />
@@ -58,12 +62,17 @@ export function TarefaItem({
           >
             {codigo}. {t.titulo}
           </span>
+          {bloqueada ? (
+            <Badge variant="outline" className="gap-1 text-[10px]">
+              <Lock className="size-3" /> Após escolher o cliente da equipe
+            </Badge>
+          ) : null}
           {t.automatica ? (
             <Badge variant="outline" className="text-[10px]">
               automática
             </Badge>
           ) : null}
-          {enfase === "realce" && !concluida ? (
+          {enfase === "realce" && !concluida && !bloqueada ? (
             <Badge className="gap-1 text-[10px]">
               <Sparkles className="size-3" /> Foco agora
             </Badge>

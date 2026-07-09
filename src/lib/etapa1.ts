@@ -89,6 +89,8 @@ export interface TarefaDef {
   automatica?: boolean;
   /** Sinaliza que o registro/gestão desta tarefa acontece na aba Clientes. */
   apontaClientes?: boolean;
+  /** Passo que só libera depois que o aluno escolhe o cliente da equipe (favorito). */
+  exigeFavorito?: boolean;
   /** Link da aula/tutorial (coluna "Aula" da planilha), quando houver. */
   tutorialUrl?: string;
   /** Modelo/arquivo de apoio (coluna "Modelo" da planilha), quando houver. */
@@ -144,6 +146,7 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     titulo: "Ligar e oferecer duas opções de agenda",
     descricao:
       "No dia seguinte, ligue para cada um dos 30, retome a especialização e ofereça duas opções de agenda. Meta: agendar pelo menos 15 reuniões preliminares.",
+    exigeFavorito: true,
   },
   {
     num: 7,
@@ -151,6 +154,7 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     titulo: "Criar os grupos de WhatsApp",
     descricao:
       "Crie os grupos de WhatsApp com os clientes que aderiram à Reunião Preliminar.",
+    exigeFavorito: true,
   },
   {
     num: 8,
@@ -158,6 +162,7 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     titulo: "Realizar a entrevista prévia (perfil DISC)",
     descricao:
       "Faça a entrevista prévia com cada agendado, identifique o perfil DISC e quem são os tomadores de decisão — trazendo-os para a reunião.",
+    exigeFavorito: true,
   },
   {
     num: 9,
@@ -165,6 +170,7 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     titulo: "Criar conta de negócio na Hotmart",
     descricao: "Crie uma conta de negócio na Hotmart.",
     tutorialUrl: "https://1sh.co/877580e0",
+    exigeFavorito: true,
   },
   {
     num: 10,
@@ -174,6 +180,7 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
       "Crie os produtos: Sessão de Viabilidade, Croqui Estrutural e Execução Holding.",
     tutorialUrl:
       "https://membros.holdingmasters.com.br/playlist/5EoqQB6Ko0/file/6NKzBzneDz",
+    exigeFavorito: true,
   },
 ];
 

@@ -3,13 +3,15 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { UserPlus, KeyRound, Copy, Check } from "lucide-react";
+import { UserPlus, KeyRound, Copy, Check, UserRoundPlus } from "lucide-react";
 import {
   buscarAlunos,
   criarAcessoAluno,
   adicionarAlunoGps,
   type AlunoBusca,
+  type AlunoDuplicado,
 } from "@/app/admin/actions";
+import { CadastrarAlunoForm } from "@/components/admin/cadastrar-aluno-form";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +40,7 @@ export function CriarAcesso() {
   const [sel, setSel] = useState<AlunoBusca | null>(null);
   const [email, setEmail] = useState("");
   const [credenciais, setCredenciais] = useState<Credenciais | null>(null);
+  const [cadastrando, setCadastrando] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function reset() {
@@ -46,6 +49,7 @@ export function CriarAcesso() {
     setSel(null);
     setEmail("");
     setCredenciais(null);
+    setCadastrando(false);
   }
 
   async function buscar(e: React.FormEvent) {
@@ -63,6 +67,19 @@ export function CriarAcesso() {
     setSel(a);
     setEmail(a.email ?? "");
     setCredenciais(null);
+  }
+
+  /** O cadastro esbarrou num aluno que já existe: volta à busca já apontando nele. */
+  async function usarExistente(d: AlunoDuplicado) {
+    const termoBusca = d.email ?? d.documento ?? d.nome ?? "";
+    setCadastrando(false);
+    setTermo(termoBusca);
+    setBuscando(true);
+    try {
+      setResultados(await buscarAlunos(termoBusca));
+    } finally {
+      setBuscando(false);
+    }
   }
 
   function criarLogin() {
@@ -121,16 +138,30 @@ export function CriarAcesso() {
           if (!v) reset();
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Criar acesso do aluno</DialogTitle>
+            <DialogTitle>
+              {cadastrando ? "Cadastrar aluno na base" : "Criar acesso do aluno"}
+            </DialogTitle>
             <DialogDescription>
-              Busque o aluno pelo nome, e-mail ou CPF/CNPJ (cadastro do Time
-              Holding Brasil).
+              {cadastrando
+                ? "Preencha os dados do aluno. Ele será criado no cadastro do Time Holding Brasil."
+                : "Busque o aluno pelo nome, e-mail ou CPF/CNPJ (cadastro do Time Holding Brasil)."}
             </DialogDescription>
           </DialogHeader>
 
-          {credenciais ? (
+          {cadastrando ? (
+            <CadastrarAlunoForm
+              termoInicial={termo}
+              onVoltar={() => setCadastrando(false)}
+              onCadastrado={(a) => {
+                setCadastrando(false);
+                selecionar(a);
+                router.refresh();
+              }}
+              onUsarExistente={usarExistente}
+            />
+          ) : credenciais ? (
             <CredenciaisView
               credenciais={credenciais}
               onConcluir={() => {
@@ -207,11 +238,34 @@ export function CriarAcesso() {
               </form>
               <div className="max-h-72 overflow-y-auto">
                 {resultados.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-muted-foreground">
-                    {termo.trim().length >= 2 && !buscando
-                      ? "Nenhum aluno encontrado."
-                      : "Digite ao menos 2 caracteres e busque."}
-                  </p>
+                  termo.trim().length >= 2 && !buscando ? (
+                    <div className="grid gap-3 py-6 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum aluno encontrado para{" "}
+                        <strong className="text-foreground">
+                          {termo.trim()}
+                        </strong>
+                        .
+                      </p>
+                      <div>
+                        <Button
+                          variant="outline"
+                          onClick={() => setCadastrando(true)}
+                        >
+                          <UserRoundPlus className="size-4" /> Cadastrar novo
+                          aluno
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Use quando a pessoa ainda não está na base do Time
+                        Holding Brasil.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="py-6 text-center text-sm text-muted-foreground">
+                      Digite ao menos 2 caracteres e busque.
+                    </p>
+                  )
                 ) : (
                   <ul className="divide-y">
                     {resultados.map((a) => (
@@ -247,6 +301,14 @@ export function CriarAcesso() {
                   </ul>
                 )}
               </div>
+              {resultados.length > 0 ? (
+                <button
+                  onClick={() => setCadastrando(true)}
+                  className="text-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  Nenhum destes? Cadastrar novo aluno
+                </button>
+              ) : null}
             </>
           )}
         </DialogContent>

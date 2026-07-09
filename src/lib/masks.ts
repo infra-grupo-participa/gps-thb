@@ -37,6 +37,56 @@ export function tipoDocumento(v: string): "CPF" | "CNPJ" | null {
   return d.length <= 11 ? "CPF" : "CNPJ";
 }
 
+function cpfValido(d: string): boolean {
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  const dv = (ate: number) => {
+    let soma = 0;
+    for (let i = 0; i < ate; i++) soma += Number(d[i]) * (ate + 1 - i);
+    return (((soma * 10) % 11) % 10).toString();
+  };
+  return dv(9) === d[9] && dv(10) === d[10];
+}
+
+function cnpjValido(d: string): boolean {
+  if (d.length !== 14 || /^(\d)\1{13}$/.test(d)) return false;
+  const dv = (ate: number) => {
+    let peso = ate - 7;
+    let soma = 0;
+    for (let i = 0; i < ate; i++) {
+      soma += Number(d[i]) * peso--;
+      if (peso < 2) peso = 9;
+    }
+    const r = soma % 11;
+    return (r < 2 ? 0 : 11 - r).toString();
+  };
+  return dv(12) === d[12] && dv(13) === d[13];
+}
+
+/**
+ * Valida CPF ou CNPJ pelos dígitos verificadores. Um documento inválido é pior
+ * do que ausente: o vínculo automático do login casa por CPF, e um número
+ * digitado errado gruda o aluno na pessoa errada ou não casa nunca.
+ */
+export function documentoValido(v: string): boolean {
+  const d = soDigitos(v);
+  if (d.length === 11) return cpfValido(d);
+  if (d.length === 14) return cnpjValido(d);
+  return false;
+}
+
+/** CEP (00000-000), progressivo. */
+export function mascaraCep(v: string): string {
+  const d = soDigitos(v).slice(0, 8);
+  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+}
+
+/** Telefone brasileiro (10 ou 11 dígitos) em E.164: +5511999999999. */
+export function telefoneE164(v: string): string | null {
+  const d = soDigitos(v);
+  if (d.length !== 10 && d.length !== 11) return null;
+  return `+55${d}`;
+}
+
 /** Telefone (00) 0000-0000 ou (00) 00000-0000, progressivo. */
 export function mascaraTelefone(v: string): string {
   const d = soDigitos(v).slice(0, 11);

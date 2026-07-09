@@ -28,6 +28,44 @@ export interface Aluno {
   link_facebook?: string | null;
 }
 
+/** Valores aceitos pelo CHECK `thb_alunos_plano_check`. */
+export const PLANOS_ALUNO = [
+  "aluno",
+  "diamante",
+  "platina",
+  "super_diamante",
+  "aurum",
+] as const;
+export type PlanoAluno = (typeof PLANOS_ALUNO)[number];
+
+export interface Turma {
+  id: number;
+  codigo: string | null;
+  tipo: string | null;
+  atual: boolean | null;
+}
+
+/** Dados do cadastro manual de um aluno novo em `thb_alunos`. */
+export interface NovoAlunoInput {
+  nome: string;
+  email: string;
+  documento?: string;
+  telefone?: string;
+  profissao?: string;
+  turmaId?: number | null;
+  plano?: string;
+  cep?: string;
+  cidade?: string;
+  estado?: string;
+  bairro?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  instagramUrl?: string;
+  siteProfissional?: string;
+  linkFacebook?: string;
+}
+
 export interface Etapa {
   id: number;
   nome: string;
@@ -100,17 +138,6 @@ export interface Solicitacao {
   observacao: string | null;
   criado_em: string;
   decidido_em: string | null;
-}
-
-export interface Documento {
-  id: string;
-  aluno_id: string;
-  cliente_id: string;
-  nome: string;
-  path: string;
-  tamanho: number | null;
-  mime: string | null;
-  criado_em: string;
 }
 
 export interface Etapa3Agendamento {

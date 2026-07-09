@@ -6,7 +6,14 @@ import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
 import { enviarCredenciaisAcesso, enviarAcessoLiberado } from "@/lib/email";
-import type { Aluno } from "@/lib/types";
+import {
+  documentoValido,
+  soDigitos,
+  telefoneE164,
+  tipoDocumento,
+} from "@/lib/masks";
+import { PLANOS_ALUNO } from "@/lib/types";
+import type { Aluno, NovoAlunoInput, PlanoAluno, Turma } from "@/lib/types";
 
 async function ehAdmin(): Promise<boolean> {
   const ctx = await getContextoSessao();
@@ -103,6 +110,151 @@ export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
     documento: (a as { documento: string | null }).documento,
     jaNoGps: idsNoGps.has(a.id),
   }));
+}
+
+/** Turmas para o cadastro manual (a atual primeiro). */
+export async function listarTurmas(): Promise<Turma[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("thb_turmas")
+    .select("id, codigo, tipo, atual")
+    .order("atual", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: false });
+  return (data ?? []) as Turma[];
+}
+
+export interface AlunoDuplicado {
+  id: string;
+  nome: string | null;
+  email: string | null;
+  documento: string | null;
+  motivo: "documento" | "email";
+}
+
+/**
+ * Cadastra um aluno novo em `thb_alunos` — para quando a pessoa não está na
+ * base (não veio da planilha nem da Hotmart). Só admin.
+ *
+ * `thb_alunos` é compartilhada com o sip, então o cadastro é conservador:
+ * grava apenas os campos de identificação/contato e marca `fonte` para deixar
+ * rastreável que a linha nasceu aqui. Os campos financeiros e de Hotmart ficam
+ * nulos — eles pertencem ao centro de controle do sip.
+ */
+export async function cadastrarAluno(
+  dados: NovoAlunoInput,
+): Promise<{ erro?: string; duplicado?: AlunoDuplicado; aluno?: AlunoBusca }> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+
+  const nome = dados.nome?.trim() ?? "";
+  const email = dados.email?.trim().toLowerCase() ?? "";
+  const documento = dados.documento?.trim() ?? "";
+
+  if (nome.length < 3) return { erro: "Informe o nome completo do aluno." };
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { erro: "E-mail inválido." };
+  if (documento && !documentoValido(documento)) {
+    return { erro: "CPF/CNPJ inválido — confira os dígitos." };
+  }
+  if (dados.plano && !PLANOS_ALUNO.includes(dados.plano as PlanoAluno)) {
+    return { erro: "Plano inválido." };
+  }
+
+  const supabase = await createClient();
+
+  // Duplicata por documento: mesma normalização do gatilho de vínculo
+  // (lpad(dígitos,14,'0')), senão o login do aluno grudaria na linha errada.
+  if (documento) {
+    const { data: iguais } = await supabase
+      .schema("gps")
+      .rpc("aluno_por_documento", { p_doc: documento });
+    const achado = ((iguais ?? []) as AlunoDuplicado[])[0] as
+      | Omit<AlunoDuplicado, "motivo">
+      | undefined;
+    if (achado) {
+      return {
+        duplicado: {
+          id: achado.id,
+          nome: achado.nome,
+          email: achado.email,
+          documento: achado.documento,
+          motivo: "documento",
+        },
+      };
+    }
+  }
+
+  // Duplicata por e-mail (a tabela tem índice único em lower(trim(email))).
+  const { data: mesmoEmail } = await supabase
+    .from("thb_alunos")
+    .select("id, nome, email, documento")
+    .ilike("email", email)
+    .limit(1)
+    .maybeSingle();
+  if (mesmoEmail) {
+    return {
+      duplicado: {
+        id: mesmoEmail.id,
+        nome: mesmoEmail.nome,
+        email: mesmoEmail.email,
+        documento: (mesmoEmail as { documento: string | null }).documento,
+        motivo: "email",
+      },
+    };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const limpo = (v?: string) => v?.trim() || null;
+  const telefone = limpo(dados.telefone);
+
+  const { data: criado, error } = await supabase
+    .from("thb_alunos")
+    .insert({
+      nome,
+      email,
+      documento: documento ? soDigitos(documento) : null,
+      tipo_documento: documento ? tipoDocumento(documento) : null,
+      telefone,
+      telefone_e164: telefone ? telefoneE164(telefone) : null,
+      profissao: limpo(dados.profissao),
+      turma_id: dados.turmaId ?? null,
+      plano: dados.plano || "aluno",
+      cep: limpo(dados.cep),
+      cidade: limpo(dados.cidade),
+      estado: limpo(dados.estado)?.toUpperCase().slice(0, 2) ?? null,
+      bairro: limpo(dados.bairro),
+      endereco_logradouro: limpo(dados.logradouro),
+      endereco_numero: limpo(dados.numero),
+      endereco_complemento: limpo(dados.complemento),
+      instagram_url: limpo(dados.instagramUrl),
+      site_profissional: limpo(dados.siteProfissional),
+      link_facebook: limpo(dados.linkFacebook),
+      fonte: "gps_cadastro_manual",
+      atualizado_por: user?.id ?? null,
+      atualizado_por_em: new Date().toISOString(),
+    })
+    .select("id, nome, email, telefone, turma_id, plano, status_acesso, eh_socio, documento")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      return { erro: "Já existe um aluno com este e-mail na base." };
+    }
+    if (error.code === "42501") {
+      return { erro: "Sem permissão para cadastrar alunos na base." };
+    }
+    return { erro: "Não foi possível cadastrar: " + error.message };
+  }
+
+  revalidatePath("/admin");
+  return {
+    aluno: {
+      ...(criado as Aluno),
+      documento: (criado as { documento: string | null }).documento,
+      jaNoGps: false,
+    },
+  };
 }
 
 /** Vincula um aluno ao GPS (cria o ambiente da Etapa 01). */

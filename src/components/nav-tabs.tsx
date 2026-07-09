@@ -2,13 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, BookOpen, FolderOpen, type LucideIcon } from "lucide-react";
+import {
+  Home,
+  Users,
+  BookOpen,
+  FolderOpen,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 
 export interface NavItem {
   href: string;
   label: string;
   /** chave do ícone (string, serializável entre server e client). */
-  icon?: "inicio" | "clientes" | "materiais" | "pasta";
+  icon?: "inicio" | "clientes" | "materiais" | "pasta" | "perfil";
   /** casa exatamente (para o "Início"). */
   exact?: boolean;
 }
@@ -18,6 +25,7 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
   clientes: Users,
   materiais: BookOpen,
   pasta: FolderOpen,
+  perfil: UserRound,
 };
 
 export function NavTabs({ items }: { items: NavItem[] }) {

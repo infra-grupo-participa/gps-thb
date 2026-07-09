@@ -30,10 +30,13 @@ export function PerfilEditor({
   aluno,
   turma,
   perfilInicial,
+  /** Preenchido só no modo assistência: o admin edita o perfil deste aluno. */
+  alunoId,
 }: {
   aluno: Aluno;
   turma: string | null;
   perfilInicial: PerfilAluno;
+  alunoId?: string;
 }) {
   const p = perfilInicial;
   const [telefone, setTelefone] = useState(
@@ -58,20 +61,23 @@ export function PerfilEditor({
 
   function salvar() {
     startTransition(async () => {
-      const res = await salvarPerfilAluno({
-        telefone,
-        profissao,
-        cidade,
-        estado,
-        bio,
-        instagram,
-        youtube,
-        linkedin,
-        facebook,
-        site,
-      });
+      const res = await salvarPerfilAluno(
+        {
+          telefone,
+          profissao,
+          cidade,
+          estado,
+          bio,
+          instagram,
+          youtube,
+          linkedin,
+          facebook,
+          site,
+        },
+        alunoId,
+      );
       if (res.erro) {
-        toast.error("Erro ao salvar o perfil.");
+        toast.error(res.erro);
         return;
       }
       toast.success("Perfil atualizado.");

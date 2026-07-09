@@ -287,15 +287,22 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
 - [x] Deploy Node na Hostinger configurado (`server.js`, `DEPLOY.md`).
 - [x] Código versionado e enviado para `github.com/infra-grupo-participa/gps-thb` (main).
 - [ ] Endurecer RLS de `thb_alunos` (ver acima) antes de abrir o cadastro a alunos reais.
-- [ ] Verificar cadastro real ponta a ponta (depende da config de confirmação de e-mail do GoTrue).
+- [ ] Verificar cadastro real ponta a ponta. (A dúvida sobre o GoTrue está respondida:
+      `mailer_autoconfirm = true`, ou seja, o aluno entra sem confirmar o e-mail.)
 - [ ] Executar o deploy na Hostinger (clonar, `npm install`, `npm run build`, iniciar app).
 - [ ] Deixar o repositório privado, se desejado (`gh repo edit --visibility private`).
 - [x] E-mails transacionais (Resend): credenciais + acesso liberado (`src/lib/email.ts`).
 - [x] Domínio do portal trocado para `programa.timeholdingbrasil.com.br` (envs, `next.config.ts`,
       fallbacks de `email.ts` e `senha-actions.ts`).
-- [ ] **Supabase Auth → URL Configuration**: trocar o *Site URL* e incluir
-      `https://programa.timeholdingbrasil.com.br/**` nas *Redirect URLs*. Sem isso, o link de
-      redefinição de senha (`/auth/confirm?next=/auth/redefinir`) volta para o domínio antigo.
+- [x] **Supabase Auth → URL Configuration** corrigido em 2026-07-09 (via Management API).
+      Estava `site_url = http://localhost:3000` e `uri_allow_list` **vazia** — os links de
+      redefinição de senha apontavam para o localhost do próprio usuário. Agora:
+      `site_url = https://programa.timeholdingbrasil.com.br` e
+      `uri_allow_list = https://programa.timeholdingbrasil.com.br/**,http://localhost:3000/**`.
+      Verificado por comportamento: `GET /auth/v1/verify?...&redirect_to=<x>` honra a URL do
+      domínio novo e ignora as demais, caindo no `site_url`.
+- **Confirmação de e-mail está DESLIGADA** (`mailer_autoconfirm = true`): quem se cadastra já
+      entra sem confirmar. Por isso `criarAcessoAluno` devolve `precisaConfirmar = false`.
 - [x] `RESEND_API_KEY` configurada no painel da Hostinger (prod). **Atenção:** a chave do
       `.env.local` (dev) continua sendo recusada (`API key is invalid`) — trocar para testar
       envio localmente.

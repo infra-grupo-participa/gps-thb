@@ -5,10 +5,12 @@ import {
   getAlunosGps,
   getSolicitacoes,
   acharAlunoPorEmail,
+  getEtapas,
 } from "@/lib/data";
 import { AppHeader } from "@/components/app-header";
 import { CriarAcesso } from "@/components/admin/criar-acesso";
 import { SolicitacaoCard } from "@/components/admin/solicitacao-card";
+import { EtapasControle } from "@/components/admin/etapas-controle";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -21,9 +23,10 @@ export default async function AdminPage() {
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const [alunos, pendentes] = await Promise.all([
+  const [alunos, pendentes, etapas] = await Promise.all([
     getAlunosGps(),
     getSolicitacoes("pendente"),
+    getEtapas(),
   ]);
   const solicitacoesComMatch = await Promise.all(
     pendentes.map(async (s) => ({
@@ -66,6 +69,7 @@ export default async function AdminPage() {
                 <Badge className="ml-1.5 text-[10px]">{pendentes.length}</Badge>
               ) : null}
             </TabsTrigger>
+            <TabsTrigger value="etapas">Etapas</TabsTrigger>
           </TabsList>
 
           {/* Alunos ativos */}
@@ -164,6 +168,11 @@ export default async function AdminPage() {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* Etapas */}
+          <TabsContent value="etapas">
+            <EtapasControle etapasIniciais={etapas} />
           </TabsContent>
         </Tabs>
       </main>

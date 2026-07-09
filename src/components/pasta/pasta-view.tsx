@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FolderOpen, ExternalLink } from "lucide-react";
 import { salvarPastaDriveUrl } from "@/app/admin/actions";
+import { embedPastaDrive } from "@/lib/pasta";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ export function PastaView({
   const router = useRouter();
   const [url, setUrl] = useState(pastaUrl ?? "");
   const [pending, startTransition] = useTransition();
+  const embedUrl = embedPastaDrive(pastaUrl);
 
   function salvar() {
     startTransition(async () => {
@@ -83,11 +85,20 @@ export function PastaView({
               Abrir no Drive <ExternalLink className="size-4" />
             </a>
           </CardHeader>
-          <CardContent>
+          <CardContent className="grid gap-3">
+            {embedUrl ? (
+              <iframe
+                src={embedUrl}
+                title="Pasta do aluno no Google Drive"
+                className="h-[520px] w-full rounded-lg border bg-muted/20"
+                loading="lazy"
+              />
+            ) : null}
             <p className="text-sm text-muted-foreground">
-              Sua pasta abre no Google Drive, na conta que tem acesso a ela.
-              Todos os documentos, vídeos e minutas do seu processo ficam
-              organizados lá.
+              A pré-visualização acima é somente leitura. Para enviar, renomear
+              ou apagar arquivos, use &ldquo;Abrir no Drive&rdquo;. Se a
+              pré-visualização aparecer vazia, a pasta não está compartilhada
+              por link — peça à equipe para ajustar.
             </p>
           </CardContent>
         </Card>

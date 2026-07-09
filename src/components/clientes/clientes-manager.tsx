@@ -262,7 +262,23 @@ export function ClientesManager({
             Nenhum cliente encontrado com esse filtro/busca.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* Mobile: cards */}
+            <div className="grid gap-2 sm:hidden">
+              {listaOrdenada.map((c) => (
+                <ClienteCardLista
+                  key={c.id}
+                  cliente={c}
+                  fichaHref={fichaHref}
+                  onStatus={mudarStatus}
+                  onEquipe={toggleEquipe}
+                  onExcluir={excluir}
+                  pending={pending}
+                />
+              ))}
+            </div>
+            {/* Desktop: tabela */}
+            <div className="hidden overflow-x-auto sm:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -367,7 +383,8 @@ export function ClientesManager({
                 })}
               </TableBody>
             </Table>
-          </div>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
@@ -472,6 +489,95 @@ function Kanban({
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ---------- Card da lista (mobile) ----------
+
+function ClienteCardLista({
+  cliente: c,
+  fichaHref,
+  onStatus,
+  onEquipe,
+  onExcluir,
+  pending,
+}: {
+  cliente: ClienteEtapa1;
+  fichaHref: (id: string) => string;
+  onStatus: (c: ClienteEtapa1, s: StatusCliente) => void;
+  onEquipe: (c: ClienteEtapa1) => void;
+  onExcluir: (id: string) => void;
+  pending: boolean;
+}) {
+  const wpp = linkWhatsapp(c.telefone);
+  return (
+    <div
+      className={
+        "rounded-lg border p-3 " + (c.acompanhado_equipe ? "border-primary bg-primary/5" : "")
+      }
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-start gap-2">
+          <StarButton ativo={c.acompanhado_equipe} onClick={() => onEquipe(c)} />
+          <Link
+            href={fichaHref(c.id)}
+            className="truncate font-medium hover:text-primary hover:underline"
+          >
+            {c.nome || "Sem nome"}
+          </Link>
+        </div>
+        {c.perda_inercia != null ? (
+          <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+            {brl.format(c.perda_inercia)}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+        {c.telefone ? mascaraTelefone(c.telefone) : "sem telefone"}
+        {wpp ? <WhatsappLink href={wpp} /> : null}
+        {c.data_reuniao_preliminar ? (
+          <span className="ml-auto text-xs">
+            {new Date(
+              c.data_reuniao_preliminar + "T00:00:00",
+            ).toLocaleDateString("pt-BR")}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <Select
+          value={c.status}
+          onValueChange={(v) => v && onStatus(c, v as StatusCliente)}
+        >
+          <SelectTrigger size="sm" className="h-8 flex-1 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_CLIENTE.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.rotulo}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Link
+          href={fichaHref(c.id)}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          Ficha
+        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+          onClick={() => onExcluir(c.id)}
+          disabled={pending}
+        >
+          Excluir
+        </Button>
       </div>
     </div>
   );

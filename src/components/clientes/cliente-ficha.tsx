@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import type { ClienteEtapa1, Documento } from "@/lib/types";
+import type { ClienteEtapa1 } from "@/lib/types";
 import {
   PROBLEMAS_7,
   NIVEIS_RELACIONAMENTO,
@@ -18,7 +18,6 @@ import {
 import { MessageCircle, Star, Phone, Calendar, User } from "lucide-react";
 import { atualizarCliente, definirClienteEquipe } from "@/app/etapa-1/actions";
 import { linkWhatsapp } from "@/lib/whatsapp";
-import { DocumentosSection } from "./documentos-section";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,11 +35,9 @@ import {
 export function ClienteFicha({
   cliente,
   alunoId,
-  documentosIniciais,
 }: {
   cliente: ClienteEtapa1;
   alunoId: string;
-  documentosIniciais: Documento[];
 }) {
   const [nome, setNome] = useState(cliente.nome ?? "");
   const [telefone, setTelefone] = useState(
@@ -319,12 +316,6 @@ export function ClienteFicha({
           </div>
         </CardContent>
       </Card>
-
-      <DocumentosSection
-        alunoId={alunoId}
-        clienteId={cliente.id}
-        documentosIniciais={documentosIniciais}
-      />
     </div>
   );
 }

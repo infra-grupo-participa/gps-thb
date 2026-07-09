@@ -213,17 +213,6 @@ export async function getClienteById(
   return (data as ClienteEtapa1) ?? null;
 }
 
-export async function getDocumentos(clienteId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .schema("gps")
-    .from("documentos")
-    .select("*")
-    .eq("cliente_id", clienteId)
-    .order("criado_em", { ascending: false });
-  return data ?? [];
-}
-
 export async function getAgendamentosEtapa3(alunoId: string) {
   const supabase = await createClient();
   const { data } = await supabase

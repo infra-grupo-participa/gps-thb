@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getClienteById, getDocumentos } from "@/lib/data";
+import { getAlunoById, getClienteById } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
-import type { Documento } from "@/lib/types";
 
 export default async function ClienteFichaPage({
   params,
@@ -22,10 +21,7 @@ export default async function ClienteFichaPage({
   const cliente = await getClienteById(clienteId);
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
-  const [aluno, documentos] = await Promise.all([
-    getAlunoById(alunoId),
-    getDocumentos(clienteId),
-  ]);
+  const aluno = await getAlunoById(alunoId);
 
   return (
     <>
@@ -48,11 +44,7 @@ export default async function ClienteFichaPage({
           </h1>
         </div>
 
-        <ClienteFicha
-          cliente={cliente}
-          alunoId={alunoId}
-          documentosIniciais={documentos as Documento[]}
-        />
+        <ClienteFicha cliente={cliente} alunoId={alunoId} />
       </main>
     </>
   );

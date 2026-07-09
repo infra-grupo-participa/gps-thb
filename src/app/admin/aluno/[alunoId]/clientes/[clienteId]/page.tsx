@@ -1,17 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import {
-  getAlunoById,
-  getClienteById,
-  getDocumentos,
-  getMembro,
-} from "@/lib/data";
+import { getAlunoById, getClienteById, getMembro } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
-import type { Documento } from "@/lib/types";
 
 export default async function AdminAlunoClienteFichaPage({
   params,
@@ -30,10 +24,7 @@ export default async function AdminAlunoClienteFichaPage({
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, documentos] = await Promise.all([
-    getAlunoById(alunoId),
-    getDocumentos(clienteId),
-  ]);
+  const aluno = await getAlunoById(alunoId);
 
   return (
     <>
@@ -59,11 +50,7 @@ export default async function AdminAlunoClienteFichaPage({
           </h1>
         </div>
 
-        <ClienteFicha
-          cliente={cliente}
-          alunoId={alunoId}
-          documentosIniciais={documentos as Documento[]}
-        />
+        <ClienteFicha cliente={cliente} alunoId={alunoId} />
       </main>
     </>
   );

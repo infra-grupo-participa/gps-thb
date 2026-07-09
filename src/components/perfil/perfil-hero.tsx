@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { AtSign, Video, Link2, Globe, GraduationCap, Pencil } from "lucide-react";
+import { GraduationCap, Pencil } from "lucide-react";
+import {
+  FaInstagram,
+  FaYoutube,
+  FaLinkedinIn,
+  FaFacebookF,
+  FaGlobe,
+} from "react-icons/fa6";
 import type { Aluno, PerfilAluno } from "@/lib/types";
 
 function iniciais(nome: string | null): string {
@@ -34,11 +41,11 @@ export function PerfilHero({
     .join(" · ");
 
   const redes = [
-    { url: normalizar(perfil.instagram ?? aluno.instagram_url ?? "", "instagram"), Icon: AtSign, nome: "Instagram" },
-    { url: normalizar(perfil.youtube ?? aluno.youtube_url ?? "", "youtube"), Icon: Video, nome: "YouTube" },
-    { url: normalizar(perfil.linkedin ?? "", "linkedin"), Icon: Link2, nome: "LinkedIn" },
-    { url: normalizar(perfil.facebook ?? aluno.link_facebook ?? "", "facebook"), Icon: Link2, nome: "Facebook" },
-    { url: normalizar(perfil.site ?? aluno.site_profissional ?? "", "site"), Icon: Globe, nome: "Site" },
+    { url: normalizar(perfil.instagram ?? aluno.instagram_url ?? "", "instagram"), Icon: FaInstagram, nome: "Instagram" },
+    { url: normalizar(perfil.youtube ?? aluno.youtube_url ?? "", "youtube"), Icon: FaYoutube, nome: "YouTube" },
+    { url: normalizar(perfil.linkedin ?? "", "linkedin"), Icon: FaLinkedinIn, nome: "LinkedIn" },
+    { url: normalizar(perfil.facebook ?? aluno.link_facebook ?? "", "facebook"), Icon: FaFacebookF, nome: "Facebook" },
+    { url: normalizar(perfil.site ?? aluno.site_profissional ?? "", "site"), Icon: FaGlobe, nome: "Site" },
   ].filter((r) => r.url);
 
   return (

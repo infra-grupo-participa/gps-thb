@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { sair } from "@/app/auth/actions";
 import { GpsLogo } from "@/components/gps-logo";
 import { NavTabs, type NavItem } from "@/components/nav-tabs";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +48,7 @@ export function AppHeader({
           <Badge variant="secondary" className="hidden md:inline-flex">
             {papelRotulo}
           </Badge>
-          <form action="/auth/signout" method="post">
+          <form action={sair}>
             <Button variant="outline" size="sm" type="submit">
               Sair
             </Button>

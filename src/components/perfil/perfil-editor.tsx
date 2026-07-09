@@ -2,16 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Phone, Briefcase, MapPin, GraduationCap } from "lucide-react";
 import {
-  Phone,
-  Briefcase,
-  MapPin,
-  AtSign,
-  Video,
-  Link2,
-  Globe,
-  GraduationCap,
-} from "lucide-react";
+  FaInstagram,
+  FaYoutube,
+  FaLinkedinIn,
+  FaFacebookF,
+  FaGlobe,
+} from "react-icons/fa6";
 import type { Aluno, PerfilAluno } from "@/lib/types";
 import { mascaraTelefone } from "@/lib/masks";
 import { salvarPerfilAluno } from "@/app/perfil/actions";
@@ -171,7 +169,7 @@ export function PerfilEditor({
         <div>
           <div className="mb-2 text-sm font-medium">Redes sociais</div>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Campo label="Instagram" icon={<AtSign className="size-4" />}>
+            <Campo label="Instagram" icon={<FaInstagram className="size-4" />}>
               <Input
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value)}
@@ -179,7 +177,7 @@ export function PerfilEditor({
                 className="pl-9"
               />
             </Campo>
-            <Campo label="YouTube" icon={<Video className="size-4" />}>
+            <Campo label="YouTube" icon={<FaYoutube className="size-4" />}>
               <Input
                 value={youtube}
                 onChange={(e) => setYoutube(e.target.value)}
@@ -187,7 +185,7 @@ export function PerfilEditor({
                 className="pl-9"
               />
             </Campo>
-            <Campo label="LinkedIn" icon={<Link2 className="size-4" />}>
+            <Campo label="LinkedIn" icon={<FaLinkedinIn className="size-4" />}>
               <Input
                 value={linkedin}
                 onChange={(e) => setLinkedin(e.target.value)}
@@ -195,7 +193,7 @@ export function PerfilEditor({
                 className="pl-9"
               />
             </Campo>
-            <Campo label="Facebook" icon={<Link2 className="size-4" />}>
+            <Campo label="Facebook" icon={<FaFacebookF className="size-4" />}>
               <Input
                 value={facebook}
                 onChange={(e) => setFacebook(e.target.value)}
@@ -203,7 +201,7 @@ export function PerfilEditor({
                 className="pl-9"
               />
             </Campo>
-            <Campo label="Site" icon={<Globe className="size-4" />}>
+            <Campo label="Site" icon={<FaGlobe className="size-4" />}>
               <Input
                 value={site}
                 onChange={(e) => setSite(e.target.value)}

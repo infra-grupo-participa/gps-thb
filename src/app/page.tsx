@@ -10,6 +10,7 @@ import {
   Coins,
 } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
+import { sair } from "@/app/auth/actions";
 import {
   getEtapas,
   getAlunoById,
@@ -79,7 +80,7 @@ export default async function HomePage() {
                 )}
               </p>
             </div>
-            <form action="/auth/signout" method="post">
+            <form action={sair}>
               <button className="text-sm text-primary underline" type="submit">
                 Sair
               </button>

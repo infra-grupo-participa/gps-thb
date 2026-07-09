@@ -299,12 +299,21 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
 - [x] `RESEND_API_KEY` configurada no painel da Hostinger (prod). **Atenção:** a chave do
       `.env.local` (dev) continua sendo recusada (`API key is invalid`) — trocar para testar
       envio localmente.
-- [ ] **Verificar `programa.timeholdingbrasil.com.br` na Resend** (adicionar o domínio no painel
-      e publicar DKIM + SPF + MX). Checado por DNS em 2026-07-09: `resend._domainkey.programa…`
-      dá NXDOMAIN. Já existe DKIM na **raiz** `timeholdingbrasil.com.br` (us-east-1) e no antigo
-      `gps.` (sa-east-1) — mas não no subdomínio novo, que é o do `EMAIL_FROM`. Enquanto não
-      subir, o envio falha em silêncio (as funções de `email.ts` nunca lançam).
-- [ ] Apontar o DNS do novo domínio para a Hostinger e ajustar o vhost/SSL.
+- [x] **`programa.timeholdingbrasil.com.br` publicado na Resend.** Conferido por DNS em
+      2026-07-09: `resend._domainkey.programa…` (DKIM), `send.programa…` TXT
+      (`v=spf1 include:amazonses.com ~all`) e MX (`feedback-smtp.sa-east-1.amazonses.com`).
+      DMARC da raiz é `p=none`, então não barra nada. **Não verificado daqui:** o flag "verified"
+      no painel da Resend e uma entrega real — a chave do `.env.local` é recusada, e os e-mails
+      transacionais só disparam em `criarAcessoAluno` / `aprovarSolicitacao`.
+- [ ] Se o `EMAIL_FROM` estiver definido no painel da Hostinger, **atualizar lá**: mudou de
+      `GPS — Time Holding Brasil <…>` para `Time Holding Brasil <…>`. O painel sobrepõe o
+      `.env.production`.
+- [x] DNS do novo domínio apontado para a Hostinger (147.93.34.90) com SSL; o portal responde e o
+      login funciona. O domínio antigo (`gps.`) saiu do ar.
+
+Lembrete: falha de envio de e-mail **não** aparece na tela — as funções de `email.ts` retornam
+`{ ok:false }` e nunca lançam, para não bloquear a criação do acesso. A UI de `CriarAcesso`
+mostra `emailEnviado`; é por ali que se percebe.
 
 ### Como testar agora
 Admin já pode entrar: os 16 `perfis` (incl. marcio@advmais.com, cargo dev) usam a **senha

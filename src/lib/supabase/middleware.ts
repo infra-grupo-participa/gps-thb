@@ -38,6 +38,7 @@ export async function updateSession(request: NextRequest) {
   const isPublic =
     pathname === "/login" ||
     pathname === "/cadastro" ||
+    pathname === "/esqueci-senha" ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico";

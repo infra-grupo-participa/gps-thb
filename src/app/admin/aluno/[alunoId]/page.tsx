@@ -13,6 +13,7 @@ import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { EtapasOverview } from "@/components/etapas-overview";
 import { AssistBanner } from "@/components/admin/assist-banner";
+import { BotaoRedefinirSenha } from "@/components/admin/botao-redefinir-senha";
 
 export default async function AdminAlunoInicioPage({
   params,
@@ -56,10 +57,15 @@ export default async function AdminAlunoInicioPage({
           >
             ← Voltar aos alunos
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold">
-            {aluno?.nome ?? "Aluno"}
-          </h1>
-          <p className="text-muted-foreground">{aluno?.email}</p>
+          <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-semibold">{aluno?.nome ?? "Aluno"}</h1>
+              <p className="text-muted-foreground">{aluno?.email}</p>
+            </div>
+            {membro.user_id ? (
+              <BotaoRedefinirSenha alunoId={alunoId} />
+            ) : null}
+          </div>
         </div>
 
         <EtapasOverview

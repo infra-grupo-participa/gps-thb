@@ -1,5 +1,6 @@
 import {
   getAgendamentosEtapa3,
+  getClienteEquipe,
   getClientesEtapa1,
   getMembro,
   getProgressoEtapa,
@@ -9,6 +10,7 @@ import { conteudoEtapa } from "@/lib/etapas";
 import { Etapa1Guide } from "@/components/etapa1/etapa1-guide";
 import { EtapaGuide } from "@/components/etapa/etapa-guide";
 import { Etapa3Guide } from "@/components/etapa/etapa3-guide";
+import { ClienteEquipeBanner } from "@/components/etapa/cliente-equipe-banner";
 import type { Etapa3Agendamento, Etapa3Revisao } from "@/lib/types";
 
 /**
@@ -47,12 +49,16 @@ export async function EtapaConteudo({
     );
   }
 
+  // Etapas 2–6 giram em torno do cliente acompanhado pela equipe.
+  const clienteEquipe = await getClienteEquipe(alunoId);
+
+  let guia;
   if (n === 3) {
     const [agendamentos, revisao] = await Promise.all([
       getAgendamentosEtapa3(alunoId),
       getRevisaoEtapa3(alunoId),
     ]);
-    return (
+    guia = (
       <Etapa3Guide
         alunoId={alunoId}
         tarefas={conteudo.tarefas}
@@ -62,15 +68,22 @@ export async function EtapaConteudo({
         isAdmin={isAdmin}
       />
     );
+  } else {
+    guia = (
+      <EtapaGuide
+        alunoId={alunoId}
+        etapa={n}
+        tarefas={conteudo.tarefas}
+        meta={conteudo.meta}
+        progressoInicial={progresso}
+      />
+    );
   }
 
   return (
-    <EtapaGuide
-      alunoId={alunoId}
-      etapa={n}
-      tarefas={conteudo.tarefas}
-      meta={conteudo.meta}
-      progressoInicial={progresso}
-    />
+    <div className="grid gap-4">
+      <ClienteEquipeBanner cliente={clienteEquipe} basePath={basePath} />
+      {guia}
+    </div>
   );
 }

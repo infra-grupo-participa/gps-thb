@@ -1,12 +1,16 @@
 // Registro do conteúdo (tarefas) de cada etapa do GPS.
 
-import { TAREFAS_ETAPA1, type TarefaDef } from "@/lib/etapa1";
+import {
+  TAREFAS_ETAPA1,
+  calcularMetricasEtapa1,
+  type TarefaDef,
+} from "@/lib/etapa1";
 import { TAREFAS_ETAPA2, META_ETAPA2 } from "@/lib/etapa2";
 import { TAREFAS_ETAPA3 } from "@/lib/etapa3";
 import { TAREFAS_ETAPA4 } from "@/lib/etapa4";
 import { TAREFAS_ETAPA5 } from "@/lib/etapa5";
 import { TAREFAS_ETAPA6 } from "@/lib/etapa6";
-import type { ProgressoTarefa } from "@/lib/types";
+import type { ClienteEtapa1, ProgressoTarefa } from "@/lib/types";
 
 export interface ConteudoEtapa {
   tarefas: TarefaDef[];
@@ -37,4 +41,24 @@ export function pctEtapaManual(
   );
   const concluidas = tarefas.filter((t) => feitas.has(t.num)).length;
   return Math.round((concluidas / tarefas.length) * 100);
+}
+
+/** Progresso (%) de todas as etapas cadastradas, para o mapa do Início. */
+export function pctPorEtapa(
+  clientes: ClienteEtapa1[],
+  progressoTodas: ProgressoTarefa[],
+): Record<number, number> {
+  const out: Record<number, number> = {};
+  for (const [etapaStr, conteudo] of Object.entries(CONTEUDO_ETAPAS)) {
+    const etapa = Number(etapaStr);
+    const progressoEtapa = progressoTodas.filter((p) => p.etapa === etapa);
+    if (etapa === 1) {
+      const manual: Record<number, boolean> = {};
+      for (const p of progressoEtapa) manual[p.tarefa] = p.concluida;
+      out[etapa] = calcularMetricasEtapa1(clientes, manual).pct;
+    } else {
+      out[etapa] = pctEtapaManual(conteudo.tarefas, progressoEtapa);
+    }
+  }
+  return out;
 }

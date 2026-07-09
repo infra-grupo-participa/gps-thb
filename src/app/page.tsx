@@ -6,12 +6,12 @@ import {
   getEtapas,
   getAlunoById,
   getClientesEtapa1,
-  getProgressoEtapa,
+  getProgressoAluno,
   getMinhaSolicitacao,
 } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { calcularMetricasEtapa1 } from "@/lib/etapa1";
+import { pctPorEtapa } from "@/lib/etapas";
 import { listarMateriais } from "@/lib/materiais";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
@@ -73,16 +73,14 @@ export default async function HomePage() {
 
   // Aluno
   const alunoId = ctx.alunoId!;
-  const [etapas, aluno, clientes, progresso] = await Promise.all([
+  const [etapas, aluno, clientes, progressoTodas] = await Promise.all([
     getEtapas(),
     getAlunoById(alunoId),
     getClientesEtapa1(alunoId),
-    getProgressoEtapa(alunoId, 1),
+    getProgressoAluno(alunoId),
   ]);
 
-  const manual: Record<number, boolean> = {};
-  for (const p of progresso) manual[p.tarefa] = p.concluida;
-  const metricas = calcularMetricasEtapa1(clientes, manual);
+  const pcts = pctPorEtapa(clientes, progressoTodas);
   const totalMateriais = listarMateriais().length;
 
   const primeiroNome = (aluno?.nome ?? "").split(" ")[0];
@@ -124,11 +122,7 @@ export default async function HomePage() {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Seu caminho
         </h2>
-        <EtapasOverview
-          etapas={etapas}
-          basePath=""
-          pctPorEtapa={{ 1: metricas.pct }}
-        />
+        <EtapasOverview etapas={etapas} basePath="" pctPorEtapa={pcts} />
       </main>
     </>
   );

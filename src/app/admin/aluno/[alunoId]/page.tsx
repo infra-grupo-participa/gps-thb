@@ -6,9 +6,9 @@ import {
   getClientesEtapa1,
   getEtapas,
   getMembro,
-  getProgressoEtapa,
+  getProgressoAluno,
 } from "@/lib/data";
-import { calcularMetricasEtapa1 } from "@/lib/etapa1";
+import { pctPorEtapa } from "@/lib/etapas";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { EtapasOverview } from "@/components/etapas-overview";
@@ -28,16 +28,14 @@ export default async function AdminAlunoInicioPage({
   if (!membro) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapas, clientes, progresso] = await Promise.all([
+  const [aluno, etapas, clientes, progressoTodas] = await Promise.all([
     getAlunoById(alunoId),
     getEtapas(),
     getClientesEtapa1(alunoId),
-    getProgressoEtapa(alunoId, 1),
+    getProgressoAluno(alunoId),
   ]);
 
-  const manual: Record<number, boolean> = {};
-  for (const p of progresso) manual[p.tarefa] = p.concluida;
-  const metricas = calcularMetricasEtapa1(clientes, manual);
+  const pcts = pctPorEtapa(clientes, progressoTodas);
 
   return (
     <>
@@ -67,7 +65,7 @@ export default async function AdminAlunoInicioPage({
         <EtapasOverview
           etapas={etapas}
           basePath={base}
-          pctPorEtapa={{ 1: metricas.pct }}
+          pctPorEtapa={pcts}
           allowLockedPreview
         />
       </main>

@@ -231,6 +231,34 @@ export async function getRevisaoEtapa3(alunoId: string) {
   return data ?? null;
 }
 
+/** Todo o progresso do aluno (todas as etapas). */
+export async function getProgressoAluno(
+  alunoId: string,
+): Promise<ProgressoTarefa[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("progresso")
+    .select("*")
+    .eq("aluno_id", alunoId);
+  return (data ?? []) as ProgressoTarefa[];
+}
+
+/** Cliente marcado como acompanhado pela equipe (ou null). */
+export async function getClienteEquipe(
+  alunoId: string,
+): Promise<ClienteEtapa1 | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("etapa1_clientes")
+    .select("*")
+    .eq("aluno_id", alunoId)
+    .eq("acompanhado_equipe", true)
+    .maybeSingle();
+  return (data as ClienteEtapa1) ?? null;
+}
+
 export async function getProgressoEtapa(
   alunoId: string,
   etapa: number,

@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export const metadata = { title: "Admin — Alunos | GPS" };
+export const metadata = { title: "Admin — Alunos" };
 
 export default async function AdminPage() {
   const ctx = await getContextoSessao();
@@ -64,7 +64,7 @@ export default async function AdminPage() {
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             icon={<Users className="size-4" />}
-            label="Alunos no GPS"
+            label="Alunos no programa"
             value={String(alunos.length)}
             hint="em implementação assistida"
             destaque

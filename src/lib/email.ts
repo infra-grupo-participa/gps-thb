@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * Envio de e-mails transacionais do GPS via Resend (HTTP, sem SDK).
+ * Envio de e-mails transacionais do programa via Resend (HTTP, sem SDK).
  *
  * Config por ambiente:
  * - RESEND_API_KEY  — segredo (painel da Hostinger em prod; .env.local em dev).
@@ -16,7 +16,7 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 const FROM =
   process.env.EMAIL_FROM ||
-  "GPS — Time Holding Brasil <acesso@programa.timeholdingbrasil.com.br>";
+  "Time Holding Brasil <acesso@programa.timeholdingbrasil.com.br>";
 
 const APP_URL = (
   process.env.NEXT_PUBLIC_APP_URL ||
@@ -99,7 +99,7 @@ function layout(opts: { preheader: string; titulo: string; corpo: string }): str
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e5e4;">
             <tr>
               <td style="background:${LARANJA};padding:20px 28px;">
-                <div style="color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:.3px;">GPS — Programa de Implementação Assistida</div>
+                <div style="color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:.3px;">Programa de Implementação Assistida</div>
                 <div style="color:#ffe4d1;font-size:12px;margin-top:2px;">Time Holding Brasil</div>
               </td>
             </tr>
@@ -157,7 +157,7 @@ export async function enviarCredenciaisAcesso(params: {
   const corpo = `
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${esc(ola)}</p>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
-      Seu acesso ao <strong>GPS</strong>, o portal onde acompanhamos a implementação da sua primeira holding, já está criado.
+      Seu acesso ao <strong>Programa de Implementação Assistida</strong>, o portal onde acompanhamos a implementação da sua primeira holding, já está criado.
       Use as credenciais abaixo para entrar:
     </p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border:1px solid #e7e5e4;border-radius:8px;">
@@ -171,7 +171,7 @@ export async function enviarCredenciaisAcesso(params: {
       </tr>
     </table>
     ${avisoConfirmar}
-    ${botao(loginUrl, "Acessar o GPS")}
+    ${botao(loginUrl, "Acessar o portal")}
     <p style="margin:0;font-size:13px;line-height:1.6;color:#78716c;">
       Por segurança, recomendamos trocar a senha após o primeiro acesso.
       Se o botão não funcionar, copie e cole este endereço no navegador:<br />
@@ -181,7 +181,7 @@ export async function enviarCredenciaisAcesso(params: {
   const texto = [
     ola,
     "",
-    "Seu acesso ao GPS (Time Holding Brasil) já está criado.",
+    "Seu acesso ao Programa de Implementação Assistida (Time Holding Brasil) já está criado.",
     "",
     `Login: ${para}`,
     `Senha: ${senha}`,
@@ -198,10 +198,10 @@ export async function enviarCredenciaisAcesso(params: {
 
   return enviar({
     para,
-    assunto: "Seu acesso ao GPS foi criado",
+    assunto: "Seu acesso ao Programa de Implementação Assistida foi criado",
     html: layout({
-      preheader: "Suas credenciais de acesso ao portal GPS.",
-      titulo: "Seu acesso ao GPS está pronto",
+      preheader: "Suas credenciais de acesso ao portal do programa.",
+      titulo: "Seu acesso ao programa está pronto",
       corpo,
     }),
     texto,
@@ -224,10 +224,10 @@ export async function enviarAcessoLiberado(params: {
   const corpo = `
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${esc(ola)}</p>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
-      Boa notícia: seu acesso ao <strong>GPS</strong> foi liberado. Já pode entrar com o e-mail e a senha
+      Boa notícia: seu acesso ao <strong>Programa de Implementação Assistida</strong> foi liberado. Já pode entrar com o e-mail e a senha
       que você cadastrou e começar a <strong>Etapa 01 — Estrutura e contato com a base de clientes</strong>.
     </p>
-    ${botao(loginUrl, "Entrar no GPS")}
+    ${botao(loginUrl, "Entrar no portal")}
     <p style="margin:0;font-size:13px;line-height:1.6;color:#78716c;">
       Se o botão não funcionar, copie e cole este endereço no navegador:<br />
       <a href="${esc(loginUrl)}" style="color:${LARANJA};">${esc(loginUrl)}</a>
@@ -236,7 +236,7 @@ export async function enviarAcessoLiberado(params: {
   const texto = [
     ola,
     "",
-    "Seu acesso ao GPS (Time Holding Brasil) foi liberado.",
+    "Seu acesso ao Programa de Implementação Assistida (Time Holding Brasil) foi liberado.",
     "Entre com o e-mail e a senha que você cadastrou.",
     "",
     `Acesse: ${loginUrl}`,
@@ -244,9 +244,9 @@ export async function enviarAcessoLiberado(params: {
 
   return enviar({
     para,
-    assunto: "Seu acesso ao GPS foi liberado",
+    assunto: "Seu acesso ao Programa de Implementação Assistida foi liberado",
     html: layout({
-      preheader: "Seu acesso ao portal GPS foi liberado.",
+      preheader: "Seu acesso ao portal do programa foi liberado.",
       titulo: "Seu acesso foi liberado",
       corpo,
     }),

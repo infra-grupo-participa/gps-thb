@@ -5,7 +5,7 @@ import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PastaView } from "@/components/pasta/pasta-view";
 
-export const metadata = { title: "Pasta | GPS" };
+export const metadata = { title: "Pasta" };
 
 export default async function PastaPage() {
   const ctx = await getContextoSessao();

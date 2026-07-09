@@ -1,4 +1,5 @@
 import { Map, Users, FolderOpen, BookOpen } from "lucide-react";
+import { ThbLogo } from "@/components/thb-logo";
 
 const DESTAQUES = [
   { Icon: Map, texto: "Roteiro guiado das 6 etapas da holding" },
@@ -22,9 +23,8 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         />
 
         <div className="relative flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-white/15 text-lg font-bold backdrop-blur">
-            GPS
-          </div>
+          {/* Anel branco: o selo é laranja e sumiria no gradiente do painel. */}
+          <ThbLogo size="sm" className="size-11 ring-2 ring-white/80" />
           <div className="leading-tight">
             <div className="font-semibold">Time Holding Brasil</div>
             <div className="text-sm text-primary-foreground/80">
@@ -50,7 +50,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="relative text-xs text-primary-foreground/70">
-          GPS — Programa de Implementação Assistida
+          Programa de Implementação Assistida
         </div>
       </div>
 

@@ -5,7 +5,7 @@ import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { ClientesManager } from "@/components/clientes/clientes-manager";
 
-export const metadata = { title: "Clientes | GPS" };
+export const metadata = { title: "Clientes" };
 
 export default async function ClientesPage() {
   const ctx = await getContextoSessao();

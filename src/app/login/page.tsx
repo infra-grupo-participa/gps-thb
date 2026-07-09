@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LoginForm } from "./login-form";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { GpsLogo } from "@/components/gps-logo";
+import { ThbLogo } from "@/components/thb-logo";
 import { AuthLayout } from "@/components/auth-layout";
 
 export default async function LoginPage({
@@ -15,7 +15,7 @@ export default async function LoginPage({
   return (
     <AuthLayout>
       <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
-        <GpsLogo />
+        <ThbLogo />
         <div>
           <h1 className="text-lg font-semibold">Implementação Assistida</h1>
           <p className="text-sm text-muted-foreground">Time Holding Brasil</p>

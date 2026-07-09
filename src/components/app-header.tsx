@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { GpsLogo } from "@/components/gps-logo";
+import { ThbLogo } from "@/components/thb-logo";
 import { LogoutButton } from "@/components/logout-button";
 import { NavTabs, type NavItem } from "@/components/nav-tabs";
 import { Badge } from "@/components/ui/badge";
@@ -22,11 +22,11 @@ export function AppHeader({
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-6">
           <Link href={homeHref} className="flex items-center gap-3">
-            <GpsLogo size="sm" />
+            <ThbLogo size="sm" />
             <div className="leading-tight">
-              <div className="text-sm font-semibold">GPS</div>
+              <div className="text-sm font-semibold">Time Holding Brasil</div>
               <div className="text-xs text-muted-foreground">
-                Implementação Assistida
+                Programa de Implementação Assistida
               </div>
             </div>
           </Link>

@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { GpsLogo } from "@/components/gps-logo";
+import { ThbLogo } from "@/components/thb-logo";
 
 export default function Error({ reset }: { error: Error; reset: () => void }) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
-      <GpsLogo />
+      <ThbLogo />
       <div className="flex flex-col items-center gap-2">
         <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
           <AlertTriangle className="size-6" />

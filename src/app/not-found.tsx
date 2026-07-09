@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Compass } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { GpsLogo } from "@/components/gps-logo";
+import { ThbLogo } from "@/components/thb-logo";
 
 export default function NotFound() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
-      <GpsLogo />
+      <ThbLogo />
       <div className="flex flex-col items-center gap-2">
         <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Compass className="size-6" />

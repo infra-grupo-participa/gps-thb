@@ -7,7 +7,7 @@ import { AppHeader } from "@/components/app-header";
 import { PerfilEditor } from "@/components/perfil/perfil-editor";
 import type { Aluno } from "@/lib/types";
 
-export const metadata = { title: "Meu perfil | GPS" };
+export const metadata = { title: "Meu perfil" };
 
 export default async function PerfilPage() {
   const ctx = await getContextoSessao();

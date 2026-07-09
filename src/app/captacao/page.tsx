@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/app-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-export const metadata = { title: "Captação | GPS" };
+export const metadata = { title: "Captação" };
 
 export default async function CaptacaoPage() {
   const ctx = await getContextoSessao();

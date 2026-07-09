@@ -181,7 +181,9 @@ export function CriarAcesso() {
                 <div className="font-medium">{sel.nome}</div>
                 <div className="text-xs text-muted-foreground">
                   {sel.documento ? `CPF/CNPJ: ${sel.documento}` : "sem CPF"} ·{" "}
-                  {sel.jaNoGps ? "já tem ambiente no GPS" : "novo no GPS"}
+                  {sel.jaNoGps
+                    ? "já tem ambiente no programa"
+                    : "novo no programa"}
                 </div>
               </div>
 
@@ -285,7 +287,7 @@ export function CriarAcesso() {
                         <div className="flex shrink-0 items-center gap-2">
                           {a.jaNoGps ? (
                             <Badge variant="outline" className="text-[10px]">
-                              no GPS
+                              no programa
                             </Badge>
                           ) : null}
                           <Button
@@ -324,7 +326,7 @@ function CredenciaisView({
   credenciais: Credenciais;
   onConcluir: () => void;
 }) {
-  const texto = `Acesse o GPS:\nLogin: ${credenciais.email}\nSenha: ${credenciais.senha}`;
+  const texto = `Acesse o Programa de Implementação Assistida:\nLogin: ${credenciais.email}\nSenha: ${credenciais.senha}`;
   const [copiado, setCopiado] = useState(false);
 
   function copiar() {

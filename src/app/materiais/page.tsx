@@ -6,7 +6,7 @@ import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { MateriaisView } from "@/components/materiais/materiais-view";
 
-export const metadata = { title: "Materiais | GPS" };
+export const metadata = { title: "Materiais" };
 
 export default async function MateriaisPage() {
   const ctx = await getContextoSessao();

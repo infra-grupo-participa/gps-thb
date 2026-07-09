@@ -23,7 +23,7 @@ import { FavoritoDestaque } from "@/components/etapa/favorito-destaque";
 import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
 import { HomeResumo } from "@/components/home-resumo";
 import { PerfilHero } from "@/components/perfil/perfil-hero";
-import { GpsLogo } from "@/components/gps-logo";
+import { ThbLogo } from "@/components/thb-logo";
 import type { Aluno } from "@/lib/types";
 
 export default async function HomePage() {
@@ -40,7 +40,7 @@ export default async function HomePage() {
       <main className="flex min-h-screen items-center justify-center p-4">
         <Card className="max-w-md">
           <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
-            <GpsLogo />
+            <ThbLogo />
             <Badge variant={recusada ? "destructive" : "secondary"}>
               {recusada ? "Solicitação não aprovada" : "Aguardando liberação"}
             </Badge>

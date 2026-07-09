@@ -18,9 +18,14 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "GPS — Implementação Assistida | Time Holding Brasil",
+  title: {
+    default: "Programa de Implementação Assistida | Time Holding Brasil",
+    // As páginas informam só o próprio nome (ex.: "Clientes").
+    template: "%s | Programa de Implementação Assistida",
+  },
   description:
     "Portal de implementação assistida da 1ª holding — Time Holding Brasil.",
+  icons: { icon: "/logo-thb.svg" },
 };
 
 export default function RootLayout({

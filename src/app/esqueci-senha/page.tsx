@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { EsqueciForm } from "./esqueci-form";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { GpsLogo } from "@/components/gps-logo";
+import { ThbLogo } from "@/components/thb-logo";
 import { AuthLayout } from "@/components/auth-layout";
 
-export const metadata = { title: "Esqueci minha senha | GPS" };
+export const metadata = { title: "Esqueci minha senha" };
 
 export default function EsqueciSenhaPage() {
   return (
     <AuthLayout>
       <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
-        <GpsLogo />
+        <ThbLogo />
       </div>
 
       <Card>

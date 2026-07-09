@@ -1,6 +1,10 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowUpRight, Sparkles, EyeOff, RotateCcw } from "lucide-react";
 import type { TarefaDef } from "@/lib/etapa1";
+import type { Enfase } from "@/lib/enfase";
+import type { ModoEnfase } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -9,14 +13,35 @@ export function TarefaItem({
   concluida,
   pending,
   onToggle,
+  enfase = "normal",
+  clientesHref,
+  isAdmin = false,
+  overrideAtual = null,
+  onEnfase,
 }: {
   tarefa: TarefaDef;
   concluida: boolean;
   pending: boolean;
   onToggle: (v: boolean) => void;
+  enfase?: Enfase;
+  /** Quando a tarefa aponta para a aba Clientes, link para lá. */
+  clientesHref?: string;
+  isAdmin?: boolean;
+  overrideAtual?: ModoEnfase | null;
+  onEnfase?: (modo: ModoEnfase | null) => void;
 }) {
+  const codigo = t.codigo ?? String(t.num);
+
+  const containerCls =
+    "group flex items-start gap-3 rounded-md px-2 py-2.5 transition " +
+    (enfase === "realce"
+      ? "bg-primary/5 ring-1 ring-primary/30"
+      : enfase === "esmaecer"
+        ? "opacity-45 hover:opacity-100 hover:bg-muted/50"
+        : "hover:bg-muted/50");
+
   return (
-    <div className="flex items-start gap-3 rounded-md px-2 py-2.5 hover:bg-muted/50">
+    <div className={containerCls}>
       <Checkbox
         checked={concluida}
         disabled={t.automatica || pending}
@@ -31,15 +56,30 @@ export function TarefaItem({
               (concluida ? "text-muted-foreground line-through" : "")
             }
           >
-            {t.num}. {t.titulo}
+            {codigo}. {t.titulo}
           </span>
           {t.automatica ? (
             <Badge variant="outline" className="text-[10px]">
               automática
             </Badge>
           ) : null}
+          {enfase === "realce" && !concluida ? (
+            <Badge className="gap-1 text-[10px]">
+              <Sparkles className="size-3" /> Foco agora
+            </Badge>
+          ) : null}
         </div>
         <p className="text-xs text-muted-foreground">{t.descricao}</p>
+
+        {t.apontaClientes && clientesHref ? (
+          <Link
+            href={clientesHref}
+            className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary transition hover:bg-primary/20"
+          >
+            Registre seus clientes na aba Clientes
+            <ArrowUpRight className="size-3.5" />
+          </Link>
+        ) : null}
 
         {t.info ? (
           <p className="mt-1 text-xs font-medium text-primary">{t.info}</p>
@@ -75,7 +115,70 @@ export function TarefaItem({
             ) : null}
           </div>
         ) : null}
+
+        {isAdmin && onEnfase ? (
+          <div className="mt-2 flex items-center gap-1 opacity-60 transition group-hover:opacity-100">
+            <span className="mr-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+              Destaque:
+            </span>
+            <EnfaseBtn
+              ativo={overrideAtual === "realce"}
+              onClick={() =>
+                onEnfase(overrideAtual === "realce" ? null : "realce")
+              }
+              title="Realçar para o aluno"
+            >
+              <Sparkles className="size-3.5" />
+            </EnfaseBtn>
+            <EnfaseBtn
+              ativo={overrideAtual === "esmaecer"}
+              onClick={() =>
+                onEnfase(overrideAtual === "esmaecer" ? null : "esmaecer")
+              }
+              title="Esmaecer para o aluno"
+            >
+              <EyeOff className="size-3.5" />
+            </EnfaseBtn>
+            {overrideAtual ? (
+              <EnfaseBtn
+                ativo={false}
+                onClick={() => onEnfase(null)}
+                title="Voltar ao automático"
+              >
+                <RotateCcw className="size-3.5" />
+              </EnfaseBtn>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
+  );
+}
+
+function EnfaseBtn({
+  ativo,
+  onClick,
+  title,
+  children,
+}: {
+  ativo: boolean;
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={
+        "inline-flex size-6 items-center justify-center rounded border transition " +
+        (ativo
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border text-muted-foreground hover:bg-muted")
+      }
+    >
+      {children}
+    </button>
   );
 }

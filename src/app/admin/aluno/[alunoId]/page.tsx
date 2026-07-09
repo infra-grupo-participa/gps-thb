@@ -3,15 +3,19 @@ import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import {
   getAlunoById,
+  getClienteEquipe,
   getClientesEtapa1,
   getEtapas,
   getMembro,
   getProgressoAluno,
+  getReuniaoJanelas,
 } from "@/lib/data";
-import { pctPorEtapa } from "@/lib/etapas";
+import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { EtapasOverview } from "@/components/etapas-overview";
+import { FavoritoDestaque } from "@/components/etapa/favorito-destaque";
+import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { BotaoRedefinirSenha } from "@/components/admin/botao-redefinir-senha";
 
@@ -29,14 +33,18 @@ export default async function AdminAlunoInicioPage({
   if (!membro) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapas, clientes, progressoTodas] = await Promise.all([
-    getAlunoById(alunoId),
-    getEtapas(),
-    getClientesEtapa1(alunoId),
-    getProgressoAluno(alunoId),
-  ]);
+  const [aluno, etapas, clientes, progressoTodas, favorito, janelas] =
+    await Promise.all([
+      getAlunoById(alunoId),
+      getEtapas(),
+      getClientesEtapa1(alunoId),
+      getProgressoAluno(alunoId),
+      getClienteEquipe(alunoId),
+      getReuniaoJanelas(alunoId),
+    ]);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
+  const passo = proximoPasso(etapas, clientes, progressoTodas);
 
   return (
     <>
@@ -67,6 +75,24 @@ export default async function AdminAlunoInicioPage({
             ) : null}
           </div>
         </div>
+
+        {passo ? (
+          <div className="mb-6">
+            <ProximoPassoCard passo={passo} basePath={base} />
+          </div>
+        ) : null}
+
+        {favorito ? (
+          <div className="mb-6">
+            <FavoritoDestaque
+              alunoId={alunoId}
+              cliente={favorito}
+              janelas={janelas}
+              isAdmin
+              basePath={base}
+            />
+          </div>
+        ) : null}
 
         <EtapasOverview
           etapas={etapas}

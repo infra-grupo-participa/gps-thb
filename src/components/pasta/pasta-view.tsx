@@ -3,13 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FolderOpen, ExternalLink, FolderTree } from "lucide-react";
-import { ESTRUTURA_PASTA } from "@/lib/pasta";
+import { FolderOpen, ExternalLink } from "lucide-react";
 import { salvarPastaDriveUrl } from "@/app/admin/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 
 export function PastaView({
   alunoId,
@@ -103,58 +101,6 @@ export function PastaView({
           </CardContent>
         </Card>
       )}
-
-      {/* Mapa da estrutura padrão */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <FolderTree className="size-5 text-primary" />
-            <div>
-              <CardTitle className="text-base">
-                Como sua pasta é organizada
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Cada seção guarda uma parte do processo. Use como guia para
-                arquivar tudo no lugar certo.
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {ESTRUTURA_PASTA.map((s) => (
-            <div key={s.ordem} className="rounded-lg border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">
-                    {s.ordem}
-                  </span>
-                  <span className="text-sm font-medium">{s.titulo}</span>
-                </div>
-                {s.etapa ? (
-                  <Badge variant="outline" className="text-[10px]">
-                    Etapa {String(s.etapa).padStart(2, "0")}
-                  </Badge>
-                ) : null}
-              </div>
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                {s.descricao}
-              </p>
-              {s.subpastas ? (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {s.subpastas.map((sp) => (
-                    <span
-                      key={sp}
-                      className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
-                    >
-                      {sp}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { ClienteEtapa1 } from "@/lib/types";
+import type { ClienteEtapa1, ModoEnfase } from "@/lib/types";
 
 /** Campos do cliente que a UI pode atualizar. */
 export type PatchCliente = Partial<
@@ -28,6 +28,8 @@ function revalidar(alunoId: string) {
   revalidatePath("/etapa-1");
   revalidatePath("/clientes");
   revalidatePath("/clientes", "layout");
+  revalidatePath("/etapa", "layout");
+  revalidatePath("/", "layout");
   revalidatePath(`/admin/aluno/${alunoId}`, "layout");
 }
 
@@ -145,6 +147,41 @@ export async function marcarTarefa(
     );
 
   if (error) return { erro: error.message };
+  revalidar(alunoId);
+  return {};
+}
+
+/**
+ * Define (ou remove, com modo=null) o override de destaque de uma tarefa para
+ * um aluno. Só o admin usa — a RLS de gps.tarefa_enfase garante isso.
+ */
+export async function definirEnfaseTarefa(
+  alunoId: string,
+  etapa: number,
+  tarefa: number,
+  modo: ModoEnfase | null,
+) {
+  const supabase = await createClient();
+  const gps = supabase.schema("gps");
+
+  if (modo === null) {
+    const { error } = await gps
+      .from("tarefa_enfase")
+      .delete()
+      .eq("aluno_id", alunoId)
+      .eq("etapa", etapa)
+      .eq("tarefa", tarefa);
+    if (error) return { erro: error.message };
+  } else {
+    const { error } = await gps
+      .from("tarefa_enfase")
+      .upsert(
+        { aluno_id: alunoId, etapa, tarefa, modo },
+        { onConflict: "aluno_id,etapa,tarefa" },
+      );
+    if (error) return { erro: error.message };
+  }
+
   revalidar(alunoId);
   return {};
 }

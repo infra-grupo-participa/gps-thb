@@ -10,7 +10,7 @@ import { TAREFAS_ETAPA3 } from "@/lib/etapa3";
 import { TAREFAS_ETAPA4 } from "@/lib/etapa4";
 import { TAREFAS_ETAPA5 } from "@/lib/etapa5";
 import { TAREFAS_ETAPA6 } from "@/lib/etapa6";
-import type { ClienteEtapa1, ProgressoTarefa } from "@/lib/types";
+import type { ClienteEtapa1, Etapa, ProgressoTarefa } from "@/lib/types";
 
 export interface ConteudoEtapa {
   tarefas: TarefaDef[];
@@ -41,6 +41,59 @@ export function pctEtapaManual(
   );
   const concluidas = tarefas.filter((t) => feitas.has(t.num)).length;
   return Math.round((concluidas / tarefas.length) * 100);
+}
+
+export interface ProximoPasso {
+  etapa: number;
+  etapaNome: string;
+  tarefaNum: number;
+  codigo: string;
+  titulo: string;
+}
+
+/**
+ * A próxima tarefa pendente do aluno: primeira não concluída na etapa liberada
+ * mais avançada em que ainda há pendência. Retorna null quando está tudo em dia.
+ */
+export function proximoPasso(
+  etapas: Etapa[],
+  clientes: ClienteEtapa1[],
+  progressoTodas: ProgressoTarefa[],
+): ProximoPasso | null {
+  const liberadas = [...etapas]
+    .filter((e) => e.liberada)
+    .sort((a, b) => a.ordem - b.ordem);
+
+  for (const et of liberadas) {
+    const conteudo = CONTEUDO_ETAPAS[et.id];
+    if (!conteudo) continue;
+
+    const progE = progressoTodas.filter((p) => p.etapa === et.id);
+    let estaConcluida: (num: number) => boolean;
+    if (et.id === 1) {
+      const manual: Record<number, boolean> = {};
+      for (const p of progE) manual[p.tarefa] = p.concluida;
+      estaConcluida = calcularMetricasEtapa1(clientes, manual).tarefaConcluida;
+    } else {
+      const feitas = new Set(
+        progE.filter((p) => p.concluida).map((p) => p.tarefa),
+      );
+      estaConcluida = (num) => feitas.has(num);
+    }
+
+    const pend = conteudo.tarefas.find((t) => !estaConcluida(t.num));
+    if (pend) {
+      return {
+        etapa: et.id,
+        etapaNome: et.nome,
+        tarefaNum: pend.num,
+        codigo: pend.codigo ?? String(pend.num),
+        titulo: pend.titulo,
+      };
+    }
+  }
+
+  return null;
 }
 
 /** Progresso (%) de todas as etapas cadastradas, para o mapa do Início. */

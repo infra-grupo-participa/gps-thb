@@ -139,3 +139,23 @@ export interface ProgressoTarefa {
   concluida: boolean;
   concluida_em: string | null;
 }
+
+/** Override de destaque de tarefa definido pelo admin para um aluno. */
+export type ModoEnfase = "realce" | "esmaecer";
+
+export interface TarefaEnfase {
+  aluno_id: string;
+  etapa: number;
+  tarefa: number;
+  modo: ModoEnfase;
+}
+
+/** Janela de reunião que a equipe disponibiliza para o cliente favoritado. */
+export interface ReuniaoJanela {
+  id: string;
+  aluno_id: string;
+  data: string;
+  horario: string | null;
+  escolhida: boolean;
+  criado_em: string;
+}

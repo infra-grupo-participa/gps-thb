@@ -19,15 +19,19 @@ import {
   getMinhaSolicitacao,
   getMembro,
   getTurmaCodigo,
+  getClienteEquipe,
+  getReuniaoJanelas,
 } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { pctPorEtapa } from "@/lib/etapas";
+import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
 import { calcularMetricasEtapa1 } from "@/lib/etapa1";
 import { listarMateriais } from "@/lib/materiais";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { EtapasOverview } from "@/components/etapas-overview";
+import { FavoritoDestaque } from "@/components/etapa/favorito-destaque";
+import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
 import { PerfilHero } from "@/components/perfil/perfil-hero";
 import { StatCard } from "@/components/stat-card";
 import { GpsLogo } from "@/components/gps-logo";
@@ -89,16 +93,20 @@ export default async function HomePage() {
 
   // Aluno
   const alunoId = ctx.alunoId!;
-  const [etapas, aluno, clientes, progressoTodas, membro] = await Promise.all([
-    getEtapas(),
-    getAlunoById(alunoId),
-    getClientesEtapa1(alunoId),
-    getProgressoAluno(alunoId),
-    getMembro(alunoId),
-  ]);
+  const [etapas, aluno, clientes, progressoTodas, membro, favorito, janelas] =
+    await Promise.all([
+      getEtapas(),
+      getAlunoById(alunoId),
+      getClientesEtapa1(alunoId),
+      getProgressoAluno(alunoId),
+      getMembro(alunoId),
+      getClienteEquipe(alunoId),
+      getReuniaoJanelas(alunoId),
+    ]);
   const turma = await getTurmaCodigo(aluno?.turma_id);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
+  const passo = proximoPasso(etapas, clientes, progressoTodas);
   const totalMateriais = listarMateriais().length;
 
   const manual1: Record<number, boolean> = {};
@@ -127,6 +135,24 @@ export default async function HomePage() {
             editHref="/perfil"
           />
         </div>
+
+        {passo ? (
+          <div className="mb-8">
+            <ProximoPassoCard passo={passo} basePath="" />
+          </div>
+        ) : null}
+
+        {favorito ? (
+          <div className="mb-8">
+            <FavoritoDestaque
+              alunoId={alunoId}
+              cliente={favorito}
+              janelas={janelas}
+              isAdmin={false}
+              basePath=""
+            />
+          </div>
+        ) : null}
 
         {/* Resumo */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

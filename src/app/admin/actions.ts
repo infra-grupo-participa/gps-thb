@@ -23,16 +23,39 @@ export interface AlunoBusca extends Aluno {
   jaNoGps: boolean;
 }
 
-/** Busca alunos (thb_alunos) por nome/e-mail/CPF, marcando quem já está no GPS. */
+/** Normaliza para comparação: minúsculas e sem acentos. */
+function norm(s: string | null | undefined): string {
+  return (s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+/**
+ * Busca alunos (thb_alunos) de forma tolerante: quebra o termo em palavras e
+ * casa cada uma em nome/e-mail/CPF/telefone (ordem não importa). Traz um
+ * conjunto amplo do banco e ranqueia por quantas palavras casaram — assim
+ * uma busca curta ("joao", parte do sobrenome ou do e-mail) já encontra.
+ */
 export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
   const q = termo.trim();
   if (q.length < 2) return [];
 
   const supabase = await createClient();
 
-  const soDigitos = q.replace(/\D/g, "");
-  const filtros = [`nome.ilike.%${q}%`, `email.ilike.%${q}%`];
-  if (soDigitos.length >= 3) filtros.push(`documento.ilike.%${soDigitos}%`);
+  // Palavras do texto + o bloco de dígitos (CPF/CNPJ/telefone).
+  const palavras = q.split(/\s+/).filter((t) => t.length >= 2);
+  const digitos = q.replace(/\D/g, "");
+
+  // OR amplo: qualquer palavra em qualquer campo (redundante de propósito).
+  const filtros: string[] = [];
+  for (const p of palavras) {
+    filtros.push(`nome.ilike.%${p}%`, `email.ilike.%${p}%`);
+  }
+  if (digitos.length >= 3) {
+    filtros.push(`documento.ilike.%${digitos}%`, `telefone.ilike.%${digitos}%`);
+  }
+  if (filtros.length === 0) filtros.push(`nome.ilike.%${q}%`);
 
   const { data } = await supabase
     .from("thb_alunos")
@@ -40,16 +63,42 @@ export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
       "id, nome, email, telefone, turma_id, plano, status_acesso, eh_socio, documento",
     )
     .or(filtros.join(","))
-    .order("nome")
-    .limit(20);
+    .limit(80);
 
-  const ids = (data ?? []).map((a) => a.id);
+  // Ranqueia por associação: nº de palavras que casam (nome vale mais), com
+  // bônus para começo do nome e casamento de dígitos.
+  const alvos = palavras.map(norm);
+  const ranqueado = (data ?? [])
+    .map((a) => {
+      const nome = norm(a.nome);
+      const email = norm(a.email);
+      const doc = (a as { documento: string | null }).documento ?? "";
+      const tel = (a as { telefone: string | null }).telefone ?? "";
+      let score = 0;
+      for (const t of alvos) {
+        if (nome.includes(t)) score += nome.startsWith(t) ? 3 : 2;
+        if (email.includes(t)) score += 1;
+      }
+      if (digitos.length >= 3) {
+        if (doc.replace(/\D/g, "").includes(digitos)) score += 3;
+        if (tel.replace(/\D/g, "").includes(digitos)) score += 2;
+      }
+      return { a, score };
+    })
+    .sort(
+      (x, y) =>
+        y.score - x.score || norm(x.a.nome).localeCompare(norm(y.a.nome)),
+    )
+    .slice(0, 20)
+    .map((r) => r.a);
+
+  const ids = ranqueado.map((a) => a.id);
   const { data: membros } = ids.length
     ? await supabase.schema("gps").from("membros").select("aluno_id").in("aluno_id", ids)
     : { data: [] as { aluno_id: string }[] };
   const idsNoGps = new Set((membros ?? []).map((m) => m.aluno_id));
 
-  return (data ?? []).map((a) => ({
+  return ranqueado.map((a) => ({
     ...(a as Aluno),
     documento: (a as { documento: string | null }).documento,
     jaNoGps: idsNoGps.has(a.id),

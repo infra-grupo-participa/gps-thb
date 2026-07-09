@@ -3,14 +3,23 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { ClienteEtapa1, ProgressoTarefa } from "@/lib/types";
+import type {
+  ClienteEtapa1,
+  ModoEnfase,
+  ProgressoTarefa,
+} from "@/lib/types";
 import {
   META_CLIENTES,
   META_REUNIOES,
   TAREFAS_ETAPA1,
   calcularMetricasEtapa1,
 } from "@/lib/etapa1";
-import { marcarTarefa, salvarDataAgendamento } from "@/app/etapa-1/actions";
+import { calcularEnfases } from "@/lib/enfase";
+import {
+  definirEnfaseTarefa,
+  marcarTarefa,
+  salvarDataAgendamento,
+} from "@/app/etapa-1/actions";
 import { TarefaItem } from "@/components/etapa/tarefa-item";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
@@ -29,18 +38,24 @@ export function Etapa1Guide({
   progressoInicial,
   dataAgendamentoInicial,
   clientesHref,
+  enfasesIniciais = {},
+  isAdmin = false,
 }: {
   alunoId: string;
   clientesIniciais: ClienteEtapa1[];
   progressoInicial: ProgressoTarefa[];
   dataAgendamentoInicial: string | null;
   clientesHref: string;
+  enfasesIniciais?: Record<number, ModoEnfase>;
+  isAdmin?: boolean;
 }) {
   const [manual, setManual] = useState<Record<number, boolean>>(() => {
     const m: Record<number, boolean> = {};
     for (const p of progressoInicial) m[p.tarefa] = p.concluida;
     return m;
   });
+  const [overrides, setOverrides] =
+    useState<Record<number, ModoEnfase>>(enfasesIniciais);
   const [dataAgendamento, setDataAgendamento] = useState(
     dataAgendamentoInicial ?? "",
   );
@@ -57,6 +72,24 @@ export function Etapa1Guide({
     () => calcularMetricasEtapa1(clientesIniciais, manual),
     [clientesIniciais, manual],
   );
+
+  const enfases = useMemo(
+    () => calcularEnfases(TAREFAS_ETAPA1, tarefaConcluida, overrides),
+    [tarefaConcluida, overrides],
+  );
+
+  function setEnfase(num: number, modo: ModoEnfase | null) {
+    setOverrides((prev) => {
+      const next = { ...prev };
+      if (modo === null) delete next[num];
+      else next[num] = modo;
+      return next;
+    });
+    startTransition(async () => {
+      const res = await definirEnfaseTarefa(alunoId, 1, num, modo);
+      if (res.erro) toast.error("Erro ao atualizar o destaque.");
+    });
+  }
 
   function toggleTarefa(num: number, val: boolean) {
     setManual((prev) => ({ ...prev, [num]: val }));
@@ -146,6 +179,11 @@ export function Etapa1Guide({
               concluida={tarefaConcluida(t.num)}
               pending={pending}
               onToggle={(v) => toggleTarefa(t.num, v)}
+              enfase={enfases[t.num]}
+              clientesHref={clientesHref}
+              isAdmin={isAdmin}
+              overrideAtual={overrides[t.num] ?? null}
+              onEnfase={(modo) => setEnfase(t.num, modo)}
             />
           ))}
         </CardContent>

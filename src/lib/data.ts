@@ -5,7 +5,9 @@ import type {
   ClienteEtapa1,
   Etapa,
   Membro,
+  ModoEnfase,
   ProgressoTarefa,
+  ReuniaoJanela,
   Solicitacao,
   StatusSolicitacao,
 } from "@/lib/types";
@@ -285,4 +287,38 @@ export async function getProgressoEtapa(
     .eq("aluno_id", alunoId)
     .eq("etapa", etapa);
   return (data ?? []) as ProgressoTarefa[];
+}
+
+/** Overrides de destaque de tarefa (definidos pelo admin) para uma etapa. */
+export async function getEnfasesEtapa(
+  alunoId: string,
+  etapa: number,
+): Promise<Record<number, ModoEnfase>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("tarefa_enfase")
+    .select("tarefa, modo")
+    .eq("aluno_id", alunoId)
+    .eq("etapa", etapa);
+  const out: Record<number, ModoEnfase> = {};
+  for (const r of (data ?? []) as { tarefa: number; modo: ModoEnfase }[]) {
+    out[r.tarefa] = r.modo;
+  }
+  return out;
+}
+
+/** Janelas de reunião que a equipe disponibiliza para o cliente favoritado. */
+export async function getReuniaoJanelas(
+  alunoId: string,
+): Promise<ReuniaoJanela[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("reuniao_janelas")
+    .select("*")
+    .eq("aluno_id", alunoId)
+    .order("data", { ascending: true })
+    .order("criado_em");
+  return (data ?? []) as ReuniaoJanela[];
 }

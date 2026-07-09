@@ -26,6 +26,7 @@ interface Credenciais {
   email: string;
   senha: string;
   precisaConfirmar?: boolean;
+  emailEnviado?: boolean;
 }
 
 export function CriarAcesso() {
@@ -76,8 +77,13 @@ export function CriarAcesso() {
         email: res.email!,
         senha: res.senha!,
         precisaConfirmar: res.precisaConfirmar,
+        emailEnviado: res.emailEnviado,
       });
-      toast.success("Acesso criado.");
+      toast.success(
+        res.emailEnviado
+          ? "Acesso criado e credenciais enviadas por e-mail."
+          : "Acesso criado.",
+      );
       router.refresh();
     });
   }
@@ -282,8 +288,13 @@ function CredenciaisView({
             <span className="font-mono font-medium">{credenciais.senha}</span>
           </div>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {credenciais.emailEnviado
+            ? "As credenciais foram enviadas para o e-mail do aluno."
+            : "Não foi possível enviar o e-mail — repasse as credenciais manualmente."}
+        </p>
         {credenciais.precisaConfirmar ? (
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Obs.: a confirmação de e-mail está ativa — o aluno precisa confirmar
             o e-mail antes de entrar.
           </p>

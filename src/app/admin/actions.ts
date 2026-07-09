@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
+import { enviarCredenciaisAcesso, enviarAcessoLiberado } from "@/lib/email";
 import type { Aluno } from "@/lib/types";
 
 async function ehAdmin(): Promise<boolean> {
@@ -99,6 +100,16 @@ export async function aprovarSolicitacao(
     })
     .eq("id", solicitacaoId);
   if (error) return { erro: error.message };
+
+  // Avisa o aluno que o acesso foi liberado (ele já tem senha própria).
+  const { data: aluno } = await supabase
+    .from("thb_alunos")
+    .select("nome, email")
+    .eq("id", alunoId)
+    .maybeSingle();
+  if (aluno?.email) {
+    await enviarAcessoLiberado({ para: aluno.email, nome: aluno.nome });
+  }
 
   revalidatePath("/admin");
   revalidatePath("/admin/solicitacoes");
@@ -225,9 +236,22 @@ export async function criarAcessoAluno(
       );
   }
 
+  // Envia as credenciais por e-mail (não bloqueia a criação se o envio falhar).
+  const envio = await enviarCredenciaisAcesso({
+    para: email,
+    nome: aluno.nome,
+    senha,
+    precisaConfirmar: !signUpData.session,
+  });
+
   revalidatePath("/admin");
   revalidatePath("/admin/solicitacoes");
-  return { email, senha, precisaConfirmar: !signUpData.session };
+  return {
+    email,
+    senha,
+    precisaConfirmar: !signUpData.session,
+    emailEnviado: envio.ok,
+  };
 }
 
 /** Define/atualiza o link da pasta do Google Drive do aluno (gps.membros). */

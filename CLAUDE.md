@@ -160,6 +160,18 @@ cliente Supabase **isolado** (sem persistir sessão, não afeta o admin) + gera 
 o gatilho/upsert vincula ao aluno escolhido. **Não usa service_role.** Solicitações são aprovadas/
 recusadas em `SolicitacaoCard`.
 
+## E-mails transacionais (Resend)
+
+Domínio do portal: **`gps.timeholdingbrasil.com.br`**. Envio via **Resend** (HTTP direto, sem SDK)
+em `src/lib/email.ts`. Dois e-mails, ambos com layout laranja: `enviarCredenciaisAcesso`
+(login + senha temporária + link) disparado em `criarAcessoAluno`, e `enviarAcessoLiberado`
+(aluno já tem senha própria) disparado em `aprovarSolicitacao`. Falha de envio **não** bloqueia a
+criação do acesso (funções retornam `{ ok, erro? }`, nunca lançam); a UI de `CriarAcesso` mostra
+se o e-mail saiu (`emailEnviado`).
+Envs: `RESEND_API_KEY` (**segredo** — só `.env.local` em dev e painel da Hostinger em prod, NUNCA
+no `.env.production` versionado), `EMAIL_FROM` (domínio precisa estar **verificado na Resend**),
+`NEXT_PUBLIC_APP_URL` (link do portal nos e-mails).
+
 ## ⚠️ Pendências de segurança (antes de dar login a alunos)
 
 Hoje `public.thb_alunos` tem SELECT com `qual: true` p/ **qualquer autenticado** (2 policies:
@@ -190,6 +202,8 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
 - [ ] Verificar cadastro real ponta a ponta (depende da config de confirmação de e-mail do GoTrue).
 - [ ] Executar o deploy na Hostinger (clonar, `npm install`, `npm run build`, iniciar app).
 - [ ] Deixar o repositório privado, se desejado (`gh repo edit --visibility private`).
+- [x] E-mails transacionais (Resend): credenciais + acesso liberado (`src/lib/email.ts`).
+- [ ] Verificar o domínio do `EMAIL_FROM` na Resend e configurar `RESEND_API_KEY` na Hostinger.
 
 ### Como testar agora
 Admin já pode entrar: os 16 `perfis` (incl. marcio@advmais.com, cargo dev) usam a **senha
@@ -197,4 +211,4 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-07-08 — Etapa 01 completa (aluno + admin), build verde. Próximo: provisionamento de login de aluno + hardening RLS thb_alunos._
+_Última atualização: 2026-07-09 — domínio `gps.timeholdingbrasil.com.br`; e-mails transacionais via Resend (credenciais + acesso liberado), build verde. Próximo: verificar domínio na Resend + `RESEND_API_KEY` na Hostinger; hardening RLS thb_alunos._

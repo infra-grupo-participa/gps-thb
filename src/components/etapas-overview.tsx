@@ -14,15 +14,23 @@ export function EtapasOverview({
   basePath,
   pctPorEtapa = {},
   allowLockedPreview = false,
+  dense = false,
 }: {
   etapas: Etapa[];
   /** "" para aluno; "/admin/aluno/<id>" para admin. */
   basePath: string;
   pctPorEtapa?: Record<number, number>;
   allowLockedPreview?: boolean;
+  /** Layout compacto (2 colunas) para caber dentro de uma coluna de conteúdo. */
+  dense?: boolean;
 }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div
+      className={
+        "grid gap-4 " +
+        (dense ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3")
+      }
+    >
       {etapas.map((etapa) => {
         const liberada = etapa.liberada;
         const clicavel = liberada || allowLockedPreview;

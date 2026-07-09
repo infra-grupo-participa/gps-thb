@@ -1,14 +1,4 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  Users,
-  BookOpen,
-  ArrowRight,
-  FolderOpen,
-  TrendingUp,
-  CalendarCheck,
-  Coins,
-} from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
 import {
@@ -26,21 +16,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
 import { calcularMetricasEtapa1 } from "@/lib/etapa1";
-import { listarMateriais } from "@/lib/materiais";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { EtapasOverview } from "@/components/etapas-overview";
 import { FavoritoDestaque } from "@/components/etapa/favorito-destaque";
 import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
+import { HomeResumo } from "@/components/home-resumo";
 import { PerfilHero } from "@/components/perfil/perfil-hero";
-import { StatCard } from "@/components/stat-card";
 import { GpsLogo } from "@/components/gps-logo";
 import type { Aluno } from "@/lib/types";
-
-const brl = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
 
 export default async function HomePage() {
   const ctx = await getContextoSessao();
@@ -107,7 +91,6 @@ export default async function HomePage() {
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
   const passo = proximoPasso(etapas, clientes, progressoTodas);
-  const totalMateriais = listarMateriais().length;
 
   const manual1: Record<number, boolean> = {};
   for (const p of progressoTodas.filter((p) => p.etapa === 1))
@@ -127,120 +110,52 @@ export default async function HomePage() {
         navItems={alunoNavItems("")}
       />
       <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-8">
-          <PerfilHero
-            aluno={(aluno ?? { id: alunoId }) as Aluno}
-            turma={turma}
-            perfil={membro?.perfil ?? {}}
-            editHref="/perfil"
-          />
-        </div>
+        <PerfilHero
+          aluno={(aluno ?? { id: alunoId }) as Aluno}
+          turma={turma}
+          perfil={membro?.perfil ?? {}}
+          editHref="/perfil"
+        />
 
         {passo ? (
-          <div className="mb-8">
+          <div className="mt-6">
             <ProximoPassoCard passo={passo} basePath="" />
           </div>
         ) : null}
 
-        {favorito ? (
-          <div className="mb-8">
-            <FavoritoDestaque
-              alunoId={alunoId}
-              cliente={favorito}
-              janelas={janelas}
-              isAdmin={false}
-              basePath=""
-            />
+        {/* Conteúdo: jornada (principal) + resumo (apoio) lado a lado. */}
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            {favorito ? (
+              <FavoritoDestaque
+                alunoId={alunoId}
+                cliente={favorito}
+                janelas={janelas}
+                isAdmin={false}
+                basePath=""
+              />
+            ) : null}
+
+            <section>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Seu caminho
+              </h2>
+              <EtapasOverview etapas={etapas} basePath="" pctPorEtapa={pcts} dense />
+            </section>
           </div>
-        ) : null}
 
-        {/* Resumo */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            icon={<TrendingUp className="size-4" />}
-            label="Progresso geral"
-            value={`${progressoGeral}%`}
-            hint="média das 6 etapas"
-            destaque
-          />
-          <StatCard
-            icon={<Users className="size-4" />}
-            label="Clientes"
-            value={`${m1.preenchidos}/30`}
-            hint="da sua lista"
-          />
-          <StatCard
-            icon={<CalendarCheck className="size-4" />}
-            label="Reuniões agendadas"
-            value={`${m1.agendados}/15`}
-            hint="meta de 15"
-          />
-          <StatCard
-            icon={<Coins className="size-4" />}
-            label="Perda pela inércia"
-            value={brl.format(m1.perdaTotal)}
-            hint="soma dos clientes"
-          />
+          <aside className="lg:col-span-1">
+            <div className="lg:sticky lg:top-6">
+              <HomeResumo
+                progressoGeral={progressoGeral}
+                clientes={m1.preenchidos}
+                agendados={m1.agendados}
+                perdaTotal={m1.perdaTotal}
+              />
+            </div>
+          </aside>
         </div>
-
-        {/* Atalhos */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
-          <AtalhoCard
-            href="/clientes"
-            icon={<Users className="size-5" />}
-            titulo="Clientes"
-            detalhe={`${clientes.length} cadastrado${clientes.length === 1 ? "" : "s"}`}
-          />
-          <AtalhoCard
-            href="/pasta"
-            icon={<FolderOpen className="size-5" />}
-            titulo="Pasta"
-            detalhe="Documentos e arquivos no Drive"
-          />
-          <AtalhoCard
-            href="/materiais"
-            icon={<BookOpen className="size-5" />}
-            titulo="Materiais"
-            detalhe={`${totalMateriais} aulas e modelos`}
-          />
-        </div>
-
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Seu caminho
-        </h2>
-        <EtapasOverview etapas={etapas} basePath="" pctPorEtapa={pcts} />
       </main>
     </>
-  );
-}
-
-function AtalhoCard({
-  href,
-  icon,
-  titulo,
-  detalhe,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  titulo: string;
-  detalhe: string;
-}) {
-  return (
-    <Link href={href} className="block">
-      <Card className="transition hover:border-primary/50 hover:shadow-sm">
-        <CardContent className="flex items-center gap-4 py-5">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            {icon}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="font-medium">{titulo}</div>
-            <div className="truncate text-sm text-muted-foreground">
-              {detalhe}
-            </div>
-          </div>
-          <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
-        </CardContent>
-      </Card>
-    </Link>
   );
 }

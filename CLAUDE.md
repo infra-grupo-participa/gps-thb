@@ -124,10 +124,15 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
 
 ## Arquitetura de informação (decisão do usuário)
 
-- **Início (home)** do aluno e do admin destacam: **"Continue de onde parou"** (`ProximoPassoCard`
-  + `proximoPasso()` — 1ª tarefa pendente na etapa liberada mais avançada) e o **cliente favoritado**
-  (`FavoritoDestaque`, compartilhado): infos do cliente + **agendamento da reunião com a equipe**
-  (o admin abre janelas em `gps.reuniao_janelas`; o aluno escolhe uma → data oferecida ao cliente).
+- **Início (home) do aluno**: hierarquia **ação → jornada + apoio**. Topo: hero + **"Continue de
+  onde parou"** (`ProximoPassoCard` + `proximoPasso()` — 1ª tarefa pendente na etapa liberada mais
+  avançada). Abaixo, **grid de 2 colunas**: coluna principal (2/3) com o **cliente favoritado**
+  (`FavoritoDestaque`) + **"Seu caminho"** (`EtapasOverview dense`, 2 col); coluna de apoio (1/3,
+  sticky) com o painel **`HomeResumo`** (progresso geral + clientes/reuniões/perda num único card).
+  Os atalhos Clientes/Pasta/Materiais foram removidos da home (já estão no `NavTabs` do header).
+- **Cliente favoritado** (`FavoritoDestaque`, compartilhado aluno/admin): infos do cliente +
+  **agendamento da reunião com a equipe** (o admin abre janelas em `gps.reuniao_janelas`; o aluno
+  escolhe uma → data oferecida ao cliente).
 - **Etapas = guia/mapa** (intuitivo): checklist + tutoriais + progresso. NÃO contém gestão.
 - **Clientes = aba separada** (CRM): **Lista** (funil/busca/ordenação) e **Quadro** (kanban por
   status com arrastar-e-soltar), atalho de **WhatsApp** (`src/lib/whatsapp.ts`), e destaque do

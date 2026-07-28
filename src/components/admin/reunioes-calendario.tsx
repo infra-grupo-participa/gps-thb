@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -11,6 +11,11 @@ import {
   Ban,
   Undo2,
   CalendarClock,
+  MessageCircle,
+  Mail,
+  Phone,
+  User,
+  Star,
 } from "lucide-react";
 import type { ReuniaoAgendamentoDetalhe } from "@/lib/types";
 import {
@@ -20,10 +25,22 @@ import {
   rotuloDataLongo,
   somarSemanas,
 } from "@/lib/reuniao";
+import { mascaraTelefone } from "@/lib/masks";
+import { linkWhatsapp } from "@/lib/whatsapp";
 import { bloquearQuarta, desbloquearQuarta } from "@/app/reuniao/actions";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
+/** Encurta a URL para exibição (mantém host + começo do caminho). */
+function urlCurta(url: string): string {
+  try {
+    const u = new URL(url);
+    const cauda = (u.pathname + u.search).replace(/\/$/, "");
+    const texto = u.host + cauda;
+    return texto.length > 48 ? texto.slice(0, 47) + "…" : texto;
+  } catch {
+    return url.length > 48 ? url.slice(0, 47) + "…" : url;
+  }
+}
 
 export function ReunioesCalendario({
   quarta,
@@ -40,8 +57,16 @@ export function ReunioesCalendario({
   const porHorario = new Map<string, ReuniaoAgendamentoDetalhe>();
   for (const a of agendamentos) porHorario.set(horaCurta(a.horario), a);
 
+  const ocupados = agendamentos.length;
+  const total = HORARIOS_REUNIAO.length;
+
   function irPara(iso: string) {
     router.push(`/admin/reunioes?semana=${iso}`);
+  }
+
+  function copiar(texto: string) {
+    navigator.clipboard?.writeText(texto);
+    toast.success("Link copiado.");
   }
 
   function alternarBloqueio() {
@@ -60,50 +85,68 @@ export function ReunioesCalendario({
 
   return (
     <div className="grid gap-4">
-      {/* Navegação */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => irPara(somarSemanas(quarta, -1))}
-            title="Semana anterior"
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <div className="min-w-56 text-center">
-            <div className="flex items-center justify-center gap-1.5 font-medium capitalize">
-              <CalendarClock className="size-4 text-primary" />
-              {rotuloDataLongo(quarta)}
+      {/* Cabeçalho: navegação + resumo do dia */}
+      <div className="rounded-xl border bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => irPara(somarSemanas(quarta, -1))}
+              title="Semana anterior"
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <CalendarClock className="size-5 text-primary" />
+              <div>
+                <div className="font-semibold capitalize leading-tight">
+                  {rotuloDataLongo(quarta)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {bloqueada
+                    ? "Data bloqueada"
+                    : `${ocupados} de ${total} horários ocupados · ${
+                        total - ocupados
+                      } livres`}
+                </div>
+              </div>
             </div>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => irPara(somarSemanas(quarta, 1))}
+              title="Próxima semana"
+            >
+              <ChevronRight className="size-4" />
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => irPara(somarSemanas(quarta, 1))}
-            title="Próxima semana"
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
 
-        <Button
-          variant={bloqueada ? "outline" : "ghost"}
-          size="sm"
-          onClick={alternarBloqueio}
-          disabled={pending}
-          className={bloqueada ? "" : "text-muted-foreground hover:text-destructive"}
-        >
-          {bloqueada ? (
-            <>
-              <Undo2 className="size-4" /> Liberar esta data
-            </>
-          ) : (
-            <>
-              <Ban className="size-4" /> Bloquear esta data
-            </>
-          )}
-        </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => irPara(quarta)}>
+              Hoje
+            </Button>
+            <Button
+              variant={bloqueada ? "outline" : "ghost"}
+              size="sm"
+              onClick={alternarBloqueio}
+              disabled={pending}
+              className={
+                bloqueada ? "" : "text-muted-foreground hover:text-destructive"
+              }
+            >
+              {bloqueada ? (
+                <>
+                  <Undo2 className="size-4" /> Liberar data
+                </>
+              ) : (
+                <>
+                  <Ban className="size-4" /> Bloquear data
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {bloqueada ? (
@@ -112,72 +155,131 @@ export function ReunioesCalendario({
         </div>
       ) : null}
 
-      {/* Grade dos 4 horários */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {HORARIOS_REUNIAO.map((h) => {
+      {/* Timeline vertical do dia */}
+      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        {HORARIOS_REUNIAO.map((h, i) => {
           const ag = porHorario.get(h);
+          const wpp = ag ? linkWhatsapp(ag.aluno_telefone) : null;
           return (
-            <Card
+            <div
               key={h}
-              className={ag ? "border-primary/40 bg-primary/5" : ""}
+              className={
+                "flex flex-col gap-3 p-4 sm:flex-row sm:gap-4 " +
+                (i > 0 ? "border-t " : "") +
+                (ag ? "bg-primary/[0.04]" : "")
+              }
             >
-              <CardContent className="grid gap-2 pt-5">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">{faixaHorario(h)}</span>
-                  {ag ? (
-                    <Badge className="text-[10px]">Reservado</Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-[10px]">
-                      Livre
-                    </Badge>
-                  )}
+              {/* Coluna do horário */}
+              <div className="flex shrink-0 items-center gap-2 sm:w-32 sm:flex-col sm:items-start sm:gap-1">
+                <span
+                  className={
+                    "inline-flex size-2.5 shrink-0 rounded-full " +
+                    (ag ? "bg-primary" : "bg-muted-foreground/25")
+                  }
+                  aria-hidden
+                />
+                <div>
+                  <div className="text-base font-semibold tabular-nums leading-none">
+                    {faixaHorario(h)}
+                  </div>
+                  <div
+                    className={
+                      "mt-1 text-xs font-medium " +
+                      (ag ? "text-primary" : "text-muted-foreground")
+                    }
+                  >
+                    {ag ? "Reservado" : "Livre"}
+                  </div>
                 </div>
+              </div>
 
-                {ag ? (
-                  <div className="grid gap-1.5 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Aluno: </span>
-                      <span className="font-medium">
-                        {ag.aluno_nome ?? ag.aluno_email ?? "—"}
-                      </span>
+              {/* Dados do agendamento */}
+              {ag ? (
+                <div className="min-w-0 flex-1 grid gap-3 sm:grid-cols-2">
+                  {/* Aluno */}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <User className="size-3.5" /> Aluno
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Cliente: </span>
-                      <span className="font-medium">
-                        {ag.cliente_nome ?? "—"}
-                      </span>
+                    <div className="mt-0.5 truncate font-semibold">
+                      {ag.aluno_nome ?? ag.aluno_email ?? "—"}
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <div className="mt-1 grid gap-0.5 text-sm text-muted-foreground">
+                      {ag.aluno_telefone ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Phone className="size-3.5 shrink-0" />
+                          {mascaraTelefone(ag.aluno_telefone)}
+                          {wpp ? (
+                            <a
+                              href={wpp}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Abrir no WhatsApp"
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              <MessageCircle className="size-4" />
+                            </a>
+                          ) : null}
+                        </span>
+                      ) : null}
+                      {ag.aluno_email ? (
+                        <a
+                          href={`mailto:${ag.aluno_email}`}
+                          className="inline-flex items-center gap-1.5 truncate hover:text-foreground"
+                          title={ag.aluno_email}
+                        >
+                          <Mail className="size-3.5 shrink-0" />
+                          <span className="truncate">{ag.aluno_email}</span>
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Cliente + link */}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <Star className="size-3.5" /> Cliente
+                    </div>
+                    <div className="mt-0.5 truncate font-semibold">
+                      {ag.cliente_nome ?? "—"}
+                    </div>
+                    <a
+                      href={ag.link_live}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 block truncate text-sm text-primary underline-offset-2 hover:underline"
+                      title={ag.link_live}
+                    >
+                      {urlCurta(ag.link_live)}
+                    </a>
+                    <div className="mt-2 flex flex-wrap gap-2">
                       <a
                         href={ag.link_live}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={buttonVariants({
-                          variant: "outline",
+                          variant: "default",
                           size: "sm",
                         })}
                       >
-                        <ExternalLink className="size-4" /> Abrir link
+                        <ExternalLink className="size-4" /> Abrir live
                       </a>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        onClick={() => {
-                          navigator.clipboard?.writeText(ag.link_live);
-                          toast.success("Link copiado.");
-                        }}
+                        onClick={() => copiar(ag.link_live)}
                       >
-                        <Copy className="size-4" /> Copiar
+                        <Copy className="size-4" /> Copiar link
                       </Button>
                     </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Nenhum aluno agendado neste horário.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+                </div>
+              ) : (
+                <div className="flex flex-1 items-center text-sm text-muted-foreground">
+                  Nenhum aluno agendado neste horário.
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

@@ -404,7 +404,10 @@ export async function getAgendamentosReuniaoRange(
   const clienteIds = [...new Set(ags.map((a) => a.cliente_id))];
 
   const [{ data: alunos }, { data: clientes }] = await Promise.all([
-    supabase.from("thb_alunos").select("id, nome, email").in("id", alunoIds),
+    supabase
+      .from("thb_alunos")
+      .select("id, nome, email, telefone")
+      .in("id", alunoIds),
     supabase
       .schema("gps")
       .from("etapa1_clientes")
@@ -413,9 +416,14 @@ export async function getAgendamentosReuniaoRange(
   ]);
 
   const alunoPorId = new Map(
-    ((alunos ?? []) as { id: string; nome: string | null; email: string | null }[]).map(
-      (a) => [a.id, a],
-    ),
+    (
+      (alunos ?? []) as {
+        id: string;
+        nome: string | null;
+        email: string | null;
+        telefone: string | null;
+      }[]
+    ).map((a) => [a.id, a]),
   );
   const clientePorId = new Map(
     ((clientes ?? []) as { id: string; nome: string | null }[]).map((c) => [
@@ -428,6 +436,7 @@ export async function getAgendamentosReuniaoRange(
     ...a,
     aluno_nome: alunoPorId.get(a.aluno_id)?.nome ?? null,
     aluno_email: alunoPorId.get(a.aluno_id)?.email ?? null,
+    aluno_telefone: alunoPorId.get(a.aluno_id)?.telefone ?? null,
     cliente_nome: clientePorId.get(a.cliente_id)?.nome ?? null,
   }));
 }

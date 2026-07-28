@@ -197,6 +197,7 @@ export interface ReuniaoAgendamento {
 export interface ReuniaoAgendamentoDetalhe extends ReuniaoAgendamento {
   aluno_nome: string | null;
   aluno_email: string | null;
+  aluno_telefone: string | null;
   cliente_nome: string | null;
 }
 

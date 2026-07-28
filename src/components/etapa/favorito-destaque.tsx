@@ -66,7 +66,7 @@ export function FavoritoDestaque({
   }
 
   function copiarLink() {
-    if (!agendamento) return;
+    if (!agendamento?.link_live) return;
     navigator.clipboard?.writeText(agendamento.link_live);
     toast.success("Link copiado.");
   }
@@ -148,19 +148,27 @@ export function FavoritoDestaque({
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <a
-                  href={agendamento.link_live}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  <ExternalLink className="size-4" /> Abrir link da reunião
-                </a>
-                <Button variant="ghost" size="sm" onClick={copiarLink}>
-                  <Copy className="size-4" /> Copiar link
-                </Button>
-              </div>
+              {agendamento.link_live ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <a
+                    href={agendamento.link_live}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    <ExternalLink className="size-4" /> Abrir link da reunião
+                  </a>
+                  <Button variant="ghost" size="sm" onClick={copiarLink}>
+                    <Copy className="size-4" /> Copiar link
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                  {isAdmin
+                    ? "Sem link ainda — o aluno cola o link da sala pelo botão Remarcar."
+                    : "Falta o link da sua sala. Toque em Remarcar para informá-lo."}
+                </div>
+              )}
 
               <div className="flex flex-wrap gap-2">
                 <Button

@@ -1,10 +1,11 @@
 /**
  * Regras da reunião de implementação com a equipe.
  *
- * Grade FIXA e recorrente: toda **quarta-feira**, nos horários 09h/11h/13h/15h
- * (reuniões de 2h coladas, 9h→17h). A grade é gerada aqui em código; o banco só
- * guarda os agendamentos (`gps.reuniao_agendamentos`) e as quartas que a equipe
- * fecha (`gps.reuniao_bloqueios`).
+ * Grade FIXA e recorrente: toda **quarta-feira**, nos horários 10h/13h/16h
+ * (reuniões de 2h → 10h–12h, 13h–15h, 16h–18h). A grade é gerada aqui em código;
+ * o banco só guarda os agendamentos (`gps.reuniao_agendamentos`) e o que a equipe
+ * fecha em `gps.reuniao_bloqueios` — a quarta inteira (`horario` NULL) ou um
+ * horário pontual daquela quarta (`horario` preenchido).
  *
  * Regras de negócio:
  * - 1 agendamento por aluno (único `aluno_id`);
@@ -18,9 +19,9 @@ import type { ReuniaoAgendamento, SlotReuniao } from "@/lib/types";
 export const DIA_SEMANA_REUNIAO = 3;
 
 /** Horários de início, em ordem. Fonte de verdade única (espelha o CHECK do banco). */
-export const HORARIOS_REUNIAO = ["09:00", "11:00", "13:00", "15:00"] as const;
+export const HORARIOS_REUNIAO = ["10:00", "13:00", "16:00"] as const;
 
-/** Duração de cada reunião, em horas (só para exibição "09h–11h"). */
+/** Duração de cada reunião, em horas (só para exibição "10h–12h"). */
 export const DURACAO_REUNIAO_H = 2;
 
 /** Quantas quartas para a frente a grade oferece por padrão. */
@@ -31,7 +32,7 @@ export function horaCurta(horario: string): string {
   return horario.slice(0, 5);
 }
 
-/** "09:00" → "09h–11h" (fim = início + duração). */
+/** "10:00" → "10h–12h" (fim = início + duração). */
 export function faixaHorario(horario: string): string {
   const hh = Number(horaCurta(horario).slice(0, 2));
   const fim = hh + DURACAO_REUNIAO_H;
@@ -93,33 +94,49 @@ export function rotuloData(iso: string): string {
 
 export interface DiaGrade {
   data: string;
+  /** true quando a quarta inteira está bloqueada (bloqueio com horario NULL). */
   bloqueado: boolean;
   slots: SlotReuniao[];
+}
+
+/** Um bloqueio: a quarta (`data`) e, opcionalmente, o horário (NULL = quarta inteira). */
+export interface Bloqueio {
+  data: string;
+  horario: string | null;
 }
 
 /**
  * Monta a grade (quartas × horários) marcando cada slot como livre/ocupado/
  * bloqueado/passado. `ocupados` e `bloqueios` cobrem a mesma janela de datas.
- * `meuAgendamento` (se houver) marca o slot do próprio aluno como "meu".
+ * Um bloqueio com `horario` NULL fecha a quarta inteira; com `horario` fecha só
+ * aquele slot. `meuAgendamento` (se houver) marca o slot do próprio aluno como "meu".
  */
 export function montarGrade(params: {
   hojeIso: string;
   semanas?: number;
   ocupados: Pick<ReuniaoAgendamento, "data" | "horario">[];
-  bloqueios: string[];
+  bloqueios: Bloqueio[];
   meuAgendamento?: Pick<ReuniaoAgendamento, "data" | "horario"> | null;
 }): DiaGrade[] {
   const { hojeIso, semanas, ocupados, bloqueios, meuAgendamento } = params;
   const ocupadoSet = new Set(
     ocupados.map((o) => `${o.data}|${horaCurta(o.horario)}`),
   );
-  const bloqueioSet = new Set(bloqueios);
+  // Quartas inteiras fechadas (horario NULL) e slots pontuais fechados.
+  const quartaBloqueada = new Set(
+    bloqueios.filter((b) => b.horario === null).map((b) => b.data),
+  );
+  const slotBloqueado = new Set(
+    bloqueios
+      .filter((b) => b.horario !== null)
+      .map((b) => `${b.data}|${horaCurta(b.horario as string)}`),
+  );
   const meuSlot = meuAgendamento
     ? `${meuAgendamento.data}|${horaCurta(meuAgendamento.horario)}`
     : null;
 
   return proximasQuartas(hojeIso, semanas).map((data) => {
-    const bloqueado = bloqueioSet.has(data);
+    const bloqueado = quartaBloqueada.has(data);
     const passado = data < hojeIso;
     const slots: SlotReuniao[] = HORARIOS_REUNIAO.map((horario) => {
       const chave = `${data}|${horario}`;
@@ -127,7 +144,8 @@ export function montarGrade(params: {
       const ocupado = ocupadoSet.has(chave);
       let estado: SlotReuniao["estado"];
       if (meu) estado = "meu";
-      else if (bloqueado || passado) estado = "indisponivel";
+      else if (bloqueado || passado || slotBloqueado.has(chave))
+        estado = "indisponivel";
       else if (ocupado) estado = "ocupado";
       else estado = "livre";
       return { data, horario, estado };

@@ -27,6 +27,15 @@ export default async function AdminReunioesPage({
     getBloqueiosRange(quarta, quarta),
   ]);
 
+  // Quarta inteira fechada = bloqueio com horario NULL nesta data.
+  const quartaBloqueada = bloqueios.some(
+    (b) => b.data === quarta && b.horario === null,
+  );
+  // Horários pontuais fechados nesta quarta.
+  const horariosBloqueados = bloqueios
+    .filter((b) => b.data === quarta && b.horario !== null)
+    .map((b) => b.horario as string);
+
   return (
     <>
       <AppHeader
@@ -40,15 +49,17 @@ export default async function AdminReunioesPage({
         <div className="mb-6">
           <h1 className="text-2xl font-semibold">Reuniões</h1>
           <p className="text-muted-foreground">
-            Agenda das reuniões de implementação (quartas, 09h–17h). Os alunos se
-            encaixam nos horários livres; aqui você acompanha e pode bloquear datas.
+            Agenda das reuniões de implementação (quartas, 10h–18h). Os alunos se
+            encaixam nos horários livres; aqui você também pode agendar por um aluno,
+            remarcar, cancelar e fechar datas ou horários pontuais.
           </p>
         </div>
 
         <ReunioesCalendario
           quarta={quarta}
           agendamentos={agendamentos}
-          bloqueada={bloqueios.includes(quarta)}
+          bloqueada={quartaBloqueada}
+          horariosBloqueados={horariosBloqueados}
         />
       </main>
     </>

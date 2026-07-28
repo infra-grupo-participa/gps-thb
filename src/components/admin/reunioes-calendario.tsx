@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -11,11 +11,15 @@ import {
   Ban,
   Undo2,
   CalendarClock,
+  CalendarPlus,
   MessageCircle,
   Mail,
   Phone,
   User,
   Star,
+  Lock,
+  Unlock,
+  X,
 } from "lucide-react";
 import type { ReuniaoAgendamentoDetalhe } from "@/lib/types";
 import {
@@ -27,8 +31,15 @@ import {
 } from "@/lib/reuniao";
 import { mascaraTelefone } from "@/lib/masks";
 import { linkWhatsapp } from "@/lib/whatsapp";
-import { bloquearQuarta, desbloquearQuarta } from "@/app/reuniao/actions";
+import {
+  bloquearQuarta,
+  desbloquearQuarta,
+  bloquearSlot,
+  desbloquearSlot,
+  cancelarReuniao,
+} from "@/app/reuniao/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { AgendarAlunoModal } from "@/components/admin/agendar-aluno-modal";
 
 /** Encurta a URL para exibição (mantém host + começo do caminho). */
 function urlCurta(url: string): string {
@@ -46,16 +57,22 @@ export function ReunioesCalendario({
   quarta,
   agendamentos,
   bloqueada,
+  horariosBloqueados,
 }: {
   quarta: string;
   agendamentos: ReuniaoAgendamentoDetalhe[];
   bloqueada: boolean;
+  /** horários "HH:MM" fechados pontualmente nesta quarta. */
+  horariosBloqueados: string[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  // Slot alvo do modal de agendar aluno (null = fechado).
+  const [agendarSlot, setAgendarSlot] = useState<string | null>(null);
 
   const porHorario = new Map<string, ReuniaoAgendamentoDetalhe>();
   for (const a of agendamentos) porHorario.set(horaCurta(a.horario), a);
+  const slotFechado = new Set(horariosBloqueados.map(horaCurta));
 
   const ocupados = agendamentos.length;
   const total = HORARIOS_REUNIAO.length;
@@ -69,7 +86,7 @@ export function ReunioesCalendario({
     toast.success("Link copiado.");
   }
 
-  function alternarBloqueio() {
+  function alternarBloqueioQuarta() {
     startTransition(async () => {
       const res = bloqueada
         ? await desbloquearQuarta(quarta)
@@ -79,6 +96,32 @@ export function ReunioesCalendario({
         return;
       }
       toast.success(bloqueada ? "Data liberada." : "Data bloqueada.");
+      router.refresh();
+    });
+  }
+
+  function alternarSlot(horario: string, fechado: boolean) {
+    startTransition(async () => {
+      const res = fechado
+        ? await desbloquearSlot(quarta, horario)
+        : await bloquearSlot(quarta, horario);
+      if (res.erro) {
+        toast.error(res.erro);
+        return;
+      }
+      toast.success(fechado ? "Horário reaberto." : "Horário fechado.");
+      router.refresh();
+    });
+  }
+
+  function cancelar(alunoId: string) {
+    startTransition(async () => {
+      const res = await cancelarReuniao(alunoId);
+      if (res.erro) {
+        toast.error(res.erro);
+        return;
+      }
+      toast.success("Reunião cancelada.");
       router.refresh();
     });
   }
@@ -129,7 +172,7 @@ export function ReunioesCalendario({
             <Button
               variant={bloqueada ? "outline" : "ghost"}
               size="sm"
-              onClick={alternarBloqueio}
+              onClick={alternarBloqueioQuarta}
               disabled={pending}
               className={
                 bloqueada ? "" : "text-muted-foreground hover:text-destructive"
@@ -159,6 +202,7 @@ export function ReunioesCalendario({
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
         {HORARIOS_REUNIAO.map((h, i) => {
           const ag = porHorario.get(h);
+          const fechado = slotFechado.has(h);
           const wpp = ag ? linkWhatsapp(ag.aluno_telefone) : null;
           return (
             <div
@@ -174,7 +218,11 @@ export function ReunioesCalendario({
                 <span
                   className={
                     "inline-flex size-2.5 shrink-0 rounded-full " +
-                    (ag ? "bg-primary" : "bg-muted-foreground/25")
+                    (ag
+                      ? "bg-primary"
+                      : fechado
+                        ? "bg-muted-foreground/40"
+                        : "bg-muted-foreground/25")
                   }
                   aria-hidden
                 />
@@ -185,15 +233,19 @@ export function ReunioesCalendario({
                   <div
                     className={
                       "mt-1 text-xs font-medium " +
-                      (ag ? "text-primary" : "text-muted-foreground")
+                      (ag
+                        ? "text-primary"
+                        : fechado
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground")
                     }
                   >
-                    {ag ? "Reservado" : "Livre"}
+                    {ag ? "Reservado" : fechado ? "Fechado" : "Livre"}
                   </div>
                 </div>
               </div>
 
-              {/* Dados do agendamento */}
+              {/* Dados do agendamento / ações */}
               {ag ? (
                 <div className="min-w-0 flex-1 grid gap-3 sm:grid-cols-2">
                   {/* Aluno */}
@@ -235,54 +287,134 @@ export function ReunioesCalendario({
                     </div>
                   </div>
 
-                  {/* Cliente + link */}
+                  {/* Cliente + link + ações */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       <Star className="size-3.5" /> Cliente
                     </div>
                     <div className="mt-0.5 truncate font-semibold">
-                      {ag.cliente_nome ?? "—"}
+                      {ag.cliente_nome ?? (
+                        <span className="font-normal text-muted-foreground">
+                          Sem favorito ainda
+                        </span>
+                      )}
                     </div>
-                    <a
-                      href={ag.link_live}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1 block truncate text-sm text-primary underline-offset-2 hover:underline"
-                      title={ag.link_live}
-                    >
-                      {urlCurta(ag.link_live)}
-                    </a>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    {ag.link_live ? (
                       <a
                         href={ag.link_live}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={buttonVariants({
-                          variant: "default",
-                          size: "sm",
-                        })}
+                        className="mt-1 block truncate text-sm text-primary underline-offset-2 hover:underline"
+                        title={ag.link_live}
                       >
-                        <ExternalLink className="size-4" /> Abrir live
+                        {urlCurta(ag.link_live)}
                       </a>
+                    ) : (
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        Link a definir (o aluno cola depois).
+                      </div>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {ag.link_live ? (
+                        <>
+                          <a
+                            href={ag.link_live}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={buttonVariants({
+                              variant: "default",
+                              size: "sm",
+                            })}
+                          >
+                            <ExternalLink className="size-4" /> Abrir live
+                          </a>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copiar(ag.link_live as string)}
+                          >
+                            <Copy className="size-4" /> Copiar
+                          </Button>
+                        </>
+                      ) : null}
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => copiar(ag.link_live)}
+                        onClick={() => setAgendarSlot(h)}
+                        disabled={pending}
+                        title="Remarcar / trocar o aluno deste horário"
                       >
-                        <Copy className="size-4" /> Copiar link
+                        <CalendarClock className="size-4" /> Remarcar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => cancelar(ag.aluno_id)}
+                        disabled={pending}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="size-4" /> Cancelar
                       </Button>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-1 items-center text-sm text-muted-foreground">
-                  Nenhum aluno agendado neste horário.
+                <div className="flex flex-1 flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {fechado
+                      ? "Horário fechado — indisponível para os alunos."
+                      : "Nenhum aluno agendado neste horário."}
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {!fechado ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAgendarSlot(h)}
+                        disabled={pending || bloqueada}
+                      >
+                        <CalendarPlus className="size-4" /> Agendar aluno
+                      </Button>
+                    ) : null}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => alternarSlot(h, fechado)}
+                      disabled={pending || bloqueada}
+                      className={
+                        fechado ? "" : "text-muted-foreground hover:text-foreground"
+                      }
+                      title={
+                        fechado ? "Reabrir este horário" : "Fechar só este horário"
+                      }
+                    >
+                      {fechado ? (
+                        <>
+                          <Unlock className="size-4" /> Reabrir
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="size-4" /> Fechar horário
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
           );
         })}
       </div>
+
+      {/* Modal de agendar/remarcar por aluno */}
+      <AgendarAlunoModal
+        open={agendarSlot !== null}
+        onOpenChange={(v) => {
+          if (!v) setAgendarSlot(null);
+        }}
+        data={quarta}
+        horario={agendarSlot ?? HORARIOS_REUNIAO[0]}
+      />
     </div>
   );
 }

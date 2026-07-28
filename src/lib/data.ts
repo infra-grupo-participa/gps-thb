@@ -3,8 +3,10 @@ import { calcularMetricasEtapa1 } from "@/lib/etapa1";
 import {
   montarGrade,
   hojeSaoPaulo,
+  horaCurta,
   proximasQuartas,
   type DiaGrade,
+  type Bloqueio,
 } from "@/lib/reuniao";
 import type {
   Aluno,
@@ -364,19 +366,24 @@ export async function getSlotsOcupados(
   return (data ?? []) as Pick<ReuniaoAgendamento, "data" | "horario">[];
 }
 
-/** Quartas bloqueadas (feriado) numa janela de datas. */
+/**
+ * Bloqueios numa janela de datas. Cada linha traz a quarta e o `horario`
+ * (NULL = quarta inteira; preenchido = só aquele slot).
+ */
 export async function getBloqueiosRange(
   deIso: string,
   ateIso: string,
-): Promise<string[]> {
+): Promise<Bloqueio[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .schema("gps")
     .from("reuniao_bloqueios")
-    .select("data")
+    .select("data, horario")
     .gte("data", deIso)
     .lte("data", ateIso);
-  return ((data ?? []) as { data: string }[]).map((b) => b.data);
+  return ((data ?? []) as { data: string; horario: string | null }[]).map(
+    (b) => ({ data: b.data, horario: b.horario ? horaCurta(b.horario) : null }),
+  );
 }
 
 /**
@@ -401,7 +408,10 @@ export async function getAgendamentosReuniaoRange(
   if (!ags.length) return [];
 
   const alunoIds = [...new Set(ags.map((a) => a.aluno_id))];
-  const clienteIds = [...new Set(ags.map((a) => a.cliente_id))];
+  // cliente_id pode ser null (admin agendou antes de o aluno favoritar).
+  const clienteIds = [
+    ...new Set(ags.map((a) => a.cliente_id).filter((id): id is string => !!id)),
+  ];
 
   const [{ data: alunos }, { data: clientes }] = await Promise.all([
     supabase
@@ -437,6 +447,8 @@ export async function getAgendamentosReuniaoRange(
     aluno_nome: alunoPorId.get(a.aluno_id)?.nome ?? null,
     aluno_email: alunoPorId.get(a.aluno_id)?.email ?? null,
     aluno_telefone: alunoPorId.get(a.aluno_id)?.telefone ?? null,
-    cliente_nome: clientePorId.get(a.cliente_id)?.nome ?? null,
+    cliente_nome: a.cliente_id
+      ? (clientePorId.get(a.cliente_id)?.nome ?? null)
+      : null,
   }));
 }

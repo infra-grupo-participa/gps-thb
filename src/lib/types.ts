@@ -185,10 +185,12 @@ export interface TarefaEnfase {
 export interface ReuniaoAgendamento {
   id: string;
   aluno_id: string;
-  cliente_id: string;
+  /** Cliente favoritado. NULL quando o admin agenda antes de o aluno favoritar. */
+  cliente_id: string | null;
   data: string; // "YYYY-MM-DD" (quarta)
   horario: string; // "HH:MM[:SS]"
-  link_live: string;
+  /** Link da sala. NULL quando o admin agenda e o link será colado depois. */
+  link_live: string | null;
   criado_em: string;
   atualizado_em: string;
 }
@@ -201,9 +203,13 @@ export interface ReuniaoAgendamentoDetalhe extends ReuniaoAgendamento {
   cliente_nome: string | null;
 }
 
-/** Quarta que a equipe fechou (feriado). A grade em si é gerada em código. */
+/**
+ * Bloqueio de disponibilidade. `horario` NULL = a quarta inteira fechada (feriado);
+ * `horario` preenchido = só aquele slot daquela quarta. A grade é gerada em código.
+ */
 export interface ReuniaoBloqueio {
   data: string;
+  horario: string | null;
   motivo: string | null;
   criado_em: string;
 }

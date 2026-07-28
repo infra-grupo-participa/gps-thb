@@ -137,9 +137,11 @@ Tabelas: `gps.etapas` (config de liberação das 6 etapas), `gps.membros` (vínc
 de tarefas manuais por aluno/etapa/tarefa), `gps.tarefa_enfase` (override de destaque/esmaecimento
 de tarefa pelo admin — `modo` ∈ {realce, esmaecer}, PK aluno/etapa/tarefa), `gps.reuniao_agendamentos`
 (a reunião de implementação: 1 por aluno via `unique(aluno_id)`, 1 aluno por slot via
-`unique(data,horario)`, CHECK horário ∈ {09,11,13,15}h e dow=quarta; guarda `cliente_id` do favorito
-e `link_live`) e `gps.reuniao_bloqueios` (quartas que a equipe fecha — feriado; a grade em si é
-gerada em código, `src/lib/reuniao.ts`).
+`unique(data,horario)`, CHECK horário ∈ **{10,13,16}**h e dow=quarta; guarda `cliente_id` do favorito
+e `link_live` — **ambos nullable** desde 2026-07-28, pois o admin pode agendar antes de o aluno
+favoritar/ter link) e `gps.reuniao_bloqueios` (o que a equipe fecha; coluna `horario`: **NULL = quarta
+inteira**, **preenchido = só aquele slot**; índices únicos parciais por caso; a grade em si é gerada
+em código, `src/lib/reuniao.ts`).
 Funções: `gps.aluno_atual()` (aluno_id do usuário logado), `gps.touch_atualizado_em()`.
 RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos próprios registros
 (via `gps.aluno_atual()`).
@@ -153,16 +155,25 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
   sticky) com o painel **`HomeResumo`** (progresso geral + clientes/reuniões/perda num único card).
   Os atalhos Clientes/Pasta/Materiais foram removidos da home (já estão no `NavTabs` do header).
 - **Cliente favoritado** (`FavoritoDestaque`, compartilhado aluno/admin): infos do cliente +
-  **agendamento da reunião com a equipe**. **Modelo atual (2026-07-28):** a equipe **não abre
-  janelas**; existe uma **grade fixa recorrente** (quartas 09h/11h/13h/15h, gerada em código em
-  `src/lib/reuniao.ts`). O aluno abre um modal (`ReuniaoAgendarModal`), escolhe um horário **livre**
-  e cola o **link da live** que ele mesmo cria → grava em `gps.reuniao_agendamentos` (1 por aluno,
-  1 aluno por slot). Sempre com o cliente favoritado (sem seleção de cliente); **sem favorito o card
-  fica bloqueado**. O aluno pode **remarcar/cancelar**. Actions em `src/app/reuniao/actions.ts`
-  (`agendarReuniao`, `cancelarReuniao`, `bloquearQuarta`, `desbloquearQuarta`). O admin, em modo
-  assistência, vê o mesmo card e pode marcar/remarcar/cancelar pelo aluno. **Aba admin `/admin/reunioes`**
-  = calendário semanal (navega por quarta) com aluno/cliente/link de cada reunião e botão de bloquear
-  data (feriado). A equipe pode fechar uma quarta em `gps.reuniao_bloqueios`.
+  **agendamento da reunião com a equipe**. **Modelo atual (2026-07-28, revisado p/ a Cris):** a
+  equipe **não abre janelas**; existe uma **grade fixa recorrente** (quartas **10h/13h/16h** →
+  10h–12h, 13h–15h, 16h–18h; gerada em código em `src/lib/reuniao.ts`, constante `HORARIOS_REUNIAO`).
+  O aluno abre um modal (`ReuniaoAgendarModal`), escolhe um horário **livre** e cola o **link da
+  live** que ele mesmo cria → grava em `gps.reuniao_agendamentos` (1 por aluno, 1 aluno por slot).
+  Para o **aluno**, favorito + link são **obrigatórios** (sem favorito o card fica bloqueado); ele
+  pode **remarcar/cancelar**.
+  **Admin (novo):** na aba **`/admin/reunioes`** pode **agendar em nome de um aluno** (busca o aluno
+  ali mesmo — `AgendarAlunoModal` + action `buscarAlunosParaAgenda`, só quem está no GPS),
+  **remarcar** e **cancelar**. Pelo admin, **favorito e link são opcionais** (`cliente_id`/`link_live`
+  são NULL até o aluno completar; o aluno cola o link depois pelo card). Um remarque do admin sem link
+  **preserva** o link/cliente que já existiam.
+  **Bloqueios (novo):** `gps.reuniao_bloqueios` agora tem coluna `horario` — **NULL = quarta inteira**
+  (feriado, botão "Bloquear data"), **preenchido = só aquele horário** daquela quarta (botão "Fechar
+  horário"/"Reabrir" por slot). Actions: `bloquearQuarta`/`desbloquearQuarta` (dia todo) e
+  `bloquearSlot`/`desbloquearSlot` (pontual). O calendário admin (`ReunioesCalendario`) mostra
+  aluno/cliente/link de cada reunião e as ações por horário.
+  Actions em `src/app/reuniao/actions.ts` (`agendarReuniao`, `cancelarReuniao`, `bloquearQuarta`,
+  `desbloquearQuarta`, `bloquearSlot`, `desbloquearSlot`, `buscarAlunosParaAgenda`).
 - **Etapas = guia/mapa** (intuitivo): checklist + tutoriais + progresso. NÃO contém gestão.
 - **Clientes = aba separada** (CRM): **Lista** (funil/busca/ordenação) e **Quadro** (kanban por
   status com arrastar-e-soltar), atalho de **WhatsApp** (`src/lib/whatsapp.ts`), e destaque do

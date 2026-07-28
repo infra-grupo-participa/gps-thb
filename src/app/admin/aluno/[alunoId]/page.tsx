@@ -8,7 +8,7 @@ import {
   getEtapas,
   getMembro,
   getProgressoAluno,
-  getReuniaoJanelas,
+  getReuniaoDoAluno,
 } from "@/lib/data";
 import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
 import { alunoNavItems } from "@/lib/nav";
@@ -33,15 +33,15 @@ export default async function AdminAlunoInicioPage({
   if (!membro) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapas, clientes, progressoTodas, favorito, janelas] =
+  const [aluno, etapas, clientes, progressoTodas, favorito] =
     await Promise.all([
       getAlunoById(alunoId),
       getEtapas(),
       getClientesEtapa1(alunoId),
       getProgressoAluno(alunoId),
       getClienteEquipe(alunoId),
-      getReuniaoJanelas(alunoId),
     ]);
+  const reuniao = favorito ? await getReuniaoDoAluno(alunoId) : null;
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
   const passo = proximoPasso(etapas, clientes, progressoTodas);
@@ -82,12 +82,13 @@ export default async function AdminAlunoInicioPage({
           </div>
         ) : null}
 
-        {favorito ? (
+        {favorito && reuniao ? (
           <div className="mb-6">
             <FavoritoDestaque
               alunoId={alunoId}
               cliente={favorito}
-              janelas={janelas}
+              agendamento={reuniao.agendamento}
+              grade={reuniao.grade}
               isAdmin
               basePath={base}
             />

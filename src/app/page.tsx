@@ -10,8 +10,9 @@ import {
   getMembro,
   getTurmaCodigo,
   getClienteEquipe,
-  getReuniaoJanelas,
+  getReuniaoDoAluno,
 } from "@/lib/data";
+import { rotuloData, faixaHorario } from "@/lib/reuniao";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
@@ -77,7 +78,7 @@ export default async function HomePage() {
 
   // Aluno
   const alunoId = ctx.alunoId!;
-  const [etapas, aluno, clientes, progressoTodas, membro, favorito, janelas] =
+  const [etapas, aluno, clientes, progressoTodas, membro, favorito] =
     await Promise.all([
       getEtapas(),
       getAlunoById(alunoId),
@@ -85,9 +86,10 @@ export default async function HomePage() {
       getProgressoAluno(alunoId),
       getMembro(alunoId),
       getClienteEquipe(alunoId),
-      getReuniaoJanelas(alunoId),
     ]);
   const turma = await getTurmaCodigo(aluno?.turma_id);
+  // A reunião é sempre com o cliente favoritado — só busca a agenda se houver.
+  const reuniao = favorito ? await getReuniaoDoAluno(alunoId) : null;
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
   const passo = proximoPasso(etapas, clientes, progressoTodas);
@@ -126,11 +128,12 @@ export default async function HomePage() {
         {/* Conteúdo: jornada (principal) + resumo (apoio) lado a lado. */}
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            {favorito ? (
+            {favorito && reuniao ? (
               <FavoritoDestaque
                 alunoId={alunoId}
                 cliente={favorito}
-                janelas={janelas}
+                agendamento={reuniao.agendamento}
+                grade={reuniao.grade}
                 isAdmin={false}
                 basePath=""
               />
@@ -151,6 +154,15 @@ export default async function HomePage() {
                 clientes={m1.preenchidos}
                 agendados={m1.agendados}
                 perdaTotal={m1.perdaTotal}
+                reuniaoEquipe={
+                  favorito
+                    ? reuniao?.agendamento
+                      ? `${rotuloData(reuniao.agendamento.data)} · ${faixaHorario(
+                          reuniao.agendamento.horario,
+                        )}`
+                      : null
+                    : undefined
+                }
               />
             </div>
           </aside>

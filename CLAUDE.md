@@ -135,9 +135,11 @@ Tabelas: `gps.etapas` (config de liberação das 6 etapas), `gps.membros` (vínc
 `auth.users` ⇄ `thb_alunos` + data de agendamento), `gps.etapa1_clientes` (os 30 clientes;
 `acompanhado_equipe` = o favorito/cliente da equipe, único por aluno), `gps.progresso` (conclusão
 de tarefas manuais por aluno/etapa/tarefa), `gps.tarefa_enfase` (override de destaque/esmaecimento
-de tarefa pelo admin — `modo` ∈ {realce, esmaecer}, PK aluno/etapa/tarefa), `gps.reuniao_janelas`
-(dias que a equipe disponibiliza p/ a reunião do cliente favoritado; aluno marca `escolhida`,
-índice único parcial de 1 escolhida por aluno).
+de tarefa pelo admin — `modo` ∈ {realce, esmaecer}, PK aluno/etapa/tarefa), `gps.reuniao_agendamentos`
+(a reunião de implementação: 1 por aluno via `unique(aluno_id)`, 1 aluno por slot via
+`unique(data,horario)`, CHECK horário ∈ {09,11,13,15}h e dow=quarta; guarda `cliente_id` do favorito
+e `link_live`) e `gps.reuniao_bloqueios` (quartas que a equipe fecha — feriado; a grade em si é
+gerada em código, `src/lib/reuniao.ts`).
 Funções: `gps.aluno_atual()` (aluno_id do usuário logado), `gps.touch_atualizado_em()`.
 RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos próprios registros
 (via `gps.aluno_atual()`).
@@ -151,8 +153,16 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
   sticky) com o painel **`HomeResumo`** (progresso geral + clientes/reuniões/perda num único card).
   Os atalhos Clientes/Pasta/Materiais foram removidos da home (já estão no `NavTabs` do header).
 - **Cliente favoritado** (`FavoritoDestaque`, compartilhado aluno/admin): infos do cliente +
-  **agendamento da reunião com a equipe** (o admin abre janelas em `gps.reuniao_janelas`; o aluno
-  escolhe uma → data oferecida ao cliente).
+  **agendamento da reunião com a equipe**. **Modelo atual (2026-07-28):** a equipe **não abre
+  janelas**; existe uma **grade fixa recorrente** (quartas 09h/11h/13h/15h, gerada em código em
+  `src/lib/reuniao.ts`). O aluno abre um modal (`ReuniaoAgendarModal`), escolhe um horário **livre**
+  e cola o **link da live** que ele mesmo cria → grava em `gps.reuniao_agendamentos` (1 por aluno,
+  1 aluno por slot). Sempre com o cliente favoritado (sem seleção de cliente); **sem favorito o card
+  fica bloqueado**. O aluno pode **remarcar/cancelar**. Actions em `src/app/reuniao/actions.ts`
+  (`agendarReuniao`, `cancelarReuniao`, `bloquearQuarta`, `desbloquearQuarta`). O admin, em modo
+  assistência, vê o mesmo card e pode marcar/remarcar/cancelar pelo aluno. **Aba admin `/admin/reunioes`**
+  = calendário semanal (navega por quarta) com aluno/cliente/link de cada reunião e botão de bloquear
+  data (feriado). A equipe pode fechar uma quarta em `gps.reuniao_bloqueios`.
 - **Etapas = guia/mapa** (intuitivo): checklist + tutoriais + progresso. NÃO contém gestão.
 - **Clientes = aba separada** (CRM): **Lista** (funil/busca/ordenação) e **Quadro** (kanban por
   status com arrastar-e-soltar), atalho de **WhatsApp** (`src/lib/whatsapp.ts`), e destaque do
@@ -187,7 +197,10 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
   de `CONTEUDO_ETAPAS` por `src/lib/materiais.ts` (`listarMateriais`). Navegação por abas com ícones
   (Início/Clientes/Materiais) em `NavTabs`.
 - Admin espelha em `/admin/aluno/[id]`, `.../etapa/[n]`, `.../clientes`, `.../clientes/[id]`, `.../materiais`.
-- `/admin` — lista de alunos no GPS + "Adicionar aluno" (busca em `thb_alunos`).
+- `/admin` — lista de alunos no GPS + "Adicionar aluno" (busca em `thb_alunos`). Header do admin
+  tem abas **Alunos / Reuniões** (`adminNavItems` em `src/lib/nav.ts`).
+- `/admin/reunioes` — calendário das reuniões de implementação (quartas 09/11/13/15h), navegação por
+  semana, bloquear/liberar data.
 - `/admin/aluno/[alunoId]` — admin dentro do ambiente do aluno (modo assistência, editável).
 - `/cadastro` — auto-cadastro do aluno (Supabase signUp, metadata `origem=gps`).
 - `/admin/solicitacoes` — fila de solicitações de acesso (aprovar/recusar, match por e-mail).
@@ -272,7 +285,11 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
 - [x] Ênfase das tarefas (atual em destaque / futuras esmaecidas) + override manual do admin
       (`gps.tarefa_enfase`); indicador visual dos passos 1.1/1.2 apontando p/ a aba Clientes.
 - [x] Cliente favoritado em destaque na home (aluno+admin) + "Continue de onde parou"; Etapa 05
-      travada até haver favorito; agendamento por janelas da equipe (`gps.reuniao_janelas`).
+      travada até haver favorito.
+- [x] **Agendamento de reunião reconstruído (2026-07-28):** grade fixa (quartas 09/11/13/15h),
+      aluno se encaixa num slot livre + cola o link da live, 1 por aluno, sempre com o favorito;
+      remarcar/cancelar; aba admin `/admin/reunioes` (calendário + bloquear data). Substituiu
+      `gps.reuniao_janelas` (removida) por `gps.reuniao_agendamentos` + `gps.reuniao_bloqueios`.
 - [x] Busca de aluno tolerante (tokens + ranqueamento por associação); removido o mapa da pasta.
 - [x] Admin: lista de alunos com resumo + entrar no ambiente do aluno (editável).
 - [x] Portal de captação bloqueado.

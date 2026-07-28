@@ -9,6 +9,7 @@ import {
 } from "@/lib/data";
 import { Users, UserCheck, UserX, Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
+import { adminNavItems } from "@/lib/nav";
 import { CriarAcesso } from "@/components/admin/criar-acesso";
 import { SolicitacaoCard } from "@/components/admin/solicitacao-card";
 import { EtapasControle } from "@/components/admin/etapas-controle";
@@ -47,6 +48,7 @@ export default async function AdminPage() {
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
+        navItems={adminNavItems()}
       />
       <main className="mx-auto w-full max-w-6xl px-4 py-8">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">

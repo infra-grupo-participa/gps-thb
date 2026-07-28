@@ -1,4 +1,4 @@
-import { TrendingUp, Users, CalendarCheck, Coins } from "lucide-react";
+import { TrendingUp, Users, CalendarCheck, Coins, CalendarClock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -17,11 +17,14 @@ export function HomeResumo({
   clientes,
   agendados,
   perdaTotal,
+  reuniaoEquipe,
 }: {
   progressoGeral: number;
   clientes: number;
   agendados: number;
   perdaTotal: number;
+  /** rótulo da reunião com a equipe (ex.: "qua, 30/07 · 09h–11h") ou null. */
+  reuniaoEquipe?: string | null;
 }) {
   return (
     <Card>
@@ -58,6 +61,14 @@ export function HomeResumo({
           valor={brl.format(perdaTotal)}
           hint="soma dos clientes"
         />
+        {reuniaoEquipe !== undefined ? (
+          <Linha
+            icon={<CalendarClock className="size-4" />}
+            label="Reunião com a equipe"
+            valor={reuniaoEquipe ? "Marcada" : "A marcar"}
+            hint={reuniaoEquipe ?? "com o cliente favoritado"}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );

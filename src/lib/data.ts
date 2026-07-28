@@ -1,5 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { calcularMetricasEtapa1 } from "@/lib/etapa1";
+import {
+  montarGrade,
+  hojeSaoPaulo,
+  proximasQuartas,
+  type DiaGrade,
+} from "@/lib/reuniao";
 import type {
   Aluno,
   ClienteEtapa1,
@@ -7,7 +13,8 @@ import type {
   Membro,
   ModoEnfase,
   ProgressoTarefa,
-  ReuniaoJanela,
+  ReuniaoAgendamento,
+  ReuniaoAgendamentoDetalhe,
   Solicitacao,
   StatusSolicitacao,
 } from "@/lib/types";
@@ -297,17 +304,130 @@ export async function getEnfasesEtapa(
   return out;
 }
 
-/** Janelas de reunião que a equipe disponibiliza para o cliente favoritado. */
-export async function getReuniaoJanelas(
+/** O agendamento de reunião do aluno (no máximo um). */
+export async function getAgendamentoReuniao(
   alunoId: string,
-): Promise<ReuniaoJanela[]> {
+): Promise<ReuniaoAgendamento | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .schema("gps")
-    .from("reuniao_janelas")
+    .from("reuniao_agendamentos")
     .select("*")
     .eq("aluno_id", alunoId)
-    .order("data", { ascending: true })
-    .order("criado_em");
-  return (data ?? []) as ReuniaoJanela[];
+    .maybeSingle();
+  return (data as ReuniaoAgendamento) ?? null;
+}
+
+/**
+ * Agendamento do aluno + a grade de horários (livres/ocupados) pronta para a UI.
+ * Reusado pela home do aluno e pelo admin em modo assistência.
+ */
+export async function getReuniaoDoAluno(alunoId: string): Promise<{
+  agendamento: ReuniaoAgendamento | null;
+  grade: DiaGrade[];
+}> {
+  const hojeIso = hojeSaoPaulo();
+  const quartas = proximasQuartas(hojeIso);
+  const deIso = quartas[0];
+  const ateIso = quartas[quartas.length - 1];
+
+  const [agendamento, ocupados, bloqueios] = await Promise.all([
+    getAgendamentoReuniao(alunoId),
+    getSlotsOcupados(deIso, ateIso),
+    getBloqueiosRange(deIso, ateIso),
+  ]);
+
+  const grade = montarGrade({
+    hojeIso,
+    ocupados,
+    bloqueios,
+    meuAgendamento: agendamento,
+  });
+  return { agendamento, grade };
+}
+
+/**
+ * Slots já ocupados (por qualquer aluno) numa janela de datas — para montar a
+ * grade do aluno sem vazar dados de terceiros (só data+horário).
+ */
+export async function getSlotsOcupados(
+  deIso: string,
+  ateIso: string,
+): Promise<Pick<ReuniaoAgendamento, "data" | "horario">[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("reuniao_agendamentos")
+    .select("data, horario")
+    .gte("data", deIso)
+    .lte("data", ateIso);
+  return (data ?? []) as Pick<ReuniaoAgendamento, "data" | "horario">[];
+}
+
+/** Quartas bloqueadas (feriado) numa janela de datas. */
+export async function getBloqueiosRange(
+  deIso: string,
+  ateIso: string,
+): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("reuniao_bloqueios")
+    .select("data")
+    .gte("data", deIso)
+    .lte("data", ateIso);
+  return ((data ?? []) as { data: string }[]).map((b) => b.data);
+}
+
+/**
+ * Reuniões agendadas numa janela de datas, com nome do aluno e do cliente —
+ * para o calendário do admin. Usa duas consultas (o PostgREST não faz join
+ * entre schemas diferentes: aluno vive em public, o agendamento em gps).
+ */
+export async function getAgendamentosReuniaoRange(
+  deIso: string,
+  ateIso: string,
+): Promise<ReuniaoAgendamentoDetalhe[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("reuniao_agendamentos")
+    .select("*")
+    .gte("data", deIso)
+    .lte("data", ateIso)
+    .order("data")
+    .order("horario");
+  const ags = (data ?? []) as ReuniaoAgendamento[];
+  if (!ags.length) return [];
+
+  const alunoIds = [...new Set(ags.map((a) => a.aluno_id))];
+  const clienteIds = [...new Set(ags.map((a) => a.cliente_id))];
+
+  const [{ data: alunos }, { data: clientes }] = await Promise.all([
+    supabase.from("thb_alunos").select("id, nome, email").in("id", alunoIds),
+    supabase
+      .schema("gps")
+      .from("etapa1_clientes")
+      .select("id, nome")
+      .in("id", clienteIds),
+  ]);
+
+  const alunoPorId = new Map(
+    ((alunos ?? []) as { id: string; nome: string | null; email: string | null }[]).map(
+      (a) => [a.id, a],
+    ),
+  );
+  const clientePorId = new Map(
+    ((clientes ?? []) as { id: string; nome: string | null }[]).map((c) => [
+      c.id,
+      c,
+    ]),
+  );
+
+  return ags.map((a) => ({
+    ...a,
+    aluno_nome: alunoPorId.get(a.aluno_id)?.nome ?? null,
+    aluno_email: alunoPorId.get(a.aluno_id)?.email ?? null,
+    cliente_nome: clientePorId.get(a.cliente_id)?.nome ?? null,
+  }));
 }

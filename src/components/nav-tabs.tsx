@@ -8,6 +8,7 @@ import {
   BookOpen,
   FolderOpen,
   UserRound,
+  CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -15,7 +16,14 @@ export interface NavItem {
   href: string;
   label: string;
   /** chave do ícone (string, serializável entre server e client). */
-  icon?: "inicio" | "clientes" | "materiais" | "pasta" | "perfil";
+  icon?:
+    | "inicio"
+    | "clientes"
+    | "materiais"
+    | "pasta"
+    | "perfil"
+    | "alunos"
+    | "reunioes";
   /** casa exatamente (para o "Início"). */
   exact?: boolean;
 }
@@ -26,6 +34,8 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
   materiais: BookOpen,
   pasta: FolderOpen,
   perfil: UserRound,
+  alunos: Users,
+  reunioes: CalendarClock,
 };
 
 export function NavTabs({ items }: { items: NavItem[] }) {

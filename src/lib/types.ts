@@ -177,12 +177,41 @@ export interface TarefaEnfase {
   modo: ModoEnfase;
 }
 
-/** Janela de reunião que a equipe disponibiliza para o cliente favoritado. */
-export interface ReuniaoJanela {
+/**
+ * Reunião de implementação com a equipe, agendada pelo aluno para o cliente
+ * favoritado. 1 por aluno; 1 aluno por slot (quarta × horário). O aluno informa
+ * o link da live que ele mesmo cria.
+ */
+export interface ReuniaoAgendamento {
   id: string;
   aluno_id: string;
-  data: string;
-  horario: string | null;
-  escolhida: boolean;
+  cliente_id: string;
+  data: string; // "YYYY-MM-DD" (quarta)
+  horario: string; // "HH:MM[:SS]"
+  link_live: string;
   criado_em: string;
+  atualizado_em: string;
+}
+
+/** Reunião com dados do aluno/cliente para o calendário do admin. */
+export interface ReuniaoAgendamentoDetalhe extends ReuniaoAgendamento {
+  aluno_nome: string | null;
+  aluno_email: string | null;
+  cliente_nome: string | null;
+}
+
+/** Quarta que a equipe fechou (feriado). A grade em si é gerada em código. */
+export interface ReuniaoBloqueio {
+  data: string;
+  motivo: string | null;
+  criado_em: string;
+}
+
+/** Um horário na grade da reunião, com seu estado para a UI. */
+export interface SlotReuniao {
+  data: string;
+  horario: string;
+  /** livre = agendável; ocupado = de outro aluno; meu = do próprio aluno;
+   *  indisponivel = quarta bloqueada ou já passada. */
+  estado: "livre" | "ocupado" | "meu" | "indisponivel";
 }

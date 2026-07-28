@@ -13,3 +13,11 @@ export function alunoNavItems(basePath: string): NavItem[] {
     { href: `${basePath}/perfil`, label: "Perfil", icon: "perfil" },
   ];
 }
+
+/** Abas do painel do admin (nível topo, não o modo assistência do aluno). */
+export function adminNavItems(): NavItem[] {
+  return [
+    { href: "/admin", label: "Alunos", icon: "alunos", exact: true },
+    { href: "/admin/reunioes", label: "Reuniões", icon: "reunioes" },
+  ];
+}

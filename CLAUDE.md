@@ -250,6 +250,39 @@ cliente Supabase **isolado** (sem persistir sessão, não afeta o admin) + gera 
 o gatilho/upsert vincula ao aluno escolhido. **Não usa service_role.** Solicitações são aprovadas/
 recusadas em `SolicitacaoCard`.
 
+### Gerenciar acesso do aluno (2026-07-31) — senha na hora e exclusão total
+
+Botão **"Gerenciar acesso"** (`GerenciarAcesso`, em `/admin/aluno/<id>`) resolve o acesso sem
+depender de e-mail. Três coisas num diálogo só:
+
+1. **Diagnóstico** — checklist do que está OK ou não: tem login, tem senha, e-mail confirmado,
+   e-mail do login == e-mail do cadastro, vínculo com o programa, último acesso, solicitação
+   pendente. É onde se vê *por que* o aluno não entra.
+2. **Definir senha agora** — grava a senha direto, confirma o e-mail, limpa tokens de recuperação,
+   **derruba as sessões antigas** e garante `gps.membros.user_id`. Devolve login+senha para copiar
+   ou mandar por WhatsApp (`linkWhatsapp`), e ainda tenta o e-mail de credenciais (não bloqueia).
+3. **Excluir acesso** — apaga login (`auth.users`) + tudo do aluno no GPS (clientes, progresso,
+   reuniões, ênfases, solicitações). **Preserva `public.thb_alunos`** (base compartilhada com o
+   sip). Exige digitar `EXCLUIR`.
+
+**Por que existe:** o único jeito de dar senha era `criarAcessoAluno` (`signUp`), que **falha em
+usuário já existente** — o aluno que se cadastrou sozinho em `/cadastro` ficava sem caminho, e o
+botão antigo só reenviava o e-mail de recuperação do Supabase (**SMTP embutido**, não é a Resend:
+baixa entrega e limite por hora). Resultado prático: aluno preso fora do portal, sem ninguém
+conseguir destravar. Caso real: `gugabatera@gmail.com`, criado em 17/07, destravado em 31/07.
+
+**Sem `service_role`** (mantém a regra do projeto). O trabalho em `auth.users` fica em funções
+SECURITY DEFINER no schema `gps`, migração `gps_admin_gestao_de_acesso`:
+- `gps.admin_status_acesso(uuid)`, `gps.admin_definir_senha(uuid, text)`,
+  `gps.admin_excluir_acesso(uuid)` — todas abrem com `public.gp_is_admin()` ou `raise 42501`;
+  `execute` revogado de `public`/`anon`, concedido só a `authenticated`.
+- Auxiliares: `gps.admin_user_do_aluno(uuid)` (resolve o `auth.users` pelo vínculo, com fallback
+  por e-mail — **nunca aceita user_id vindo do cliente**) e `gps.admin_alvo_e_equipe(uuid)`
+  (**bloqueia mexer em conta de perfil ativo dev/admin** — impede escalar privilégio por aqui).
+- Senha gravada com `extensions.crypt(senha, extensions.gen_salt('bf', 10))` — bcrypt, formato
+  que o GoTrue lê nativamente. Mínimo de 8 caracteres, validado no banco.
+- Toda ação vira linha em **`gps.acessos_log`** (quem fez, em quem, quando; leitura só de admin).
+
 **Aluno fora da base (cadastro manual):** se a busca não acha ninguém, o admin cadastra o aluno
 direto em `thb_alunos` pelo `CadastrarAlunoForm` (action `cadastrarAluno`) — identificação,
 contato, endereço, plano/turma e redes. Campos financeiros/Hotmart ficam nulos (pertencem ao
@@ -314,7 +347,13 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
 - [x] `npm run build` passa (typecheck + lint OK).
 - [x] Deploy Node na Hostinger configurado (`server.js`, `DEPLOY.md`).
 - [x] Código versionado e enviado para `github.com/infra-grupo-participa/gps-thb` (main).
+- [x] **Gerenciar acesso do aluno (2026-07-31):** diagnóstico + definir senha na hora + excluir
+      acesso por completo, tudo pelo painel e sem `service_role` (migração
+      `gps_admin_gestao_de_acesso`). Substituiu o `BotaoRedefinirSenha`, que só reenviava e-mail.
 - [ ] Endurecer RLS de `thb_alunos` (ver acima) antes de abrir o cadastro a alunos reais.
+      **Parcialmente resolvido:** um aluno logado hoje só enxerga a própria linha (conferido em
+      31/07 simulando o JWT do aluno) — confirmar se as policies antigas `read_authenticated`
+      ainda existem.
 - [ ] Verificar cadastro real ponta a ponta. (A dúvida sobre o GoTrue está respondida:
       `mailer_autoconfirm = true`, ou seja, o aluno entra sem confirmar o e-mail.)
 - [ ] Executar o deploy na Hostinger (clonar, `npm install`, `npm run build`, iniciar app).

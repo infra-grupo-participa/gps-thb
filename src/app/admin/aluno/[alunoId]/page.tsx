@@ -17,7 +17,7 @@ import { EtapasOverview } from "@/components/etapas-overview";
 import { FavoritoDestaque } from "@/components/etapa/favorito-destaque";
 import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
 import { AssistBanner } from "@/components/admin/assist-banner";
-import { BotaoRedefinirSenha } from "@/components/admin/botao-redefinir-senha";
+import { GerenciarAcesso } from "@/components/admin/gerenciar-acesso";
 
 export default async function AdminAlunoInicioPage({
   params,
@@ -70,9 +70,7 @@ export default async function AdminAlunoInicioPage({
               <h1 className="text-2xl font-semibold">{aluno?.nome ?? "Aluno"}</h1>
               <p className="text-muted-foreground">{aluno?.email}</p>
             </div>
-            {membro.user_id ? (
-              <BotaoRedefinirSenha alunoId={alunoId} />
-            ) : null}
+            <GerenciarAcesso alunoId={alunoId} nomeAluno={aluno?.nome ?? null} />
           </div>
         </div>
 

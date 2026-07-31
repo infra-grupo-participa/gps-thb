@@ -310,6 +310,34 @@ Envs: `RESEND_API_KEY` (**segredo** — só `.env.local` em dev e painel da Host
 no `.env.production` versionado), `EMAIL_FROM` (domínio precisa estar **verificado na Resend**),
 `NEXT_PUBLIC_APP_URL` (link do portal nos e-mails).
 
+## `public.perfis` é da equipe — limpeza de 31/07/2026
+
+`public.perfis` define **quem é da equipe interna** (`gp_is_admin()` = perfil `ativo` com cargo
+dev/admin). O gatilho legado `public.handle_new_user` (do sip, de quando só a equipe tinha login)
+criava um perfil `pendente/visualizador` para **todo** signup — inclusive alunos dos portais.
+Resultado: 1.285 linhas, sendo **1.245 de alunos** (workbook 1.148, gps 73, rede 30, central 1).
+
+Não dava privilégio a ninguém (o gate exige `ativo` + dev/admin), mas era uma bomba armada:
+qualquer ativação em massa ou sistema que leia "existe em perfis" como "é da equipe" viraria
+escalada de privilégio — e o painel de usuários do sip listava 1.285 pessoas.
+
+**Feito:**
+- Backup completo em `public.perfis_backup_limpeza_20260731` (com o `raw_user_meta_data` de cada
+  um; RLS ligada, sem policy — ninguém lê pela API). Restaurar: `insert into public.perfis
+  (<colunas>) select <colunas> from public.perfis_backup_limpeza_20260731`.
+- Apagadas as 1.245 linhas de aluno (nenhuma `ativo`, nenhuma `@advmais.com`, nenhuma referenciada
+  por `hm_liberacoes` / `permissoes_usuario` / `thb_alunos.atualizado_por` / `log_acessos` —
+  conferido antes). Sobraram **41 linhas, 19 ativas** (a equipe, intacta).
+- Gatilho endurecido (migração `handle_new_user_so_para_equipe`): só cria perfil quando o cadastro
+  **declara `cargo`/`status`** (é o que o `admin-proxy.php → create-user` do sip sempre manda) **ou**
+  o e-mail é **@advmais.com**; e **nunca** quando o cadastro declara `origem`/`sistema` de portal
+  de aluno. Testado nos 7 cenários (aluno gps/workbook/rede, externo sem metadata, equipe pelo sip,
+  equipe pelo domínio, membro da equipe se cadastrando como aluno).
+
+⚠️ O fluxo de criar membro da equipe no sip **depende deste gatilho** para materializar a linha em
+`perfis` — ele não faz insert direto no `create-user`. Se mexer no gatilho de novo, teste esse
+caminho.
+
 ## ⚠️ Pendências de segurança (antes de dar login a alunos)
 
 Hoje `public.thb_alunos` tem SELECT com `qual: true` p/ **qualquer autenticado** (2 policies:

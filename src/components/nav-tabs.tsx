@@ -52,6 +52,12 @@ export function NavTabs({ items }: { items: NavItem[] }) {
           <Link
             key={item.href}
             href={item.href}
+            // Sem prefetch: as abas ficam visíveis em toda tela e o Next
+            // pré-buscava todas de uma vez. Como as rotas são dinâmicas, cada
+            // pré-busca roda o proxy (getUser) e renderiza a página inteira —
+            // a home sozinha dispara ~10 queries. Medido nos logs do Supabase.
+            // Nada muda para o usuário: a rota carrega ao clicar.
+            prefetch={false}
             className={
               "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition " +
               (ativo

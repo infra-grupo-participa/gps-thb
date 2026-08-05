@@ -136,6 +136,7 @@ export default async function HomePage() {
                 grade={reuniao.grade}
                 isAdmin={false}
                 basePath=""
+                hojeIso={reuniao.hojeIso}
               />
             ) : null}
 
@@ -163,6 +164,7 @@ export default async function HomePage() {
                       : null
                     : undefined
                 }
+                statusReuniao={reuniao?.agendamento?.status ?? null}
               />
             </div>
           </aside>

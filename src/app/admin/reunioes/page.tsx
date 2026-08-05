@@ -1,10 +1,16 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAgendamentosReuniaoRange, getBloqueiosRange } from "@/lib/data";
+import {
+  getAgendamentosReuniaoRange,
+  getBloqueiosRange,
+  getHorariosReuniao,
+  getSolicitacoesPendentes,
+} from "@/lib/data";
 import { hojeSaoPaulo, quartaDaSemana } from "@/lib/reuniao";
 import { adminNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { ReunioesCalendario } from "@/components/admin/reunioes-calendario";
+import { SolicitacoesReuniao } from "@/components/admin/solicitacoes-reuniao";
 
 export const metadata = { title: "Reuniões" };
 
@@ -22,9 +28,11 @@ export default async function AdminReunioesPage({
   const alvo = semana && /^\d{4}-\d{2}-\d{2}$/.test(semana) ? semana : hojeSaoPaulo();
   const quarta = quartaDaSemana(alvo);
 
-  const [agendamentos, bloqueios] = await Promise.all([
+  const [agendamentos, bloqueios, horarios, pendentes] = await Promise.all([
     getAgendamentosReuniaoRange(quarta, quarta),
     getBloqueiosRange(quarta, quarta),
+    getHorariosReuniao(true),
+    getSolicitacoesPendentes(),
   ]);
 
   // Quarta inteira fechada = bloqueio com horario NULL nesta data.
@@ -43,23 +51,32 @@ export default async function AdminReunioesPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={adminNavItems()}
+        navItems={adminNavItems(pendentes.length)}
       />
       <main className="mx-auto w-full max-w-4xl px-4 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold">Reuniões</h1>
           <p className="text-muted-foreground">
-            Agenda das reuniões de implementação (quartas, 10h–18h). Os alunos se
-            encaixam nos horários livres; aqui você também pode agendar por um aluno,
-            remarcar, cancelar e fechar datas ou horários pontuais.
+            Agenda das reuniões de implementação (quartas-feiras). O aluno{" "}
+            <strong>solicita</strong> um horário e a reunião só vale depois que a
+            equipe <strong>confirma</strong>. Aqui você responde as solicitações,
+            agenda por um aluno, define a disponibilidade e fecha datas ou horários.
           </p>
         </div>
 
+        <div className="mb-6">
+          <SolicitacoesReuniao pendentes={pendentes} hojeIso={hojeSaoPaulo()} />
+        </div>
+
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Agenda da semana
+        </h2>
         <ReunioesCalendario
           quarta={quarta}
           agendamentos={agendamentos}
           bloqueada={quartaBloqueada}
           horariosBloqueados={horariosBloqueados}
+          horarios={horarios}
         />
       </main>
     </>

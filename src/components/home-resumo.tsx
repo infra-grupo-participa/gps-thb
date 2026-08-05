@@ -1,4 +1,5 @@
 import { TrendingUp, Users, CalendarCheck, Coins, CalendarClock } from "lucide-react";
+import type { StatusReuniao } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -18,6 +19,7 @@ export function HomeResumo({
   agendados,
   perdaTotal,
   reuniaoEquipe,
+  statusReuniao,
 }: {
   progressoGeral: number;
   clientes: number;
@@ -25,7 +27,17 @@ export function HomeResumo({
   perdaTotal: number;
   /** rótulo da reunião com a equipe (ex.: "qua, 30/07 · 09h–11h") ou null. */
   reuniaoEquipe?: string | null;
+  /** status da reunião — "marcada" só vale quando a equipe confirma. */
+  statusReuniao?: StatusReuniao | null;
 }) {
+  const valorReuniao =
+    statusReuniao === "confirmada"
+      ? "Confirmada"
+      : statusReuniao === "pendente"
+        ? "Aguardando equipe"
+        : statusReuniao === "recusada"
+          ? "Remarcar"
+          : "A solicitar";
   return (
     <Card>
       <CardContent className="grid gap-4 pt-6">
@@ -65,8 +77,12 @@ export function HomeResumo({
           <Linha
             icon={<CalendarClock className="size-4" />}
             label="Reunião com a equipe"
-            valor={reuniaoEquipe ? "Marcada" : "A marcar"}
-            hint={reuniaoEquipe ?? "com o cliente favoritado"}
+            valor={valorReuniao}
+            hint={
+              statusReuniao === "recusada"
+                ? "a equipe não pôde — escolha outro horário"
+                : (reuniaoEquipe ?? "com o cliente favoritado")
+            }
           />
         ) : null}
       </CardContent>

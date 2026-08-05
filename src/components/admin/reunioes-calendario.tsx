@@ -20,10 +20,11 @@ import {
   Lock,
   Unlock,
   X,
+  ClipboardList,
 } from "lucide-react";
-import type { ReuniaoAgendamentoDetalhe } from "@/lib/types";
+import type { ReuniaoAgendamentoDetalhe, ReuniaoHorario } from "@/lib/types";
 import {
-  HORARIOS_REUNIAO,
+  ROTULO_STATUS,
   faixaHorario,
   horaCurta,
   rotuloDataLongo,
@@ -40,6 +41,8 @@ import {
 } from "@/app/reuniao/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AgendarAlunoModal } from "@/components/admin/agendar-aluno-modal";
+import { DisponibilidadeHorarios } from "@/components/admin/disponibilidade-horarios";
+import { ReuniaoResponder } from "@/components/admin/reuniao-responder";
 
 /** Encurta a URL para exibição (mantém host + começo do caminho). */
 function urlCurta(url: string): string {
@@ -58,24 +61,42 @@ export function ReunioesCalendario({
   agendamentos,
   bloqueada,
   horariosBloqueados,
+  horarios,
 }: {
   quarta: string;
   agendamentos: ReuniaoAgendamentoDetalhe[];
   bloqueada: boolean;
   /** horários "HH:MM" fechados pontualmente nesta quarta. */
   horariosBloqueados: string[];
+  /** grade configurada pela equipe (inclui os desativados). */
+  horarios: ReuniaoHorario[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   // Slot alvo do modal de agendar aluno (null = fechado).
   const [agendarSlot, setAgendarSlot] = useState<string | null>(null);
 
+  // Uma reunião recusada não ocupa mais o horário — some do calendário (fica no
+  // card do aluno e na trilha), senão apareceria disputando a linha com quem
+  // pegou o slot depois.
+  const vigentes = agendamentos.filter((a) => a.status !== "recusada");
+
   const porHorario = new Map<string, ReuniaoAgendamentoDetalhe>();
-  for (const a of agendamentos) porHorario.set(horaCurta(a.horario), a);
+  for (const a of vigentes) porHorario.set(horaCurta(a.horario), a);
   const slotFechado = new Set(horariosBloqueados.map(horaCurta));
 
-  const ocupados = agendamentos.length;
-  const total = HORARIOS_REUNIAO.length;
+  // Linhas do dia: os horários abertos + qualquer horário desativado que ainda
+  // tenha reunião marcada nesta quarta (não pode sumir da vista da equipe).
+  const linhasDoDia = [
+    ...new Set([
+      ...horarios.filter((h) => h.ativo).map((h) => horaCurta(h.horario)),
+      ...porHorario.keys(),
+    ]),
+  ].sort();
+
+  const ocupados = vigentes.length;
+  const pendentes = vigentes.filter((a) => a.status === "pendente").length;
+  const total = linhasDoDia.length;
 
   function irPara(iso: string) {
     router.push(`/admin/reunioes?semana=${iso}`);
@@ -114,7 +135,14 @@ export function ReunioesCalendario({
     });
   }
 
-  function cancelar(alunoId: string) {
+  function cancelar(alunoId: string, alunoNome: string) {
+    if (
+      !window.confirm(
+        `Cancelar e apagar a reunião de ${alunoNome}? O horário fica livre e o aluno é avisado por e-mail.\n\nSe é só a equipe que não pode participar, use "Não vou conseguir" — o aluno recebe o motivo e remarca.`,
+      )
+    ) {
+      return;
+    }
     startTransition(async () => {
       const res = await cancelarReuniao(alunoId);
       if (res.erro) {
@@ -152,6 +180,11 @@ export function ReunioesCalendario({
                     : `${ocupados} de ${total} horários ocupados · ${
                         total - ocupados
                       } livres`}
+                  {pendentes ? (
+                    <span className="ml-1 font-medium text-amber-700">
+                      · {pendentes} aguardando resposta
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -165,7 +198,8 @@ export function ReunioesCalendario({
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <DisponibilidadeHorarios horarios={horarios} />
             <Button variant="ghost" size="sm" onClick={() => irPara(quarta)}>
               Hoje
             </Button>
@@ -200,17 +234,25 @@ export function ReunioesCalendario({
 
       {/* Timeline vertical do dia */}
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-        {HORARIOS_REUNIAO.map((h, i) => {
+        {linhasDoDia.map((h, i) => {
           const ag = porHorario.get(h);
           const fechado = slotFechado.has(h);
           const wpp = ag ? linkWhatsapp(ag.aluno_telefone) : null;
+          const info = ag ? ROTULO_STATUS[ag.status] : null;
+          const alunoNome = ag
+            ? (ag.aluno_nome ?? ag.aluno_email ?? "Aluno")
+            : "";
           return (
             <div
               key={h}
               className={
                 "flex flex-col gap-3 p-4 sm:flex-row sm:gap-4 " +
                 (i > 0 ? "border-t " : "") +
-                (ag ? "bg-primary/[0.04]" : "")
+                (ag?.status === "pendente"
+                  ? "bg-amber-50/70"
+                  : ag
+                    ? "bg-primary/[0.04]"
+                    : "")
               }
             >
               {/* Coluna do horário */}
@@ -218,11 +260,13 @@ export function ReunioesCalendario({
                 <span
                   className={
                     "inline-flex size-2.5 shrink-0 rounded-full " +
-                    (ag
-                      ? "bg-primary"
-                      : fechado
-                        ? "bg-muted-foreground/40"
-                        : "bg-muted-foreground/25")
+                    (ag?.status === "pendente"
+                      ? "bg-amber-500"
+                      : ag
+                        ? "bg-primary"
+                        : fechado
+                          ? "bg-muted-foreground/40"
+                          : "bg-muted-foreground/25")
                   }
                   aria-hidden
                 />
@@ -233,21 +277,26 @@ export function ReunioesCalendario({
                   <div
                     className={
                       "mt-1 text-xs font-medium " +
-                      (ag
-                        ? "text-primary"
-                        : fechado
-                          ? "text-muted-foreground"
+                      (ag?.status === "pendente"
+                        ? "text-amber-700"
+                        : ag
+                          ? "text-primary"
                           : "text-muted-foreground")
                     }
                   >
-                    {ag ? "Reservado" : fechado ? "Fechado" : "Livre"}
+                    {info
+                      ? info.rotulo
+                      : fechado
+                        ? "Fechado"
+                        : "Livre"}
                   </div>
                 </div>
               </div>
 
               {/* Dados do agendamento / ações */}
               {ag ? (
-                <div className="min-w-0 flex-1 grid gap-3 sm:grid-cols-2">
+                <div className="min-w-0 flex-1 grid gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                   {/* Aluno */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -349,13 +398,44 @@ export function ReunioesCalendario({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => cancelar(ag.aluno_id)}
+                        onClick={() => cancelar(ag.aluno_id, alunoNome)}
                         disabled={pending}
                         className="text-muted-foreground hover:text-destructive"
                       >
                         <X className="size-4" /> Cancelar
                       </Button>
                     </div>
+                  </div>
+                  </div>
+
+                  {/* O que o aluno precisa resolver — a equipe decide com isto. */}
+                  <div className="rounded-lg border bg-background/70 px-3 py-2 text-sm">
+                    <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <ClipboardList className="size-3.5" /> O que o aluno precisa resolver
+                    </div>
+                    <p className="mt-1 whitespace-pre-line">
+                      {ag.pauta ?? (
+                        <span className="text-muted-foreground">
+                          Sem pauta descrita.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Resposta da equipe */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {ag.status === "pendente" ? (
+                      <span className="text-sm font-medium text-amber-800">
+                        Precisa da sua resposta:
+                      </span>
+                    ) : null}
+                    <ReuniaoResponder
+                      alunoId={ag.aluno_id}
+                      alunoNome={alunoNome}
+                      data={ag.data}
+                      horario={horaCurta(ag.horario)}
+                      jaConfirmada={ag.status === "confirmada"}
+                    />
                   </div>
                 </div>
               ) : (
@@ -413,7 +493,7 @@ export function ReunioesCalendario({
           if (!v) setAgendarSlot(null);
         }}
         data={quarta}
-        horario={agendarSlot ?? HORARIOS_REUNIAO[0]}
+        horario={agendarSlot ?? linhasDoDia[0] ?? "10:00"}
       />
     </div>
   );

@@ -91,7 +91,7 @@ export function AgendarAlunoModal({
         toast.error(res.erro);
         return;
       }
-      toast.success("Reunião agendada.");
+      toast.success("Reunião agendada e já confirmada para o aluno.");
       onOpenChange(false);
       router.refresh();
     });
@@ -105,8 +105,14 @@ export function AgendarAlunoModal({
             <CalendarClock className="size-4 text-primary" />
             Agendar aluno
           </DialogTitle>
-          <DialogDescription className="capitalize">
-            {rotuloDataLongo(data)} · {faixaHorario(horario)}
+          <DialogDescription>
+            <span className="capitalize">
+              {rotuloDataLongo(data)} · {faixaHorario(horario)}
+            </span>
+            <span className="mt-1 block">
+              Agendado pela equipe já nasce <strong>confirmado</strong> — o aluno
+              não precisa esperar resposta.
+            </span>
           </DialogDescription>
         </DialogHeader>
 

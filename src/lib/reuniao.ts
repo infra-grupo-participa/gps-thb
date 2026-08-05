@@ -1,25 +1,61 @@
 /**
  * Regras da reunião de implementação com a equipe.
  *
- * Grade FIXA e recorrente: toda **quarta-feira**, nos horários 10h/13h/16h
- * (reuniões de 2h → 10h–12h, 13h–15h, 16h–18h). A grade é gerada aqui em código;
- * o banco só guarda os agendamentos (`gps.reuniao_agendamentos`) e o que a equipe
- * fecha em `gps.reuniao_bloqueios` — a quarta inteira (`horario` NULL) ou um
- * horário pontual daquela quarta (`horario` preenchido).
+ * Grade recorrente: toda **quarta-feira**, nos horários que a equipe mantém
+ * abertos (`gps.reuniao_horarios` — hoje 10h/13h/16h, reuniões de 2h). A grade
+ * de datas é gerada aqui em código; o banco guarda os horários, os agendamentos
+ * (`gps.reuniao_agendamentos`) e o que a equipe fecha em `gps.reuniao_bloqueios`
+ * — a quarta inteira (`horario` NULL) ou um horário pontual (`horario` preenchido).
  *
  * Regras de negócio:
- * - 1 agendamento por aluno (único `aluno_id`);
- * - 1 aluno por slot (único `data,horario`) — ao ser pego, o slot some;
+ * - o aluno **solicita**; a reunião só existe de fato quando a equipe confirma;
+ * - 1 reunião por aluno (único `aluno_id`);
+ * - 1 aluno por slot enquanto a solicitação não for recusada (índice único
+ *   parcial `data,horario where status <> 'recusada'`) — pendente já segura;
+ * - recusada libera o slot e o aluno precisa escolher outro horário;
  * - a reunião é sempre com o cliente favoritado (`acompanhado_equipe`).
  */
 
-import type { ReuniaoAgendamento, SlotReuniao } from "@/lib/types";
+import type {
+  ReuniaoAgendamento,
+  SlotReuniao,
+  StatusReuniao,
+} from "@/lib/types";
 
 /** Dia da semana da reunião: 3 = quarta (padrão getUTCDay, domingo=0). */
 export const DIA_SEMANA_REUNIAO = 3;
 
-/** Horários de início, em ordem. Fonte de verdade única (espelha o CHECK do banco). */
+/**
+ * Horários de fallback — os mesmos com que `gps.reuniao_horarios` foi semeada.
+ * A fonte de verdade é o banco: use `getHorariosReuniao()`. Isto existe só para
+ * a grade não vir vazia se a consulta falhar.
+ */
 export const HORARIOS_REUNIAO = ["10:00", "13:00", "16:00"] as const;
+
+/** Rótulos e cores de cada status — mesma linguagem para aluno e equipe. */
+export const ROTULO_STATUS: Record<
+  StatusReuniao,
+  { rotulo: string; aluno: string; equipe: string; cor: string }
+> = {
+  pendente: {
+    rotulo: "Aguardando confirmação",
+    aluno: "Sua solicitação foi enviada. A equipe ainda vai confirmar se participa neste horário.",
+    equipe: "Solicitação do aluno — precisa da sua resposta.",
+    cor: "bg-amber-100 text-amber-800 border-amber-300",
+  },
+  confirmada: {
+    rotulo: "Confirmada",
+    aluno: "A equipe confirmou presença. Pode contar com ela neste horário.",
+    equipe: "Presença confirmada com o aluno.",
+    cor: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  },
+  recusada: {
+    rotulo: "Equipe não pode participar",
+    aluno: "A equipe não consegue participar neste horário. Escolha outro para seguir.",
+    equipe: "Você recusou este horário. O aluno precisa escolher outro.",
+    cor: "bg-red-100 text-red-800 border-red-300",
+  },
+};
 
 /** Duração de cada reunião, em horas (só para exibição "10h–12h"). */
 export const DURACAO_REUNIAO_H = 2;
@@ -110,15 +146,26 @@ export interface Bloqueio {
  * bloqueado/passado. `ocupados` e `bloqueios` cobrem a mesma janela de datas.
  * Um bloqueio com `horario` NULL fecha a quarta inteira; com `horario` fecha só
  * aquele slot. `meuAgendamento` (se houver) marca o slot do próprio aluno como "meu".
+ *
+ * `horarios` vem de `gps.reuniao_horarios` (só os ativos) — a equipe decide
+ * quais horários existem na grade.
+ *
+ * Um slot "ocupado" pode ser tanto uma reunião já confirmada quanto uma
+ * solicitação pendente de outro aluno: pendente segura o horário. O aluno não
+ * enxerga a diferença (não é dado dele).
  */
 export function montarGrade(params: {
   hojeIso: string;
   semanas?: number;
+  horarios: string[];
   ocupados: Pick<ReuniaoAgendamento, "data" | "horario">[];
   bloqueios: Bloqueio[];
   meuAgendamento?: Pick<ReuniaoAgendamento, "data" | "horario"> | null;
 }): DiaGrade[] {
   const { hojeIso, semanas, ocupados, bloqueios, meuAgendamento } = params;
+  const horarios = (
+    params.horarios.length ? params.horarios : [...HORARIOS_REUNIAO]
+  ).map(horaCurta);
   const ocupadoSet = new Set(
     ocupados.map((o) => `${o.data}|${horaCurta(o.horario)}`),
   );
@@ -138,7 +185,7 @@ export function montarGrade(params: {
   return proximasQuartas(hojeIso, semanas).map((data) => {
     const bloqueado = quartaBloqueada.has(data);
     const passado = data < hojeIso;
-    const slots: SlotReuniao[] = HORARIOS_REUNIAO.map((horario) => {
+    const slots: SlotReuniao[] = horarios.map((horario) => {
       const chave = `${data}|${horario}`;
       const meu = chave === meuSlot;
       const ocupado = ocupadoSet.has(chave);

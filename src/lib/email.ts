@@ -208,6 +208,140 @@ export async function enviarCredenciaisAcesso(params: {
   });
 }
 
+/** "2026-08-12" + "16:00:00" → "quarta-feira, 12 de agosto · 16h–18h". */
+function quandoPorExtenso(data: string, horario: string): string {
+  const [y, m, d] = data.split("-").map(Number);
+  const dia = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    timeZone: "UTC",
+  });
+  const hh = Number(horario.slice(0, 2));
+  return `${dia} · ${String(hh).padStart(2, "0")}h–${String(hh + 2).padStart(2, "0")}h`;
+}
+
+/**
+ * Reunião confirmada: a equipe garantiu presença no horário que o aluno pediu.
+ * Disparado por `confirmarReuniao`.
+ */
+export async function enviarReuniaoConfirmada(params: {
+  para: string;
+  nome?: string | null;
+  data: string;
+  horario: string;
+  linkLive?: string | null;
+}): Promise<ResultadoEmail> {
+  const { para, nome, data, horario, linkLive } = params;
+  const primeiroNome = (nome?.trim().split(/\s+/)[0] || "").trim();
+  const ola = primeiroNome ? `Olá, ${primeiroNome}!` : "Olá!";
+  const quando = quandoPorExtenso(data, horario);
+
+  const blocoLink = linkLive
+    ? `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;">
+         Sala da reunião: <a href="${esc(linkLive)}" style="color:${LARANJA};">${esc(linkLive)}</a>
+       </p>`
+    : `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 14px;">
+         Falta o link da sala. Entre no portal e informe o link antes da reunião.
+       </p>`;
+
+  const corpo = `
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${esc(ola)}</p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      A equipe <strong>confirmou presença</strong> na sua reunião de implementação:
+    </p>
+    <p style="margin:0 0 16px;font-size:16px;font-weight:bold;line-height:1.5;text-transform:capitalize;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;">
+      ${esc(quando)}
+    </p>
+    ${blocoLink}
+    ${botao(`${APP_URL}/`, "Ver no portal")}
+    <p style="margin:0;font-size:13px;line-height:1.6;color:#78716c;">
+      Se precisar remarcar, faça pelo portal — a equipe recebe a nova solicitação.
+    </p>`;
+
+  const texto = [
+    ola,
+    "",
+    "A equipe confirmou presença na sua reunião de implementação.",
+    quando,
+    linkLive ? `Sala: ${linkLive}` : "Falta informar o link da sala no portal.",
+    "",
+    `Portal: ${APP_URL}/`,
+  ].join("\n");
+
+  return enviar({
+    para,
+    assunto: "Sua reunião com a equipe foi confirmada",
+    html: layout({
+      preheader: `Reunião confirmada: ${quando}.`,
+      titulo: "Reunião confirmada",
+      corpo,
+    }),
+    texto,
+  });
+}
+
+/**
+ * Reunião recusada: a equipe não consegue participar naquele horário e o aluno
+ * precisa escolher outro. Disparado por `recusarReuniao`.
+ */
+export async function enviarReuniaoRecusada(params: {
+  para: string;
+  nome?: string | null;
+  data: string;
+  horario: string;
+  motivo?: string | null;
+}): Promise<ResultadoEmail> {
+  const { para, nome, data, horario, motivo } = params;
+  const primeiroNome = (nome?.trim().split(/\s+/)[0] || "").trim();
+  const ola = primeiroNome ? `Olá, ${primeiroNome}!` : "Olá!";
+  const quando = quandoPorExtenso(data, horario);
+
+  const blocoMotivo = motivo
+    ? `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;background:#fafaf9;border:1px solid #e7e5e4;border-radius:8px;padding:12px 14px;">
+         <strong>Motivo:</strong> ${esc(motivo)}
+       </p>`
+    : "";
+
+  const corpo = `
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${esc(ola)}</p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      A equipe <strong>não vai conseguir participar</strong> no horário que você pediu:
+    </p>
+    <p style="margin:0 0 16px;font-size:16px;font-weight:bold;line-height:1.5;text-transform:capitalize;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px 16px;">
+      ${esc(quando)}
+    </p>
+    ${blocoMotivo}
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      Sua reunião <strong>não está marcada</strong>. Entre no portal e escolha outro
+      horário — a equipe confirma o novo pedido.
+    </p>
+    ${botao(`${APP_URL}/`, "Escolher outro horário")}`;
+
+  const texto = [
+    ola,
+    "",
+    `A equipe não vai conseguir participar em ${quando}.`,
+    motivo ? `Motivo: ${motivo}` : "",
+    "",
+    "Sua reunião NÃO está marcada. Escolha outro horário no portal:",
+    `${APP_URL}/`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return enviar({
+    para,
+    assunto: "Precisamos remarcar sua reunião com a equipe",
+    html: layout({
+      preheader: "A equipe não pode neste horário — escolha outro.",
+      titulo: "Vamos remarcar sua reunião",
+      corpo,
+    }),
+    texto,
+  });
+}
+
 /**
  * E-mail de acesso liberado: enviado quando o admin aprova uma solicitação.
  * O aluno já definiu a própria senha no cadastro — aqui é só o "pode entrar".

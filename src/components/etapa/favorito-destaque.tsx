@@ -14,10 +14,13 @@ import {
   Copy,
   CalendarPlus,
   X,
+  Hourglass,
+  CalendarX2,
+  ClipboardList,
 } from "lucide-react";
 import type { ClienteEtapa1, ReuniaoAgendamento } from "@/lib/types";
 import type { DiaGrade } from "@/lib/reuniao";
-import { faixaHorario, horaCurta, rotuloData } from "@/lib/reuniao";
+import { faixaHorario, horaCurta, rotuloData, ROTULO_STATUS } from "@/lib/reuniao";
 import { STATUS_CLIENTE } from "@/lib/etapa1";
 import { mascaraTelefone } from "@/lib/masks";
 import { linkWhatsapp } from "@/lib/whatsapp";
@@ -38,6 +41,7 @@ export function FavoritoDestaque({
   grade,
   isAdmin,
   basePath,
+  hojeIso,
 }: {
   alunoId: string;
   cliente: ClienteEtapa1;
@@ -45,6 +49,8 @@ export function FavoritoDestaque({
   grade: DiaGrade[];
   isAdmin: boolean;
   basePath: string;
+  /** "hoje" em São Paulo — para não deixar reunião vencida parecendo ativa. */
+  hojeIso: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -53,14 +59,28 @@ export function FavoritoDestaque({
   const status = STATUS_CLIENTE.find((s) => s.id === cliente.status);
   const wpp = linkWhatsapp(cliente.telefone);
 
+  const statusReuniao = agendamento?.status ?? null;
+  const infoStatus = statusReuniao ? ROTULO_STATUS[statusReuniao] : null;
+  // Data vencida: a reunião não vale mais, independentemente do status.
+  const venceu = !!agendamento && agendamento.data < hojeIso;
+
   function cancelar() {
+    const pergunta =
+      statusReuniao === "pendente"
+        ? "Cancelar sua solicitação de reunião?"
+        : "Cancelar a reunião com a equipe?";
+    if (!window.confirm(pergunta)) return;
     startTransition(async () => {
       const res = await cancelarReuniao(isAdmin ? alunoId : undefined);
       if (res.erro) {
         toast.error(res.erro);
         return;
       }
-      toast.success("Reunião cancelada.");
+      toast.success(
+        statusReuniao === "pendente"
+          ? "Solicitação cancelada."
+          : "Reunião cancelada.",
+      );
       router.refresh();
     });
   }
@@ -136,49 +156,98 @@ export function FavoritoDestaque({
             <span className="text-sm font-semibold">Reunião com a equipe</span>
           </div>
 
-          {agendamento ? (
+          {agendamento && infoStatus ? (
             <div className="grid gap-3">
-              <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
-                <Check className="size-4 text-primary" />
-                <span className="font-medium capitalize">
-                  {rotuloData(agendamento.data)}
-                </span>
-                <span className="text-muted-foreground">
-                  · {faixaHorario(agendamento.horario)}
-                </span>
+              {/* Status é a primeira coisa: solicitado ≠ marcado. */}
+              <div className={"rounded-md border px-3 py-2 " + infoStatus.cor}>
+                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                  {statusReuniao === "confirmada" ? (
+                    <Check className="size-4" />
+                  ) : statusReuniao === "pendente" ? (
+                    <Hourglass className="size-4" />
+                  ) : (
+                    <CalendarX2 className="size-4" />
+                  )}
+                  {infoStatus.rotulo}
+                </div>
+                <div className="mt-1 text-sm capitalize">
+                  {rotuloData(agendamento.data)} · {faixaHorario(agendamento.horario)}
+                </div>
+                <p className="mt-1 text-xs opacity-90">
+                  {venceu
+                    ? statusReuniao === "pendente"
+                      ? "Esta data já passou e a equipe não respondeu a tempo. Solicite um novo horário."
+                      : "Esta data já passou. Se precisar de outra reunião, solicite um novo horário."
+                    : isAdmin
+                      ? infoStatus.equipe
+                      : infoStatus.aluno}
+                </p>
+                {statusReuniao === "recusada" && agendamento.motivo_recusa ? (
+                  <p className="mt-1.5 border-t border-black/10 pt-1.5 text-xs">
+                    <strong>Motivo:</strong> {agendamento.motivo_recusa}
+                  </p>
+                ) : null}
               </div>
 
-              {agendamento.link_live ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <a
-                    href={agendamento.link_live}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={buttonVariants({ variant: "outline", size: "sm" })}
-                  >
-                    <ExternalLink className="size-4" /> Abrir link da reunião
-                  </a>
-                  <Button variant="ghost" size="sm" onClick={copiarLink}>
-                    <Copy className="size-4" /> Copiar link
+              {agendamento.pauta ? (
+                <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                  <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <ClipboardList className="size-3.5" /> O que será tratado
+                  </div>
+                  <p className="mt-1 whitespace-pre-line">{agendamento.pauta}</p>
+                </div>
+              ) : null}
+
+              {statusReuniao === "recusada" || venceu ? (
+                <div>
+                  <Button onClick={() => setModalAberto(true)} disabled={pending}>
+                    <CalendarPlus className="size-4" />
+                    {venceu ? "Solicitar novo horário" : "Escolher outro horário"}
                   </Button>
                 </div>
-              ) : (
-                <div className="rounded-md border border-dashed bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                  {isAdmin
-                    ? "Sem link ainda — o aluno cola o link da sala pelo botão Remarcar."
-                    : "Falta o link da sua sala. Toque em Remarcar para informá-lo."}
-                </div>
-              )}
+              ) : null}
+
+              {statusReuniao !== "recusada" && !venceu ? (
+                agendamento.link_live ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a
+                      href={agendamento.link_live}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
+                      <ExternalLink className="size-4" /> Abrir link da reunião
+                    </a>
+                    <Button variant="ghost" size="sm" onClick={copiarLink}>
+                      <Copy className="size-4" /> Copiar link
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-dashed bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                    {isAdmin
+                      ? "Sem link ainda — o aluno cola o link da sala pelo botão Remarcar."
+                      : "Falta o link da sua sala. Toque em Remarcar para informá-lo."}
+                  </div>
+                )
+              ) : null}
 
               <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setModalAberto(true)}
-                  disabled={pending}
-                >
-                  <CalendarClock className="size-4" /> Remarcar
-                </Button>
+                {statusReuniao !== "recusada" && !venceu ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setModalAberto(true)}
+                    disabled={pending}
+                    title={
+                      !isAdmin && statusReuniao === "confirmada"
+                        ? "Trocar de horário faz a reunião voltar para análise da equipe."
+                        : undefined
+                    }
+                  >
+                    <CalendarClock className="size-4" />
+                    {isAdmin ? "Remarcar" : "Trocar horário"}
+                  </Button>
+                ) : null}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -186,20 +255,32 @@ export function FavoritoDestaque({
                   disabled={pending}
                   className="text-muted-foreground hover:text-destructive"
                 >
-                  <X className="size-4" /> Cancelar
+                  <X className="size-4" />
+                  {statusReuniao === "pendente"
+                    ? "Cancelar solicitação"
+                    : "Cancelar"}
                 </Button>
               </div>
+
+              {/* Remarcar uma reunião confirmada volta para a fila da equipe. */}
+              {!isAdmin && statusReuniao === "confirmada" ? (
+                <p className="text-xs text-muted-foreground">
+                  Se trocar de horário, a reunião volta a ser uma solicitação e
+                  precisa de nova confirmação da equipe.
+                </p>
+              ) : null}
             </div>
           ) : (
             <div className="grid gap-3">
               <p className="text-xs text-muted-foreground">
                 {isAdmin
-                  ? "O aluno ainda não marcou a reunião. Você pode marcar por ele."
-                  : "Escolha um horário na agenda da equipe e informe o link da sua sala de reunião com o cliente."}
+                  ? "O aluno ainda não pediu a reunião. Você pode marcar por ele — agendado pela equipe já fica confirmado."
+                  : "Escolha um horário na agenda da equipe, conte o que precisa resolver e informe o link da sua sala. A equipe confirma se consegue participar."}
               </p>
               <div>
                 <Button onClick={() => setModalAberto(true)} disabled={pending}>
-                  <CalendarPlus className="size-4" /> Agendar reunião
+                  <CalendarPlus className="size-4" />
+                  {isAdmin ? "Agendar reunião" : "Solicitar reunião"}
                 </Button>
               </div>
             </div>
@@ -212,9 +293,13 @@ export function FavoritoDestaque({
         onOpenChange={setModalAberto}
         grade={grade}
         alunoId={isAdmin ? alunoId : undefined}
+        isAdmin={isAdmin}
         linkInicial={agendamento?.link_live ?? ""}
+        pautaInicial={agendamento?.pauta ?? ""}
         slotInicial={
-          agendamento
+          // Depois de uma recusa, não pré-seleciona o horário recusado: a equipe
+          // já disse que não consegue naquele horário.
+          agendamento && agendamento.status !== "recusada"
             ? { data: agendamento.data, horario: horaCurta(agendamento.horario) }
             : null
         }

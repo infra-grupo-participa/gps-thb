@@ -26,6 +26,8 @@ export interface NavItem {
     | "reunioes";
   /** casa exatamente (para o "Início"). */
   exact?: boolean;
+  /** contador de pendências ao lado do rótulo (ex.: solicitações a responder). */
+  badge?: number;
 }
 
 const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
@@ -67,6 +69,14 @@ export function NavTabs({ items }: { items: NavItem[] }) {
           >
             {Icon ? <Icon className="size-4" /> : null}
             {item.label}
+            {item.badge ? (
+              <span
+                className="inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-semibold text-white"
+                title={`${item.badge} aguardando resposta`}
+              >
+                {item.badge}
+              </span>
+            ) : null}
           </Link>
         );
       })}

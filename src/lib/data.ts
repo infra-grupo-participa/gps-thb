@@ -17,6 +17,8 @@ import type {
   ProgressoTarefa,
   ReuniaoAgendamento,
   ReuniaoAgendamentoDetalhe,
+  ReuniaoEvento,
+  ReuniaoHorario,
   Solicitacao,
   StatusSolicitacao,
 } from "@/lib/types";
@@ -321,36 +323,63 @@ export async function getAgendamentoReuniao(
 }
 
 /**
- * Agendamento do aluno + a grade de horários (livres/ocupados) pronta para a UI.
+ * Horários da grade (`gps.reuniao_horarios`). Por padrão só os abertos; com
+ * `incluirInativos` traz todos, para a tela de disponibilidade do admin.
+ */
+export async function getHorariosReuniao(
+  incluirInativos = false,
+): Promise<ReuniaoHorario[]> {
+  const supabase = await createClient();
+  let q = supabase.schema("gps").from("reuniao_horarios").select("*");
+  if (!incluirInativos) q = q.eq("ativo", true);
+  const { data } = await q.order("horario");
+  return ((data ?? []) as ReuniaoHorario[]).map((h) => ({
+    ...h,
+    horario: horaCurta(h.horario),
+  }));
+}
+
+/**
+ * Reunião do aluno + a grade de horários (livres/ocupados) pronta para a UI.
  * Reusado pela home do aluno e pelo admin em modo assistência.
  */
 export async function getReuniaoDoAluno(alunoId: string): Promise<{
   agendamento: ReuniaoAgendamento | null;
   grade: DiaGrade[];
+  /** "hoje" em São Paulo — o card usa para detectar reunião com data vencida. */
+  hojeIso: string;
 }> {
   const hojeIso = hojeSaoPaulo();
   const quartas = proximasQuartas(hojeIso);
   const deIso = quartas[0];
   const ateIso = quartas[quartas.length - 1];
 
-  const [agendamento, ocupados, bloqueios] = await Promise.all([
+  const [agendamento, ocupados, bloqueios, horarios] = await Promise.all([
     getAgendamentoReuniao(alunoId),
     getSlotsOcupados(deIso, ateIso),
     getBloqueiosRange(deIso, ateIso),
+    getHorariosReuniao(),
   ]);
 
   const grade = montarGrade({
     hojeIso,
+    horarios: horarios.map((h) => h.horario),
     ocupados,
     bloqueios,
-    meuAgendamento: agendamento,
+    // Uma reunião recusada não é mais "meu horário": o slot voltou para a grade
+    // e pode já estar com outro aluno. Marcar como "meu" ofereceria um horário
+    // que o aluno não consegue pegar.
+    meuAgendamento:
+      agendamento && agendamento.status !== "recusada" ? agendamento : null,
   });
-  return { agendamento, grade };
+  return { agendamento, grade, hojeIso };
 }
 
 /**
- * Slots já ocupados (por qualquer aluno) numa janela de datas — para montar a
+ * Slots já tomados (por qualquer aluno) numa janela de datas — para montar a
  * grade do aluno sem vazar dados de terceiros (só data+horário).
+ *
+ * Recusada não conta: quando a equipe recusa, o horário volta a ficar livre.
  */
 export async function getSlotsOcupados(
   deIso: string,
@@ -361,6 +390,7 @@ export async function getSlotsOcupados(
     .schema("gps")
     .from("reuniao_agendamentos")
     .select("data, horario")
+    .neq("status", "recusada")
     .gte("data", deIso)
     .lte("data", ateIso);
   return (data ?? []) as Pick<ReuniaoAgendamento, "data" | "horario">[];
@@ -404,8 +434,64 @@ export async function getAgendamentosReuniaoRange(
     .lte("data", ateIso)
     .order("data")
     .order("horario");
-  const ags = (data ?? []) as ReuniaoAgendamento[];
+  return detalharAgendamentos((data ?? []) as ReuniaoAgendamento[]);
+}
+
+/**
+ * Todas as solicitações pendentes — a fila de resposta da equipe. Vem de todas
+ * as semanas, não só da que está aberta no calendário: uma solicitação para
+ * daqui a 3 semanas não pode ficar invisível.
+ *
+ * Inclui de propósito as de data **vencida**: um aluno que pediu e nunca foi
+ * respondido tem de aparecer, não sumir da fila.
+ */
+export async function getSolicitacoesPendentes(): Promise<
+  ReuniaoAgendamentoDetalhe[]
+> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("reuniao_agendamentos")
+    .select("*")
+    .eq("status", "pendente")
+    .order("data")
+    .order("horario");
+  return detalharAgendamentos((data ?? []) as ReuniaoAgendamento[]);
+}
+
+/** Quantas solicitações de reunião aguardam resposta (badge do menu do admin). */
+export async function contarReunioesPendentes(): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .schema("gps")
+    .from("reuniao_agendamentos")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pendente");
+  return count ?? 0;
+}
+
+/** Trilha da reunião de um aluno (mais recente primeiro). */
+export async function getEventosReuniao(
+  alunoId: string,
+  limite = 12,
+): Promise<ReuniaoEvento[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("reuniao_eventos")
+    .select("*")
+    .eq("aluno_id", alunoId)
+    .order("criado_em", { ascending: false })
+    .limit(limite);
+  return (data ?? []) as ReuniaoEvento[];
+}
+
+/** Junta nome do aluno e do cliente a uma lista de agendamentos. */
+async function detalharAgendamentos(
+  ags: ReuniaoAgendamento[],
+): Promise<ReuniaoAgendamentoDetalhe[]> {
   if (!ags.length) return [];
+  const supabase = await createClient();
 
   const alunoIds = [...new Set(ags.map((a) => a.aluno_id))];
   // cliente_id pode ser null (admin agendou antes de o aluno favoritar).

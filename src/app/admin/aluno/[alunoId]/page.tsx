@@ -89,6 +89,7 @@ export default async function AdminAlunoInicioPage({
               grade={reuniao.grade}
               isAdmin
               basePath={base}
+              hojeIso={reuniao.hojeIso}
             />
           </div>
         ) : null}

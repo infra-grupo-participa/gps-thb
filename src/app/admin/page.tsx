@@ -6,6 +6,7 @@ import {
   getSolicitacoes,
   acharAlunoPorEmail,
   getEtapas,
+  contarReunioesPendentes,
 } from "@/lib/data";
 import { Users, UserCheck, UserX, Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
@@ -26,10 +27,11 @@ export default async function AdminPage() {
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const [alunos, pendentes, etapas] = await Promise.all([
+  const [alunos, pendentes, etapas, reunioesPendentes] = await Promise.all([
     getAlunosGps(),
     getSolicitacoes("pendente"),
     getEtapas(),
+    contarReunioesPendentes(),
   ]);
   const solicitacoesComMatch = await Promise.all(
     pendentes.map(async (s) => ({
@@ -48,7 +50,7 @@ export default async function AdminPage() {
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={adminNavItems()}
+        navItems={adminNavItems(reunioesPendentes)}
       />
       <main className="mx-auto w-full max-w-6xl px-4 py-8">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ThbLogo } from "@/components/thb-logo";
 import { LogoutButton } from "@/components/logout-button";
 import { NavTabs, type NavItem } from "@/components/nav-tabs";
+import { AutoLogout } from "@/components/auto-logout";
 import { Badge } from "@/components/ui/badge";
 
 export function AppHeader({
@@ -18,6 +19,10 @@ export function AppHeader({
   navItems?: NavItem[];
 }) {
   return (
+    <>
+    {/* O header só é renderizado em tela autenticada, então é o lugar natural
+        para o relógio de inatividade viver. */}
+    <AutoLogout />
     <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-6">
@@ -57,5 +62,6 @@ export function AppHeader({
         </div>
       ) : null}
     </header>
+    </>
   );
 }

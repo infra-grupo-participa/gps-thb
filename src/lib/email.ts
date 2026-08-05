@@ -25,16 +25,40 @@ const APP_URL = (
 
 const LARANJA = "#EA580C";
 
+/**
+ * Quem confirma as reuniões e precisa ser avisado quando um aluno solicita.
+ * Vem SÓ do ambiente: este repositório é público, e-mail interno não entra no
+ * código. Formato: `EMAIL_EQUIPE=fulano@x.com,ciclano@x.com`.
+ */
+export function emailsDaEquipe(): string[] {
+  return (process.env.EMAIL_EQUIPE || "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
+
+/** true quando ninguém seria avisado — a tela do admin usa isso para alertar. */
+export function equipeSemDestinatario(): boolean {
+  return emailsDaEquipe().length === 0;
+}
+
 export interface ResultadoEmail {
   ok: boolean;
   erro?: string;
 }
 
+interface Anexo {
+  filename: string;
+  /** conteúdo já em base64 */
+  content: string;
+}
+
 interface EnviarParams {
-  para: string;
+  para: string | string[];
   assunto: string;
   html: string;
   texto: string;
+  anexos?: Anexo[];
 }
 
 async function enviar({
@@ -42,11 +66,17 @@ async function enviar({
   assunto,
   html,
   texto,
+  anexos,
 }: EnviarParams): Promise<ResultadoEmail> {
   const chave = process.env.RESEND_API_KEY;
   if (!chave) {
     console.warn("[email] RESEND_API_KEY ausente — e-mail não enviado.");
     return { ok: false, erro: "RESEND_API_KEY não configurada." };
+  }
+  const destinatarios = (Array.isArray(para) ? para : [para]).filter(Boolean);
+  if (!destinatarios.length) {
+    console.warn("[email] sem destinatário — e-mail não enviado.");
+    return { ok: false, erro: "Sem destinatário." };
   }
 
   try {
@@ -58,10 +88,11 @@ async function enviar({
       },
       body: JSON.stringify({
         from: FROM,
-        to: [para],
+        to: destinatarios,
         subject: assunto,
         html,
         text: texto,
+        ...(anexos?.length ? { attachments: anexos } : {}),
       }),
     });
 
@@ -208,6 +239,95 @@ export async function enviarCredenciaisAcesso(params: {
   });
 }
 
+/**
+ * Instante UTC no formato do iCalendar ("20260812T160000Z").
+ * O horário gravado é de Brasília, que é **UTC-3 o ano todo** — o horário de
+ * verão acabou em 2019, então somar 3 h fixas está correto e não depende de
+ * tabela de fuso. `somaHoras` desloca o fim do evento.
+ */
+function instanteUtc(data: string, horario: string, somaHoras = 0): string {
+  const [y, m, d] = data.split("-").map(Number);
+  const hh = Number(horario.slice(0, 2));
+  const mm = Number(horario.slice(3, 5));
+  const dt = new Date(Date.UTC(y, m - 1, d, hh + 3 + somaHoras, mm));
+  return dt.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+/** Escapa texto para dentro de um campo iCalendar (RFC 5545). */
+function escIcs(v: string): string {
+  return v
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n");
+}
+
+/**
+ * Convite de calendário da reunião. Anexado ao e-mail de confirmação, entra no
+ * Google Agenda / Outlook / Apple com um clique — é o "vai para a agenda" sem
+ * depender de integração com conta de serviço do Google.
+ */
+function convite(params: {
+  data: string;
+  horario: string;
+  titulo: string;
+  descricao: string;
+  local: string;
+  uid: string;
+}): Anexo {
+  const { data, horario, titulo, descricao, local, uid } = params;
+  const linhas = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Time Holding Brasil//Programa de Implementacao Assistida//PT-BR",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`,
+    `DTSTART:${instanteUtc(data, horario)}`,
+    `DTEND:${instanteUtc(data, horario, DURACAO_H)}`,
+    `SUMMARY:${escIcs(titulo)}`,
+    `DESCRIPTION:${escIcs(descricao)}`,
+    ...(local ? [`LOCATION:${escIcs(local)}`] : []),
+    "STATUS:CONFIRMED",
+    "BEGIN:VALARM",
+    "TRIGGER:-PT30M",
+    "ACTION:DISPLAY",
+    `DESCRIPTION:${escIcs(titulo)}`,
+    "END:VALARM",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ];
+  // O iCalendar exige CRLF entre as linhas — com \n puro alguns clientes ignoram.
+  return {
+    filename: "reuniao.ics",
+    content: Buffer.from(linhas.join("\r\n"), "utf8").toString("base64"),
+  };
+}
+
+/** Link "Adicionar à Google Agenda" (funciona sem nenhuma integração). */
+function linkGoogleAgenda(params: {
+  data: string;
+  horario: string;
+  titulo: string;
+  descricao: string;
+  local: string;
+}): string {
+  const { data, horario, titulo, descricao, local } = params;
+  const q = new URLSearchParams({
+    action: "TEMPLATE",
+    text: titulo,
+    dates: `${instanteUtc(data, horario)}/${instanteUtc(data, horario, DURACAO_H)}`,
+    details: descricao,
+    ...(local ? { location: local } : {}),
+  });
+  return `https://calendar.google.com/calendar/render?${q.toString()}`;
+}
+
+/** Duração da reunião de implementação, em horas (espelha DURACAO_REUNIAO_H). */
+const DURACAO_H = 2;
+
 /** "2026-08-12" + "16:00:00" → "quarta-feira, 12 de agosto · 16h–18h". */
 function quandoPorExtenso(data: string, horario: string): string {
   const [y, m, d] = data.split("-").map(Number);
@@ -231,11 +351,21 @@ export async function enviarReuniaoConfirmada(params: {
   data: string;
   horario: string;
   linkLive?: string | null;
+  cliente?: string | null;
 }): Promise<ResultadoEmail> {
-  const { para, nome, data, horario, linkLive } = params;
+  const { para, nome, data, horario, linkLive, cliente } = params;
   const primeiroNome = (nome?.trim().split(/\s+/)[0] || "").trim();
   const ola = primeiroNome ? `Olá, ${primeiroNome}!` : "Olá!";
   const quando = quandoPorExtenso(data, horario);
+  const titulo = `Reunião de implementação${cliente ? ` — ${cliente}` : ""} · Time Holding Brasil`;
+  const descricao = `Reunião de implementação com a equipe do Time Holding Brasil.${cliente ? `\nCliente: ${cliente}` : ""}${linkLive ? `\nSala: ${linkLive}` : ""}`;
+  const agenda = linkGoogleAgenda({
+    data,
+    horario,
+    titulo,
+    descricao,
+    local: linkLive || "",
+  });
 
   const blocoLink = linkLive
     ? `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;">
@@ -254,9 +384,14 @@ export async function enviarReuniaoConfirmada(params: {
       ${esc(quando)}
     </p>
     ${blocoLink}
-    ${botao(`${APP_URL}/`, "Ver no portal")}
+    ${botao(agenda, "Adicionar à Google Agenda")}
+    <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#78716c;">
+      O convite também vai anexo (<strong>reuniao.ics</strong>) — abrindo o anexo,
+      o compromisso entra no Outlook, Apple Calendar ou Google Agenda.
+    </p>
     <p style="margin:0;font-size:13px;line-height:1.6;color:#78716c;">
-      Se precisar remarcar, faça pelo portal — a equipe recebe a nova solicitação.
+      Se precisar remarcar, faça pelo portal (<a href="${esc(APP_URL)}/" style="color:${LARANJA};">acessar</a>)
+      — a equipe recebe a nova solicitação e confirma de novo.
     </p>`;
 
   const texto = [
@@ -266,6 +401,7 @@ export async function enviarReuniaoConfirmada(params: {
     quando,
     linkLive ? `Sala: ${linkLive}` : "Falta informar o link da sala no portal.",
     "",
+    `Adicionar à agenda: ${agenda}`,
     `Portal: ${APP_URL}/`,
   ].join("\n");
 
@@ -278,7 +414,177 @@ export async function enviarReuniaoConfirmada(params: {
       corpo,
     }),
     texto,
+    anexos: [
+      convite({
+        data,
+        horario,
+        titulo,
+        descricao,
+        local: linkLive || "",
+        uid: `gps-${data}-${horario.slice(0, 5).replace(":", "")}@programa.timeholdingbrasil.com.br`,
+      }),
+    ],
   });
+}
+
+/**
+ * **Aviso para a equipe de que um aluno SOLICITOU** — o elo que faltava.
+ * Sem isto, a única forma de saber de uma solicitação era entrar no painel,
+ * e foi exatamente essa a falha relatada em 05/08/2026: aluno marcou, viu
+ * "confirmado" e apareceu na reunião sem ninguém da equipe saber.
+ */
+export async function enviarSolicitacaoParaEquipe(params: {
+  aluno: string;
+  alunoEmail?: string | null;
+  alunoTelefone?: string | null;
+  data: string;
+  horario: string;
+  pauta?: string | null;
+  cliente?: string | null;
+  linkLive?: string | null;
+  remarcacao?: boolean;
+}): Promise<ResultadoEmail> {
+  const para = emailsDaEquipe();
+  if (!para.length) {
+    console.warn("[email] EMAIL_EQUIPE ausente — equipe NÃO foi avisada da solicitação.");
+    return { ok: false, erro: "EMAIL_EQUIPE não configurada." };
+  }
+  const { aluno, alunoEmail, alunoTelefone, data, horario, pauta, cliente, linkLive, remarcacao } =
+    params;
+  const quando = quandoPorExtenso(data, horario);
+  const painel = `${APP_URL}/admin/reunioes`;
+
+  const linha = (rotulo: string, valor: string) =>
+    `<tr>
+       <td style="padding:10px 14px;font-size:13px;color:#78716c;white-space:nowrap;vertical-align:top;border-top:1px solid #f0efee;">${esc(rotulo)}</td>
+       <td style="padding:10px 14px;font-size:14px;vertical-align:top;border-top:1px solid #f0efee;">${valor}</td>
+     </tr>`;
+
+  const corpo = `
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      <strong>${esc(aluno)}</strong> ${remarcacao ? "trocou o horário da reunião" : "pediu uma reunião de implementação"}.
+      A reunião <strong>ainda não vale</strong> — ela só é marcada quando alguém da equipe confirmar.
+    </p>
+    <p style="margin:0 0 16px;font-size:16px;font-weight:bold;line-height:1.5;text-transform:capitalize;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;">
+      ${esc(quando)}
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border:1px solid #e7e5e4;border-radius:8px;">
+      ${linha("Aluno", esc(aluno))}
+      ${alunoEmail ? linha("E-mail", `<a href="mailto:${esc(alunoEmail)}" style="color:${LARANJA};">${esc(alunoEmail)}</a>`) : ""}
+      ${alunoTelefone ? linha("Telefone", esc(alunoTelefone)) : ""}
+      ${linha("Cliente", cliente ? esc(cliente) : "<span style='color:#a8a29e'>sem favorito ainda</span>")}
+      ${linha("O que ele precisa resolver", pauta ? esc(pauta) : "<span style='color:#a8a29e'>não descrito</span>")}
+      ${linkLive ? linha("Sala do aluno", `<a href="${esc(linkLive)}" style="color:${LARANJA};">${esc(linkLive)}</a>`) : ""}
+    </table>
+    ${botao(painel, "Confirmar ou recusar")}
+    <p style="margin:0;font-size:13px;line-height:1.6;color:#78716c;">
+      Enquanto ninguém responder, o horário fica reservado para este aluno e
+      indisponível para os demais.
+    </p>`;
+
+  const texto = [
+    `${aluno} ${remarcacao ? "trocou o horário da" : "pediu uma"} reunião de implementação.`,
+    `A reunião AINDA NÃO VALE — só é marcada quando a equipe confirmar.`,
+    "",
+    quando,
+    alunoEmail ? `E-mail: ${alunoEmail}` : "",
+    alunoTelefone ? `Telefone: ${alunoTelefone}` : "",
+    `Cliente: ${cliente || "sem favorito ainda"}`,
+    `Pauta: ${pauta || "não descrita"}`,
+    linkLive ? `Sala: ${linkLive}` : "",
+    "",
+    `Confirmar ou recusar: ${painel}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return enviar({
+    para,
+    assunto: `[Reunião] ${aluno} pediu ${quandoCurto(data, horario)}`,
+    html: layout({
+      preheader: `${aluno} aguarda confirmação para ${quando}.`,
+      titulo: remarcacao ? "Aluno trocou o horário" : "Nova solicitação de reunião",
+      corpo,
+    }),
+    texto,
+  });
+}
+
+/**
+ * Cópia da confirmação para quem confirma — com o convite de calendário, para
+ * o compromisso entrar na agenda da equipe também.
+ */
+export async function enviarConfirmacaoParaEquipe(params: {
+  aluno: string;
+  confirmadoPor?: string | null;
+  data: string;
+  horario: string;
+  linkLive?: string | null;
+  cliente?: string | null;
+  pauta?: string | null;
+}): Promise<ResultadoEmail> {
+  const para = emailsDaEquipe();
+  if (!para.length) return { ok: false, erro: "EMAIL_EQUIPE não configurada." };
+  const { aluno, confirmadoPor, data, horario, linkLive, cliente, pauta } = params;
+  const quando = quandoPorExtenso(data, horario);
+  const titulo = `Reunião de implementação — ${aluno}${cliente ? ` (${cliente})` : ""}`;
+  const descricao = `Aluno: ${aluno}${cliente ? `\nCliente: ${cliente}` : ""}${pauta ? `\nPauta: ${pauta}` : ""}${linkLive ? `\nSala: ${linkLive}` : ""}`;
+  const agenda = linkGoogleAgenda({ data, horario, titulo, descricao, local: linkLive || "" });
+
+  const corpo = `
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      Reunião com <strong>${esc(aluno)}</strong> confirmada${confirmadoPor ? ` por ${esc(confirmadoPor)}` : ""}.
+      O aluno já foi avisado.
+    </p>
+    <p style="margin:0 0 16px;font-size:16px;font-weight:bold;line-height:1.5;text-transform:capitalize;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;">
+      ${esc(quando)}
+    </p>
+    ${cliente ? `<p style="margin:0 0 8px;font-size:14px;">Cliente: <strong>${esc(cliente)}</strong></p>` : ""}
+    ${pauta ? `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;">Pauta: ${esc(pauta)}</p>` : ""}
+    ${linkLive ? `<p style="margin:0 0 16px;font-size:14px;">Sala: <a href="${esc(linkLive)}" style="color:${LARANJA};">${esc(linkLive)}</a></p>` : ""}
+    ${botao(agenda, "Adicionar à Google Agenda")}
+    <p style="margin:0;font-size:13px;line-height:1.6;color:#78716c;">
+      O convite vai anexo (<strong>reuniao.ics</strong>) para entrar direto na agenda.
+    </p>`;
+
+  const texto = [
+    `Reunião com ${aluno} confirmada${confirmadoPor ? ` por ${confirmadoPor}` : ""}.`,
+    quando,
+    cliente ? `Cliente: ${cliente}` : "",
+    pauta ? `Pauta: ${pauta}` : "",
+    linkLive ? `Sala: ${linkLive}` : "",
+    "",
+    `Adicionar à agenda: ${agenda}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return enviar({
+    para,
+    assunto: `[Reunião confirmada] ${aluno} — ${quandoCurto(data, horario)}`,
+    html: layout({
+      preheader: `Confirmada com ${aluno}: ${quando}.`,
+      titulo: "Reunião confirmada",
+      corpo,
+    }),
+    texto,
+    anexos: [
+      convite({
+        data,
+        horario,
+        titulo,
+        descricao,
+        local: linkLive || "",
+        uid: `gps-equipe-${data}-${horario.slice(0, 5).replace(":", "")}@programa.timeholdingbrasil.com.br`,
+      }),
+    ],
+  });
+}
+
+/** "12/08 às 13h" — para assunto de e-mail. */
+function quandoCurto(data: string, horario: string): string {
+  const [, m, d] = data.split("-");
+  return `${d}/${m} às ${horario.slice(0, 2)}h`;
 }
 
 /**

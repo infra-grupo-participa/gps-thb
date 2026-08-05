@@ -8,6 +8,8 @@ import { buscarAlunos, type AlunoBusca } from "@/app/admin/actions";
 import {
   enviarReuniaoConfirmada,
   enviarReuniaoRecusada,
+  enviarSolicitacaoParaEquipe,
+  enviarConfirmacaoParaEquipe,
 } from "@/lib/email";
 
 /** Limite de texto livre que o aluno/equipe escreve (pauta, motivo da recusa). */
@@ -58,15 +60,32 @@ async function exigirAdmin() {
   return { userId: ctx.user.id };
 }
 
-/** Nome e e-mail do aluno, para os avisos. */
+/** Nome, e-mail e telefone do aluno, para os avisos. */
 async function contatoDoAluno(alunoId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("thb_alunos")
-    .select("nome, email")
+    .select("nome, email, telefone")
     .eq("id", alunoId)
     .maybeSingle();
-  return (data ?? null) as { nome: string | null; email: string | null } | null;
+  return (data ?? null) as {
+    nome: string | null;
+    email: string | null;
+    telefone: string | null;
+  } | null;
+}
+
+/** Nome do cliente favoritado (o que a reunião vai tratar). */
+async function clienteDaReuniao(clienteId: string | null | undefined) {
+  if (!clienteId) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("etapa1_clientes")
+    .select("nome")
+    .eq("id", clienteId)
+    .maybeSingle();
+  return (data?.nome as string | null) ?? null;
 }
 
 /**
@@ -179,12 +198,22 @@ export async function agendarReuniao(input: {
     link_live: linkFinal,
     pauta: pautaFinal,
   };
-  if (isAdmin) {
-    // A equipe marcando já é a própria confirmação.
-    linha.status = "confirmada";
+
+  // NADA nasce confirmado — nem quando é a própria equipe que marca. Só a ação
+  // explícita de "Confirmar presença" confirma, porque é ali que se confere
+  // conflito de agenda. Marcar como confirmado sem esse passo foi o que gerou o
+  // incidente de 05/08/2026: aluno viu "confirmado", apareceu na reunião, e
+  // ninguém da equipe sabia.
+  //
+  // Só mexe no status quando o SLOT muda: assim, editar o link ou a pauta de uma
+  // reunião já confirmada não a joga de volta para a fila.
+  const mudouSlot =
+    !atual || atual.data !== input.data || horaCurta(atual.horario) !== horario;
+  if (mudouSlot) {
+    linha.status = "pendente";
     linha.motivo_recusa = null;
-    linha.respondido_em = new Date().toISOString();
-    linha.respondido_por = userId;
+    linha.respondido_em = null;
+    linha.respondido_por = null;
   }
 
   const { error } = await gps
@@ -199,6 +228,26 @@ export async function agendarReuniao(input: {
     // P0001 = as validações do trigger, já escritas para o usuário final.
     if (error.code === "P0001") return { erro: error.message };
     return { erro: "Não foi possível agendar: " + error.message };
+  }
+
+  // Avisa quem confirma. Sem isto, a solicitação só existiria dentro do painel
+  // e alguém teria de ficar olhando a tela para não perder pedido nenhum.
+  if (mudouSlot) {
+    const [contato, nomeCliente] = await Promise.all([
+      contatoDoAluno(alunoId),
+      clienteDaReuniao(clienteId),
+    ]);
+    await enviarSolicitacaoParaEquipe({
+      aluno: contato?.nome || contato?.email || "Aluno do programa",
+      alunoEmail: contato?.email,
+      alunoTelefone: contato?.telefone,
+      data: input.data,
+      horario,
+      pauta: pautaFinal,
+      cliente: nomeCliente,
+      linkLive: linkFinal,
+      remarcacao: Boolean(atual),
+    });
   }
 
   revalidar(alunoId);
@@ -225,7 +274,7 @@ export async function confirmarReuniao(alunoId: string) {
       respondido_por: admin.userId,
     })
     .eq("aluno_id", alunoId)
-    .select("data, horario, link_live")
+    .select("data, horario, link_live, cliente_id, pauta")
     .maybeSingle();
 
   if (error) {
@@ -239,16 +288,36 @@ export async function confirmarReuniao(alunoId: string) {
   }
   if (!data) return { erro: "Esta reunião não existe mais. Atualize a página." };
 
-  const contato = await contatoDoAluno(alunoId);
-  if (contato?.email) {
-    await enviarReuniaoConfirmada({
-      para: contato.email,
-      nome: contato.nome,
+  const ctx = await getContextoSessao();
+  const [contato, nomeCliente] = await Promise.all([
+    contatoDoAluno(alunoId),
+    clienteDaReuniao(data.cliente_id),
+  ]);
+  const nomeAluno = contato?.nome || contato?.email || "Aluno do programa";
+
+  // Os dois lados são avisados: o aluno (que estava esperando resposta) e a
+  // equipe (para o compromisso entrar na agenda de quem vai participar).
+  await Promise.all([
+    contato?.email
+      ? enviarReuniaoConfirmada({
+          para: contato.email,
+          nome: contato.nome,
+          data: data.data,
+          horario: data.horario,
+          linkLive: data.link_live,
+          cliente: nomeCliente,
+        })
+      : Promise.resolve(null),
+    enviarConfirmacaoParaEquipe({
+      aluno: nomeAluno,
+      confirmadoPor: ctx?.perfil?.nome ?? ctx?.user.email ?? null,
       data: data.data,
       horario: data.horario,
       linkLive: data.link_live,
-    });
-  }
+      cliente: nomeCliente,
+      pauta: data.pauta,
+    }),
+  ]);
 
   revalidar(alunoId);
   return {};

@@ -179,6 +179,27 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
   (FK RESTRICT). Fechar **uma quarta** ou **um horário de uma semana** continua sendo bloqueio.
   `HORARIOS_REUNIAO` em `src/lib/reuniao.ts` virou só fallback; a fonte é `getHorariosReuniao()`.
 
+  ⚠️ **CORREÇÃO DE 05/08/2026 (mesmo dia, depois de reclamação da equipe):** na
+  primeira versão eu (a) migrei as 5 reuniões que já existiam como `confirmada` e
+  (b) fiz o agendamento **pela equipe** nascer `confirmada`. As duas coisas
+  criaram o problema que o fluxo existia para evitar: aluno viu "confirmado",
+  apareceu na reunião, e **ninguém da equipe sabia** — porque só o aluno recebia
+  e-mail. Agora: **nada nasce confirmado**, nem quando quem marca é a equipe
+  (marcar apenas **reserva**; a confirmação é sempre o clique explícito em
+  "Confirmar presença", que é onde se confere conflito de agenda). As 3 reuniões
+  futuras do backfill voltaram para `pendente`; as que já tinham acontecido
+  ficaram como estavam. Só o slot muda o status: editar link/pauta de uma reunião
+  confirmada não a joga de volta para a fila.
+
+  **Avisos (o elo que faltava):** `EMAIL_EQUIPE` (variável de ambiente, lista
+  separada por vírgula) recebe e-mail **a cada solicitação e a cada troca de
+  horário** — sem isso a fila só existia para quem abrisse o painel. Os endereços
+  **não entram no código**: este repositório é **público**. Se a variável faltar,
+  `/admin/reunioes` mostra um aviso vermelho — falhar calado aqui foi o erro
+  original. Na confirmação saem dois e-mails: aluno e equipe, ambos com **convite
+  de calendário** (`.ics` anexo + botão "Adicionar à Google Agenda"), gerado em
+  `src/lib/email.ts` (`convite`/`linkGoogleAgenda`; Brasília é UTC-3 o ano todo).
+
   **Aluno:** `ReuniaoAgendarModal` deixa explícito que é solicitação; favorito, **link** e **pauta**
   (o que ele precisa resolver, mín. 15 caracteres) são obrigatórios — é o que a equipe lê para
   decidir e se preparar. O card mostra o status com cor e o que fazer a seguir (`ROTULO_STATUS`).

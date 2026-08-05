@@ -97,7 +97,7 @@ export function ReuniaoAgendarModal({
       }
       toast.success(
         isAdmin
-          ? "Reunião agendada e confirmada para o aluno."
+          ? "Horário reservado. Falta confirmar a presença."
           : "Solicitação enviada! A equipe vai confirmar.",
       );
       onOpenChange(false);
@@ -119,7 +119,7 @@ export function ReuniaoAgendarModal({
           </DialogTitle>
           <DialogDescription>
             {isAdmin
-              ? "Agendado pela equipe já fica confirmado para o aluno."
+              ? "Isto reserva o horário. A reunião só vale depois de confirmar a presença."
               : "Escolha o horário que serve para você e para o cliente. A equipe confirma se consegue participar."}
           </DialogDescription>
         </DialogHeader>
@@ -248,7 +248,7 @@ export function ReuniaoAgendarModal({
             Cancelar
           </Button>
           <Button onClick={confirmar} disabled={pending || !sel}>
-            {isAdmin ? "Agendar e confirmar" : "Enviar solicitação"}
+            {isAdmin ? "Reservar horário" : "Enviar solicitação"}
           </Button>
         </div>
       </DialogContent>

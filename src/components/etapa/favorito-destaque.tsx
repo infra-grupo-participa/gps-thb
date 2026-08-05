@@ -274,7 +274,7 @@ export function FavoritoDestaque({
             <div className="grid gap-3">
               <p className="text-xs text-muted-foreground">
                 {isAdmin
-                  ? "O aluno ainda não pediu a reunião. Você pode marcar por ele — agendado pela equipe já fica confirmado."
+                  ? "O aluno ainda não pediu a reunião. Você pode reservar por ele — mas a reunião só vale depois de confirmar a presença."
                   : "Escolha um horário na agenda da equipe, conte o que precisa resolver e informe o link da sua sala. A equipe confirma se consegue participar."}
               </p>
               <div>

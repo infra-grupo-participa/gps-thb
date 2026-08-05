@@ -91,7 +91,7 @@ export function AgendarAlunoModal({
         toast.error(res.erro);
         return;
       }
-      toast.success("Reunião agendada e já confirmada para o aluno.");
+      toast.success("Horário reservado. Falta confirmar a presença.");
       onOpenChange(false);
       router.refresh();
     });
@@ -110,8 +110,9 @@ export function AgendarAlunoModal({
               {rotuloDataLongo(data)} · {faixaHorario(horario)}
             </span>
             <span className="mt-1 block">
-              Agendado pela equipe já nasce <strong>confirmado</strong> — o aluno
-              não precisa esperar resposta.
+              Isto <strong>reserva</strong> o horário. A reunião só vale depois de
+              alguém clicar em <strong>Confirmar presença</strong> — inclusive
+              quando quem marca é a equipe.
             </span>
           </DialogDescription>
         </DialogHeader>

@@ -6,7 +6,9 @@ import {
   getHorariosReuniao,
   getSolicitacoesPendentes,
 } from "@/lib/data";
+import { AlertTriangle } from "lucide-react";
 import { hojeSaoPaulo, quartaDaSemana } from "@/lib/reuniao";
+import { equipeSemDestinatario } from "@/lib/email";
 import { adminNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { ReunioesCalendario } from "@/components/admin/reunioes-calendario";
@@ -63,6 +65,21 @@ export default async function AdminReunioesPage({
             agenda por um aluno, define a disponibilidade e fecha datas ou horários.
           </p>
         </div>
+
+        {/* Se ninguém recebe o aviso, a fila só existe para quem abrir esta tela
+            — foi exatamente a falha relatada em 05/08/2026. Melhor gritar. */}
+        {equipeSemDestinatario() ? (
+          <div className="mb-6 flex gap-2 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900">
+            <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+            <div>
+              <strong>Ninguém está sendo avisado por e-mail.</strong> A variável{" "}
+              <code className="rounded bg-red-100 px-1">EMAIL_EQUIPE</code> não está
+              configurada, então uma solicitação nova só aparece para quem abrir
+              esta página. Configure no painel da Hostinger (Node.js → variáveis de
+              ambiente) com os e-mails de quem confirma, separados por vírgula.
+            </div>
+          </div>
+        ) : null}
 
         <div className="mb-6">
           <SolicitacoesReuniao pendentes={pendentes} hojeIso={hojeSaoPaulo()} />

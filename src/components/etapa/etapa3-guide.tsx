@@ -103,7 +103,7 @@ function AgendamentosCard({
     );
     startTransition(async () => {
       const res = await definirEquipeParticipa(id, alunoId);
-      if (res.erro) toast.error("Erro ao marcar o evento da equipe.");
+      if (res.erro) toast.error("Erro ao marcar a apresentação principal.");
     });
   }
 
@@ -126,8 +126,8 @@ function AgendamentosCard({
             Agendamentos da Apresentação do Croqui
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Liste as datas. A equipe acompanha{" "}
-            <span className="font-medium">apenas um evento</span> — marque qual.
+            Sua agenda pessoal desta etapa. Liste as datas e marque{" "}
+            <span className="font-medium">a principal</span> para se organizar.
           </p>
         </div>
         <Button onClick={add} disabled={pending}>
@@ -190,7 +190,7 @@ function AgendamentosCard({
                 </div>
                 <div className="mt-3">
                   {a.equipe_participa ? (
-                    <Badge>Equipe participa deste</Badge>
+                    <Badge>Apresentação principal</Badge>
                   ) : (
                     <Button
                       variant="outline"
@@ -198,7 +198,7 @@ function AgendamentosCard({
                       onClick={() => marcarEquipe(a.id)}
                       disabled={pending}
                     >
-                      A equipe participa deste
+                      Marcar como principal
                     </Button>
                   )}
                 </div>

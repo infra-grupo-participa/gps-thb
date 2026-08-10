@@ -135,13 +135,13 @@ Tabelas: `gps.etapas` (config de liberação das 6 etapas), `gps.membros` (vínc
 `auth.users` ⇄ `thb_alunos` + data de agendamento), `gps.etapa1_clientes` (os 30 clientes;
 `acompanhado_equipe` = o favorito/cliente da equipe, único por aluno), `gps.progresso` (conclusão
 de tarefas manuais por aluno/etapa/tarefa), `gps.tarefa_enfase` (override de destaque/esmaecimento
-de tarefa pelo admin — `modo` ∈ {realce, esmaecer}, PK aluno/etapa/tarefa), `gps.reuniao_agendamentos`
-(a reunião de implementação: 1 por aluno via `unique(aluno_id)`; guarda `cliente_id` do favorito
-e `link_live` — **ambos nullable** desde 2026-07-28, pois o admin pode agendar antes de o aluno
-favoritar/ter link), `gps.reuniao_horarios` (a grade de horários, **editável pela equipe**),
-`gps.reuniao_eventos` (trilha de cada reunião, escrita só por trigger) e `gps.reuniao_bloqueios`
-(o que a equipe fecha; coluna `horario`: **NULL = quarta inteira**, **preenchido = só aquele slot**;
-índices únicos parciais por caso; as **datas** da grade são geradas em código, `src/lib/reuniao.ts`).
+de tarefa pelo admin — `modo` ∈ {realce, esmaecer}, PK aluno/etapa/tarefa).
+
+⚠️ **As tabelas de reunião continuam no banco, mas NENHUM código as usa** (ver "Agendamento"
+abaixo): `gps.reuniao_agendamentos`, `gps.reuniao_horarios`, `gps.reuniao_eventos`,
+`gps.reuniao_bloqueios` e a trigger `gps.reuniao_guardar_status`. Foram deixadas de pé de
+propósito, para não perder dado e permitir voltar atrás. **Não voltar a lê-las sem decisão
+explícita do Marcio.**
 Funções: `gps.aluno_atual()` (aluno_id do usuário logado), `gps.touch_atualizado_em()`.
 RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos próprios registros
 (via `gps.aluno_atual()`).
@@ -154,67 +154,49 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
   (`FavoritoDestaque`) + **"Seu caminho"** (`EtapasOverview dense`, 2 col); coluna de apoio (1/3,
   sticky) com o painel **`HomeResumo`** (progresso geral + clientes/reuniões/perda num único card).
   Os atalhos Clientes/Pasta/Materiais foram removidos da home (já estão no `NavTabs` do header).
-- **Cliente favoritado** (`FavoritoDestaque`, compartilhado aluno/admin): infos do cliente +
-  **reunião com a equipe**.
+- **Cliente favoritado** (`FavoritoDestaque`, compartilhado aluno/admin): card **só informativo**
+  do cliente que a equipe acompanha — nome, status, telefone/WhatsApp, perda pela inércia e
+  "Abrir ficha". É Server Component (sem `"use client"`, sem estado, sem action).
 
-  **Modelo atual (2026-08-05): o aluno SOLICITA, a equipe CONFIRMA.** Marcar não é reservar: a
-  reunião só vale quando a equipe responde. Ciclo em `gps.reuniao_agendamentos.status`:
-  - `pendente` — o aluno solicitou. **Segura o slot** (índice único parcial
-    `(data,horario) where status <> 'recusada'`), então ninguém mais pede aquele horário.
-  - `confirmada` — a equipe garantiu presença. Só a equipe põe esse status.
-  - `recusada` — "não vou conseguir participar". **Libera o slot** e o aluno escolhe outro horário;
-    a linha fica com `motivo_recusa` para o aluno ler.
+### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 
-  **O status nunca vem do cliente.** O trigger `gps.reuniao_guardar_status` (SECURITY DEFINER,
-  BEFORE INSERT/UPDATE) decide pelo papel de quem escreve: aluno sempre cai em `pendente`; aluno que
-  troca de data/horário **volta para `pendente`** (a confirmação anterior não vale mais); aluno que
-  edita só link/pauta **preserva** a decisão da equipe. O mesmo trigger valida, para o aluno, data no
-  passado, horário inativo e bloqueio — mesmo que alguém chame o PostgREST direto. A equipe pode
-  furar a própria grade (é ela quem fecha os horários). Testado simulando os dois JWTs.
+**Decisão do Marcio.** O motivo é **operacional, não técnico**: o fluxo não estava fluindo e
+**a equipe não estava comparecendo**. Enquanto isso é um problema interno, **o sistema não pode
+prometer uma reunião que não acontece**.
 
-  **Grade editável (`gps.reuniao_horarios`).** Os horários deixaram de ser CHECK fixo (eram
-  10/13/16h) e viraram tabela com FK — a equipe abre/fecha/cria horário no botão
-  **"Disponibilidade"** do calendário (`DisponibilidadeHorarios`). `ativo = false` some da grade do
-  aluno **sem apagar histórico**; remover só é possível se nenhuma reunião apontar para o horário
-  (FK RESTRICT). Fechar **uma quarta** ou **um horário de uma semana** continua sendo bloqueio.
-  `HORARIOS_REUNIAO` em `src/lib/reuniao.ts` virou só fallback; a fonte é `getHorariosReuniao()`.
+**Regra de produto que vale daqui pra frente:**
+> Agendamento no GPS é **organização pessoal do aluno**. A UI **não deve dar a entender** que a
+> equipe participa de reunião marcada pelo sistema, nem que o agendamento acontece dentro dele.
 
-  ⚠️ **CORREÇÃO DE 05/08/2026 (mesmo dia, depois de reclamação da equipe):** na
-  primeira versão eu (a) migrei as 5 reuniões que já existiam como `confirmada` e
-  (b) fiz o agendamento **pela equipe** nascer `confirmada`. As duas coisas
-  criaram o problema que o fluxo existia para evitar: aluno viu "confirmado",
-  apareceu na reunião, e **ninguém da equipe sabia** — porque só o aluno recebia
-  e-mail. Agora: **nada nasce confirmado**, nem quando quem marca é a equipe
-  (marcar apenas **reserva**; a confirmação é sempre o clique explícito em
-  "Confirmar presença", que é onde se confere conflito de agenda). As 3 reuniões
-  futuras do backfill voltaram para `pendente`; as que já tinham acontecido
-  ficaram como estavam. Só o slot muda o status: editar link/pauta de uma reunião
-  confirmada não a joga de volta para a fila.
+⚠️ **Histórico importante:** o fluxo já foi removido uma vez e **voltou** — em 2026-08-05 alguém
+reconstruiu por cima (modelo "aluno solicita / equipe confirma", `EMAIL_EQUIPE`, fila com badge,
+grade editável). **Não reconstruir sem decisão explícita do Marcio.**
 
-  **Avisos (o elo que faltava):** `EMAIL_EQUIPE` (variável de ambiente, lista
-  separada por vírgula) recebe e-mail **a cada solicitação e a cada troca de
-  horário** — sem isso a fila só existia para quem abrisse o painel. Os endereços
-  **não entram no código**: este repositório é **público**. Se a variável faltar,
-  `/admin/reunioes` mostra um aviso vermelho — falhar calado aqui foi o erro
-  original. Na confirmação saem dois e-mails: aluno e equipe, ambos com **convite
-  de calendário** (`.ics` anexo + botão "Adicionar à Google Agenda"), gerado em
-  `src/lib/email.ts` (`convite`/`linkGoogleAgenda`; Brasília é UTC-3 o ano todo).
+O que foi **removido** (código):
+- `src/lib/reuniao.ts`, `src/app/reuniao/actions.ts`, `src/app/admin/reunioes/`.
+- Componentes: `ReunioesCalendario`, `AgendarAlunoModal`, `SolicitacoesReuniao`,
+  `ReuniaoResponder`, `DisponibilidadeHorarios`, `ReuniaoAgendarModal`.
+- `src/lib/data.ts`: todas as queries de reunião, incl. `contarReunioesPendentes` (o badge).
+- `src/lib/types.ts`: `STATUS_REUNIAO`, `StatusReuniao`, `ReuniaoAgendamento(Detalhe)`,
+  `ReuniaoHorario`, `ReuniaoEvento`, `ReuniaoBloqueio`, `SlotReuniao`.
+- `src/lib/email.ts`: `emailsDaEquipe`, `equipeSemDestinatario`, `enviarReuniaoConfirmada`,
+  `enviarSolicitacaoParaEquipe`, `enviarConfirmacaoParaEquipe`, `enviarReuniaoRecusada` + os
+  helpers de `.ics`/Google Agenda. **Preservados:** `enviarCredenciaisAcesso` e
+  `enviarAcessoLiberado` (de que `admin/actions.ts` e `senha-actions.ts` dependem) e a infra
+  (`enviar`, `esc`, `layout`, `botao`, `ResultadoEmail`).
+- A env **`EMAIL_EQUIPE`** (saiu do `.env.example`; pode sair do painel da Hostinger).
+- A aba **Reuniões** e o campo `badge` do `NavItem` (existia só para a fila de reunião).
 
-  **Aluno:** `ReuniaoAgendarModal` deixa explícito que é solicitação; favorito, **link** e **pauta**
-  (o que ele precisa resolver, mín. 15 caracteres) são obrigatórios — é o que a equipe lê para
-  decidir e se preparar. O card mostra o status com cor e o que fazer a seguir (`ROTULO_STATUS`).
-  **Equipe:** `/admin/reunioes` abre com a **fila de solicitações pendentes** (`SolicitacoesReuniao`,
-  de hoje em diante, inclusive de semanas futuras) e um contador na aba do menu. `ReuniaoResponder`
-  dá "Confirmar presença" e "Não vou conseguir" (motivo obrigatório na prática + opção de **fechar o
-  horário para todos**). Agendar pela equipe (`AgendarAlunoModal`) já nasce **confirmada**.
-  **Avisos:** e-mail ao aluno na confirmação, na recusa e no cancelamento feito pela equipe
-  (`enviarReuniaoConfirmada`/`enviarReuniaoRecusada`); falha de envio não desfaz a ação.
-  **Trilha:** `gps.reuniao_eventos` grava por trigger cada passo (solicitada/remarcada/confirmada/
-  recusada/cancelada, com autor e se era equipe). Aluno só lê a própria.
+**Textos reposicionados** (agendamento = organização pessoal):
+- Etapa 03: "A equipe acompanha apenas UM evento" → "marque a **apresentação principal**";
+  badge "Equipe participa deste" → "Apresentação principal".
+- Etapa 02, tarefa 3: saiu "a equipe acompanha 1 reunião e complementa se necessário".
 
-  Actions em `src/app/reuniao/actions.ts` (`agendarReuniao`, `confirmarReuniao`, `recusarReuniao`,
-  `cancelarReuniao`, `bloquearQuarta`, `desbloquearQuarta`, `bloquearSlot`, `desbloquearSlot`,
-  `criarHorarioReuniao`, `definirHorarioAtivo`, `removerHorarioReuniao`, `buscarAlunosParaAgenda`).
+**O que NÃO foi tocado** (é agenda do aluno com os clientes dele, fora do sistema):
+`gps.etapa1_clientes.data_reuniao_preliminar`, `gps.membros.data_agendamento_disponivel`,
+`gps.etapa3_agendamentos` (lista livre), a meta de 15 reuniões preliminares da Etapa 01 e o
+"agendar o depoimento final" da Etapa 06.
+
 - **Etapas = guia/mapa** (intuitivo): checklist + tutoriais + progresso. NÃO contém gestão.
 - **Clientes = aba separada** (CRM): **Lista** (funil/busca/ordenação) e **Quadro** (kanban por
   status com arrastar-e-soltar), atalho de **WhatsApp** (`src/lib/whatsapp.ts`), e destaque do
@@ -250,9 +232,7 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
   (Início/Clientes/Materiais) em `NavTabs`.
 - Admin espelha em `/admin/aluno/[id]`, `.../etapa/[n]`, `.../clientes`, `.../clientes/[id]`, `.../materiais`.
 - `/admin` — lista de alunos no GPS + "Adicionar aluno" (busca em `thb_alunos`). Header do admin
-  tem abas **Alunos / Reuniões** (`adminNavItems` em `src/lib/nav.ts`).
-- `/admin/reunioes` — fila de solicitações a responder + calendário da semana (quartas, horários de
-  `gps.reuniao_horarios`), navegação por semana, disponibilidade, bloquear/liberar data ou horário.
+  tem só a aba **Alunos** (`adminNavItems` em `src/lib/nav.ts`) desde a remoção do agendamento.
 - `/admin/aluno/[alunoId]` — admin dentro do ambiente do aluno (modo assistência, editável).
 - `/cadastro` — auto-cadastro do aluno (Supabase signUp, metadata `origem=gps`).
 - `/admin/solicitacoes` — fila de solicitações de acesso (aprovar/recusar, match por e-mail).
@@ -399,16 +379,11 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
       (`gps.tarefa_enfase`); indicador visual dos passos 1.1/1.2 apontando p/ a aba Clientes.
 - [x] Cliente favoritado em destaque na home (aluno+admin) + "Continue de onde parou"; Etapa 05
       travada até haver favorito.
-- [x] **Agendamento de reunião reconstruído (2026-07-28):** grade fixa (quartas 09/11/13/15h),
-      aluno se encaixa num slot livre + cola o link da live, 1 por aluno, sempre com o favorito;
-      remarcar/cancelar; aba admin `/admin/reunioes` (calendário + bloquear data). Substituiu
-      `gps.reuniao_janelas` (removida) por `gps.reuniao_agendamentos` + `gps.reuniao_bloqueios`.
-- [x] **Reunião por solicitação + confirmação (2026-08-05):** o aluno solicita (com pauta), a equipe
-      confirma ou recusa com motivo (podendo fechar o horário), e-mail em cada resposta, trilha em
-      `gps.reuniao_eventos`, grade de horários editável (`gps.reuniao_horarios`) e fila de pendentes
-      no `/admin/reunioes`. Migração `gps_reuniao_solicitacao_e_confirmacao`; status blindado por
-      trigger no banco (aluno não se autoconfirma). As 5 reuniões que já existiam viraram
-      `confirmada` — ninguém perdeu horário.
+- [x] **Agendamento de reunião com a equipe REMOVIDO (2026-08-10)** — decisão operacional do
+      Marcio (a equipe não estava comparecendo). Removidos o modelo de solicitação/confirmação
+      (2026-08-05), a grade fixa (2026-07-28), a rota `/admin/reunioes`, os e-mails de reunião e
+      a env `EMAIL_EQUIPE`. Tabelas mantidas no banco, sem uso. Ver a seção "⚠️ Agendamento".
+      **Já voltou uma vez — não reconstruir sem decisão explícita.**
 - [x] Busca de aluno tolerante (tokens + ranqueamento por associação); removido o mapa da pasta.
 - [x] Admin: lista de alunos com resumo + entrar no ambiente do aluno (editável).
 - [x] Portal de captação bloqueado.
@@ -470,11 +445,14 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-08-05 — **agendamento virou solicitação + confirmação da equipe**
-(`status` pendente/confirmada/recusada em `gps.reuniao_agendamentos`, blindado por trigger;
-pendente segura o slot, recusada libera), **grade de horários editável** (`gps.reuniao_horarios`,
-botão "Disponibilidade"), **fila de pendentes** e resposta da equipe em `/admin/reunioes`, **pauta
-obrigatória** do aluno, e-mails de confirmação/recusa/cancelamento, trilha em `gps.reuniao_eventos`.
-Build verde; fluxo testado no banco simulando JWT de aluno e de admin (11 cenários)._
+_Última atualização: 2026-08-10 — **fluxo de agendamento de reunião com a equipe REMOVIDO**
+(rota `/admin/reunioes`, actions, `src/lib/reuniao.ts`, os 6 componentes, queries, tipos, os 4
+e-mails de reunião e a env `EMAIL_EQUIPE`). Motivo **operacional**: a equipe não estava
+comparecendo. `FavoritoDestaque` virou card informativo (Server Component); textos de Etapa 02/03
+reposicionados como **organização pessoal do aluno**. Tabelas `gps.reuniao_*` **mantidas no banco**,
+órfãs. Preservados no mesmo commit: auto-logout de 30 min, `GerenciarAcesso`/`senha-actions`,
+`prefetch={false}` das abas e os e-mails de acesso. Build verde. Deploy Hostinger é manual._
+
+_Anterior: 2026-08-05 — agendamento virou solicitação + confirmação da equipe (revertido em 10/08)._
 
 _Anterior: 2026-07-09 — fichário de documentos removido da ficha do cliente; Etapa 01 reestruturada (1.1/1.2, passo 6 absorvido, indicador p/ Clientes); ênfase de tarefas com override do admin (`gps.tarefa_enfase`); home com "continue de onde parou" + cliente favoritado em destaque e agendamento por janelas (`gps.reuniao_janelas`); Etapa 05 travada por favorito; busca de aluno tolerante; mapa da pasta removido. **Cadastro manual de aluno fora da base** (`CadastrarAlunoForm` + action `cadastrarAluno` + função `gps.aluno_por_documento`), com validação de dígitos do CPF/CNPJ e guarda contra CPF duplicado. Build verde. Próximo: verificar domínio na Resend + `RESEND_API_KEY` na Hostinger._

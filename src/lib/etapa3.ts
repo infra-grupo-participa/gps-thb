@@ -8,7 +8,7 @@ export const TAREFAS_ETAPA3: TarefaDef[] = [
     titulo: "Agendar a Apresentação do Croqui Estrutural",
     descricao:
       "Inclua as datas agendadas para a apresentação do Croqui Estrutural nos agendamentos abaixo.",
-    info: "A equipe acompanha apenas UM evento — indique qual nos agendamentos.",
+    info: "Use os agendamentos abaixo para se organizar e marque qual é a apresentação principal.",
   },
   {
     num: 2,

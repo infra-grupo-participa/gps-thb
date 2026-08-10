@@ -8,7 +8,6 @@ import {
   BookOpen,
   FolderOpen,
   UserRound,
-  CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -16,18 +15,9 @@ export interface NavItem {
   href: string;
   label: string;
   /** chave do ícone (string, serializável entre server e client). */
-  icon?:
-    | "inicio"
-    | "clientes"
-    | "materiais"
-    | "pasta"
-    | "perfil"
-    | "alunos"
-    | "reunioes";
+  icon?: "inicio" | "clientes" | "materiais" | "pasta" | "perfil" | "alunos";
   /** casa exatamente (para o "Início"). */
   exact?: boolean;
-  /** contador de pendências ao lado do rótulo (ex.: solicitações a responder). */
-  badge?: number;
 }
 
 const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
@@ -37,7 +27,6 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
   pasta: FolderOpen,
   perfil: UserRound,
   alunos: Users,
-  reunioes: CalendarClock,
 };
 
 export function NavTabs({ items }: { items: NavItem[] }) {
@@ -69,14 +58,6 @@ export function NavTabs({ items }: { items: NavItem[] }) {
           >
             {Icon ? <Icon className="size-4" /> : null}
             {item.label}
-            {item.badge ? (
-              <span
-                className="inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-semibold text-white"
-                title={`${item.badge} aguardando resposta`}
-              >
-                {item.badge}
-              </span>
-            ) : null}
           </Link>
         );
       })}

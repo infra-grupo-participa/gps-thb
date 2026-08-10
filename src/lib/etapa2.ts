@@ -30,7 +30,7 @@ export const TAREFAS_ETAPA2: TarefaDef[] = [
     num: 3,
     titulo: "Realize as Reuniões Preliminares",
     descricao:
-      "Conduza as reuniões preliminares. Quem conduz é o Parceiro; a equipe acompanha 1 reunião e complementa se necessário.",
+      "Conduza as reuniões preliminares. Quem conduz é o Parceiro.",
     info: "Meta: fechar pelo menos 5 croquis.",
   },
   {

@@ -14,19 +14,7 @@ export function alunoNavItems(basePath: string): NavItem[] {
   ];
 }
 
-/**
- * Abas do painel do admin (nível topo, não o modo assistência do aluno).
- * `pendentes` = solicitações de reunião esperando resposta; vira um contador na
- * aba Reuniões para que nenhum aluno fique aguardando sem ninguém ver.
- */
-export function adminNavItems(pendentes = 0): NavItem[] {
-  return [
-    { href: "/admin", label: "Alunos", icon: "alunos", exact: true },
-    {
-      href: "/admin/reunioes",
-      label: "Reuniões",
-      icon: "reunioes",
-      badge: pendentes || undefined,
-    },
-  ];
+/** Abas do painel do admin (nível topo, não o modo assistência do aluno). */
+export function adminNavItems(): NavItem[] {
+  return [{ href: "/admin", label: "Alunos", icon: "alunos", exact: true }];
 }

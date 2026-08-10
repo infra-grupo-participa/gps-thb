@@ -55,7 +55,11 @@ export async function removerAgendamentoEtapa3(id: string, alunoId: string) {
   return {};
 }
 
-/** Marca UM agendamento como o que a equipe participa (desmarca os demais). */
+/**
+ * Marca UM agendamento como a apresentação principal (desmarca os demais).
+ * A coluna `equipe_participa` foi mantida por compatibilidade com o banco; hoje
+ * significa apenas o destaque pessoal do aluno, sem promessa de presença da equipe.
+ */
 export async function definirEquipeParticipa(id: string, alunoId: string) {
   const supabase = await createClient();
   const gps = supabase.schema("gps");

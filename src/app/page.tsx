@@ -10,9 +10,7 @@ import {
   getMembro,
   getTurmaCodigo,
   getClienteEquipe,
-  getReuniaoDoAluno,
 } from "@/lib/data";
-import { rotuloData, faixaHorario } from "@/lib/reuniao";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
@@ -88,8 +86,6 @@ export default async function HomePage() {
       getClienteEquipe(alunoId),
     ]);
   const turma = await getTurmaCodigo(aluno?.turma_id);
-  // A reunião é sempre com o cliente favoritado — só busca a agenda se houver.
-  const reuniao = favorito ? await getReuniaoDoAluno(alunoId) : null;
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
   const passo = proximoPasso(etapas, clientes, progressoTodas);
@@ -128,16 +124,8 @@ export default async function HomePage() {
         {/* Conteúdo: jornada (principal) + resumo (apoio) lado a lado. */}
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            {favorito && reuniao ? (
-              <FavoritoDestaque
-                alunoId={alunoId}
-                cliente={favorito}
-                agendamento={reuniao.agendamento}
-                grade={reuniao.grade}
-                isAdmin={false}
-                basePath=""
-                hojeIso={reuniao.hojeIso}
-              />
+            {favorito ? (
+              <FavoritoDestaque cliente={favorito} basePath="" />
             ) : null}
 
             <section>
@@ -155,16 +143,6 @@ export default async function HomePage() {
                 clientes={m1.preenchidos}
                 agendados={m1.agendados}
                 perdaTotal={m1.perdaTotal}
-                reuniaoEquipe={
-                  favorito
-                    ? reuniao?.agendamento
-                      ? `${rotuloData(reuniao.agendamento.data)} · ${faixaHorario(
-                          reuniao.agendamento.horario,
-                        )}`
-                      : null
-                    : undefined
-                }
-                statusReuniao={reuniao?.agendamento?.status ?? null}
               />
             </div>
           </aside>

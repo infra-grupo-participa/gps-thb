@@ -21,8 +21,15 @@ const CAMPOS: (keyof PerfilAluno)[] = [
 /**
  * Salva o perfil em `gps.membros.perfil`.
  *
- * Sem `alunoId`, o aluno logado edita o próprio perfil. Com `alunoId`, o admin
- * edita o perfil daquele aluno (modo assistência).
+ * Sem `alunoId`, o aluno logado edita o próprio perfil (`eq user_id` — já é
+ * uma linha só, sempre a dele). Com `alunoId`, o admin edita o perfil do
+ * TITULAR daquele ambiente (modo assistência).
+ *
+ * ⚠️ `gps.membros` não tem mais `UNIQUE(aluno_id)`: pode haver várias linhas
+ * por ambiente (titular + sócios). Um `update ... eq("aluno_id", alunoId)`
+ * casaria todas e sobrescreveria o perfil de todo mundo com o mesmo texto —
+ * por isso o modo admin resolve primeiro o `membro_id` do titular e atualiza
+ * por ele, nunca por `aluno_id` sozinho.
  *
  * O `select()` no fim não é decorativo: um update que não casa nenhuma linha
  * volta sem erro. Sem conferir a linha afetada, um admin (que não tem registro
@@ -44,21 +51,35 @@ export async function salvarPerfilAluno(
     if (v) limpo[c] = v;
   }
 
-  const update = supabase.schema("gps").from("membros").update({
-    perfil: limpo,
-  });
+  let query;
+  if (alunoId) {
+    if (ctx.papel !== "admin") return { erro: "Sem permissão." };
 
-  const query = alunoId
-    ? ctx.papel === "admin"
-      ? update.eq("aluno_id", alunoId)
-      : null
-    : ctx.papel === "aluno"
-      ? update.eq("user_id", ctx.user.id)
-      : null;
+    const { data: titular, error: eTitular } = await supabase
+      .schema("gps")
+      .from("membros")
+      .select("id")
+      .eq("aluno_id", alunoId)
+      .eq("papel", "titular")
+      .maybeSingle();
+    if (eTitular) return { erro: eTitular.message };
+    if (!titular) return { erro: "Titular do ambiente não encontrado." };
 
-  if (!query) return { erro: "Sem permissão." };
+    query = supabase
+      .schema("gps")
+      .from("membros")
+      .update({ perfil: limpo })
+      .eq("id", titular.id);
+  } else {
+    if (ctx.papel !== "aluno") return { erro: "Sem permissão." };
+    query = supabase
+      .schema("gps")
+      .from("membros")
+      .update({ perfil: limpo })
+      .eq("user_id", ctx.user.id);
+  }
 
-  const { data, error } = await query.select("aluno_id");
+  const { data, error } = await query.select("id");
   if (error) return { erro: error.message };
   if (!data || data.length === 0) {
     return { erro: "Perfil não encontrado — nada foi salvo." };

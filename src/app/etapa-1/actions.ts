@@ -186,6 +186,7 @@ export async function definirEnfaseTarefa(
   return {};
 }
 
+/** Data é do AMBIENTE (compartilhada entre titular e sócios), não da pessoa. */
 export async function salvarDataAgendamento(
   alunoId: string,
   data: string | null,
@@ -193,7 +194,7 @@ export async function salvarDataAgendamento(
   const supabase = await createClient();
   const { error } = await supabase
     .schema("gps")
-    .from("membros")
+    .from("ambientes")
     .update({ data_agendamento_disponivel: data })
     .eq("aluno_id", alunoId);
 

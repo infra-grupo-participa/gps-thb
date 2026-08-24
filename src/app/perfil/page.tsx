@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getMembro, getTurmaCodigo } from "@/lib/data";
+import { getAlunoById, getMembroDoUsuario, getTurmaCodigo } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PerfilEditor } from "@/components/perfil/perfil-editor";
@@ -15,9 +15,12 @@ export default async function PerfilPage() {
   if (ctx.papel === "admin") redirect("/admin");
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
+  // A pessoa logada: para o titular é o mesmo aluno do ambiente; para o
+  // sócio é o próprio cadastro (`membroAlunoId`), não o do titular.
+  const pessoaAlunoId = ctx.membroAlunoId ?? ctx.alunoId;
   const [aluno, membro] = await Promise.all([
-    getAlunoById(ctx.alunoId),
-    getMembro(ctx.alunoId),
+    getAlunoById(pessoaAlunoId),
+    getMembroDoUsuario(ctx.user.id),
   ]);
   const turma = await getTurmaCodigo(aluno?.turma_id);
 
@@ -41,7 +44,7 @@ export default async function PerfilPage() {
         </div>
 
         <PerfilEditor
-          aluno={(aluno ?? { id: ctx.alunoId }) as Aluno}
+          aluno={(aluno ?? { id: pessoaAlunoId }) as Aluno}
           turma={turma}
           perfilInicial={membro?.perfil ?? {}}
         />

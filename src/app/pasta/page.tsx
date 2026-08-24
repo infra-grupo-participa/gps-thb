@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getMembro } from "@/lib/data";
+import { getAlunoById, getAmbiente } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PastaView } from "@/components/pasta/pasta-view";
@@ -13,9 +13,9 @@ export default async function PastaPage() {
   if (ctx.papel === "admin") redirect("/admin");
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
-  const [aluno, membro] = await Promise.all([
+  const [aluno, ambiente] = await Promise.all([
     getAlunoById(ctx.alunoId),
-    getMembro(ctx.alunoId),
+    getAmbiente(ctx.alunoId),
   ]);
 
   return (
@@ -36,7 +36,7 @@ export default async function PastaPage() {
 
         <PastaView
           alunoId={ctx.alunoId}
-          pastaUrl={membro?.pasta_drive_url ?? null}
+          pastaUrl={ambiente?.pasta_drive_url ?? null}
           isAdmin={false}
         />
       </main>

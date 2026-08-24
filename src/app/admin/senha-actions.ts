@@ -6,13 +6,15 @@ import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
 import { enviarCredenciaisAcesso } from "@/lib/email";
+import type { PapelMembro } from "@/lib/types";
 
 /**
  * Gestão do acesso do aluno pelo painel — sem depender de e-mail e sem
  * `service_role`. O trabalho pesado (mexer em `auth.users`) fica em funções
  * SECURITY DEFINER no schema `gps`, liberadas só para admin
- * (`public.gp_is_admin()`): `admin_status_acesso`, `admin_definir_senha` e
- * `admin_excluir_acesso`. Ver migração `gps_admin_gestao_de_acesso`.
+ * (`public.gp_is_admin()`): `admin_status_acesso`, `admin_definir_senha`,
+ * `admin_excluir_acesso`, `admin_adicionar_socio` e `admin_excluir_membro`.
+ * Ver migração `gps_admin_gestao_de_acesso` (e a extensão para sócios).
  */
 
 async function ehAdmin(): Promise<boolean> {
@@ -26,6 +28,16 @@ function gerarSenhaTemporaria(): string {
   return `Thb-${b.slice(0, 4)}-${b.slice(4)}`;
 }
 
+export interface MembroAcesso {
+  membroId: string;
+  papel: PapelMembro;
+  userId: string | null;
+  email: string | null;
+  temSenha: boolean;
+  emailConfirmado: boolean;
+  ultimoAcesso: string | null;
+}
+
 export interface StatusAcesso {
   temLogin: boolean;
   emailCadastro: string | null;
@@ -37,6 +49,9 @@ export interface StatusAcesso {
   noGps: boolean;
   vinculoCompleto: boolean;
   solicitacaoPendente: boolean;
+  /** Ambiente compartilhado: todos os membros (titular + sócios). */
+  qtdMembros: number;
+  membros: MembroAcesso[];
 }
 
 /** Diagnóstico do acesso: mostra exatamente onde o aluno trava. */
@@ -53,6 +68,17 @@ export async function statusAcessoAluno(
   if (error) return { erro: error.message };
 
   const d = data as Record<string, unknown>;
+  const membrosRaw = (d.membros as Record<string, unknown>[]) ?? [];
+  const membros: MembroAcesso[] = membrosRaw.map((m) => ({
+    membroId: String(m.membro_id),
+    papel: (m.papel as PapelMembro) ?? "socio",
+    userId: (m.user_id as string) ?? null,
+    email: (m.email as string) ?? null,
+    temSenha: Boolean(m.tem_senha),
+    emailConfirmado: Boolean(m.email_confirmado),
+    ultimoAcesso: (m.ultimo_acesso as string) ?? null,
+  }));
+
   return {
     status: {
       temLogin: Boolean(d.tem_login),
@@ -65,6 +91,8 @@ export async function statusAcessoAluno(
       noGps: Boolean(d.no_gps),
       vinculoCompleto: Boolean(d.vinculo_completo),
       solicitacaoPendente: Boolean(d.solicitacao_pendente),
+      qtdMembros: Number(d.qtd_membros ?? membros.length),
+      membros,
     },
   };
 }
@@ -131,8 +159,10 @@ export async function definirSenhaAluno(
 }
 
 /**
- * Apaga o acesso por completo: dados do GPS + login (`auth.users`).
- * O cadastro em `thb_alunos` permanece — é base compartilhada com o sip.
+ * Apaga o AMBIENTE INTEIRO: dados do GPS + login de TODOS os membros
+ * (titular e sócios) em `auth.users`. O cadastro em `thb_alunos` de cada um
+ * permanece — é base compartilhada com o sip. Não confundir com
+ * `excluirMembroAluno`, que tira só uma pessoa (sócio) do ambiente.
  */
 export async function excluirAcessoAluno(
   alunoId: string,
@@ -151,6 +181,86 @@ export async function excluirAcessoAluno(
     loginApagado: Boolean((data as { login_apagado?: boolean })?.login_apagado),
     email: (data as { email?: string })?.email ?? null,
   };
+}
+
+/**
+ * Adiciona um sócio ao ambiente: vincula um `thb_aluno` já existente
+ * (`p_socio_aluno_id`) como segundo membro do ambiente do titular
+ * (`p_ambiente_aluno_id`), com login e senha próprios.
+ */
+export async function adicionarSocioAluno(
+  ambienteAlunoId: string,
+  socioAlunoId: string,
+  opts?: { email?: string; senha?: string },
+): Promise<{
+  erro?: string;
+  email?: string;
+  senha?: string;
+  emailEnviado?: boolean;
+}> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+
+  const senha = opts?.senha?.trim() || gerarSenhaTemporaria();
+  if (senha.length < 8) {
+    return { erro: "A senha precisa ter ao menos 8 caracteres." };
+  }
+  const email = opts?.email?.trim().toLowerCase();
+  if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+    return { erro: "Informe um e-mail válido para o sócio." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.schema("gps").rpc(
+    "admin_adicionar_socio",
+    {
+      p_ambiente_aluno_id: ambienteAlunoId,
+      p_socio_aluno_id: socioAlunoId,
+      p_email: email,
+      p_senha: senha,
+    },
+  );
+
+  if (error) return { erro: error.message };
+
+  const { data: socio } = await supabase
+    .from("thb_alunos")
+    .select("nome")
+    .eq("id", socioAlunoId)
+    .maybeSingle();
+
+  const envio = await enviarCredenciaisAcesso({
+    para: email,
+    nome: socio?.nome ?? null,
+    senha,
+    precisaConfirmar: false,
+  });
+
+  revalidatePath("/admin", "layout");
+  return {
+    email: (data as { email?: string })?.email ?? email,
+    senha,
+    emailEnviado: envio.ok,
+  };
+}
+
+/**
+ * Remove UM membro do ambiente (só sócio — a função recusa se `papel` for
+ * titular). Apaga o login dele; o ambiente e os demais membros continuam.
+ */
+export async function excluirMembroAluno(
+  membroId: string,
+): Promise<{ erro?: string }> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .schema("gps")
+    .rpc("admin_excluir_membro", { p_membro_id: membroId });
+
+  if (error) return { erro: error.message };
+
+  revalidatePath("/admin", "layout");
+  return {};
 }
 
 /** Envia ao aluno o e-mail de redefinição de senha (fluxo do Supabase). */

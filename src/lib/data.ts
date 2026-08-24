@@ -2,11 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { calcularMetricasEtapa1 } from "@/lib/etapa1";
 import type {
   Aluno,
+  Ambiente,
   ClienteEtapa1,
   Etapa,
   Membro,
   ModoEnfase,
   ProgressoTarefa,
+  AgendaItem,
+  AgendaItemComAluno,
   Solicitacao,
   StatusSolicitacao,
 } from "@/lib/types";
@@ -47,17 +50,48 @@ export async function getTurmaCodigo(
   return (data?.codigo as string) ?? null;
 }
 
-export async function getMembro(alunoId: string): Promise<Membro | null> {
+/**
+ * O ambiente do GPS (pasta do Drive, data de agendamento). Um por
+ * `aluno_id` titular, compartilhado por todos os membros — não usar
+ * `gps.membros` para esses campos, senão o sócio lê `null`.
+ */
+export async function getAmbiente(alunoId: string): Promise<Ambiente | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("ambientes")
+    .select("aluno_id, pasta_drive_url, data_agendamento_disponivel, criado_em, atualizado_em")
+    .eq("aluno_id", alunoId)
+    .maybeSingle();
+  return (data as Ambiente) ?? null;
+}
+
+/** O registro de `gps.membros` da PESSOA logada (identidade + perfil próprio). */
+export async function getMembroDoUsuario(
+  userId: string,
+): Promise<Membro | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .schema("gps")
     .from("membros")
-    .select(
-      "id, aluno_id, user_id, data_agendamento_disponivel, pasta_drive_url, perfil",
-    )
-    .eq("aluno_id", alunoId)
+    .select("id, aluno_id, user_id, papel, perfil")
+    .eq("user_id", userId)
     .maybeSingle();
   return (data as Membro) ?? null;
+}
+
+/** Todos os membros (titular + sócios) de um ambiente. */
+export async function getMembrosDoAmbiente(
+  alunoId: string,
+): Promise<Membro[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("membros")
+    .select("id, aluno_id, user_id, papel, perfil")
+    .eq("aluno_id", alunoId)
+    .order("papel", { ascending: true });
+  return (data ?? []) as Membro[];
 }
 
 export async function getClientesEtapa1(
@@ -75,29 +109,48 @@ export async function getClientesEtapa1(
 }
 
 export interface AlunoGps {
-  membro: Membro;
+  alunoId: string;
+  temLogin: boolean;
+  qtdMembros: number;
   aluno: Aluno | null;
   pct: number;
   clientesPreenchidos: number;
   agendados: number;
 }
 
-/** Lista os alunos vinculados ao GPS com um resumo da Etapa 01. */
+/**
+ * Lista os AMBIENTES vinculados ao GPS (um por `aluno_id` titular) com um
+ * resumo da Etapa 01. `gps.membros` agora tem N linhas por ambiente (titular
+ * + sócios) — agrupa por `aluno_id`, senão o painel mostra o mesmo ambiente
+ * repetido e infla os `.in()` a seguir.
+ */
 export async function getAlunosGps(): Promise<AlunoGps[]> {
   const supabase = await createClient();
 
   const { data: membros } = await supabase
     .schema("gps")
     .from("membros")
-    .select(
-      "id, aluno_id, user_id, data_agendamento_disponivel, pasta_drive_url",
-    )
+    .select("aluno_id, user_id, criado_em")
     .order("criado_em", { ascending: false });
 
-  const lista = (membros ?? []) as Membro[];
+  const lista = (membros ?? []) as {
+    aluno_id: string;
+    user_id: string | null;
+    criado_em: string;
+  }[];
   if (lista.length === 0) return [];
 
-  const alunoIds = lista.map((m) => m.aluno_id);
+  // Agrupa por ambiente, preservando a ordem (ambiente mais recente primeiro).
+  const porAmbiente = new Map<
+    string,
+    { user_id: string | null; criado_em: string }[]
+  >();
+  for (const m of lista) {
+    const arr = porAmbiente.get(m.aluno_id) ?? [];
+    arr.push({ user_id: m.user_id, criado_em: m.criado_em });
+    porAmbiente.set(m.aluno_id, arr);
+  }
+  const alunoIds = [...porAmbiente.keys()];
 
   const [{ data: alunos }, { data: clientes }, { data: progresso }] =
     await Promise.all([
@@ -124,18 +177,21 @@ export async function getAlunosGps(): Promise<AlunoGps[]> {
     ((alunos ?? []) as Aluno[]).map((a) => [a.id, a]),
   );
 
-  return lista.map((membro) => {
+  return alunoIds.map((alunoId) => {
+    const membrosDoAmbiente = porAmbiente.get(alunoId)!;
     const cs = ((clientes ?? []) as ClienteEtapa1[]).filter(
-      (c) => c.aluno_id === membro.aluno_id,
+      (c) => c.aluno_id === alunoId,
     );
     const manual: Record<number, boolean> = {};
     for (const p of (progresso ?? []) as ProgressoTarefa[]) {
-      if (p.aluno_id === membro.aluno_id) manual[p.tarefa] = p.concluida;
+      if (p.aluno_id === alunoId) manual[p.tarefa] = p.concluida;
     }
     const m = calcularMetricasEtapa1(cs, manual);
     return {
-      membro,
-      aluno: alunosMap.get(membro.aluno_id) ?? null,
+      alunoId,
+      temLogin: membrosDoAmbiente.some((mb) => mb.user_id),
+      qtdMembros: membrosDoAmbiente.length,
+      aluno: alunosMap.get(alunoId) ?? null,
       pct: m.pct,
       clientesPreenchidos: m.preenchidos,
       agendados: m.agendados,
@@ -294,4 +350,55 @@ export async function getEnfasesEtapa(
     out[r.tarefa] = r.modo;
   }
   return out;
+}
+
+/** Agenda pessoal do aluno, do mais próximo ao mais distante. */
+export async function getAgenda(alunoId: string): Promise<AgendaItem[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("agenda")
+    .select("*")
+    .eq("aluno_id", alunoId)
+    .order("data")
+    .order("horario", { nullsFirst: true });
+  return (data ?? []) as AgendaItem[];
+}
+
+/**
+ * O que os alunos agendaram, de `deIso` em diante — visão de LEITURA do admin.
+ * Duas consultas porque o PostgREST não faz join entre schemas: a agenda vive
+ * em `gps` e o aluno em `public`.
+ */
+export async function getAgendaDeTodos(
+  deIso: string,
+): Promise<AgendaItemComAluno[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("agenda")
+    .select("*")
+    .gte("data", deIso)
+    .order("data")
+    .order("horario", { nullsFirst: true });
+
+  const itens = (data ?? []) as AgendaItem[];
+  if (!itens.length) return [];
+
+  const alunoIds = [...new Set(itens.map((i) => i.aluno_id))];
+  const { data: alunos } = await supabase
+    .from("thb_alunos")
+    .select("id, nome")
+    .in("id", alunoIds);
+
+  const nomePorId = new Map(
+    ((alunos ?? []) as { id: string; nome: string | null }[]).map((a) => [
+      a.id,
+      a.nome,
+    ]),
+  );
+  return itens.map((i) => ({
+    ...i,
+    aluno_nome: nomePorId.get(i.aluno_id) ?? null,
+  }));
 }

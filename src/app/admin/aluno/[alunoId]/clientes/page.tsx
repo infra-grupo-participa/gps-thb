@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getClientesEtapa1, getMembro } from "@/lib/data";
+import { getAlunoById, getClientesEtapa1, getAmbiente } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
@@ -16,8 +16,8 @@ export default async function AdminAlunoClientesPage({
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const membro = await getMembro(alunoId);
-  if (!membro) notFound();
+  const ambiente = await getAmbiente(alunoId);
+  if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
   const [aluno, clientes] = await Promise.all([

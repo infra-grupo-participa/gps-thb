@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getEtapas, getMembro } from "@/lib/data";
+import { getAlunoById, getEtapas, getAmbiente } from "@/lib/data";
 import { conteudoEtapa } from "@/lib/etapas";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
@@ -23,8 +23,8 @@ export default async function AdminAlunoEtapaPage({
   const conteudo = conteudoEtapa(n);
   if (!Number.isInteger(n) || !conteudo) notFound();
 
-  const membro = await getMembro(alunoId);
-  if (!membro) notFound();
+  const ambiente = await getAmbiente(alunoId);
+  if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
   const [aluno, etapas] = await Promise.all([

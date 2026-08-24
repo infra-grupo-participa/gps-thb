@@ -87,13 +87,38 @@ export interface PerfilAluno {
   site?: string;
 }
 
+export type PapelMembro = "titular" | "socio";
+
 export interface Membro {
   id: string;
   aluno_id: string;
   user_id: string | null;
-  data_agendamento_disponivel: string | null;
-  pasta_drive_url: string | null;
+  papel: PapelMembro;
   perfil: PerfilAluno;
+}
+
+/**
+ * O ambiente do GPS (um por `aluno_id` titular). Compartilhado por todos os
+ * membros (titular + sócios) daquele `aluno_id` — `pasta_drive_url` e
+ * `data_agendamento_disponivel` são do AMBIENTE, não da pessoa.
+ */
+export interface Ambiente {
+  aluno_id: string;
+  pasta_drive_url: string | null;
+  data_agendamento_disponivel: string | null;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+/** Um membro do ambiente, como devolvido por `gps.admin_status_acesso`. */
+export interface MembroStatus {
+  membro_id: string;
+  papel: PapelMembro;
+  user_id: string | null;
+  email: string | null;
+  tem_senha: boolean;
+  email_confirmado: boolean;
+  ultimo_acesso: string | null;
 }
 
 export type NivelRelacionamento = "frio" | "morno" | "quente";
@@ -175,4 +200,25 @@ export interface TarefaEnfase {
   etapa: number;
   tarefa: number;
   modo: ModoEnfase;
+}
+
+/**
+ * Compromisso na agenda pessoal do aluno.
+ * É organização dele e só dele: sem grade fixa, sem slot, sem confirmação da
+ * equipe. O admin apenas enxerga (a policy de admin em `gps.agenda` é SELECT).
+ */
+export interface AgendaItem {
+  id: string;
+  aluno_id: string;
+  titulo: string;
+  data: string; // "YYYY-MM-DD"
+  horario: string | null; // "HH:MM[:SS]"
+  nota: string | null;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+/** Compromisso com o nome do aluno — para a visão de leitura do admin. */
+export interface AgendaItemComAluno extends AgendaItem {
+  aluno_nome: string | null;
 }

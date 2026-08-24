@@ -11,14 +11,21 @@ import {
   MessageCircle,
   ShieldAlert,
   Trash2,
+  Users,
+  UserPlus,
+  UserMinus,
 } from "lucide-react";
 import {
+  adicionarSocioAluno,
   definirSenhaAluno,
   enviarRedefinicaoSenha,
   excluirAcessoAluno,
+  excluirMembroAluno,
   statusAcessoAluno,
+  type MembroAcesso,
   type StatusAcesso,
 } from "@/app/admin/senha-actions";
+import { buscarAlunos, type AlunoBusca } from "@/app/admin/actions";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +36,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { linkWhatsapp } from "@/lib/whatsapp";
 
 interface Credenciais {
@@ -58,6 +66,8 @@ function mensagemAcesso(c: Credenciais) {
   );
 }
 
+type Tela = "principal" | "adicionar-socio";
+
 export function GerenciarAcesso({
   alunoId,
   nomeAluno,
@@ -67,6 +77,7 @@ export function GerenciarAcesso({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [tela, setTela] = useState<Tela>("principal");
   const [status, setStatus] = useState<StatusAcesso | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [senha, setSenha] = useState("");
@@ -74,18 +85,23 @@ export function GerenciarAcesso({
   const [confirmaExclusao, setConfirmaExclusao] = useState("");
   const [pending, startTransition] = useTransition();
 
-  function abrir() {
-    setOpen(true);
-    setCredenciais(null);
-    setConfirmaExclusao("");
-    setSenha(sugerirSenha());
+  function carregarStatus() {
     setCarregando(true);
-    statusAcessoAluno(alunoId)
+    return statusAcessoAluno(alunoId)
       .then((res) => {
         if (res.erro) toast.error(res.erro);
         setStatus(res.status ?? null);
       })
       .finally(() => setCarregando(false));
+  }
+
+  function abrir() {
+    setOpen(true);
+    setTela("principal");
+    setCredenciais(null);
+    setConfirmaExclusao("");
+    setSenha(sugerirSenha());
+    carregarStatus();
   }
 
   function definirSenha() {
@@ -118,7 +134,7 @@ export function GerenciarAcesso({
     });
   }
 
-  function excluir() {
+  function excluirAmbiente() {
     startTransition(async () => {
       const res = await excluirAcessoAluno(alunoId);
       if (res.erro) {
@@ -127,11 +143,24 @@ export function GerenciarAcesso({
       }
       toast.success(
         res.loginApagado
-          ? "Acesso e login excluídos por completo."
+          ? "Ambiente e todos os logins (titular e sócios) excluídos por completo."
           : "Ambiente do GPS excluído (não havia login).",
       );
       setOpen(false);
       router.push("/admin");
+      router.refresh();
+    });
+  }
+
+  function excluirMembro(m: MembroAcesso) {
+    startTransition(async () => {
+      const res = await excluirMembroAluno(m.membroId);
+      if (res.erro) {
+        toast.error(res.erro);
+        return;
+      }
+      toast.success(`${m.email ?? "Sócio"} removido do ambiente.`);
+      carregarStatus();
       router.refresh();
     });
   }
@@ -143,26 +172,50 @@ export function GerenciarAcesso({
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Acesso do aluno</DialogTitle>
+            <DialogTitle>
+              {tela === "adicionar-socio"
+                ? "Adicionar sócio ao ambiente"
+                : "Acesso do ambiente"}
+            </DialogTitle>
             <DialogDescription>
-              {nomeAluno ?? "Aluno"} — defina a senha na hora, sem depender de
-              e-mail.
+              {tela === "adicionar-socio"
+                ? "Vincule um aluno já cadastrado como sócio deste ambiente."
+                : `${nomeAluno ?? "Aluno"} — defina a senha na hora, sem depender de e-mail.`}
             </DialogDescription>
           </DialogHeader>
 
-          {credenciais ? (
+          {tela === "adicionar-socio" ? (
+            <AdicionarSocio
+              ambienteAlunoId={alunoId}
+              onVoltar={() => {
+                setTela("principal");
+                carregarStatus();
+              }}
+              onAdicionado={() => {
+                setTela("principal");
+                carregarStatus();
+                router.refresh();
+              }}
+            />
+          ) : credenciais ? (
             <CredenciaisView
               credenciais={credenciais}
               onConcluir={() => setOpen(false)}
             />
           ) : (
             <div className="grid gap-5">
-              <StatusView status={status} carregando={carregando} />
+              <MembrosView
+                status={status}
+                carregando={carregando}
+                pending={pending}
+                onAdicionarSocio={() => setTela("adicionar-socio")}
+                onExcluirMembro={excluirMembro}
+              />
 
               <div className="grid gap-2">
-                <Label htmlFor="senha-aluno">Nova senha</Label>
+                <Label htmlFor="senha-aluno">Nova senha do titular</Label>
                 <div className="flex gap-2">
                   <Input
                     id="senha-aluno"
@@ -180,8 +233,8 @@ export function GerenciarAcesso({
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Mínimo de 8 caracteres. As sessões abertas do aluno caem e o
-                  e-mail dele fica confirmado.
+                  Mínimo de 8 caracteres. As sessões abertas do titular caem e
+                  o e-mail dele fica confirmado.
                 </p>
                 <Button
                   onClick={definirSenha}
@@ -201,12 +254,13 @@ export function GerenciarAcesso({
 
               <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
                 <div className="mb-1 flex items-center gap-2 text-sm font-medium text-destructive">
-                  <ShieldAlert className="size-4" /> Excluir acesso
+                  <ShieldAlert className="size-4" /> Excluir o ambiente inteiro
                 </div>
                 <p className="mb-3 text-xs text-muted-foreground">
-                  Apaga o login e tudo que o aluno tem no programa (clientes,
-                  progresso, reuniões). O cadastro dele na base do Time Holding
-                  Brasil é preservado. Não tem volta — para digitar{" "}
+                  Apaga o login de <strong>todos os membros</strong> (titular
+                  e sócios) e tudo que existe no programa (clientes,
+                  progresso, reuniões). O cadastro de cada um na base do Time
+                  Holding Brasil é preservado. Não tem volta — para digitar{" "}
                   <span className="font-mono font-medium">EXCLUIR</span> e
                   confirmar.
                 </p>
@@ -220,10 +274,10 @@ export function GerenciarAcesso({
                   />
                   <Button
                     variant="destructive"
-                    onClick={excluir}
+                    onClick={excluirAmbiente}
                     disabled={pending || confirmaExclusao.trim() !== "EXCLUIR"}
                   >
-                    <Trash2 className="size-4" /> Excluir
+                    <Trash2 className="size-4" /> Excluir ambiente
                   </Button>
                 </div>
               </div>
@@ -235,12 +289,18 @@ export function GerenciarAcesso({
   );
 }
 
-function StatusView({
+function MembrosView({
   status,
   carregando,
+  pending,
+  onAdicionarSocio,
+  onExcluirMembro,
 }: {
   status: StatusAcesso | null;
   carregando: boolean;
+  pending: boolean;
+  onAdicionarSocio: () => void;
+  onExcluirMembro: (m: MembroAcesso) => void;
 }) {
   if (carregando) {
     return (
@@ -249,47 +309,240 @@ function StatusView({
   }
   if (!status) return null;
 
-  const itens: { rotulo: string; ok: boolean; detalhe?: string }[] = [
-    {
-      rotulo: "Tem login",
-      ok: status.temLogin,
-      detalhe: status.emailLogin ?? "nenhum login encontrado",
-    },
-    { rotulo: "Senha cadastrada", ok: status.temSenha },
-    { rotulo: "E-mail confirmado", ok: status.emailConfirmado },
-    {
-      rotulo: "E-mail do login = e-mail do cadastro",
-      ok: status.emailBate,
-      detalhe: status.emailBate ? undefined : `cadastro: ${status.emailCadastro ?? "—"}`,
-    },
-    { rotulo: "Vinculado ao programa", ok: status.noGps && status.vinculoCompleto },
-  ];
-
   return (
     <div className="rounded-md border p-3">
-      <ul className="grid gap-1 text-sm">
-        {itens.map((i) => (
-          <li key={i.rotulo} className="flex items-start gap-2">
-            <span className={i.ok ? "text-green-600" : "text-destructive"}>
-              {i.ok ? "✓" : "✕"}
-            </span>
-            <span className="min-w-0">
-              {i.rotulo}
-              {i.detalhe ? (
-                <span className="block truncate text-xs text-muted-foreground">
-                  {i.detalhe}
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-sm font-medium">
+          <Users className="size-4 text-muted-foreground" />
+          {status.qtdMembros > 1
+            ? `Ambiente compartilhado — ${status.qtdMembros} pessoas`
+            : "Ambiente individual"}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onAdicionarSocio}
+        >
+          <UserPlus className="size-4" /> Adicionar sócio
+        </Button>
+      </div>
+
+      <ul className="grid gap-2">
+        {status.membros.map((m) => (
+          <li
+            key={m.membroId}
+            className="flex items-center justify-between gap-2 rounded border px-2.5 py-2 text-sm"
+          >
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="truncate font-medium">
+                  {m.email ?? "sem e-mail"}
                 </span>
-              ) : null}
-            </span>
+                <Badge
+                  variant={m.papel === "titular" ? "secondary" : "outline"}
+                  className="text-[10px]"
+                >
+                  {m.papel === "titular" ? "titular" : "sócio"}
+                </Badge>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {m.temSenha ? "tem senha" : "sem senha"} ·{" "}
+                {m.emailConfirmado ? "e-mail confirmado" : "e-mail não confirmado"}
+                {m.ultimoAcesso
+                  ? ` · último acesso ${new Date(m.ultimoAcesso).toLocaleDateString("pt-BR")}`
+                  : " · nunca entrou"}
+              </div>
+            </div>
+            {m.papel === "socio" ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="shrink-0 text-destructive hover:text-destructive"
+                disabled={pending}
+                onClick={() => onExcluirMembro(m)}
+              >
+                <UserMinus className="size-4" /> Remover
+              </Button>
+            ) : null}
           </li>
         ))}
       </ul>
+
       <p className="mt-2 text-xs text-muted-foreground">
         {status.ultimoAcesso
-          ? `Último acesso: ${new Date(status.ultimoAcesso).toLocaleString("pt-BR")}`
-          : "O aluno nunca entrou no portal."}
+          ? `Último acesso do titular: ${new Date(status.ultimoAcesso).toLocaleString("pt-BR")}`
+          : "O titular nunca entrou no portal."}
         {status.solicitacaoPendente ? " · há solicitação pendente" : ""}
       </p>
+    </div>
+  );
+}
+
+function AdicionarSocio({
+  ambienteAlunoId,
+  onVoltar,
+  onAdicionado,
+}: {
+  ambienteAlunoId: string;
+  onVoltar: () => void;
+  onAdicionado: () => void;
+}) {
+  const [termo, setTermo] = useState("");
+  const [resultados, setResultados] = useState<AlunoBusca[]>([]);
+  const [buscando, setBuscando] = useState(false);
+  const [sel, setSel] = useState<AlunoBusca | null>(null);
+  const [email, setEmail] = useState("");
+  const [credenciais, setCredenciais] = useState<Credenciais | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  async function buscar(e: React.FormEvent) {
+    e.preventDefault();
+    if (termo.trim().length < 2) return;
+    setBuscando(true);
+    try {
+      setResultados(await buscarAlunos(termo));
+    } finally {
+      setBuscando(false);
+    }
+  }
+
+  function selecionar(a: AlunoBusca) {
+    if (a.id === ambienteAlunoId) {
+      toast.error("Este aluno já é o titular deste ambiente.");
+      return;
+    }
+    setSel(a);
+    setEmail(a.email ?? "");
+  }
+
+  function adicionar() {
+    if (!sel) return;
+    startTransition(async () => {
+      const res = await adicionarSocioAluno(ambienteAlunoId, sel.id, {
+        email,
+      });
+      if (res.erro) {
+        toast.error(res.erro);
+        return;
+      }
+      setCredenciais({
+        email: res.email!,
+        senha: res.senha!,
+        emailEnviado: Boolean(res.emailEnviado),
+        nome: sel.nome,
+        telefone: sel.telefone,
+      });
+      toast.success("Sócio adicionado ao ambiente.");
+    });
+  }
+
+  if (credenciais) {
+    return (
+      <div className="grid gap-4">
+        <CredenciaisView credenciais={credenciais} onConcluir={onAdicionado} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      <button
+        onClick={onVoltar}
+        className="text-left text-xs text-muted-foreground hover:text-foreground"
+      >
+        ← voltar
+      </button>
+
+      {sel ? (
+        <>
+          <button
+            onClick={() => setSel(null)}
+            className="text-left text-xs text-muted-foreground hover:text-foreground"
+          >
+            ← escolher outro aluno
+          </button>
+          <div className="rounded-md border p-3 text-sm">
+            <div className="font-medium">{sel.nome}</div>
+            <div className="text-xs text-muted-foreground">
+              {sel.documento ? `CPF/CNPJ: ${sel.documento}` : "sem CPF"} ·{" "}
+              {sel.jaNoGps
+                ? "já tem ambiente próprio no programa"
+                : "novo no programa"}
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="socio-email">E-mail do sócio</Label>
+            <Input
+              id="socio-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email@exemplo.com"
+            />
+          </div>
+          <Button onClick={adicionar} disabled={pending}>
+            <UserPlus className="size-4" /> Adicionar como sócio
+          </Button>
+        </>
+      ) : (
+        <>
+          <form onSubmit={buscar} className="flex gap-2">
+            <Input
+              value={termo}
+              onChange={(e) => setTermo(e.target.value)}
+              placeholder="Nome, e-mail ou CPF/CNPJ"
+              autoFocus
+            />
+            <Button type="submit" variant="secondary" disabled={buscando}>
+              {buscando ? "..." : "Buscar"}
+            </Button>
+          </form>
+          <div className="max-h-72 overflow-y-auto">
+            {resultados.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {termo.trim().length >= 2 && !buscando
+                  ? "Nenhum aluno encontrado."
+                  : "Digite ao menos 2 caracteres e busque."}
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {resultados.map((a) => (
+                  <li
+                    key={a.id}
+                    className="flex items-center justify-between gap-2 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">
+                        {a.nome ?? "—"}
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {a.email ?? "sem e-mail"}
+                        {a.documento ? ` · ${a.documento}` : ""}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {a.jaNoGps ? (
+                        <Badge variant="outline" className="text-[10px]">
+                          já no programa
+                        </Badge>
+                      ) : null}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => selecionar(a)}
+                      >
+                        Selecionar
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

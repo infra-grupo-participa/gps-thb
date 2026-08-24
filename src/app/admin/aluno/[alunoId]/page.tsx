@@ -6,7 +6,7 @@ import {
   getClienteEquipe,
   getClientesEtapa1,
   getEtapas,
-  getMembro,
+  getAmbiente,
   getProgressoAluno,
 } from "@/lib/data";
 import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
@@ -28,8 +28,8 @@ export default async function AdminAlunoInicioPage({
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const membro = await getMembro(alunoId);
-  if (!membro) notFound();
+  const ambiente = await getAmbiente(alunoId);
+  if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
   const [aluno, etapas, clientes, progressoTodas, favorito] =

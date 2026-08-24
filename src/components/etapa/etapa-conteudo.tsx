@@ -1,9 +1,9 @@
 import {
   getAgendamentosEtapa3,
+  getAmbiente,
   getClienteEquipe,
   getClientesEtapa1,
   getEnfasesEtapa,
-  getMembro,
   getProgressoEtapa,
   getRevisaoEtapa3,
 } from "@/lib/data";
@@ -38,9 +38,9 @@ export async function EtapaConteudo({
   ]);
 
   if (n === 1) {
-    const [clientes, membro] = await Promise.all([
+    const [clientes, ambiente] = await Promise.all([
       getClientesEtapa1(alunoId),
-      getMembro(alunoId),
+      getAmbiente(alunoId),
     ]);
     // Os passos 4+ da Etapa 01 só liberam após escolher o cliente da equipe.
     const temFavorito = clientes.some((c) => c.acompanhado_equipe);
@@ -49,7 +49,7 @@ export async function EtapaConteudo({
         alunoId={alunoId}
         clientesIniciais={clientes}
         progressoInicial={progresso}
-        dataAgendamentoInicial={membro?.data_agendamento_disponivel ?? null}
+        dataAgendamentoInicial={ambiente?.data_agendamento_disponivel ?? null}
         clientesHref={`${basePath}/clientes`}
         enfasesIniciais={enfases}
         isAdmin={isAdmin}

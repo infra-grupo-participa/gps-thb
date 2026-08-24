@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getMembro, getTurmaCodigo } from "@/lib/data";
+import { getAlunoById, getMembrosDoAmbiente, getTurmaCodigo } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
@@ -20,8 +20,11 @@ export default async function AdminAlunoPerfilPage({
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const membro = await getMembro(alunoId);
-  if (!membro) notFound();
+  const membros = await getMembrosDoAmbiente(alunoId);
+  if (membros.length === 0) notFound();
+  // O admin edita o perfil do TITULAR do ambiente (é quem `alunoId` identifica
+  // diretamente; sócios têm perfil próprio, editável só pelo próprio login).
+  const titular = membros.find((m) => m.papel === "titular") ?? membros[0];
 
   const base = `/admin/aluno/${alunoId}`;
   const aluno = await getAlunoById(alunoId);
@@ -54,7 +57,7 @@ export default async function AdminAlunoPerfilPage({
         <PerfilEditor
           aluno={(aluno ?? { id: alunoId }) as Aluno}
           turma={turma}
-          perfilInicial={membro.perfil ?? {}}
+          perfilInicial={titular.perfil ?? {}}
           alunoId={alunoId}
         />
       </main>

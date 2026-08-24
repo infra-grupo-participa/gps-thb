@@ -7,7 +7,8 @@ import {
   getClientesEtapa1,
   getProgressoAluno,
   getMinhaSolicitacao,
-  getMembro,
+  getMembroDoUsuario,
+  getMembrosDoAmbiente,
   getTurmaCodigo,
   getClienteEquipe,
 } from "@/lib/data";
@@ -23,6 +24,7 @@ import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
 import { HomeResumo } from "@/components/home-resumo";
 import { PerfilHero } from "@/components/perfil/perfil-hero";
 import { ThbLogo } from "@/components/thb-logo";
+import { AmbienteCompartilhadoBanner } from "@/components/ambiente-compartilhado-banner";
 import type { Aluno } from "@/lib/types";
 
 export default async function HomePage() {
@@ -74,17 +76,27 @@ export default async function HomePage() {
     );
   }
 
-  // Aluno
+  // Aluno — alunoId é o AMBIENTE (compartilhado); membroAlunoId é a PESSOA.
   const alunoId = ctx.alunoId!;
-  const [etapas, aluno, clientes, progressoTodas, membro, favorito] =
+  const souSocio = ctx.papelMembro === "socio";
+  const [etapas, alunoAmbiente, clientes, progressoTodas, membro, favorito, membros] =
     await Promise.all([
       getEtapas(),
       getAlunoById(alunoId),
       getClientesEtapa1(alunoId),
       getProgressoAluno(alunoId),
-      getMembro(alunoId),
+      getMembroDoUsuario(ctx.user.id),
       getClienteEquipe(alunoId),
+      getMembrosDoAmbiente(alunoId),
     ]);
+  // Identidade da PESSOA logada: o titular já é `alunoAmbiente`; o sócio
+  // busca o próprio cadastro por `membroAlunoId` (não reaproveita o do titular).
+  const aluno = souSocio
+    ? ctx.membroAlunoId
+      ? await getAlunoById(ctx.membroAlunoId)
+      : null
+    : alunoAmbiente;
+  const nomeExibicao = souSocio ? (aluno?.nome ?? ctx.membroNome) : aluno?.nome;
   const turma = await getTurmaCodigo(aluno?.turma_id);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
@@ -102,14 +114,21 @@ export default async function HomePage() {
   return (
     <>
       <AppHeader
-        nome={aluno?.nome ?? ctx.user.email ?? null}
+        nome={nomeExibicao ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
         papelRotulo="Aluno"
         navItems={alunoNavItems("")}
       />
       <main className="mx-auto w-full max-w-6xl px-4 py-8">
+        {membros.length > 1 ? (
+          <AmbienteCompartilhadoBanner
+            nomeTitular={alunoAmbiente?.nome ?? null}
+            souSocio={souSocio}
+          />
+        ) : null}
+
         <PerfilHero
-          aluno={(aluno ?? { id: alunoId }) as Aluno}
+          aluno={(aluno ?? { id: ctx.membroAlunoId ?? alunoId }) as Aluno}
           turma={turma}
           perfil={membro?.perfil ?? {}}
           editHref="/perfil"

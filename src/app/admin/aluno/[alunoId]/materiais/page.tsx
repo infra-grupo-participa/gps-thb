@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getEtapas, getMembro } from "@/lib/data";
+import { getAlunoById, getEtapas, getAmbiente } from "@/lib/data";
 import { listarMateriais } from "@/lib/materiais";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
@@ -17,8 +17,8 @@ export default async function AdminAlunoMateriaisPage({
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const membro = await getMembro(alunoId);
-  if (!membro) notFound();
+  const ambiente = await getAmbiente(alunoId);
+  if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
   const [aluno, etapas] = await Promise.all([

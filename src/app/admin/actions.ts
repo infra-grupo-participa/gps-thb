@@ -45,6 +45,10 @@ function norm(s: string | null | undefined): string {
  * uma busca curta ("joao", parte do sobrenome ou do e-mail) já encontra.
  */
 export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
+  // Server Action é endpoint HTTP: sem esta guarda, qualquer autenticado
+  // enumeraria nome/e-mail/telefone/CPF de toda a base `thb_alunos`.
+  if (!(await ehAdmin())) return [];
+
   const q = termo.trim();
   if (q.length < 2) return [];
 
@@ -114,6 +118,8 @@ export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
 
 /** Turmas para o cadastro manual (a atual primeiro). */
 export async function listarTurmas(): Promise<Turma[]> {
+  if (!(await ehAdmin())) return [];
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("thb_turmas")
@@ -257,13 +263,15 @@ export async function cadastrarAluno(
   };
 }
 
-/** Vincula um aluno ao GPS (cria o ambiente da Etapa 01). */
+/** Vincula um aluno ao GPS como TITULAR (cria o ambiente da Etapa 01). */
 export async function adicionarAlunoGps(alunoId: string) {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+
   const supabase = await createClient();
   const { error } = await supabase
     .schema("gps")
     .from("membros")
-    .insert({ aluno_id: alunoId });
+    .insert({ aluno_id: alunoId, papel: "titular" });
 
   if (error) return { erro: error.message };
   revalidatePath("/admin");
@@ -276,6 +284,8 @@ export async function aprovarSolicitacao(
   userId: string,
   alunoId: string,
 ) {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -285,8 +295,8 @@ export async function aprovarSolicitacao(
     .schema("gps")
     .from("membros")
     .upsert(
-      { aluno_id: alunoId, user_id: userId },
-      { onConflict: "aluno_id" },
+      { aluno_id: alunoId, user_id: userId, papel: "titular" },
+      { onConflict: "aluno_id,user_id" },
     );
   if (erroMembro) return { erro: erroMembro.message };
 
@@ -322,6 +332,8 @@ export async function recusarSolicitacao(
   solicitacaoId: string,
   observacao?: string,
 ) {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -425,15 +437,16 @@ export async function criarAcessoAluno(
     return { erro: "Não foi possível criar o acesso: " + error.message };
   }
 
-  // Garante o vínculo com ESTE aluno (o gatilho já tenta por CPF/e-mail).
+  // Garante o vínculo com ESTE aluno, como TITULAR (o gatilho já tenta por
+  // CPF/e-mail).
   const novoUserId = signUpData.user?.id;
   if (novoUserId) {
     await supabase
       .schema("gps")
       .from("membros")
       .upsert(
-        { aluno_id: alunoId, user_id: novoUserId },
-        { onConflict: "aluno_id" },
+        { aluno_id: alunoId, user_id: novoUserId, papel: "titular" },
+        { onConflict: "aluno_id,user_id" },
       );
   }
 
@@ -455,7 +468,11 @@ export async function criarAcessoAluno(
   };
 }
 
-/** Define/atualiza o link da pasta do Google Drive do aluno (gps.membros). */
+/**
+ * Define/atualiza o link da pasta do Google Drive do ambiente (gps.ambientes).
+ * A pasta é do AMBIENTE, compartilhada entre titular e sócios — não vive mais
+ * em `gps.membros` (que agora tem N linhas por ambiente).
+ */
 export async function salvarPastaDriveUrl(alunoId: string, url: string) {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
   const valor = url.trim();
@@ -465,7 +482,7 @@ export async function salvarPastaDriveUrl(alunoId: string, url: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .schema("gps")
-    .from("membros")
+    .from("ambientes")
     .update({ pasta_drive_url: valor || null })
     .eq("aluno_id", alunoId);
   if (error) return { erro: error.message };
@@ -473,14 +490,19 @@ export async function salvarPastaDriveUrl(alunoId: string, url: string) {
   return {};
 }
 
-/** Remove o vínculo do aluno com o GPS (apaga o ambiente da Etapa 01). */
+/**
+ * Exclui o AMBIENTE INTEIRO do GPS: apaga o vínculo de todos os membros
+ * (titular + sócios) — incluindo os logins deles em `auth.users` — e todo o
+ * progresso/clientes. Não é "tirar 1 login": ver `admin_excluir_membro` para
+ * remover só um sócio. Usa a mesma função SECURITY DEFINER de
+ * `excluirAcessoAluno` (`gps.admin_excluir_acesso`), que já cobre este caso.
+ */
 export async function removerAlunoGps(alunoId: string) {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
   const supabase = await createClient();
   const { error } = await supabase
     .schema("gps")
-    .from("membros")
-    .delete()
-    .eq("aluno_id", alunoId);
+    .rpc("admin_excluir_acesso", { p_aluno_id: alunoId });
 
   if (error) return { erro: error.message };
   revalidatePath("/admin");

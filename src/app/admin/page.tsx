@@ -38,7 +38,7 @@ export default async function AdminPage() {
     })),
   );
 
-  const comLogin = alunos.filter((a) => a.membro.user_id).length;
+  const comLogin = alunos.filter((a) => a.temLogin).length;
   const semLogin = alunos.length - comLogin;
 
   return (
@@ -120,10 +120,18 @@ export default async function AdminPage() {
             ) : (
               <div className="grid gap-3">
                 {alunos.map(
-                  ({ aluno, membro, pct, clientesPreenchidos, agendados }) => (
+                  ({
+                    aluno,
+                    alunoId,
+                    temLogin,
+                    qtdMembros,
+                    pct,
+                    clientesPreenchidos,
+                    agendados,
+                  }) => (
                     <Link
-                      key={membro.id}
-                      href={`/admin/aluno/${membro.aluno_id}`}
+                      key={alunoId}
+                      href={`/admin/aluno/${alunoId}`}
                       className="block"
                     >
                       <Card className="transition hover:border-primary/50 hover:shadow-sm">
@@ -133,7 +141,7 @@ export default async function AdminPage() {
                               <span className="truncate font-medium">
                                 {aluno?.nome ?? "Aluno sem nome"}
                               </span>
-                              {membro.user_id ? (
+                              {temLogin ? (
                                 <Badge
                                   variant="secondary"
                                   className="text-[10px]"
@@ -145,6 +153,11 @@ export default async function AdminPage() {
                                   sem login
                                 </Badge>
                               )}
+                              {qtdMembros > 1 ? (
+                                <Badge variant="outline" className="text-[10px]">
+                                  {qtdMembros} pessoas
+                                </Badge>
+                              ) : null}
                             </div>
                             <div className="truncate text-xs text-muted-foreground">
                               {aluno?.email}

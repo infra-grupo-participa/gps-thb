@@ -296,7 +296,7 @@ export async function aprovarSolicitacao(
     .from("membros")
     .upsert(
       { aluno_id: alunoId, user_id: userId, papel: "titular" },
-      { onConflict: "aluno_id,user_id" },
+      { onConflict: "user_id" },
     );
   if (erroMembro) return { erro: erroMembro.message };
 
@@ -372,6 +372,70 @@ export async function atualizarEmailAluno(alunoId: string, email: string) {
   return { email: novo };
 }
 
+export interface ProgramaDoLogin {
+  programa: string;
+  detalhe: string | null;
+}
+
+export interface DiagnosticoLogin {
+  temLogin: boolean;
+  email: string | null;
+  origem: string | null;
+  ultimoAcesso: string | null;
+  eEquipe: boolean;
+  programas: ProgramaDoLogin[];
+  temDireito: boolean;
+  motivoDireito: string | null;
+}
+
+/**
+ * Antes de criar o acesso: diz se já existe login com esse e-mail e em QUAIS
+ * programas ele é usado — o `auth.users` é compartilhado entre GPS, Workbook
+ * CNHF, Central, Rede, SIP e Holding Total. Reaproveitar o login troca a senha
+ * que a pessoa usa nos outros programas, então o admin precisa ver isso antes.
+ * Também informa se o aluno tem direito ao acesso (o direito vem do pagamento).
+ */
+export async function diagnosticarLoginAluno(
+  alunoId: string,
+  emailInformado?: string,
+): Promise<{ erro?: string; diagnostico?: DiagnosticoLogin }> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+
+  const supabase = await createClient();
+  const { data: aluno } = await supabase
+    .from("thb_alunos")
+    .select("email")
+    .eq("id", alunoId)
+    .maybeSingle();
+
+  const email = (emailInformado?.trim() || aluno?.email || "").toLowerCase();
+  if (!email) return { erro: "Este aluno não tem e-mail. Informe um e-mail." };
+
+  const [{ data: progs }, { data: direito }] = await Promise.all([
+    supabase.schema("gps").rpc("admin_programas_do_email", { p_email: email }),
+    supabase.schema("gps").rpc("admin_direito_ao_acesso", { p_aluno_id: alunoId }),
+  ]);
+
+  const d = (progs ?? {}) as Record<string, unknown>;
+  const dir = (direito ?? {}) as Record<string, unknown>;
+
+  return {
+    diagnostico: {
+      temLogin: Boolean(d.tem_login),
+      email: (d.email as string) ?? email,
+      origem: (d.origem as string) ?? null,
+      ultimoAcesso: (d.ultimo_acesso as string) ?? null,
+      eEquipe: Boolean(d.e_equipe),
+      programas: ((d.programas as Record<string, unknown>[]) ?? []).map((p) => ({
+        programa: String(p.programa),
+        detalhe: (p.detalhe as string) ?? null,
+      })),
+      temDireito: Boolean(dir.tem_direito),
+      motivoDireito: (dir.motivo as string) ?? null,
+    },
+  };
+}
+
 /**
  * Cria o acesso (login) do aluno na hora, a partir do cadastro no thb_alunos.
  * Usa o cadastro público (signUp) por um cliente isolado — não afeta a sessão
@@ -432,7 +496,46 @@ export async function criarAcessoAluno(
       error.status === 422 ||
       /already/i.test(error.message)
     ) {
-      return { erro: "Já existe um login com este e-mail." };
+      // A conta já existe (tipicamente lead do Workbook — o auth.users é
+      // compartilhado). O gatilho do GPS só roda em INSERT, então esse login
+      // nunca viraria membro sozinho: adota a conta em vez de recusar.
+      // Mostra ao admin em quais programas esse login já é usado — o
+      // auth.users é compartilhado (GPS, Workbook, Central, Rede, SIP, HT).
+      const { data: diag } = await supabase
+        .schema("gps")
+        .rpc("admin_programas_do_email", { p_email: email });
+      const programas =
+        ((diag as { programas?: { programa: string }[] })?.programas ?? []).map(
+          (p) => p.programa,
+        );
+
+      const { data: adotado, error: eAdocao } = await supabase
+        .schema("gps")
+        .rpc("admin_adotar_login_existente", {
+          p_aluno_id: alunoId,
+          p_senha: senha,
+          p_forcar: false,
+        });
+
+      if (eAdocao) return { erro: eAdocao.message, programas };
+
+      const envioAdocao = await enviarCredenciaisAcesso({
+        para: email,
+        nome: aluno.nome,
+        senha,
+        precisaConfirmar: false,
+      });
+
+      revalidatePath("/admin");
+      revalidatePath("/admin/solicitacoes");
+      return {
+        email: (adotado as { email?: string })?.email ?? email,
+        senha,
+        precisaConfirmar: false,
+        emailEnviado: envioAdocao.ok,
+        loginAdotado: true,
+        programas,
+      };
     }
     return { erro: "Não foi possível criar o acesso: " + error.message };
   }
@@ -446,7 +549,7 @@ export async function criarAcessoAluno(
       .from("membros")
       .upsert(
         { aluno_id: alunoId, user_id: novoUserId, papel: "titular" },
-        { onConflict: "aluno_id,user_id" },
+        { onConflict: "user_id" },
       );
   }
 

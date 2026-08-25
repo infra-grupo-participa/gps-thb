@@ -8,8 +8,10 @@ import {
   buscarAlunos,
   criarAcessoAluno,
   adicionarAlunoGps,
+  diagnosticarLoginAluno,
   type AlunoBusca,
   type AlunoDuplicado,
+  type DiagnosticoLogin,
 } from "@/app/admin/actions";
 import { CadastrarAlunoForm } from "@/components/admin/cadastrar-aluno-form";
 import {
@@ -41,6 +43,7 @@ export function CriarAcesso() {
   const [email, setEmail] = useState("");
   const [credenciais, setCredenciais] = useState<Credenciais | null>(null);
   const [cadastrando, setCadastrando] = useState(false);
+  const [diag, setDiag] = useState<DiagnosticoLogin | null>(null);
   const [pending, startTransition] = useTransition();
 
   function reset() {
@@ -50,6 +53,7 @@ export function CriarAcesso() {
     setEmail("");
     setCredenciais(null);
     setCadastrando(false);
+    setDiag(null);
   }
 
   async function buscar(e: React.FormEvent) {
@@ -67,6 +71,11 @@ export function CriarAcesso() {
     setSel(a);
     setEmail(a.email ?? "");
     setCredenciais(null);
+    setDiag(null);
+    startTransition(async () => {
+      const res = await diagnosticarLoginAluno(a.id, a.email ?? undefined);
+      if (res.diagnostico) setDiag(res.diagnostico);
+    });
   }
 
   /** O cadastro esbarrou num aluno que já existe: volta à busca já apontando nele. */
@@ -96,10 +105,14 @@ export function CriarAcesso() {
         precisaConfirmar: res.precisaConfirmar,
         emailEnviado: res.emailEnviado,
       });
+      const outros = (res.programas ?? []).filter((p) => p !== "GPS");
+      const base = res.loginAdotado
+        ? outros.length > 0
+          ? `Login aproveitado — a senha mudou também em: ${outros.join(", ")}.`
+          : "Login que já existia foi aproveitado — a senha antiga dele mudou."
+        : "Acesso criado.";
       toast.success(
-        res.emailEnviado
-          ? "Acesso criado e credenciais enviadas por e-mail."
-          : "Acesso criado.",
+        res.emailEnviado ? base + " Credenciais enviadas por e-mail." : base,
       );
       router.refresh();
     });
@@ -186,6 +199,51 @@ export function CriarAcesso() {
                     : "novo no programa"}
                 </div>
               </div>
+
+              {diag && !diag.temDireito && (
+                <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                  <div className="font-medium text-amber-700 dark:text-amber-400">
+                    Sem direito ao acesso
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {diag.motivoDireito} O acesso segue o pagamento — libere
+                    pelo financeiro antes de criar o login.
+                  </p>
+                </div>
+              )}
+
+              {diag?.temLogin && (
+                <div className="rounded-md border border-blue-500/50 bg-blue-500/10 p-3 text-sm">
+                  <div className="font-medium text-blue-700 dark:text-blue-400">
+                    Este e-mail já tem login
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {diag.programas.length > 0 ? (
+                      <>
+                        Já usado em:{" "}
+                        {diag.programas.map((p) => p.programa).join(", ")}. O
+                        login é o mesmo nos programas — criar o acesso aqui{" "}
+                        <strong>troca a senha nos outros também</strong>.
+                      </>
+                    ) : (
+                      <>
+                        A conta existe mas ainda não está em nenhum programa —
+                        será aproveitada para o GPS.
+                      </>
+                    )}
+                  </p>
+                  {diag.programas.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {diag.programas.map((p) => (
+                        <Badge key={p.programa} variant="secondary">
+                          {p.programa}
+                          {p.detalhe ? ` — ${p.detalhe}` : ""}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid gap-2">
                 <Label htmlFor="ca-email">E-mail do aluno</Label>

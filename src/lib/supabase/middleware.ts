@@ -3,7 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Atualiza a sessão do Supabase a cada requisição e protege rotas.
- * Rotas públicas: /login, /auth/*, assets. Todo o resto exige sessão.
+ * Rotas públicas: /login, /auth/*, assets, /p/* (Plantão de Dúvidas — tem
+ * identidade PRÓPRIA, isolada de `auth.users`; ver `src/lib/plantao-tipos.ts`).
+ * Todo o resto exige sessão.
+ *
+ * ⚠️ `/p/` com a barra: sem a barra, `pathname.startsWith("/p")` tornaria
+ * `/perfil` e `/pasta` públicas também.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -41,7 +46,20 @@ export async function updateSession(request: NextRequest) {
     pathname === "/esqueci-senha" ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico";
+    pathname === "/favicon.ico" ||
+    // Plantão de Dúvidas: rota pública embedada em iframe na Hotmart, com
+    // login próprio (cookie gps_plantao_sessao), fora do Supabase Auth.
+    pathname.startsWith("/p/") ||
+    // Job diário do plantão, chamado por pg_cron via HTTP — sem sessão
+    // Supabase, por definição. Sem esta linha o proxy devolvia 307 para
+    // /login ANTES do handler rodar, e o pg_net não segue redirect nem
+    // acusa erro: o job falharia em silêncio para sempre (NPS nunca
+    // enviado, sessões e eventos nunca expurgados).
+    //
+    // ⚠️ Rota EXATA, nunca o prefixo `/api/`: a rota se protege sozinha
+    // pelo header `x-plantao-segredo` mais o segredo conferido dentro das
+    // RPCs. Liberar `/api/` inteiro abriria o que vier depois.
+    pathname === "/api/plantao/manutencao";
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

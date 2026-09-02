@@ -52,6 +52,31 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Clickjacking: hoje NENHUMA rota tem X-Frame-Options/CSP, então
+      // qualquer site pode embedar até o /login. Política dividida por
+      // negative lookahead (mesmo padrão do bloco de cache acima) — os dois
+      // headers de frame NUNCA coexistem com valor conflitante na mesma rota.
+      //
+      // /p/* — Plantão de Dúvidas: PRECISA ser embedável na área de membros
+      // da Hotmart (domínio próprio do Club incluso).
+      {
+        source: "/p/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value:
+              "frame-ancestors https://hm.nivelouro.com.br https://*.hotmart.com https://hotmart.com",
+          },
+        ],
+      },
+      // Todo o resto — nunca deve ser embedado (login, área do aluno, admin).
+      {
+        source: "/((?!p/).*)",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+        ],
+      },
     ];
   },
 };

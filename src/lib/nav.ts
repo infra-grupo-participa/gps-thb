@@ -16,5 +16,11 @@ export function alunoNavItems(basePath: string): NavItem[] {
 
 /** Abas do painel do admin (nível topo, não o modo assistência do aluno). */
 export function adminNavItems(): NavItem[] {
-  return [{ href: "/admin", label: "Alunos", icon: "alunos", exact: true }];
+  return [
+    { href: "/admin", label: "Alunos", icon: "alunos", exact: true },
+    // Ícone "materiais" (BookOpen) reaproveitado: não há chave dedicada a
+    // calendário/atendimento em NavItem["icon"] (nav-tabs.tsx) e a regra do
+    // projeto é não inventar chave nova de ícone.
+    { href: "/admin/plantao", label: "Plantão", icon: "materiais" },
+  ];
 }

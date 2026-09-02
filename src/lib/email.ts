@@ -37,7 +37,7 @@ interface EnviarParams {
   texto: string;
 }
 
-async function enviar({
+export async function enviar({
   para,
   assunto,
   html,
@@ -83,7 +83,7 @@ async function enviar({
 }
 
 /** Escapa texto para interpolar com segurança no HTML. */
-function esc(v: string): string {
+export function esc(v: string): string {
   return v
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -92,7 +92,7 @@ function esc(v: string): string {
 }
 
 /** Casca HTML comum (cabeçalho laranja + rodapé) para todos os e-mails. */
-function layout(opts: { preheader: string; titulo: string; corpo: string }): string {
+export function layout(opts: { preheader: string; titulo: string; corpo: string }): string {
   const { preheader, titulo, corpo } = opts;
   return `<!doctype html>
 <html lang="pt-BR">
@@ -130,7 +130,7 @@ function layout(opts: { preheader: string; titulo: string; corpo: string }): str
 </html>`;
 }
 
-function botao(href: string, rotulo: string): string {
+export function botao(href: string, rotulo: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 20px;">
     <tr><td style="border-radius:8px;background:${LARANJA};">
       <a href="${esc(href)}" style="display:inline-block;padding:12px 22px;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;border-radius:8px;">${esc(rotulo)}</a>

@@ -158,6 +158,69 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
   do cliente que a equipe acompanha — nome, status, telefone/WhatsApp, perda pela inércia e
   "Abrir ficha". É Server Component (sem `"use client"`, sem estado, sem action).
 
+### 🎧 Plantão de Dúvidas — Acelera Holding (2026-09-01)
+
+> ⚠️ **NÃO é o agendamento de reunião com a equipe**, que continua REMOVIDO (ver a seção
+> logo abaixo). As tabelas `gps.reuniao_*` seguem órfãs e **proibidas**. Plantão é outra
+> coisa: **mentoria coletiva** de outro produto (Acelera Holding), com mentora nomeada,
+> sala de Zoom e aluno **sem login no GPS**.
+
+**Rota pública `/p/plantao`**, embedada em iframe na área de membros da Hotmart
+(**`https://hm.nivelouro.com.br/acelera-holding`** — domínio próprio do Club, não
+`*.hotmart.com`). Calendário **mensal**; 3 mentoras (Isabela, Elaine, Cristiane);
+**1 inscrição ativa por vez**, que encerra sozinha quando `inicio_em` passa; **sem limite
+de vagas**; botão revela o link do Zoom **de 1h antes a 1h depois** e isso **registra
+presença**; e-mail de confirmação + NPS.
+
+**Identidade PRÓPRIA, isolada de `auth.users`** — a decisão central. Medido: **210 dos 421**
+compradores da Acelera já têm conta em `auth.users` (banco compartilhado por 5 sistemas).
+Um formulário público que definisse senha ali entregaria a conta do CNHF/sip/workbook
+dessas pessoas. Por isso: `gps.plantao_alunos` + `plantao_acessos` (bcrypt via
+`extensions.crypt`) + `plantao_sessoes` (token de 32 bytes, guarda-se só o sha256).
+**Efeito colateral desejado:** o "acesso restrito ao calendário" sai de graça — sem sessão
+Supabase, o `proxy.ts` já barra essa pessoa em qualquer outra rota. É estrutural, não uma
+verificação que alguém pode esquecer.
+
+**Acesso ao banco:** `anon` **não tem GRANT em nenhuma** das 7 tabelas `plantao_*`. Tudo
+passa por RPC `security definer` (`revoke from public` **antes** do `grant to anon`). É o
+antídoto explícito ao incidente CNHF, onde o GRANT passou antes do RLS.
+
+**1º acesso exige os 4 últimos dígitos do documento da compra.** O Marcio primeiro aceitou
+sem verificação; o `security-pentester` mostrou que a resposta devolvia `primeiro_acesso=true`
+e **denunciava quem ainda não tinha entrado**, permitindo varrer os 421 e tomar contas em
+lote. Com a trava, saber o e-mail deixa de bastar. Cobertura: 375 dos 421; os **46 sem
+documento** entram pelo botão **"Liberar 1º acesso"** do admin (a liberação **se consome**
+no primeiro uso). O campo fica **sempre visível** — exibi-lo só no 1º acesso reabriria a
+enumeração.
+
+**Iframe:** cookie `gps_plantao_sessao` com `HttpOnly; Secure; SameSite=None; Partitioned`
+(CHIPS resolve Chrome/Edge). Safari não implementa CHIPS → Storage Access API (exige gesto)
+→ e, em último caso, **abrir em nova aba** (first-party, sempre funciona). Uma **sonda**
+(`/p/plantao/sonda`) detecta o bloqueio **antes** de mostrar o formulário — senão o aluno
+digita a senha certa e volta ao login, em loop.
+
+**Headers de frame (limpeza que a feature trouxe):** o portal **não tinha** `X-Frame-Options`
+nem CSP — qualquer site podia embedar o `/login`. Agora `/p/*` tem `frame-ancestors` com
+allowlist e **todo o resto** tem `DENY` + `frame-ancestors 'none'`.
+
+**Arquivos:** migrations `20260901000001`→`...05`; `src/lib/plantao{,-tipos,-data,-carga}.ts`,
+`src/lib/email-plantao.ts`; `src/app/p/**`, `src/app/admin/plantao/**`,
+`src/app/api/plantao/manutencao/route.ts`; `src/components/plantao/**`,
+`src/components/admin/plantao-*`.
+
+**Job diário** (`/api/plantao/manutencao`, para `pg_cron` 1×/dia): envia NPS pendente,
+expurga sessões vencidas e eventos com mais de 90 dias.
+⚠️ **Exige `PLANTAO_MANUTENCAO_SEGREDO` (mín. 16 chars) na Hostinger E o mesmo valor no
+banco** (`alter role authenticator set app.plantao_manutencao_segredo = '...'`). A guarda
+**falha fechado**: sem o segredo, as 3 RPCs recusam tudo com 42501. Isso é proposital —
+a versão anterior comparava com `current_setting(...,true)`, que devolve NULL quando não
+configurado, fazendo o `if` não disparar e o **DELETE em massa executar para qualquer
+chamada anônima**.
+
+**Lição de fuso incorporada:** `plantao_slots.inicio_em` é coluna **gerada**
+(`(data + hora_inicio) at time zone 'America/Sao_Paulo'`). Toda comparação com `now()` usa
+ela, nunca `data` isolada — que mentiria o prazo das 21h à meia-noite.
+
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 
 **Decisão do Marcio.** O motivo é **operacional, não técnico**: o fluxo não estava fluindo e

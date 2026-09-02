@@ -39,6 +39,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Plantão de Dúvidas — lotes de carga (PII real: e-mail/CPF/telefone).
+# Repositório é PÚBLICO — nunca versionar dado de comprador.
+/data/plantao/*.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

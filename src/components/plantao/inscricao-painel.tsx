@@ -147,11 +147,15 @@ export function InscricaoPainel({
               </span>
             ) : slot.inscricaoEncerrada ? (
               /*
-                Passou do cut-off (12:00 da véspera) mas o plantão ainda vai
-                acontecer. Mostrar o estado aqui evita que a pessoa clique em
-                "Inscrever" e receba um erro — o servidor recusaria de todo
-                jeito (`plantao_inscrever`), e esta é a mesma regra, calculada
-                no mesmo lugar (`plantao_calendario`).
+                Inscrições fechadas. Desde 08/09/2026 isso é o mesmo que "já
+                começou" — o cut-off de 12:00 da véspera saiu (decisão do
+                Marcio: dá para agendar até o início).
+
+                O ramo continua aqui de propósito: `inscricao_encerrada` é
+                calculado por `plantao_calendario` espelhando exatamente a
+                trava de `plantao_inscrever`. Se um prazo voltar (o calendário
+                oficial do Acelera ainda o prevê), muda só a expressão no
+                banco — esta tela não precisa ser tocada.
               */
               <span className="shrink-0 text-right text-xs text-muted-foreground">
                 Inscrições

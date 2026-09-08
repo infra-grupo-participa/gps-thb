@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getMembrosDoAmbiente, getTurmaCodigo } from "@/lib/data";
-import { alunoNavItems } from "@/lib/nav";
+import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { PerfilEditor } from "@/components/perfil/perfil-editor";
@@ -37,7 +37,7 @@ export default async function AdminAlunoPerfilPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={alunoNavItems(base)}
+        navItems={assistenciaNavItems(alunoId)}
       />
       <AssistBanner aluno={aluno} />
 

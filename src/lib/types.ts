@@ -222,3 +222,53 @@ export interface AgendaItem {
 export interface AgendaItemComAluno extends AgendaItem {
   aluno_nome: string | null;
 }
+
+/**
+ * Diário do aluno — linha do tempo da EQUIPE. Visualização EXCLUSIVA do
+ * admin (LGPD: dado pessoal de terceiros no texto livre). Ver
+ * `gps.aluno_notas` (migração 20260908000001).
+ */
+export const VOZES_NOTA = ["equipe", "aluno"] as const;
+export type VozNota = (typeof VOZES_NOTA)[number];
+
+export const TIPOS_NOTA = [
+  "observacao",
+  "duvida",
+  "combinado",
+  "pendencia",
+] as const;
+export type TipoNota = (typeof TIPOS_NOTA)[number];
+
+export const ORIGENS_NOTA = [
+  "reuniao",
+  "email",
+  "whatsapp",
+  "plataforma",
+  "planilha",
+] as const;
+export type OrigemNota = (typeof ORIGENS_NOTA)[number];
+
+export interface AlunoNota {
+  id: string;
+  aluno_id: string;
+  autor_id: string;
+  criado_em: string;
+  voz: VozNota;
+  tipo: TipoNota;
+  origem: OrigemNota;
+  texto: string;
+  resolvido_em: string | null;
+  resolvido_por: string | null;
+}
+
+/** Nota do diário com o nome do autor/quem deu baixa (join manual em `public.perfis`). */
+export interface AlunoNotaComAutor extends AlunoNota {
+  autor_nome: string | null;
+  resolvido_por_nome: string | null;
+}
+
+/** Resumo do diário para cards/listas (última nota + pendências em aberto). */
+export interface ResumoDiario {
+  ultima: AlunoNotaComAutor | null;
+  pendenciasAbertas: number;
+}

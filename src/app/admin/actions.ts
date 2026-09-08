@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { getContextoSessao } from "@/lib/auth";
+import { ehAdmin } from "@/lib/auth";
 import { enviarCredenciaisAcesso, enviarAcessoLiberado } from "@/lib/email";
 import {
   documentoValido,
@@ -14,11 +14,6 @@ import {
 } from "@/lib/masks";
 import { PLANOS_ALUNO } from "@/lib/types";
 import type { Aluno, NovoAlunoInput, PlanoAluno, Turma } from "@/lib/types";
-
-async function ehAdmin(): Promise<boolean> {
-  const ctx = await getContextoSessao();
-  return ctx?.papel === "admin";
-}
 
 function gerarSenha(): string {
   // Senha temporária legível (ex.: Gps-3f9a2b).

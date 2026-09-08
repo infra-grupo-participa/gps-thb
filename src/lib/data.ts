@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { calcularMetricasEtapa1 } from "@/lib/etapa1";
+import { ehAdmin } from "@/lib/auth";
 import type {
   Aluno,
   Ambiente,
@@ -12,6 +13,9 @@ import type {
   AgendaItemComAluno,
   Solicitacao,
   StatusSolicitacao,
+  AlunoNota,
+  AlunoNotaComAutor,
+  ResumoDiario,
 } from "@/lib/types";
 
 export async function getEtapas(): Promise<Etapa[]> {
@@ -401,4 +405,163 @@ export async function getAgendaDeTodos(
     ...i,
     aluno_nome: nomePorId.get(i.aluno_id) ?? null,
   }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Diário do aluno — linha do tempo da EQUIPE. Visualização EXCLUSIVA do
+// admin (LGPD: dado pessoal de terceiros no texto livre — ver comentário
+// no topo da migração 20260908000001). Cada função abaixo confere `ehAdmin()`
+// por conta própria: `data.ts` também é importado por páginas do ALUNO, e
+// não é seguro confiar que todo chamador vai lembrar de checar antes.
+// ─────────────────────────────────────────────────────────────────────────
+
+const COLUNAS_NOTA =
+  "id, aluno_id, autor_id, criado_em, voz, tipo, origem, texto, resolvido_em, resolvido_por";
+
+/** Junta nome de autor/quem deu baixa a partir de `public.perfis` (PostgREST não faz join entre schemas gps↔public). */
+async function comNomesDeAutor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  notas: AlunoNota[],
+): Promise<AlunoNotaComAutor[]> {
+  if (notas.length === 0) return [];
+
+  const idsAutores = new Set<string>();
+  for (const n of notas) {
+    idsAutores.add(n.autor_id);
+    if (n.resolvido_por) idsAutores.add(n.resolvido_por);
+  }
+
+  const { data: perfis } = await supabase
+    .from("perfis")
+    .select("id, nome")
+    .in("id", [...idsAutores]);
+
+  const nomePorId = new Map(
+    ((perfis ?? []) as { id: string; nome: string | null }[]).map((p) => [
+      p.id,
+      p.nome,
+    ]),
+  );
+
+  return notas.map((n) => ({
+    ...n,
+    autor_nome: nomePorId.get(n.autor_id) ?? null,
+    resolvido_por_nome: n.resolvido_por
+      ? (nomePorId.get(n.resolvido_por) ?? null)
+      : null,
+  }));
+}
+
+/** Timeline do diário de um aluno, mais recente primeiro. Só admin. */
+export async function getDiarioDoAluno(
+  alunoId: string,
+  limite = 50,
+): Promise<AlunoNotaComAutor[]> {
+  if (!(await ehAdmin())) return [];
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("aluno_notas")
+    .select(COLUNAS_NOTA)
+    .eq("aluno_id", alunoId)
+    .order("criado_em", { ascending: false })
+    .limit(limite);
+
+  return comNomesDeAutor(supabase, (data ?? []) as AlunoNota[]);
+}
+
+/**
+ * TODAS as pendências abertas de um aluno, sem teto — a timeline
+ * (`getDiarioDoAluno`) corta em 50 notas e uma pendência antiga cairia fora
+ * dela, ficando visível no badge do painel mas sem botão de baixa na tela.
+ * Pendência que não fecha é o defeito que esta feature existe para consertar;
+ * ela não pode sumir por causa de um limite de paginação.
+ *
+ * Sem `.limit()` de propósito: o filtro casa com o índice parcial
+ * `idx_aluno_notas_pendencia_aberta` e o universo é o que ainda está ABERTO
+ * num aluno — dezenas, não milhares. Se um dia um aluno acumular centenas de
+ * pendências abertas, o problema é operacional (ninguém está fechando), não
+ * de query.
+ */
+export async function getPendenciasAbertasDoAluno(
+  alunoId: string,
+): Promise<AlunoNotaComAutor[]> {
+  if (!(await ehAdmin())) return [];
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("aluno_notas")
+    .select(COLUNAS_NOTA)
+    .eq("aluno_id", alunoId)
+    .eq("tipo", "pendencia")
+    .is("resolvido_em", null)
+    .order("criado_em", { ascending: false });
+
+  return comNomesDeAutor(supabase, (data ?? []) as AlunoNota[]);
+}
+
+/**
+ * Resumo do diário para cards (última nota + pendências em aberto) — DUAS
+ * queries pequenas e indexadas, cada uma resolvendo só o que precisa:
+ * a última nota (`.limit(1)`, não precisa varrer 50 linhas de `texto`) e a
+ * contagem de pendências abertas (`count: exact, head: true`, sem trazer
+ * linha nenhuma). Contar dentro de um `.limit(50)` mentia a partir da 51ª
+ * nota — uma pendência antiga sumia do card enquanto o badge do painel
+ * (`getPendenciasPorAluno`, que varre a base inteira) seguia contando.
+ * A contagem casa exatamente com o índice parcial
+ * `idx_aluno_notas_pendencia_aberta` (Index Only Scan, 0,108 ms medido).
+ */
+export async function getResumoDiario(alunoId: string): Promise<ResumoDiario> {
+  if (!(await ehAdmin())) return { ultima: null, pendenciasAbertas: 0 };
+
+  const supabase = await createClient();
+  const [{ data: ultimaNota }, { count }] = await Promise.all([
+    supabase
+      .schema("gps")
+      .from("aluno_notas")
+      .select(COLUNAS_NOTA)
+      .eq("aluno_id", alunoId)
+      .order("criado_em", { ascending: false })
+      .limit(1),
+    supabase
+      .schema("gps")
+      .from("aluno_notas")
+      .select("id", { count: "exact", head: true })
+      .eq("aluno_id", alunoId)
+      .eq("tipo", "pendencia")
+      .is("resolvido_em", null),
+  ]);
+
+  const notas = (ultimaNota ?? []) as AlunoNota[];
+  const [ultimaComNome] = notas.length
+    ? await comNomesDeAutor(supabase, [notas[0]])
+    : [];
+
+  return { ultima: ultimaComNome ?? null, pendenciasAbertas: count ?? 0 };
+}
+
+/**
+ * Pendências abertas da base inteira, por aluno — para badges na lista de
+ * alunos do admin. Só `aluno_id` (nunca `texto`, que pode ter dado sensível
+ * de terceiros).
+ */
+export async function getPendenciasPorAluno(): Promise<Map<string, number>> {
+  const vazio = new Map<string, number>();
+  if (!(await ehAdmin())) return vazio;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("aluno_notas")
+    .select("aluno_id")
+    .eq("tipo", "pendencia")
+    .is("resolvido_em", null);
+
+  const contagem = new Map<string, number>();
+  for (const row of (data ?? []) as { aluno_id: string }[]) {
+    contagem.set(row.aluno_id, (contagem.get(row.aluno_id) ?? 0) + 1);
+  }
+  return contagem;
 }

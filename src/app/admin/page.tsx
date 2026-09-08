@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import {
@@ -6,6 +5,7 @@ import {
   getSolicitacoes,
   acharAlunoPorEmail,
   getEtapas,
+  getPendenciasPorAluno,
 } from "@/lib/data";
 import { Users, UserCheck, UserX, Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
@@ -13,10 +13,10 @@ import { adminNavItems } from "@/lib/nav";
 import { CriarAcesso } from "@/components/admin/criar-acesso";
 import { SolicitacaoCard } from "@/components/admin/solicitacao-card";
 import { EtapasControle } from "@/components/admin/etapas-controle";
+import { AlunosAtivosLista } from "@/components/admin/alunos-ativos-lista";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const metadata = { title: "Admin — Alunos" };
@@ -26,11 +26,13 @@ export default async function AdminPage() {
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const [alunos, pendentes, etapas] = await Promise.all([
+  const [alunos, pendentes, etapas, pendenciasDiario] = await Promise.all([
     getAlunosGps(),
     getSolicitacoes("pendente"),
     getEtapas(),
+    getPendenciasPorAluno(),
   ]);
+  const pendenciasPorAluno = Object.fromEntries(pendenciasDiario);
   const solicitacoesComMatch = await Promise.all(
     pendentes.map(async (s) => ({
       solicitacao: s,
@@ -110,92 +112,10 @@ export default async function AdminPage() {
 
           {/* Alunos ativos */}
           <TabsContent value="ativos">
-            {alunos.length === 0 ? (
-              <Card>
-                <CardContent className="p-10 text-center text-sm text-muted-foreground">
-                  Nenhum aluno ativo ainda. Use{" "}
-                  <span className="font-medium">Criar acesso</span> para começar.
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-3">
-                {alunos.map(
-                  ({
-                    aluno,
-                    alunoId,
-                    temLogin,
-                    qtdMembros,
-                    pct,
-                    clientesPreenchidos,
-                    agendados,
-                  }) => (
-                    <Link
-                      key={alunoId}
-                      href={`/admin/aluno/${alunoId}`}
-                      className="block"
-                    >
-                      <Card className="transition hover:border-primary/50 hover:shadow-sm">
-                        <CardContent className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="truncate font-medium">
-                                {aluno?.nome ?? "Aluno sem nome"}
-                              </span>
-                              {temLogin ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px]"
-                                >
-                                  com login
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-[10px]">
-                                  sem login
-                                </Badge>
-                              )}
-                              {qtdMembros > 1 ? (
-                                <Badge variant="outline" className="text-[10px]">
-                                  {qtdMembros} pessoas
-                                </Badge>
-                              ) : null}
-                            </div>
-                            <div className="truncate text-xs text-muted-foreground">
-                              {aluno?.email}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-6">
-                            <div className="text-center">
-                              <div className="text-sm font-semibold">
-                                {clientesPreenchidos}/30
-                              </div>
-                              <div className="text-[10px] uppercase text-muted-foreground">
-                                clientes
-                              </div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-sm font-semibold">
-                                {agendados}/15
-                              </div>
-                              <div className="text-[10px] uppercase text-muted-foreground">
-                                reuniões
-                              </div>
-                            </div>
-                            <div className="w-32">
-                              <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
-                                <span>Etapa 01</span>
-                                <span>{pct}%</span>
-                              </div>
-                              <Progress value={pct} />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ),
-                )}
-              </div>
-            )}
+            <AlunosAtivosLista
+              alunos={alunos}
+              pendenciasPorAluno={pendenciasPorAluno}
+            />
           </TabsContent>
 
           {/* Solicitações */}

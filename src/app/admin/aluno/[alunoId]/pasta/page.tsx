@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getAmbiente } from "@/lib/data";
-import { alunoNavItems } from "@/lib/nav";
+import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { PastaView } from "@/components/pasta/pasta-view";
@@ -19,7 +19,6 @@ export default async function AdminAlunoPastaPage({
   const ambiente = await getAmbiente(alunoId);
   if (!ambiente) notFound();
 
-  const base = `/admin/aluno/${alunoId}`;
   const aluno = await getAlunoById(alunoId);
 
   return (
@@ -29,7 +28,7 @@ export default async function AdminAlunoPastaPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={alunoNavItems(base)}
+        navItems={assistenciaNavItems(alunoId)}
       />
       <AssistBanner aluno={aluno} />
 

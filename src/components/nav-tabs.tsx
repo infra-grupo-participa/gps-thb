@@ -8,6 +8,7 @@ import {
   BookOpen,
   FolderOpen,
   UserRound,
+  NotebookPen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -15,7 +16,14 @@ export interface NavItem {
   href: string;
   label: string;
   /** chave do ícone (string, serializável entre server e client). */
-  icon?: "inicio" | "clientes" | "materiais" | "pasta" | "perfil" | "alunos";
+  icon?:
+    | "inicio"
+    | "clientes"
+    | "materiais"
+    | "pasta"
+    | "perfil"
+    | "alunos"
+    | "diario";
   /** casa exatamente (para o "Início"). */
   exact?: boolean;
 }
@@ -27,6 +35,7 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
   pasta: FolderOpen,
   perfil: UserRound,
   alunos: Users,
+  diario: NotebookPen,
 };
 
 export function NavTabs({ items }: { items: NavItem[] }) {

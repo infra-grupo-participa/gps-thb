@@ -110,3 +110,13 @@ export async function getContextoSessao(): Promise<ContextoSessao | null> {
     papelMembro: null,
   };
 }
+
+/**
+ * Atalho para Server Actions/queries que só o admin pode chamar (era
+ * triplicado em `admin/actions.ts`, `admin/senha-actions.ts` e
+ * `admin/plantao/actions.ts` — extraído para cá).
+ */
+export async function ehAdmin(): Promise<boolean> {
+  const ctx = await getContextoSessao();
+  return ctx?.papel === "admin";
+}

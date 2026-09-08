@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getClienteById, getAmbiente } from "@/lib/data";
-import { alunoNavItems } from "@/lib/nav";
+import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
@@ -33,7 +33,7 @@ export default async function AdminAlunoClienteFichaPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={alunoNavItems(base)}
+        navItems={assistenciaNavItems(alunoId)}
       />
       <AssistBanner aluno={aluno} />
 

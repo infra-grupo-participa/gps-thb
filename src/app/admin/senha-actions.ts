@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { getContextoSessao } from "@/lib/auth";
+import { ehAdmin } from "@/lib/auth";
 import { enviarCredenciaisAcesso } from "@/lib/email";
 import type { PapelMembro } from "@/lib/types";
 
@@ -16,11 +16,6 @@ import type { PapelMembro } from "@/lib/types";
  * `admin_excluir_acesso`, `admin_adicionar_socio` e `admin_excluir_membro`.
  * Ver migração `gps_admin_gestao_de_acesso` (e a extensão para sócios).
  */
-
-async function ehAdmin(): Promise<boolean> {
-  const ctx = await getContextoSessao();
-  return ctx?.papel === "admin";
-}
 
 /** Senha temporária legível para ditar por telefone (ex.: Thb-7f3a-2b9c). */
 function gerarSenhaTemporaria(): string {

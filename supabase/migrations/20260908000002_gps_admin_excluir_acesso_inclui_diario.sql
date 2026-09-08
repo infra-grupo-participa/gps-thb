@@ -1,0 +1,91 @@
+-- Achado MÉDIO do `security-pentester` (08/09/2026): `gps.admin_excluir_acesso`
+-- mantinha uma lista fixa de tabelas e NÃO apagava `gps.aluno_notas`, criada na
+-- migration anterior (20260908000001). Duas consequências, ambas reais:
+--
+-- 1) LGPD — excluir o acesso do aluno pelo painel ("Gerenciar acesso" →
+--    "Excluir acesso") deixava para trás as notas do diário, que contêm dado
+--    pessoal de TERCEIROS (o cliente do aluno: situação familiar, patrimônio,
+--    IRPF). Retenção indevida por OMISSÃO — ninguém decidiu reter, a tabela
+--    simplesmente não estava na lista.
+--
+-- 2) INTEGRIDADE — `aluno_notas.autor_id` e `.resolvido_por` têm FK
+--    `on delete restrict` para `auth.users`. Se a conta sendo apagada fosse
+--    autora de alguma nota, o `delete from auth.users` batia no restrict e a
+--    função lançava a mensagem ENGANOSA "esta conta tem registros em outros
+--    sistemas do grupo" — quando o registro que travava era do próprio GPS.
+--    Por isso o delete das notas entra ANTES do delete de `auth.users`.
+--
+-- A função é SECURITY DEFINER e roda como owner: a ausência de policy de
+-- DELETE em `aluno_notas` (append-only para a aplicação) não a impede — este é
+-- o caminho administrativo único, deliberado e auditado de remoção, registrado
+-- em `gps.acessos_log`.
+--
+-- Reversão: reaplicar a definição anterior (sem a linha do `aluno_notas`), em
+-- `gps_admin_gestao_de_acesso`. Não recomendado: reabre os dois problemas.
+create or replace function gps.admin_excluir_acesso(p_aluno_id uuid)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to ''
+as $function$
+declare v_user uuid; v_email text; v_login_apagado boolean := false; v_outros uuid[];
+begin
+  if not public.gp_is_admin() then
+    raise exception 'Sem permissão.' using errcode = '42501';
+  end if;
+
+  v_user := gps.admin_user_do_aluno(p_aluno_id);
+
+  if v_user is not null then
+    if gps.admin_alvo_e_equipe(v_user) then
+      raise exception 'Esta conta é da equipe — não pode ser excluída por aqui.' using errcode = '42501';
+    end if;
+    if v_user = auth.uid() then
+      raise exception 'Você não pode excluir o próprio acesso.' using errcode = '42501';
+    end if;
+    select email into v_email from auth.users where id = v_user;
+  end if;
+
+  select array_agg(m.user_id) into v_outros
+    from gps.membros m
+   where m.aluno_id = p_aluno_id and m.user_id is not null and m.user_id <> coalesce(v_user, '00000000-0000-0000-0000-000000000000'::uuid)
+     and not gps.admin_alvo_e_equipe(m.user_id) and m.user_id <> auth.uid();
+
+  delete from gps.progresso where aluno_id = p_aluno_id;
+  delete from gps.tarefa_enfase where aluno_id = p_aluno_id;
+  delete from gps.reuniao_agendamentos where aluno_id = p_aluno_id;
+  delete from gps.etapa3_agendamentos where aluno_id = p_aluno_id;
+  delete from gps.etapa3_revisao where aluno_id = p_aluno_id;
+  delete from gps.etapa1_clientes where aluno_id = p_aluno_id;
+  delete from gps.agenda where aluno_id = p_aluno_id;
+  -- Diário: apagar ANTES de auth.users (FK restrict em autor_id/resolvido_por).
+  delete from gps.aluno_notas where aluno_id = p_aluno_id;
+  delete from gps.membros where aluno_id = p_aluno_id;
+  delete from gps.ambientes where aluno_id = p_aluno_id;
+  delete from gps.solicitacoes_acesso where aluno_id = p_aluno_id;
+
+  if v_outros is not null then
+    delete from gps.solicitacoes_acesso where user_id = any(v_outros);
+    begin
+      delete from auth.users where id = any(v_outros);
+    exception when foreign_key_violation then null;
+    end;
+  end if;
+
+  if v_user is not null then
+    delete from gps.solicitacoes_acesso where user_id = v_user;
+    begin
+      delete from auth.users where id = v_user;
+      v_login_apagado := true;
+    exception when foreign_key_violation then
+      raise exception 'O login não pôde ser apagado: esta conta tem registros em outros sistemas do grupo. O ambiente do GPS foi limpo.' using errcode = '23503';
+    end;
+  end if;
+
+  insert into gps.acessos_log (acao, aluno_id, user_id_alvo, email_alvo, detalhe, feito_por)
+  values ('acesso_excluido', p_aluno_id, v_user, v_email,
+          case when v_login_apagado then 'login e dados do GPS (inclui diário)' else 'apenas dados do GPS (inclui diário)' end,
+          auth.uid());
+
+  return jsonb_build_object('login_apagado', v_login_apagado, 'email', v_email);
+end $function$;

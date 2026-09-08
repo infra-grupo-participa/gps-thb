@@ -8,15 +8,17 @@ import {
   getEtapas,
   getAmbiente,
   getProgressoAluno,
+  getResumoDiario,
 } from "@/lib/data";
 import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
-import { alunoNavItems } from "@/lib/nav";
+import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { EtapasOverview } from "@/components/etapas-overview";
 import { FavoritoDestaque } from "@/components/etapa/favorito-destaque";
 import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { GerenciarAcesso } from "@/components/admin/gerenciar-acesso";
+import { DiarioResumoCard } from "@/components/admin/diario-resumo-card";
 
 export default async function AdminAlunoInicioPage({
   params,
@@ -32,13 +34,14 @@ export default async function AdminAlunoInicioPage({
   if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapas, clientes, progressoTodas, favorito] =
+  const [aluno, etapas, clientes, progressoTodas, favorito, resumoDiario] =
     await Promise.all([
       getAlunoById(alunoId),
       getEtapas(),
       getClientesEtapa1(alunoId),
       getProgressoAluno(alunoId),
       getClienteEquipe(alunoId),
+      getResumoDiario(alunoId),
     ]);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
@@ -51,7 +54,7 @@ export default async function AdminAlunoInicioPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={alunoNavItems(base)}
+        navItems={assistenciaNavItems(alunoId)}
       />
       <AssistBanner aluno={aluno} />
 
@@ -70,6 +73,10 @@ export default async function AdminAlunoInicioPage({
             </div>
             <GerenciarAcesso alunoId={alunoId} nomeAluno={aluno?.nome ?? null} />
           </div>
+        </div>
+
+        <div className="mb-6">
+          <DiarioResumoCard resumo={resumoDiario} basePath={base} />
         </div>
 
         {passo ? (

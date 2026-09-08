@@ -158,6 +158,43 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
   do cliente que a equipe acompanha — nome, status, telefone/WhatsApp, perda pela inércia e
   "Abrir ficha". É Server Component (sem `"use client"`, sem estado, sem action).
 
+### 📓 Diário do aluno (2026-09-08)
+
+Linha do tempo da EQUIPE sobre cada aluno (observação, dúvida, combinado,
+pendência) — registrada em reunião, e-mail, WhatsApp, plataforma ou planilha.
+**Visualização e escrita EXCLUSIVAS do admin.** O aluno **nunca** vê, o sócio
+**nunca** vê. Motivo: o texto livre pode conter **dado pessoal de terceiros**
+(cliente do aluno, situação familiar, valor de patrimônio) — é LGPD, não
+preferência de produto.
+
+Backend (não mexer sem necessidade — já pronto): `gps.aluno_notas`
+(append-only; só `resolvido_em`/`resolvido_por` são editáveis, via trigger),
+`src/lib/types.ts` (`VOZES_NOTA`/`TIPOS_NOTA`/`ORIGENS_NOTA`, `AlunoNota`,
+`AlunoNotaComAutor`, `ResumoDiario`), `src/lib/data.ts`
+(`getDiarioDoAluno` — timeline com teto de 50; `getPendenciasAbertasDoAluno`
+— **sem teto**, para a pendência antiga nunca ficar sem botão de baixa;
+`getResumoDiario` — última nota + contagem exata via `count/head`;
+`getPendenciasPorAluno` — badges do painel; todas com `ehAdmin()` de guarda), `src/app/admin/diario-actions.ts`
+(`registrarNota`/`darBaixaPendencia`, autoria sempre do `ctx.user.id` do
+servidor, nunca do cliente).
+
+Frontend: card de resumo no topo do Modo Assistência
+(`DiarioResumoCard`, acima do `ProximoPassoCard` em
+`admin/aluno/[alunoId]/page.tsx`) + aba própria
+`admin/aluno/[alunoId]/diario` (`DiarioForm` + `DiarioTimeline` +
+`DiarioBaixaButton`) — a timeline recebe DUAS listas: as notas (teto de 50) e
+as pendências abertas (sem teto), exibidas numa seção fixa no topo com botão
+de baixa, sem repetir no histórico + badge/filtro de pendência na lista "Alunos ativos"
+do painel (`AlunosAtivosLista`, alimentada por `getPendenciasPorAluno()` —
+uma query só, filtro em memória).
+
+> ⚠️ **NÃO adicionar "Diário" em `alunoNavItems`** (`src/lib/nav.ts`) — essa
+> função também é chamada pelo **aluno** com `basePath=""`, e qualquer item
+> nela vaza para o menu do aluno. O Diário entra só em
+> **`assistenciaNavItems(alunoId)`**, que recebe `alunoId` (não `basePath`)
+> de propósito — a assinatura torna impossível chamá-la com `""`. Use
+> `assistenciaNavItems` em toda página nova sob `admin/aluno/[alunoId]/**`.
+
 ### 🎧 Plantão de Dúvidas — Acelera Holding (2026-09-01)
 
 > ⚠️ **NÃO é o agendamento de reunião com a equipe**, que continua REMOVIDO (ver a seção
@@ -463,6 +500,9 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
 - [x] **Gerenciar acesso do aluno (2026-07-31):** diagnóstico + definir senha na hora + excluir
       acesso por completo, tudo pelo painel e sem `service_role` (migração
       `gps_admin_gestao_de_acesso`). Substituiu o `BotaoRedefinirSenha`, que só reenviava e-mail.
+- [x] **Diário do aluno (2026-09-08 — frontend):** card de resumo no Modo Assistência + aba
+      `admin/aluno/[alunoId]/diario` (registro/timeline/dar baixa) + badge/filtro de pendência no
+      painel. Só-admin (LGPD). Ver seção "📓 Diário do aluno" acima.
 - [ ] Endurecer RLS de `thb_alunos` (ver acima) antes de abrir o cadastro a alunos reais.
       **Parcialmente resolvido:** um aluno logado hoje só enxerga a própria linha (conferido em
       31/07 simulando o JWT do aluno) — confirmar se as policies antigas `read_authenticated`

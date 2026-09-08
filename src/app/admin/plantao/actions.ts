@@ -14,13 +14,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getContextoSessao } from "@/lib/auth";
+import { ehAdmin } from "@/lib/auth";
 import type { ResultadoAcao } from "@/lib/plantao-tipos";
-
-async function ehAdmin(): Promise<boolean> {
-  const ctx = await getContextoSessao();
-  return ctx?.papel === "admin";
-}
 
 export interface CriarSlotInput {
   mentoraId: string;

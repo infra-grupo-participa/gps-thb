@@ -64,6 +64,19 @@ export async function getSlotsDoMesAdmin(
       inscritosQtd: contagens.get(s.id as string) ?? 0,
       minhaInscricao: false, // não se aplica ao admin
       encerrado: new Date(s.inicio_em as string) <= new Date(),
+      // Cut-off de 12:00 da véspera, no fuso de São Paulo — o admin precisa
+      // saber se ainda entra gente. Mesma regra de `plantao_inscrever` e de
+      // `plantao_calendario`; aqui é derivada no servidor porque esta query
+      // lê a tabela direto (é admin, tem policy), sem passar pela RPC.
+      inscricaoEncerrada: (() => {
+        const inicio = new Date(s.inicio_em as string);
+        // Véspera às 12:00 em São Paulo = 15:00 UTC (o Brasil não usa mais
+        // horário de verão, então o offset é fixo em -03:00).
+        const vespera = new Date(inicio);
+        vespera.setUTCDate(vespera.getUTCDate() - 1);
+        vespera.setUTCHours(15, 0, 0, 0);
+        return new Date() >= vespera;
+      })(),
       zoomUrl: (s.zoom_url as string) ?? null,
       publicado: s.publicado as boolean,
       gravacaoUrl: (s.gravacao_url as string) ?? null,

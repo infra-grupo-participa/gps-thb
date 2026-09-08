@@ -23,6 +23,15 @@ export interface SlotPublico {
   minhaInscricao: boolean;
   /** true quando `inicio_em` já passou. */
   encerrado: boolean;
+  /**
+   * true quando passou do cut-off (12:00 do dia anterior) — o plantão ainda
+   * VAI acontecer, mas as inscrições fecharam.
+   *
+   * Calculado por `gps.plantao_calendario` espelhando a regra de
+   * `plantao_inscrever`, para a tela mostrar o estado em vez de deixar a
+   * pessoa clicar e tomar um erro.
+   */
+  inscricaoEncerrada: boolean;
 }
 
 /** A inscrição ativa (ou mais recente) do aluno logado. */

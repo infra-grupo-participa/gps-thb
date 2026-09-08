@@ -108,6 +108,7 @@ export async function buscarCalendario(
     inscritos_qtd: number;
     minha_inscricao: boolean;
     encerrado: boolean;
+    inscricao_encerrada: boolean;
   }>).map((r) => ({
     slotId: r.slot_id,
     data: r.data,
@@ -117,6 +118,7 @@ export async function buscarCalendario(
     inscritosQtd: r.inscritos_qtd,
     minhaInscricao: r.minha_inscricao,
     encerrado: r.encerrado,
+    inscricaoEncerrada: r.inscricao_encerrada,
   }));
 
   return { ok: true, slots };

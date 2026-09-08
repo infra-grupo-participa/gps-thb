@@ -145,6 +145,19 @@ export function InscricaoPainel({
               <span className="shrink-0 text-xs text-muted-foreground">
                 Encerrado
               </span>
+            ) : slot.inscricaoEncerrada ? (
+              /*
+                Passou do cut-off (12:00 da véspera) mas o plantão ainda vai
+                acontecer. Mostrar o estado aqui evita que a pessoa clique em
+                "Inscrever" e receba um erro — o servidor recusaria de todo
+                jeito (`plantao_inscrever`), e esta é a mesma regra, calculada
+                no mesmo lugar (`plantao_calendario`).
+              */
+              <span className="shrink-0 text-right text-xs text-muted-foreground">
+                Inscrições
+                <br />
+                encerradas
+              </span>
             ) : (
               <Button
                 size="sm"

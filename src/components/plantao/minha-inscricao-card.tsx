@@ -143,12 +143,18 @@ export function MinhaInscricaoCard({
   const presencaJaConfirmada = Boolean(inscricao.presencaEm) || zoomUrl !== null;
 
   const inicioMs = (() => {
-    // `inicio_em` não vem pronto aqui — reconstituído a partir de data+hora
-    // (mesmo fuso usado no restante do módulo: o servidor já decide
-    // `janelaAberta`, isto é só para a contagem regressiva visual).
-    const [ano, mes, dia] = inscricao.data.split("-").map(Number);
-    const [hh, mm] = inscricao.horaInicio.split(":").map(Number);
-    return new Date(ano, mes - 1, dia, hh, mm).getTime();
+    // `inicio_em` não vem pronto aqui — reconstituído a partir de data+hora.
+    //
+    // ⚠️ O horário do plantão é sempre em America/Sao_Paulo, e `new Date(ano,
+    // mes, dia, hh, mm)` monta no fuso do NAVEGADOR: para um aluno em Lisboa
+    // ou em Manaus a contagem regressiva erraria em horas. Como o Brasil não
+    // usa mais horário de verão, o offset é fixo em -03:00 — montar a partir
+    // do ISO com o offset explícito resolve sem depender de biblioteca.
+    //
+    // Isto é só o texto da contagem: quem decide se a janela abriu continua
+    // sendo o servidor (`janelaAberta`).
+    const iso = `${inscricao.data}T${inscricao.horaInicio}:00-03:00`;
+    return new Date(iso).getTime();
   })();
   const faltamMs = inicioMs - agora;
 

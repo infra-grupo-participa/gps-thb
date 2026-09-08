@@ -303,36 +303,6 @@ export async function limparSenha(alunoPlantaoId: string): Promise<ResultadoAcao
   return { ok: true };
 }
 
-/**
- * Libera UM primeiro acesso sem conferência de documento.
- *
- * O primeiro acesso exige os 4 últimos dígitos do documento da compra — é o
- * que impede alguém que só saiba o e-mail de tomar a conta de quem ainda não
- * entrou. Mas 46 dos 421 vieram do CSV sem documento, e há quem tenha
- * comprado com um documento e lembre de outro. Para esses, o admin libera
- * caso a caso, depois de confirmar a identidade por fora (WhatsApp, e-mail).
- *
- * A liberação vale para UM acesso: assim que a senha é criada, ela se
- * consome sozinha (ver `gps.plantao_login`). Não vira porta aberta.
- */
-export async function liberarPrimeiroAcesso(
-  alunoPlantaoId: string,
-): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .schema("gps")
-    .rpc("plantao_liberar_primeiro_acesso", {
-      p_aluno_plantao_id: alunoPlantaoId,
-    });
-
-  if (error) return { ok: false, erro: "Não foi possível liberar o acesso." };
-
-  revalidatePath("/admin/plantao");
-  return { ok: true };
-}
-
 // ─────────────────────────────────────────────────────────────────────────
 // Mentoras (`gps.plantao_mentoras`) — antes só editável por SQL direto.
 // ─────────────────────────────────────────────────────────────────────────

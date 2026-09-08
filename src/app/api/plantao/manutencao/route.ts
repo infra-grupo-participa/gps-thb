@@ -23,11 +23,14 @@
  * qualquer chamada anônima ao PostgREST poderia derrubar sessões de todo
  * mundo ou martelar envio de NPS.
  *
- * Quatro tarefas, todas IDEMPOTENTES (rodar de novo no mesmo dia não duplica
+ * Cinco tarefas, todas IDEMPOTENTES (rodar de novo no mesmo dia não duplica
  * nem corrompe nada):
  *  (a) envia NPS pendente e marca `nps_email_em`;
  *  (a2) avisa a MENTORA na véspera (quem vai, que horas, quantos) e carimba
  *       `plantao_slots.aviso_mentora_em`;
+ *  (a3) reconcilia `bloqueado_por_programa` contra `gps.membros` (quem entrou
+ *       ou saiu do Programa de Implementação desde a última rodada) e
+ *       cancela as inscrições futuras de quem acabou de ser bloqueado;
  *  (b) expurga sessões expiradas;
  *  (c) expurga eventos com mais de 90 dias (retenção decidida pelo Marcio).
  */
@@ -63,6 +66,9 @@ export async function POST(request: NextRequest) {
     npsFalhas: 0,
     avisosMentoraEnviados: 0,
     avisosMentoraFalhas: 0,
+    elegibilidadeBloqueadosNovos: 0,
+    elegibilidadeDesbloqueados: 0,
+    elegibilidadeInscricoesCanceladas: 0,
     sessoesExpurgadas: 0,
     eventosExpurgados: 0,
   };
@@ -162,6 +168,28 @@ export async function POST(request: NextRequest) {
         resultado.avisosMentoraFalhas++;
       }
     }
+  }
+
+  // (a3) Reconciliação de elegibilidade: recalcula `bloqueado_por_programa`
+  // contra `gps.membros` (o snapshot da migração ...034 não se atualiza
+  // sozinho) e cancela as inscrições futuras de quem acabou de ser
+  // bloqueado. Falha aqui NÃO derruba o job — o expurgo (b/c) precisa rodar
+  // de todo jeito, e a próxima execução (amanhã) reconcilia de novo.
+  const { data: reconciliacao, error: erroReconciliacao } = await supabase.rpc(
+    "plantao_reconciliar_elegibilidade",
+    { p_segredo: segredo },
+  );
+
+  if (erroReconciliacao) {
+    console.error(
+      "[plantao/manutencao] reconciliação de elegibilidade recusada:",
+      erroReconciliacao.message,
+    );
+  } else {
+    const linha = Array.isArray(reconciliacao) ? reconciliacao[0] : reconciliacao;
+    resultado.elegibilidadeBloqueadosNovos = linha?.bloqueados_novos ?? 0;
+    resultado.elegibilidadeDesbloqueados = linha?.desbloqueados ?? 0;
+    resultado.elegibilidadeInscricoesCanceladas = linha?.inscricoes_canceladas ?? 0;
   }
 
   // (b) e (c) — expurgo de sessões expiradas e eventos com mais de 90 dias.

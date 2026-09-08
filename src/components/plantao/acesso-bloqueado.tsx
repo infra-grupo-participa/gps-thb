@@ -73,7 +73,7 @@ async function cookieVoltou(): Promise<boolean> {
   }
 }
 
-export function AcessoBloqueado() {
+export function AcessoBloqueado({ avisoInicial }: { avisoInicial?: string }) {
   const [estado, setEstado] = useState<Estado>("verificando");
 
   useEffect(() => {
@@ -127,7 +127,7 @@ export function AcessoBloqueado() {
   }
 
   if (estado === "liberado") {
-    return <PlantaoLogin />;
+    return <PlantaoLogin avisoInicial={avisoInicial} />;
   }
 
   if (estado === "precisa-ativar" || estado === "ativando") {

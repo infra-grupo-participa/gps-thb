@@ -9,12 +9,19 @@
  * decide entre a tela de login (guardada pela sonda de cookie de terceiro)
  * e o calendário do mês. Navegação entre meses por `?m=YYYY-MM` com `Link`
  * — nunca token na URL, nunca refetch em cascata.
+ *
+ * Quando havia cookie de sessão mas ele não resolveu mais nada (expirou, foi
+ * revogado, ou o aluno perdeu acesso ao Plantão por ter migrado para o
+ * Programa de Implementação — `bloqueado_por_programa`), a tela de login
+ * recebe um aviso NEUTRO ("sua sessão expirou"), sempre o mesmo texto
+ * independente do motivo — ver `sessaoAtual` em `actions.ts`.
  */
 
 import type { Metadata } from "next";
 import { sessaoAtual, buscarCalendario, buscarMinhaInscricao } from "@/app/p/plantao/actions";
 import { mesAtualSaoPaulo } from "@/lib/plantao";
 import { AcessoBloqueado } from "@/components/plantao/acesso-bloqueado";
+import { TrocarSenhaPlantao } from "@/components/plantao/trocar-senha-plantao";
 import { CalendarioMes } from "@/components/plantao/calendario-mes";
 import { MinhaInscricaoCard } from "@/components/plantao/minha-inscricao-card";
 import { NpsForm } from "@/components/plantao/nps-form";
@@ -34,10 +41,26 @@ export default async function PlantaoPage({
 }: {
   searchParams: Promise<{ m?: string }>;
 }) {
-  const sessao = await sessaoAtual();
+  const { sessao, sessaoExpirou } = await sessaoAtual();
 
   if (!sessao) {
-    return <AcessoBloqueado />;
+    // Mensagem sempre neutra — nunca diferenciar "expirou", "foi revogada"
+    // ou "aluno bloqueado por ter migrado de produto": a rota é pública, e
+    // diferenciar aqui confirmaria a um estranho que aquele e-mail comprou.
+    return (
+      <AcessoBloqueado
+        avisoInicial={
+          sessaoExpirou ? "Sua sessão expirou. Entre novamente." : undefined
+        }
+      />
+    );
+  }
+
+  // Senha ainda provisória (1º acesso com a senha padrão da Hotmart, ou
+  // login seguinte de quem ainda não trocou): a sessão já existe, mas o
+  // aluno não pode usar o plantão antes de definir a própria senha.
+  if (sessao.precisaTrocarSenha) {
+    return <TrocarSenhaPlantao />;
   }
 
   const { m } = await searchParams;

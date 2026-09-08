@@ -29,7 +29,6 @@ import {
   revogarAcessoPlantao,
   reativarAcessoPlantao,
   limparSenha,
-  liberarPrimeiroAcesso,
   carregarLoteAcelera,
 } from "@/app/admin/plantao/actions";
 import { Input } from "@/components/ui/input";
@@ -107,20 +106,6 @@ export function PlantaoAcessos({ alunos }: { alunos: AlunoPlantaoAdmin[] }) {
   function onReativar(a: AlunoPlantaoAdmin) {
     executar(a.id, () => reativarAcessoPlantao(a.id));
     toast.success("Acesso reativado.");
-  }
-
-  function onLiberar(a: AlunoPlantaoAdmin) {
-    if (
-      !confirm(
-        `Liberar o primeiro acesso de ${a.nome} sem conferir o documento?
-
-` +
-          "Confirme a identidade por fora (WhatsApp/e-mail) antes. A liberação " +
-          "vale para UM acesso: assim que a senha for criada, ela se encerra.",
-      )
-    )
-      return;
-    executar(a.id, () => liberarPrimeiroAcesso(a.id));
   }
 
   function onLimparSenha(a: AlunoPlantaoAdmin) {
@@ -213,21 +198,9 @@ export function PlantaoAcessos({ alunos }: { alunos: AlunoPlantaoAdmin[] }) {
                         <CircleCheckIcon className="size-3.5 text-primary" /> Definida
                       </span>
                     ) : (
-                      <div className="flex flex-col gap-0.5">
-                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <CircleDashedIcon className="size-3.5" /> Ainda não
-                        </span>
-                        {!a.temDocumento && !a.liberadoSemDocumento ? (
-                          <span className="text-[11px] text-destructive">
-                            sem documento — precisa de liberação
-                          </span>
-                        ) : null}
-                        {a.liberadoSemDocumento ? (
-                          <span className="text-[11px] text-primary">
-                            liberado para entrar
-                          </span>
-                        ) : null}
-                      </div>
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <CircleDashedIcon className="size-3.5" /> Ainda não
+                      </span>
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -241,17 +214,6 @@ export function PlantaoAcessos({ alunos }: { alunos: AlunoPlantaoAdmin[] }) {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1.5">
-                      {!a.temSenha && !a.temDocumento && !a.liberadoSemDocumento ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={emAcao}
-                          onClick={() => onLiberar(a)}
-                          title="O CSV veio sem documento — libera UM primeiro acesso sem conferência"
-                        >
-                          <KeyRoundIcon className="size-4" /> Liberar 1º acesso
-                        </Button>
-                      ) : null}
                       {a.temSenha ? (
                         <Button
                           variant="ghost"

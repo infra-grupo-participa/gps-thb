@@ -93,26 +93,69 @@ async function tokenDaSessao(): Promise<string | null> {
   return jar.get(COOKIE_SESSAO)?.value ?? null;
 }
 
-/** Resolve a sessão atual do plantão (ou null se não houver/expirou). */
-export async function sessaoAtual(): Promise<SessaoPlantao | null> {
+/**
+ * Resolve a sessão atual do plantão a partir do cookie.
+ *
+ * `sessaoExpirou` distingue "nunca teve cookie" (`false`) de "tinha cookie e
+ * não resolveu mais nada" (`true`) — a `page.tsx` usa isso só para trocar a
+ * MENSAGEM da tela de login, nunca para diferenciar o motivo (expirou, foi
+ * revogada ou o aluno foi bloqueado): é a mesma mensagem neutra em todos os
+ * casos, para não confirmar a um estranho, pela rota pública, que aquele
+ * e-mail comprou algo.
+ *
+ * `precisaTrocarSenha` vem direto de `senha_provisoria`, 3ª coluna de
+ * `gps.plantao_sessao` desde 08/09/2026 — fonte única de verdade, sem
+ * cookie-sinal duplicado que podia divergir do banco (e sumir mais fácil que
+ * o cookie de sessão em Safari dentro de iframe, deixando o aluno preso na
+ * senha padrão).
+ *
+ * A mesma RPC agora RECUSA aluno com `bloqueado_por_programa` (perdeu o
+ * Plantão ao migrar para o Programa de Implementação) — para quem tinha
+ * cookie de sessão válido e foi bloqueado, o retorno vem vazio como
+ * qualquer outra sessão inválida, e o cookie morto é limpo aqui mesmo.
+ */
+export async function sessaoAtual(): Promise<{
+  sessao: SessaoPlantao | null;
+  sessaoExpirou: boolean;
+}> {
   const token = await tokenDaSessao();
-  if (!token) return null;
+  if (!token) return { sessao: null, sessaoExpirou: false };
 
   const supabase = clientePublico();
   const { data, error } = await supabase.rpc("plantao_sessao", { p_token: token });
-  if (error || !data || !Array.isArray(data) || !data.length) return null;
+  if (error || !data || !Array.isArray(data) || !data.length) {
+    const jar = await cookies();
+    jar.delete({ name: COOKIE_SESSAO, path: "/p" });
+    return { sessao: null, sessaoExpirou: true };
+  }
 
-  const row = data[0] as { aluno_plantao_id: string; nome: string };
-  return { alunoPlantaoId: row.aluno_plantao_id, nome: row.nome };
+  const row = data[0] as {
+    aluno_plantao_id: string;
+    nome: string;
+    senha_provisoria: boolean;
+  };
+
+  return {
+    sessao: {
+      alunoPlantaoId: row.aluno_plantao_id,
+      nome: row.nome,
+      precisaTrocarSenha: row.senha_provisoria,
+    },
+    sessaoExpirou: false,
+  };
 }
 
-/** Login (e 1º acesso, que já cria a senha). */
 /**
- * Entra no plantão. No PRIMEIRO acesso a senha é criada na hora, e por isso
- * `documento` (4 últimos dígitos do documento da compra) é exigido pelo banco
- * — sem ele, saber o e-mail bastaria para tomar a conta de quem ainda não
- * entrou, e a resposta denunciaria quem está nessa janela, permitindo varrer
- * a base inteira. Nos acessos seguintes o documento é ignorado.
+ * Entra no plantão. Desde 08/09/2026 o 1º acesso usa a SENHA PADRÃO
+ * distribuída pela Hotmart (não mais os 4 últimos dígitos do documento) — o
+ * parâmetro `p_documento` continua na assinatura de `gps.plantao_login` por
+ * compatibilidade, mas é IGNORADO pelo banco; por isso não é mais coletado
+ * aqui nem pedido na tela.
+ *
+ * Quando `precisa_trocar_senha` volta `true` (1º acesso com a senha padrão,
+ * ou login seguinte de quem ainda não trocou), a sessão é criada normalmente
+ * e o próprio banco continua marcando isso em `gps.plantao_sessao` — a
+ * página só libera o calendário depois de `definirSenha()` ter sucesso.
  *
  * A checagem real mora em `gps.plantao_login`; aqui só repassamos. Server
  * Action é endpoint HTTP: validar só na tela não protegeria nada.
@@ -120,8 +163,7 @@ export async function sessaoAtual(): Promise<SessaoPlantao | null> {
 export async function entrar(
   email: string,
   senha: string,
-  documento?: string,
-): Promise<ResultadoAcao & { primeiroAcesso?: boolean }> {
+): Promise<ResultadoAcao & { primeiroAcesso?: boolean; precisaTrocarSenha?: boolean }> {
   const emailNormalizado = normalizarEmail(email);
   if (!emailNormalizado || !senha) {
     return { ok: false, erro: "Informe e-mail e senha." };
@@ -136,7 +178,7 @@ export async function entrar(
     p_email: emailNormalizado,
     p_senha: senha,
     p_ip_hash: ipHash,
-    p_documento: documento?.replace(/\D/g, "") || null,
+    p_documento: null,
   });
 
   if (error) return { ok: false, erro: "Não foi possível entrar. Tente novamente." };
@@ -147,6 +189,8 @@ export async function entrar(
         motivo: string | null;
         sessao_token: string | null;
         primeiro_acesso: boolean;
+        nome: string | null;
+        precisa_trocar_senha: boolean;
       }
     | undefined;
 
@@ -157,7 +201,45 @@ export async function entrar(
   const jar = await cookies();
   jar.set(COOKIE_SESSAO, row.sessao_token, COOKIE_OPTS);
 
-  return { ok: true, primeiroAcesso: row.primeiro_acesso };
+  return {
+    ok: true,
+    primeiroAcesso: row.primeiro_acesso,
+    precisaTrocarSenha: row.precisa_trocar_senha,
+  };
+}
+
+/**
+ * Define a senha definitiva no lugar da senha padrão (troca obrigatória do
+ * 1º acesso). Usa o token da sessão já existente — o aluno não faz login de
+ * novo. Mínimo de `SENHA_MIN` caracteres validado aqui E em
+ * `gps.plantao_definir_senha`, que também recusa a própria senha padrão como
+ * nova (Server Action é endpoint HTTP: validar só no cliente não protege).
+ */
+export async function definirSenha(senhaNova: string): Promise<ResultadoAcao> {
+  const token = await tokenDaSessao();
+  if (!token) return { ok: false, erro: "Sessão expirada. Entre novamente." };
+
+  if (senhaNova.length < SENHA_MIN) {
+    return { ok: false, erro: `A senha precisa ter ao menos ${SENHA_MIN} caracteres.` };
+  }
+
+  const supabase = clientePublico();
+  const { data, error } = await supabase.rpc("plantao_definir_senha", {
+    p_token: token,
+    p_senha_nova: senhaNova,
+  });
+
+  if (error) return { ok: false, erro: "Não foi possível trocar a senha. Tente novamente." };
+
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { ok: boolean; motivo: string | null }
+    | undefined;
+
+  if (!row?.ok) {
+    return { ok: false, erro: row?.motivo || "Não foi possível trocar a senha." };
+  }
+
+  return { ok: true };
 }
 
 export async function sair(): Promise<ResultadoAcao> {

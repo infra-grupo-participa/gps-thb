@@ -89,10 +89,6 @@ export interface AlunoPlantaoAdmin {
   email: string;
   lote: string;
   temSenha: boolean;
-  /** false quando o CSV veio sem documento — o 1º acesso não pode conferir. */
-  temDocumento: boolean;
-  /** true quando o admin liberou UM 1º acesso sem conferir documento. */
-  liberadoSemDocumento: boolean;
   ultimoLoginEm: string | null;
   ativo: boolean;
   inscricoesQtd: number;
@@ -101,10 +97,18 @@ export interface AlunoPlantaoAdmin {
 /** Retorno padrão das Server Actions de mutação do plantão. */
 export type ResultadoAcao = { ok: true } | { ok: false; erro: string };
 
-/** Sessão do aluno do plantão, resolvida a partir do cookie. */
+/**
+ * Sessão do aluno do plantão, resolvida a partir do cookie.
+ *
+ * `precisaTrocarSenha` vem direto de `gps.plantao_sessao` (coluna
+ * `senha_provisoria`, desde 08/09/2026) — não é mais um cookie-sinal
+ * separado. Fonte única de verdade: o banco.
+ */
 export interface SessaoPlantao {
   alunoPlantaoId: string;
   nome: string;
+  /** true enquanto a conta ainda usa a senha padrão do 1º acesso. */
+  precisaTrocarSenha: boolean;
 }
 
 /** Janela do Zoom: abre 1h antes do início, fecha 1h depois. */

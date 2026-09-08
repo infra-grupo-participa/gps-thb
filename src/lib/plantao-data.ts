@@ -127,7 +127,7 @@ export async function getAlunosPlantao(): Promise<AlunoPlantaoAdmin[]> {
     .schema("gps")
     .from("plantao_alunos")
     .select(
-      "id, nome, email, lote, ativo, documento, liberado_sem_documento, plantao_acessos(ultimo_login_em), plantao_inscricoes(id)",
+      "id, nome, email, lote, ativo, plantao_acessos(ultimo_login_em), plantao_inscricoes(id)",
     )
     .order("nome")
     .limit(LIMITE_ALUNOS);
@@ -145,8 +145,6 @@ export async function getAlunosPlantao(): Promise<AlunoPlantaoAdmin[]> {
       email: a.email as string,
       lote: a.lote as string,
       temSenha: Boolean(acessoRow),
-      temDocumento: String(a.documento ?? "").replace(/\D/g, "").length >= 4,
-      liberadoSemDocumento: Boolean(a.liberado_sem_documento),
       ultimoLoginEm: acessoRow?.ultimo_login_em ?? null,
       ativo: a.ativo as boolean,
       inscricoesQtd: inscricoes.length,

@@ -7,9 +7,11 @@
  * (commit b457005) e PROIBIDO de reconstruir.
  *
  * A tela é SEMPRE a mesma — não pergunta "primeiro acesso?": o servidor
- * (RPC `gps.plantao_login`) decide e cria a senha no primeiro login. Isso
- * também evita que a tela vire um jeito de descobrir se um e-mail está
- * cadastrado (enumeração).
+ * (RPC `gps.plantao_login`) decide. Desde 08/09/2026 o 1º acesso usa a SENHA
+ * PADRÃO distribuída pela Hotmart (não mais os 4 últimos dígitos do
+ * documento); a troca pela senha definitiva acontece DEPOIS de logado, na
+ * tela `TrocarSenhaPlantao`. Manter a tela sempre igual também evita que ela
+ * vire um jeito de descobrir se um e-mail está cadastrado (enumeração).
  */
 
 import { useState, useTransition } from "react";
@@ -23,17 +25,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function PlantaoLogin() {
+export function PlantaoLogin({ avisoInicial }: { avisoInicial?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Aviso de sessão expirada some assim que o aluno digita e envia o
+  // formulário de novo — não é para persistir depois de uma tentativa nova.
+  const [aviso, setAviso] = useState<string | null>(avisoInicial ?? null);
 
   function onSubmit(formData: FormData) {
     setErro(null);
+    setAviso(null);
     const email = String(formData.get("email") ?? "");
     const senha = String(formData.get("senha") ?? "");
-    const documento = String(formData.get("documento") ?? "");
 
     if (senha.length < SENHA_MIN) {
       setErro(`A senha precisa ter ao menos ${SENHA_MIN} caracteres.`);
@@ -41,7 +46,7 @@ export function PlantaoLogin() {
     }
 
     startTransition(async () => {
-      const res = await entrar(email, senha, documento);
+      const res = await entrar(email, senha);
       if (!res.ok) {
         // Mensagem ÚNICA que a action devolveu — nunca diferenciar os casos
         // aqui (e-mail não encontrado / senha errada / etc.), tanto por
@@ -49,10 +54,8 @@ export function PlantaoLogin() {
         setErro(res.erro);
         return;
       }
-      if (res.primeiroAcesso) {
-        toast.success(
-          "Pronto! Sua senha foi criada. Guarde-a — é ela que abre o plantão.",
-        );
+      if (res.precisaTrocarSenha) {
+        toast.success("Entrou! Agora crie a sua senha para continuar.");
       }
       router.refresh();
     });
@@ -68,6 +71,16 @@ export function PlantaoLogin() {
           Este acesso é exclusivo da Acelera Holding e é separado do seu
           acesso ao Programa de Implementação Assistida.
         </p>
+
+        {aviso ? (
+          <p
+            role="status"
+            aria-live="polite"
+            className="mb-4 rounded-lg border border-dashed bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+          >
+            {aviso}
+          </p>
+        ) : null}
 
         <form action={onSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
@@ -86,25 +99,6 @@ export function PlantaoLogin() {
               O e-mail que você usou na compra da Acelera Holding.
             </p>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="plantao-documento">
-              4 últimos dígitos do seu CPF ou CNPJ
-            </Label>
-            <Input
-              id="plantao-documento"
-              name="documento"
-              inputMode="numeric"
-              autoComplete="off"
-              maxLength={4}
-              placeholder="0000"
-              disabled={pending}
-            />
-            <p className="text-xs text-muted-foreground">
-              Do documento usado na compra da Acelera Holding. Confirmamos
-              apenas no seu primeiro acesso.
-            </p>
-          </div>
-
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="plantao-senha">Senha</Label>
@@ -135,8 +129,8 @@ export function PlantaoLogin() {
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              No primeiro acesso, a senha que você digitar aqui é a que fica
-              valendo daqui pra frente (mínimo de {SENHA_MIN} caracteres).
+              No primeiro acesso, use a senha que você recebeu da Hotmart —
+              depois você cria a sua (mínimo de {SENHA_MIN} caracteres).
             </p>
           </div>
 

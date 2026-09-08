@@ -1,0 +1,25 @@
+-- Remove `gps.plantao_liberar_primeiro_acesso` — órfã desde 08/09/2026.
+--
+-- O 1º acesso trocou de "4 últimos dígitos do documento" (migração
+-- 20260901000005) para "senha padrão" (migração ...033/...035): o login
+-- (`gps.plantao_login`) parou de consultar `documento`/`liberado_sem_documento`
+-- por completo. Sem isso, esta RPC — cuja única razão de existir era liberar
+-- UM primeiro acesso para quem não tinha documento no CSV — não tem mais
+-- efeito nenhum sobre o login. É o mesmo defeito do botão `disabled` fixo já
+-- catalogado no projeto: código que continua rodando sem produzir resultado.
+--
+-- Acompanha esta migração (mesmo commit) a remoção do lado da aplicação:
+--   - `liberarPrimeiroAcesso` (src/app/admin/plantao/actions.ts)
+--   - `temDocumento`/`liberadoSemDocumento` (src/lib/plantao-tipos.ts,
+--     src/lib/plantao-data.ts)
+--   - o botão "Liberar 1º acesso" (src/components/admin/plantao-acessos.tsx)
+--
+-- `plantao_alunos.documento` e `.liberado_sem_documento` ficam no banco,
+-- órfãs de propósito (mesmo padrão de `gps.reuniao_*`): apagar dado é
+-- decisão à parte, e `documento` ainda serve de rastro de origem do CSV.
+--
+-- Reversão: reaplicar o `create or replace function
+-- gps.plantao_liberar_primeiro_acesso` da migração 20260901000005 + os
+-- grants dela, e devolver o código do lado da aplicação.
+
+drop function if exists gps.plantao_liberar_primeiro_acesso(uuid);

@@ -259,12 +259,23 @@ export interface AlunoNota {
   texto: string;
   resolvido_em: string | null;
   resolvido_por: string | null;
+  /** Liga a nota a um evento do log (gps.aluno_eventos). Null = nota solta. */
+  evento_id: string | null;
 }
 
 /** Nota do diário com o nome do autor/quem deu baixa (join manual em `public.perfis`). */
 export interface AlunoNotaComAutor extends AlunoNota {
   autor_nome: string | null;
   resolvido_por_nome: string | null;
+  /**
+   * Rótulo/tipo do evento (`gps.aluno_eventos`) referenciado por
+   * `evento_id`, resolvido na LEITURA (`getDiarioDoAluno`/`montarTrilha` —
+   * ver `src/lib/data.ts` e `src/lib/log-agregacao.ts`). `null` quando a
+   * nota é solta (`evento_id` nulo) OU quando o evento referenciado não foi
+   * encontrado (ex.: apagado). Shape mínimo de propósito — a UI só precisa
+   * do texto para exibir "sobre: <rótulo>", não do evento inteiro.
+   */
+  eventoContexto: { rotulo: string; tipo: TipoEvento } | null;
 }
 
 /** Resumo do diário para cards/listas (última nota + pendências em aberto). */
@@ -272,3 +283,106 @@ export interface ResumoDiario {
   ultima: AlunoNotaComAutor | null;
   pendenciasAbertas: number;
 }
+
+/**
+ * Diário do aluno — Fase 2: LOG DE AÇÕES DO ALUNO (`gps.aluno_eventos`,
+ * migração 20260909000001). Mesma trava LGPD da Fase 1: visualização
+ * EXCLUSIVA do admin. UMA tabela de micro-eventos — a MACRO ("Listou 15
+ * clientes") é derivada por agregação na leitura, ver `src/lib/log-agregacao.ts`.
+ */
+export const TIPOS_EVENTO = [
+  "cliente_cadastrado",
+  "cliente_favoritado",
+  "cliente_desfavoritado",
+  "cliente_status_mudou",
+  "cliente_mensagem_padrao",
+  "cliente_estudo_caso",
+  "cliente_ligacao",
+  "cliente_aderiu_reuniao",
+  "cliente_reuniao_agendada",
+  "cliente_excluido",
+  "tarefa_concluida",
+  "tarefa_reaberta",
+  "conta_criada",
+  "email_confirmado",
+  "primeiro_acesso",
+  "entrou_no_programa",
+] as const;
+export type TipoEvento = (typeof TIPOS_EVENTO)[number];
+
+export const ENTIDADES_EVENTO = ["cliente", "tarefa", "conta"] as const;
+export type EntidadeEvento = (typeof ENTIDADES_EVENTO)[number];
+
+export const ATORES_EVENTO = ["aluno", "equipe", "sistema"] as const;
+export type AtorEvento = (typeof ATORES_EVENTO)[number];
+
+export const ORIGENS_EVENTO = ["app", "backfill"] as const;
+export type OrigemEvento = (typeof ORIGENS_EVENTO)[number];
+
+export interface AlunoEvento {
+  id: string;
+  aluno_id: string;
+  ocorrido_em: string;
+  tipo: TipoEvento;
+  entidade: EntidadeEvento;
+  entidade_id: string | null;
+  rotulo: string;
+  detalhe: Record<string, unknown> | null;
+  ator: AtorEvento;
+  ator_user_id: string | null;
+  origem: OrigemEvento;
+}
+
+/** Evento com o nome de quem agiu resolvido (join manual — ver `resolverAutores` em `data.ts`). */
+export interface AlunoEventoComAutor extends AlunoEvento {
+  ator_nome: string | null;
+}
+
+/**
+ * Ação administrativa lida de `gps.acessos_log` (definir senha, excluir
+ * acesso etc.) — mostrada na mesma trilha, mas nunca agregada em macro (é
+ * sempre um evento único e sensível o bastante para não somar com outros).
+ */
+export interface AcaoAdministrativa {
+  id: string;
+  acao: string;
+  aluno_id: string | null;
+  user_id_alvo: string | null;
+  email_alvo: string | null;
+  detalhe: string | null;
+  feito_por: string | null;
+  criado_em: string;
+}
+
+/**
+ * Uma "rajada" do mesmo `tipo` de evento no mesmo dia local
+ * (America/Sao_Paulo), agregada na LEITURA por `src/lib/log-agregacao.ts`.
+ * Um grupo com um único item não vira `MacroAcao` — vira `ItemTrilha` do
+ * tipo "evento" solto (dropdown de 1 item é ruído).
+ */
+export interface MacroAcao {
+  tipo: TipoEvento;
+  diaLocal: string; // "YYYY-MM-DD" em America/Sao_Paulo
+  quantidade: number;
+  primeiroEm: string;
+  ultimoEm: string;
+  ator: AtorEvento;
+  atorUserId: string | null;
+  atorNome: string | null;
+  itens: AlunoEventoComAutor[];
+}
+
+/**
+ * Item unificado da trilha (log de eventos + notas da equipe + ações
+ * administrativas), já ordenado por `log-agregacao.ts`. `ocorrido_em` é a
+ * chave de ordenação comum às três variantes.
+ */
+export type ItemTrilha =
+  | { variante: "macro"; ocorrido_em: string; macro: MacroAcao }
+  | { variante: "evento"; ocorrido_em: string; evento: AlunoEventoComAutor }
+  | { variante: "nota"; ocorrido_em: string; nota: AlunoNotaComAutor }
+  | {
+      variante: "acao_administrativa";
+      ocorrido_em: string;
+      acao: AcaoAdministrativa;
+    };

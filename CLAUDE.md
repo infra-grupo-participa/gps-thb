@@ -195,6 +195,101 @@ uma query só, filtro em memória).
 > de propósito — a assinatura torna impossível chamá-la com `""`. Use
 > `assistenciaNavItems` em toda página nova sob `admin/aluno/[alunoId]/**`.
 
+#### Fase 2 — log de ações do aluno (2026-09-08)
+
+Segunda voz da mesma tela: a Fase 1 é a **equipe** escrevendo; a Fase 2 é o
+**sistema** registrando o que o aluno faz no portal (cadastrar cliente, mudar
+status, concluir tarefa, primeiro acesso). As duas se fundem numa **trilha
+única**, agrupada por dia local, com a mesma trava LGPD (só admin).
+
+**Banco** — `gps.aluno_eventos` (migrations `20260909000001..09`, todas
+aplicadas): append-only de verdade (RLS com **uma** policy de SELECT para
+`gp_is_admin()`, **nenhuma** de insert/update/delete — a única escrita é por
+trigger `SECURITY DEFINER`), `grant select` só para `authenticated`, zero para
+`anon`.
+
+> 🔑 **UMA tabela de MICRO-evento. A MACRO ("Listou 15 clientes") nasce por
+> AGREGAÇÃO NA LEITURA**, em `src/lib/log-agregacao.ts` (`montarTrilha`) —
+> não é linha no banco nem `evento_pai_id`. Gravar a macro exigiria decidir o
+> corte (fim do dia? da sessão?) **na hora da escrita**, quando ainda não se
+> sabe se o aluno vai listar mais 5 depois. A leitura é o único momento em que
+> o corte é conhecido.
+
+> 🔑 **Último acesso é ESTADO** (vem de `gps.admin_status_acesso`) e mora só no
+> `TrilhaCabecalho`, nunca como linha na trilha. **Primeiro acesso é EVENTO**
+> e aparece nos dois lugares — não é duplicação, são duas visões do mesmo fato.
+
+**Honestidade da tela** (o que o orquestrador reprovou até ser corrigido):
+- O rodapé mostra a data do evento mais antigo com `origem='backfill'` e diz que
+  antes disso só a data de cadastro foi preservada. Não fingir log que não existe.
+- `getEventosDoAluno` tem teto de 300 e devolve `{ eventos, truncado }` — quando
+  corta, a UI avisa. Sem isso o rodapé afirmaria uma cobertura que a lista não tem.
+- A janela (30/90/tudo) vale para as **três** fontes (eventos, notas, ações
+  administrativas). Só as **pendências abertas** ficam de fora, sem janela e sem
+  teto — regra herdada da Fase 1: pendência antiga nunca pode ficar sem botão de
+  baixa. A UI diz que aquela seção ignora o filtro.
+- `getMarcosDeTrilha` é query separada de propósito: se o primeiro acesso e o
+  corte de backfill saíssem da lista já filtrada por `desde`, escolher "30 dias"
+  apagaria o marco da tela e mentiria.
+
+**Índices (planos medidos, protocolo de sustentabilidade):**
+- `idx_aluno_eventos_timeline (aluno_id, ocorrido_em desc)` — a query da trilha
+  vira Index Cond nas **duas** condições, zero filtro residual.
+- `idx_aluno_eventos_backfill_corte (aluno_id, ocorrido_em) where origem='backfill'`
+  — ⚠️ sem ele, o aluno que entrou **depois** do backfill não tem nenhuma linha
+  que satisfaça, e o planner varria **todo** o histórico dele só para concluir
+  "vazio" (medido: `Rows Removed by Filter: 114`), crescendo sem teto pela vida
+  do aluno.
+- `idx_acessos_log_aluno (aluno_id, criado_em desc)` — `gps.acessos_log` só tinha
+  a PK; era `Seq Scan` + `Sort` na tabela inteira de auditoria a cada abertura da
+  aba. Tabela append-only lida por um aluno: sem índice, o custo por leitura
+  cresceria com o total do sistema, não com o histórico lido.
+
+**Triggers de captura** (`gps.etapa1_clientes`, `gps.progresso`): rodam no
+caminho de escrita do **aluno**. Corpo inteiro envolto em `begin/exception when
+others then null` (migration `...008`) — falha imprevista no log jamais aborta o
+salvamento da ficha. Pior caso é lacuna na trilha, nunca aluno impedido de usar
+o produto. `left(rotulo, 300)` pelo mesmo motivo: o CHECK é 1..300 e
+`etapa1_clientes.nome` é `text` sem limite.
+
+⚠️ **`primeiro_acesso` depende de job diário** — ver `ATIVAR-DIARIO-EVENTOS.md`.
+Sem agendar o `pg_cron`, quem entrar depois do backfill não tem o evento
+capturado.
+
+### 🔑 Senha do aluno — trocar pelo próprio portal (2026-09-08)
+
+`/auth/redefinir` existe desde sempre, mas **só era alcançável pelo link do
+e-mail de recuperação** — quem entrava com senha temporária definida pelo admin
+(`admin_definir_senha` / `admin_adotar_login_existente`) ficava com ela para
+sempre, sem caminho na interface. Card **"Trocar senha"**
+(`src/components/perfil/trocar-senha.tsx`) em `/perfil`, usando
+`supabase.auth.updateUser` sobre a sessão ativa (não depende de token).
+
+⚠️ A senha vale para **todos os portais do grupo** — `auth.users` é compartilhado.
+O card avisa isso em texto.
+
+### ⚠️ `gps.admin_adotar_login_existente` — o caminho do login preexistente
+
+O GPS provisiona login por `signUp`, que **falha se o e-mail já existe** em
+`auth.users`. Como o `auth.users` é compartilhado por 7 sistemas do grupo, o
+aluno que já tem conta (Workbook, Rede, Central…) **não conseguia entrar**: o
+gatilho `on_auth_user_created_gps` só roda em INSERT, então o login preexistente
+nunca virava `gps.membros` sozinho. `gps.admin_adotar_login_existente` é a saída
+oficial — adota a conta, cria membro/ambiente e marca `origem='gps'`.
+
+> 🔴 Ela esteve **QUEBRADA de 25/08 a 08/09** e ninguém percebeu: `42883 operator
+> does not exist: text ->> unknown`. Causa: **precedência de operadores** — `||`
+> e `->>` têm a mesma precedência e associam à esquerda, então
+> `'txt ' || v_direito->>'motivo'` virava `('txt ' || v_direito) ->> 'motivo'`.
+> Faltavam parênteses. Passou despercebido porque o `insert` no log é o **último
+> passo**: tudo antes executava e revertia junto, e de fora parecia que o botão
+> simplesmente não fazia nada. Corrigida na migration `20260909000020`, que
+> também traz a função para o controle de versão (ela tinha sido criada direto
+> no banco, sem migration).
+
+⚠️ **Adotar o login troca a senha do outro sistema** e derruba as sessões dele.
+Avisar a pessoa sempre.
+
 ### 🎧 Plantão de Dúvidas — Acelera Holding (2026-09-01)
 
 > ⚠️ **NÃO é o agendamento de reunião com a equipe**, que continua REMOVIDO (ver a seção
@@ -503,6 +598,17 @@ com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já 
 - [x] **Diário do aluno (2026-09-08 — frontend):** card de resumo no Modo Assistência + aba
       `admin/aluno/[alunoId]/diario` (registro/timeline/dar baixa) + badge/filtro de pendência no
       painel. Só-admin (LGPD). Ver seção "📓 Diário do aluno" acima.
+- [x] **Diário Fase 2 — log de ações do aluno (2026-09-08):** `gps.aluno_eventos` + triggers de
+      captura + backfill + trilha única (evento/macro/nota/ação administrativa) com filtros Foco e
+      Janela resolvidos no servidor. Macro por agregação na leitura, nunca gravada. 3 índices com
+      plano medido. Migrations `20260909000001..09`, todas aplicadas.
+- [x] **Aluno troca a própria senha (2026-09-08):** card em `/perfil` — antes só existia caminho
+      pelo link de e-mail, então quem recebia senha temporária do admin ficava preso a ela.
+- [x] **`gps.admin_adotar_login_existente` consertada (2026-09-08):** estava quebrada desde 25/08
+      por precedência de operadores (`||` vs `->>`); o botão de adotar login preexistente nunca
+      funcionou. Migration `20260909000020` (também versiona a função, que só existia no banco).
+- [ ] **Agendar o `pg_cron` do `primeiro_acesso`** — 1 comando, ver `ATIVAR-DIARIO-EVENTOS.md`.
+      Sem isso, quem entrar depois do backfill não tem o evento capturado.
 - [ ] Endurecer RLS de `thb_alunos` (ver acima) antes de abrir o cadastro a alunos reais.
       **Parcialmente resolvido:** um aluno logado hoje só enxerga a própria linha (conferido em
       31/07 simulando o JWT do aluno) — confirmar se as policies antigas `read_authenticated`
@@ -548,7 +654,17 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-08-10 — **fluxo de agendamento de reunião com a equipe REMOVIDO**
+_Última atualização: 2026-09-08 — **Diário Fase 2: log de ações do aluno**. `gps.aluno_eventos`
+(append-only por trigger, só-admin), trilha única fundindo log do aluno + diário da equipe + ações
+administrativas, filtros Foco/Janela no servidor. Macro por agregação **na leitura** — micro-evento
+é o único que se grava. 3 índices com `explain analyze` colado (um deles matando varredura sem teto
+no corte de backfill). Triggers blindadas com `exception when others`: falha no log nunca aborta a
+escrita do aluno. Junto: card **"Trocar senha"** em `/perfil` (antes só dava pelo link de e-mail) e
+o conserto de `gps.admin_adotar_login_existente`, quebrada desde 25/08 por precedência de operadores
+— o botão de adotar login preexistente nunca tinha funcionado. Migrations `...01..09` e `...20`
+aplicadas. Build verde. **Falta agendar o `pg_cron` do `primeiro_acesso`** e o **deploy é manual**._
+
+_Anterior: 2026-08-10 — **fluxo de agendamento de reunião com a equipe REMOVIDO**
 (rota `/admin/reunioes`, actions, `src/lib/reuniao.ts`, os 6 componentes, queries, tipos, os 4
 e-mails de reunião e a env `EMAIL_EQUIPE`). Motivo **operacional**: a equipe não estava
 comparecendo. `FavoritoDestaque` virou card informativo (Server Component); textos de Etapa 02/03

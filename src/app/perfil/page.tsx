@@ -5,6 +5,7 @@ import { getAlunoById, getMembroDoUsuario, getTurmaCodigo } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PerfilEditor } from "@/components/perfil/perfil-editor";
+import { TrocarSenha } from "@/components/perfil/trocar-senha";
 import type { Aluno } from "@/lib/types";
 
 export const metadata = { title: "Meu perfil" };
@@ -43,11 +44,15 @@ export default async function PerfilPage() {
           <h1 className="mt-2 text-2xl font-semibold">Meu perfil</h1>
         </div>
 
-        <PerfilEditor
-          aluno={(aluno ?? { id: pessoaAlunoId }) as Aluno}
-          turma={turma}
-          perfilInicial={membro?.perfil ?? {}}
-        />
+        <div className="grid gap-6">
+          <PerfilEditor
+            aluno={(aluno ?? { id: pessoaAlunoId }) as Aluno}
+            turma={turma}
+            perfilInicial={membro?.perfil ?? {}}
+          />
+
+          <TrocarSenha />
+        </div>
       </main>
     </>
   );

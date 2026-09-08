@@ -36,6 +36,8 @@ export interface RegistrarNotaInput {
   tipo: TipoNota;
   origem: OrigemNota;
   texto: string;
+  /** Liga a nota a um evento do log (gps.aluno_eventos) — ex.: comentário em cima de "Listou 15 clientes". */
+  eventoId?: string;
 }
 
 export type ResultadoDiarioAcao =
@@ -67,6 +69,28 @@ export async function registrarNota(
   }
 
   const supabase = await createClient();
+
+  // Confere que o evento pertence ao MESMO aluno_id antes de gravar — sem
+  // isso, um `eventoId` forjado no cliente amarraria a nota de um aluno a
+  // um evento de outro (o insert abaixo não tem como validar isso sozinho:
+  // não há FK entre aluno_notas.evento_id e aluno_notas.aluno_id, só entre
+  // evento_id e aluno_eventos.id).
+  if (input.eventoId) {
+    const { data: evento, error: erroEvento } = await supabase
+      .schema("gps")
+      .from("aluno_eventos")
+      .select("aluno_id")
+      .eq("id", input.eventoId)
+      .maybeSingle();
+
+    if (erroEvento || !evento) {
+      return { ok: false, erro: "Evento não encontrado." };
+    }
+    if ((evento as { aluno_id: string }).aluno_id !== input.alunoId) {
+      return { ok: false, erro: "Evento não pertence a este aluno." };
+    }
+  }
+
   const { error } = await supabase.schema("gps").from("aluno_notas").insert({
     aluno_id: input.alunoId,
     autor_id: ctx.user.id,
@@ -74,6 +98,7 @@ export async function registrarNota(
     tipo: input.tipo,
     origem: input.origem,
     texto,
+    evento_id: input.eventoId ?? null,
   });
 
   if (error) return { ok: false, erro: "Não foi possível salvar a nota." };

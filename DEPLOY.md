@@ -36,6 +36,18 @@ npm run build
 # Reiniciar a aplicação no hPanel (ou "touch tmp/restart.txt" se Passenger)
 ```
 
+## Passos de banco que NÃO saem no `git pull`
+
+As migrations são aplicadas fora do deploy (Supabase), mas há um passo que **não
+é migration** e por isso não acontece sozinho:
+
+- [ ] **Agendar o job diário do Diário** (uma vez, no SQL Editor) — ver
+      [`ATIVAR-DIARIO-EVENTOS.md`](./ATIVAR-DIARIO-EVENTOS.md). Sem ele, o
+      `primeiro_acesso` deixa de ser capturado para quem entrar depois do
+      backfill. O job é idempotente (reprocessa dias anteriores sem duplicar),
+      então atrasar não perde dado — mas cada dia sem ele é um dia de trilha
+      incompleta.
+
 ## Notas
 - `next.config.ts` envia `Cache-Control: no-store` para os documentos HTML e cache
   imutável para `/_next/static`, evitando o ChunkLoadError de HTML velho em CDN

@@ -1,4 +1,4 @@
-import { NotebookPen, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import type { AlunoNotaComAutor } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,60 +65,34 @@ function NotaCard({ nota }: { nota: AlunoNotaComAutor }) {
 }
 
 /**
- * Timeline do diário, mais recente primeiro. Server Component.
+ * Seção FIXA de pendências abertas, mais recente primeiro. Server Component.
  *
- * Recebe DUAS listas de propósito: `notas` é a timeline com teto de 50
- * (`getDiarioDoAluno`) e `pendenciasAbertas` vem SEM teto
- * (`getPendenciasAbertasDoAluno`). Pendência que não fecha é o defeito que
- * esta feature existe para consertar — se ela dependesse do corte de 50, uma
- * pendência antiga ficaria contando no badge do painel mas sem botão de baixa
- * na tela. Por isso as abertas saem todas numa seção fixa no topo, e o
- * histórico abaixo mostra o resto sem repeti-las.
+ * Fase 2: o histórico de notas saiu daqui — ele já aparece na trilha única
+ * (`TrilhaDoAluno`, via `montarTrilha`) logo abaixo, na página. Antes esta
+ * timeline renderizava as mesmas notas de novo (achado do
+ * `fable-orchestrator`: nota duplicada na mesma tela, botão de baixa nos
+ * dois lugares). `pendenciasAbertas` continua vindo SEM teto
+ * (`getPendenciasAbertasDoAluno`) — pendência que não fecha é o defeito que
+ * esta feature existe para consertar; se dependesse do corte de 50 da
+ * trilha, uma pendência antiga ficaria contando no badge do painel mas sem
+ * botão de baixa visível. Por isso ela é destacada aqui, fixa no topo, e
+ * NÃO se repete na trilha abaixo (a `TrilhaDoAluno` mostra a mesma nota,
+ * já com o botão — ver comentário lá).
  */
 export function DiarioTimeline({
-  notas,
   pendenciasAbertas,
 }: {
-  notas: AlunoNotaComAutor[];
   pendenciasAbertas: AlunoNotaComAutor[];
 }) {
-  if (notas.length === 0 && pendenciasAbertas.length === 0) {
-    return (
-      <Card>
-        <CardContent className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
-          <NotebookPen className="size-6" />
-          Nenhuma nota registrada ainda. Use o formulário acima para começar.
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // O histórico não repete o que já está na seção de pendências abertas.
-  const idsAbertas = new Set(pendenciasAbertas.map((n) => n.id));
-  const demaisNotas = notas.filter((n) => !idsAbertas.has(n.id));
+  if (pendenciasAbertas.length === 0) return null;
 
   return (
-    <div className="grid gap-6">
-      {pendenciasAbertas.length > 0 ? (
-        <div className="grid gap-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">
-            Pendências abertas ({pendenciasAbertas.length})
-          </h2>
-          <div className="grid gap-3">
-            {pendenciasAbertas.map((nota) => (
-              <NotaCard key={nota.id} nota={nota} />
-            ))}
-          </div>
-        </div>
-      ) : null}
-
+    <div className="grid gap-3">
+      <h2 className="text-sm font-semibold text-muted-foreground">
+        Pendências abertas ({pendenciasAbertas.length})
+      </h2>
       <div className="grid gap-3">
-        {pendenciasAbertas.length > 0 && demaisNotas.length > 0 ? (
-          <h2 className="text-sm font-semibold text-muted-foreground">
-            Histórico
-          </h2>
-        ) : null}
-        {demaisNotas.map((nota) => (
+        {pendenciasAbertas.map((nota) => (
           <NotaCard key={nota.id} nota={nota} />
         ))}
       </div>

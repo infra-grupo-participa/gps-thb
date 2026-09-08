@@ -24,8 +24,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const TEXTO_MAXIMO = 8000;
 
-/** Formulário de registro de nova nota no diário. Só o texto é obrigatório. */
-export function DiarioForm({ alunoId }: { alunoId: string }) {
+/**
+ * Formulário de registro de nova nota no diário. Só o texto é obrigatório.
+ *
+ * `eventoId`/`contextoEvento` (Fase 2) ligam a nota a uma ação específica do
+ * log (`gps.aluno_eventos`) — usado quando o formulário abre a partir de um
+ * item da trilha ("Registrar observação sobre: Listou 15 clientes"). Sem
+ * eles, o comportamento é o mesmo da Fase 1 (nota solta).
+ */
+export function DiarioForm({
+  alunoId,
+  eventoId,
+  contextoEvento,
+  aoRegistrar,
+}: {
+  alunoId: string;
+  eventoId?: string;
+  contextoEvento?: string;
+  /** Callback opcional (ex.: fechar o diálogo que envolve o formulário). */
+  aoRegistrar?: () => void;
+}) {
   const [texto, setTexto] = useState("");
   const [voz, setVoz] = useState<VozNota>("equipe");
   const [tipo, setTipo] = useState<TipoNota>("observacao");
@@ -37,13 +55,21 @@ export function DiarioForm({ alunoId }: { alunoId: string }) {
   function registrar() {
     if (!textoValido) return;
     startTransition(async () => {
-      const res = await registrarNota({ alunoId, voz, tipo, origem, texto });
+      const res = await registrarNota({
+        alunoId,
+        voz,
+        tipo,
+        origem,
+        texto,
+        eventoId,
+      });
       if (!res.ok) {
         toast.error(res.erro);
         return;
       }
       toast.success("Nota registrada.");
       setTexto("");
+      aoRegistrar?.();
     });
   }
 
@@ -51,6 +77,14 @@ export function DiarioForm({ alunoId }: { alunoId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Registrar nota</CardTitle>
+        {contextoEvento ? (
+          <p className="text-xs text-muted-foreground">
+            Registrando observação sobre:{" "}
+            <span className="font-medium text-foreground">
+              {contextoEvento}
+            </span>
+          </p>
+        ) : null}
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="grid gap-2">

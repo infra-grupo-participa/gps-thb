@@ -239,6 +239,7 @@ export async function buscarMinhaInscricao(): Promise<MinhaInscricao | null> {
     presenca_em: string | null;
     nps_em: string | null;
     inicio_em: string;
+    tem_sala: boolean;
   };
 
   const inicioEm = new Date(row.inicio_em).getTime();
@@ -257,6 +258,7 @@ export async function buscarMinhaInscricao(): Promise<MinhaInscricao | null> {
     npsEm: row.nps_em,
     encerrado: inicioEm <= agora,
     janelaAberta,
+    temSala: Boolean(row.tem_sala),
   };
 }
 

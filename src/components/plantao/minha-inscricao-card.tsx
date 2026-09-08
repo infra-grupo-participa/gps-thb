@@ -189,6 +189,18 @@ export function MinhaInscricaoCard({
                 </Button>
               )}
             </div>
+          ) : !inscricao.temSala ? (
+            // Sem sala cadastrada ainda: NÃO oferecer "Entrar". O clique
+            // gravaria presença e só então falharia com "Link indisponível" —
+            // presença registrada numa sala que não existe. Publicar deixou de
+            // exigir `zoom_url` (08/09/2026), então este estado é normal, não
+            // um erro: a inscrição vale, só a sala ainda não foi definida.
+            <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm text-muted-foreground">
+                Sua vaga está garantida. O link da sala ainda não foi
+                divulgado — ele aparece aqui assim que a equipe publicar.
+              </p>
+            </div>
           ) : (
             <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
               <p className="text-sm text-muted-foreground">

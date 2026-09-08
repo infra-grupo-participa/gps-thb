@@ -8,18 +8,35 @@
  * (commit b457005) e PROIBIDO de reconstruir.
  *
  * Regra de negócio: 1 inscrição ativa por vez — só escolhe outra depois que
- * a anterior passar. Sem limite de vagas: nunca mostra contagem para o
- * aluno nem estado "esgotado".
+ * a anterior passar.
+ *
+ * Sem limite de vagas: a contagem de participantes aparece (decisão do Marcio,
+ * 08/09/2026 — o aluno escolhe melhor o horário sabendo o movimento), mas
+ * NUNCA existe estado "esgotado" e NUNCA se mostra QUEM está inscrito. É
+ * número agregado; nome de participante é dado de terceiro.
  */
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { UserRoundIcon, ClockIcon } from "lucide-react";
+import { UserRoundIcon, UsersIcon, ClockIcon } from "lucide-react";
 import type { SlotPublico, MinhaInscricao } from "@/lib/plantao-tipos";
 import { faixaHorario, rotuloData } from "@/lib/plantao";
 import { inscrever } from "@/app/p/plantao/actions";
 import { Button } from "@/components/ui/button";
+
+/**
+ * Contagem de participantes em texto.
+ *
+ * Zero NÃO vira "0 participantes": num plantão sem limite de vagas, isso só
+ * desencoraja quem chegou primeiro, sem informar nada útil. "Seja o primeiro"
+ * diz a mesma verdade e convida em vez de esvaziar.
+ */
+function rotuloParticipantes(qtd: number): string {
+  if (qtd <= 0) return "Seja o primeiro";
+  if (qtd === 1) return "1 participante";
+  return `${qtd} participantes`;
+}
 
 export function InscricaoPainel({
   slots,
@@ -89,9 +106,18 @@ export function InscricaoPainel({
                 <ClockIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                 {faixaHorario(slot.horaInicio, slot.duracaoMin)}
               </div>
-              <div className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <UserRoundIcon className="size-3.5 shrink-0" aria-hidden />
-                {slot.mentoraNome}
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <UserRoundIcon className="size-3.5 shrink-0" aria-hidden />
+                  {slot.mentoraNome}
+                </span>
+                <span aria-hidden className="text-muted-foreground/40">
+                  ·
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <UsersIcon className="size-3.5 shrink-0" aria-hidden />
+                  {rotuloParticipantes(slot.inscritosQtd)}
+                </span>
               </div>
             </div>
 

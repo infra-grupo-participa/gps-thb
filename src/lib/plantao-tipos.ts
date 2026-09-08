@@ -37,6 +37,17 @@ export interface MinhaInscricao {
   encerrado: boolean;
   /** true quando `now()` está dentro de [início-1h, início+1h]. */
   janelaAberta: boolean;
+  /**
+   * true quando o slot já tem sala cadastrada. É só um SINAL booleano — a URL
+   * continua saindo apenas por `revelarLink`, dentro da janela, porque revelar
+   * registra presença.
+   *
+   * Existe porque publicar deixou de exigir `zoom_url` (08/09/2026): sem este
+   * sinal, o aluno veria "Entrar na sala", clicaria, gravaria presença e só
+   * então tomaria "Link indisponível" — presença registrada numa sala que não
+   * existe.
+   */
+  temSala: boolean;
 }
 
 /** Slot como o admin vê/edita — inclui os campos de gestão. */

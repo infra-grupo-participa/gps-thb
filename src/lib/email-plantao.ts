@@ -133,3 +133,89 @@ export async function enviarPlantaoNps(params: {
     texto,
   });
 }
+
+/**
+ * Aviso à MENTORA na véspera do plantão: quem vai participar, que horas,
+ * quantas pessoas.
+ *
+ * Diferente dos e-mails ao aluno, este LISTA NOMES — a mentora precisa saber
+ * quem vai atender. É o único ponto do módulo onde nome de participante sai
+ * por e-mail, e por isso o destinatário é sempre o endereço cadastrado em
+ * `gps.plantao_mentoras.email` (nunca um endereço vindo de input).
+ *
+ * NÃO manda link do Zoom: a decisão do Marcio (08/09/2026) foi validar o
+ * agendamento primeiro; quando o link existir, ele entra aqui.
+ */
+export async function enviarPlantaoAvisoMentora(params: {
+  para: string;
+  mentoraNome: string;
+  data: string;
+  horaInicio: string;
+  participantes: { nome: string | null; email: string }[];
+}): Promise<ResultadoEmail> {
+  const { para, mentoraNome, data, horaInicio, participantes } = params;
+  const primeiroNome = mentoraNome.trim().split(/\s+/)[0] || mentoraNome;
+  const qtd = participantes.length;
+  const dataLonga = dataLongaBrasilia(data);
+  const hora = horaCurta(horaInicio);
+  const painelUrl = `${APP_URL}/admin/plantao`;
+
+  const linhas = participantes
+    .map(
+      (p) => `
+      <tr>
+        <td style="padding:8px 16px;font-size:14px;border-top:1px solid #f0efee;">
+          ${esc(p.nome?.trim() || "(sem nome no cadastro)")}
+        </td>
+        <td style="padding:8px 16px;font-size:14px;color:#6b6560;border-top:1px solid #f0efee;">
+          ${esc(p.email)}
+        </td>
+      </tr>`,
+    )
+    .join("");
+
+  const corpo = `
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">Olá, ${esc(primeiroNome)}!</p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      Amanhã é o seu plantão de dúvidas: <strong>${esc(dataLonga)}</strong>,
+      às <strong>${esc(hora)}</strong>.
+      ${
+        qtd === 1
+          ? "Há <strong>1 pessoa</strong> inscrita."
+          : `Há <strong>${qtd} pessoas</strong> inscritas.`
+      }
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%"
+           style="border-collapse:collapse;margin:0 0 20px;">
+      <tr>
+        <th align="left" style="padding:8px 16px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#6b6560;">Nome</th>
+        <th align="left" style="padding:8px 16px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#6b6560;">E-mail</th>
+      </tr>
+      ${linhas}
+    </table>
+    ${botao(painelUrl, "Abrir o painel do plantão")}`;
+
+  const texto = [
+    `Olá, ${primeiroNome}!`,
+    "",
+    `Amanhã é o seu plantão de dúvidas: ${dataLonga}, às ${hora}.`,
+    qtd === 1 ? "Há 1 pessoa inscrita." : `Há ${qtd} pessoas inscritas.`,
+    "",
+    ...participantes.map(
+      (p) => `- ${p.nome?.trim() || "(sem nome)"} — ${p.email}`,
+    ),
+    "",
+    `Painel: ${painelUrl}`,
+  ].join("\n");
+
+  return enviar({
+    para,
+    assunto: `Amanhã, ${hora}: seu plantão com ${qtd} ${qtd === 1 ? "inscrito" : "inscritos"}`,
+    html: layout({
+      preheader: `${qtd} ${qtd === 1 ? "pessoa inscrita" : "pessoas inscritas"} no seu plantão de amanhã.`,
+      titulo: "Seu plantão é amanhã",
+      corpo,
+    }),
+    texto,
+  });
+}

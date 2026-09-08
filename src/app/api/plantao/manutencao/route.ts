@@ -23,16 +23,21 @@
  * qualquer chamada anônima ao PostgREST poderia derrubar sessões de todo
  * mundo ou martelar envio de NPS.
  *
- * Três tarefas, todas IDEMPOTENTES (rodar de novo no mesmo dia não duplica
+ * Quatro tarefas, todas IDEMPOTENTES (rodar de novo no mesmo dia não duplica
  * nem corrompe nada):
  *  (a) envia NPS pendente e marca `nps_email_em`;
+ *  (a2) avisa a MENTORA na véspera (quem vai, que horas, quantos) e carimba
+ *       `plantao_slots.aviso_mentora_em`;
  *  (b) expurga sessões expiradas;
  *  (c) expurga eventos com mais de 90 dias (retenção decidida pelo Marcio).
  */
 
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
-import { enviarPlantaoNps } from "@/lib/email-plantao";
+import {
+  enviarPlantaoNps,
+  enviarPlantaoAvisoMentora,
+} from "@/lib/email-plantao";
 
 function clientePublico() {
   return createStatelessClient(
@@ -56,6 +61,8 @@ export async function POST(request: NextRequest) {
   const resultado = {
     npsEnviados: 0,
     npsFalhas: 0,
+    avisosMentoraEnviados: 0,
+    avisosMentoraFalhas: 0,
     sessoesExpurgadas: 0,
     eventosExpurgados: 0,
   };
@@ -108,6 +115,52 @@ export async function POST(request: NextRequest) {
         p_segredo: segredo,
         p_inscricao_id: row.inscricao_id,
       });
+    }
+  }
+
+  // (a2) Aviso de véspera à MENTORA: quem vai participar, que horas e
+  // quantas pessoas. A RPC já filtra por "amanhã" no fuso de São Paulo,
+  // publicado, ainda não avisado, com mentora que tem e-mail cadastrado e
+  // com pelo menos 1 inscrito.
+  //
+  // Falha aqui NÃO derruba o job: o expurgo (b/c) precisa rodar de todo
+  // jeito. Diferente do NPS, o carimbo só é gravado quando o envio dá certo
+  // — um aviso de véspera perdido não tem segunda chance no dia seguinte
+  // (o plantão já terá acontecido), então vale reprocessar na próxima
+  // execução em vez de marcar como feito.
+  const { data: avisos, error: erroAvisos } = await supabase.rpc(
+    "plantao_aviso_mentora_pendente",
+    { p_segredo: segredo },
+  );
+
+  if (erroAvisos) {
+    console.error("[plantao/manutencao] aviso à mentora recusado:", erroAvisos.message);
+  } else {
+    for (const row of (avisos ?? []) as Array<{
+      slot_id: string;
+      mentora_nome: string;
+      mentora_email: string;
+      data: string;
+      hora_inicio: string;
+      participantes: { nome: string | null; email: string }[];
+    }>) {
+      const envio = await enviarPlantaoAvisoMentora({
+        para: row.mentora_email,
+        mentoraNome: row.mentora_nome,
+        data: row.data,
+        horaInicio: row.hora_inicio,
+        participantes: row.participantes ?? [],
+      }).catch(() => ({ ok: false as const }));
+
+      if (envio.ok) {
+        resultado.avisosMentoraEnviados++;
+        await supabase.rpc("plantao_marcar_aviso_mentora", {
+          p_segredo: segredo,
+          p_slot_id: row.slot_id,
+        });
+      } else {
+        resultado.avisosMentoraFalhas++;
+      }
     }
   }
 

@@ -123,8 +123,19 @@ export async function editarSlot(input: EditarSlotInput): Promise<ResultadoAcao>
 }
 
 /**
- * Publica (ou despublica) um slot. Publicar exige `zoom_url` preenchido —
- * senão o aluno veria um plantão que ninguém consegue acessar.
+ * Publica (ou despublica) um slot.
+ *
+ * 🔑 Publicar NÃO exige mais `zoom_url` (decisão do Marcio, 08/09/2026).
+ * A trava original existia para o aluno nunca ver um plantão que ninguém
+ * consegue acessar — intenção correta, premissa mudada: agora o objetivo é
+ * **validar o agendamento primeiro** e definir a sala depois. Com a trava, o
+ * admin não conseguia publicar nada e nenhum aluno conseguiria se inscrever.
+ *
+ * A intenção antiga continua honrada em outro lugar, onde de fato importa: o
+ * botão que revela a sala só aparece dentro da janela e SÓ quando há link
+ * (`MinhaInscricaoCard`). Sem link, o aluno vê o plantão e se inscreve; a
+ * sala aparece quando a equipe cadastrar. O que ele nunca vê é um botão que
+ * leva a lugar nenhum.
  */
 export async function publicarSlot(
   slotId: string,
@@ -133,19 +144,6 @@ export async function publicarSlot(
   if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
 
   const supabase = await createClient();
-
-  if (publicado) {
-    const { data: slot } = await supabase
-      .schema("gps")
-      .from("plantao_slots")
-      .select("zoom_url")
-      .eq("id", slotId)
-      .maybeSingle();
-
-    if (!slot?.zoom_url || !slot.zoom_url.trim()) {
-      return { ok: false, erro: "Cadastre o link do Zoom antes de publicar." };
-    }
-  }
 
   const { error } = await supabase
     .schema("gps")

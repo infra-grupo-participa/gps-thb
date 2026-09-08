@@ -24,7 +24,6 @@ import {
   JANELA_DEPOIS_MIN,
 } from "@/lib/plantao-tipos";
 import { normalizarEmail } from "@/lib/plantao";
-import { enviarPlantaoConfirmado } from "@/lib/email-plantao";
 import type {
   ResultadoAcao,
   SlotPublico,
@@ -373,19 +372,17 @@ export async function inscrever(
 
   if (!row?.ok) return { ok: false, erro: row?.motivo || "Não foi possível se inscrever." };
 
-  // E-mail de confirmação é cortesia: falha aqui nunca desfaz a inscrição.
-  // A RPC já devolve os dados do PRÓPRIO aluno inscrito — evita uma segunda
-  // leitura direta em `plantao_slots`/`plantao_alunos`, que o RLS bloquearia
-  // (só admin tem policy nessas tabelas).
-  if (row.email && row.data && row.hora_inicio) {
-    await enviarPlantaoConfirmado({
-      para: row.email,
-      nome: row.nome,
-      data: row.data,
-      horaInicio: row.hora_inicio,
-      mentoraNome: row.mentora_nome ?? "",
-    }).catch(() => undefined);
-  }
+  // 🔑 NÃO manda e-mail aqui (decisão do Marcio, 08/09/2026). O único e-mail
+  // ao aluno sai **1 hora antes do início**, já com o link da sala, pelo job
+  // diário (`plantao_email_sala_pendente` → `enviarPlantaoSala`).
+  //
+  // Motivo: o e-mail no ato da inscrição não podia carregar o link (a sala só
+  // é revelada dentro da janela, porque revelar grava presença), então era um
+  // aviso sem ação — e o aluno tinha de voltar ao portal na hora. Concentrar
+  // num só envio, na hora que importa, resolve as duas pontas.
+  //
+  // Efeito colateral desejado: um envio por inscrição a menos, e some o vetor
+  // de bombardeio de caixa por inscrever/cancelar em loop.
 
   return { ok: true, inscricaoId: row.inscricao_id ?? undefined };
 }

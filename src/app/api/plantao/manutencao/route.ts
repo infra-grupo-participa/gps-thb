@@ -23,7 +23,7 @@
  * qualquer chamada anônima ao PostgREST poderia derrubar sessões de todo
  * mundo ou martelar envio de NPS.
  *
- * Cinco tarefas, todas IDEMPOTENTES (rodar de novo no mesmo dia não duplica
+ * Seis tarefas, todas IDEMPOTENTES (rodar de novo no mesmo dia não duplica
  * nem corrompe nada):
  *  (a) envia NPS pendente e marca `nps_email_em`;
  *  (a2) avisa a MENTORA na véspera (quem vai, que horas, quantos) e carimba
@@ -31,6 +31,8 @@
  *  (a3) reconcilia `bloqueado_por_programa` contra `gps.membros` (quem entrou
  *       ou saiu do Programa de Implementação desde a última rodada) e
  *       cancela as inscrições futuras de quem acabou de ser bloqueado;
+ *  (a4) manda o e-mail com o LINK DA SALA 1h antes do inicio (unico e-mail
+ *       ao aluno) e carimba `plantao_inscricoes.email_sala_em`;
  *  (b) expurga sessões expiradas;
  *  (c) expurga eventos com mais de 90 dias (retenção decidida pelo Marcio).
  */
@@ -40,6 +42,7 @@ import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import {
   enviarPlantaoNps,
   enviarPlantaoAvisoMentora,
+  enviarPlantaoSala,
 } from "@/lib/email-plantao";
 
 function clientePublico() {
@@ -69,6 +72,8 @@ export async function POST(request: NextRequest) {
     elegibilidadeBloqueadosNovos: 0,
     elegibilidadeDesbloqueados: 0,
     elegibilidadeInscricoesCanceladas: 0,
+    emailsSalaEnviados: 0,
+    emailsSalaFalhas: 0,
     sessoesExpurgadas: 0,
     eventosExpurgados: 0,
   };
@@ -190,6 +195,64 @@ export async function POST(request: NextRequest) {
     resultado.elegibilidadeBloqueadosNovos = linha?.bloqueados_novos ?? 0;
     resultado.elegibilidadeDesbloqueados = linha?.desbloqueados ?? 0;
     resultado.elegibilidadeInscricoesCanceladas = linha?.inscricoes_canceladas ?? 0;
+  }
+
+  // (a4) E-mail com o LINK DA SALA, 1 hora antes do inicio.
+  //
+  // 🔑 Este e o UNICO e-mail que o aluno recebe (decisao do Marcio,
+  // 08/09/2026): a inscricao deixou de disparar aviso. O e-mail no ato nao
+  // podia carregar o link — a sala so e revelada dentro da janela, porque
+  // revelar grava presenca — entao era um aviso sem acao. Concentrar num
+  // envio, na hora que importa, resolve as duas pontas.
+  //
+  // A RPC filtra: inscricao ativa, ainda sem `email_sala_em`, slot publicado,
+  // aluno nao bloqueado, e **slot COM `zoom_url`**. Sem sala nao ha o que
+  // entregar, e o aluno nao perde o direito de cancelar por falha da equipe
+  // (o cancelamento so trava quando o link de fato saiu).
+  //
+  // ⚠️ Este job roda 1x/dia, mas a janela de envio e de 1 HORA. Enquanto o
+  // agendamento for diario, so pega os plantoes que comecam na hora seguinte
+  // a execucao — ver a nota de frequencia no ATIVAR-PLANTAO-AGORA.md.
+  //
+  // O carimbo so e gravado quando o envio DA CERTO: um e-mail de sala perdido
+  // nao tem segunda chance (o plantao ja tera comecado), entao vale
+  // reprocessar na proxima execucao em vez de marcar como feito.
+  const { data: salas, error: erroSalas } = await supabase.rpc(
+    "plantao_email_sala_pendente",
+    { p_segredo: segredo },
+  );
+
+  if (erroSalas) {
+    console.error("[plantao/manutencao] e-mail da sala recusado:", erroSalas.message);
+  } else {
+    for (const row of (salas ?? []) as Array<{
+      inscricao_id: string;
+      email: string;
+      nome: string | null;
+      data: string;
+      hora_inicio: string;
+      mentora_nome: string;
+      zoom_url: string;
+    }>) {
+      const envio = await enviarPlantaoSala({
+        para: row.email,
+        nome: row.nome,
+        data: row.data,
+        horaInicio: row.hora_inicio,
+        mentoraNome: row.mentora_nome,
+        zoomUrl: row.zoom_url,
+      }).catch(() => ({ ok: false as const }));
+
+      if (envio.ok) {
+        resultado.emailsSalaEnviados++;
+        await supabase.rpc("plantao_marcar_email_sala", {
+          p_segredo: segredo,
+          p_inscricao_id: row.inscricao_id,
+        });
+      } else {
+        resultado.emailsSalaFalhas++;
+      }
+    }
   }
 
   // (b) e (c) — expurgo de sessões expiradas e eventos com mais de 90 dias.

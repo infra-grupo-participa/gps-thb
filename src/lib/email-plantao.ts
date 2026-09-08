@@ -219,3 +219,75 @@ export async function enviarPlantaoAvisoMentora(params: {
     texto,
   });
 }
+
+/**
+ * E-mail com o LINK DA SALA, enviado 1 hora antes do início.
+ *
+ * 🔑 Substitui o envio no ato da inscrição (decisão do Marcio, 08/09/2026).
+ * Antes, o aluno recebia a confirmação no momento em que se inscrevia e
+ * nunca recebia o link — tinha de voltar ao portal na hora. Agora é o
+ * contrário: nada no ato, e 1h antes chega o e-mail já com a sala.
+ *
+ * A partir desse envio o cancelamento TRAVA (`plantao_cancelar`): a vaga
+ * está consumida porque o link já saiu.
+ *
+ * ⚠️ Só é disparado quando o slot TEM `zoom_url` — a RPC
+ * `plantao_email_sala_pendente` filtra isso. Sem sala não há o que entregar,
+ * e o aluno não perde o direito de cancelar por falha da equipe.
+ *
+ * ⚠️ `zoomUrl` vira `href`. A validação de `https://` acontece na escrita
+ * (`validarZoomUrl` em `src/app/admin/plantao/actions.ts`), mas repetimos a
+ * checagem aqui: um valor `javascript:` que escapasse viraria link clicável
+ * no cliente de e-mail. Sem `https://`, manda-se o e-mail sem o botão.
+ */
+export async function enviarPlantaoSala(params: {
+  para: string;
+  nome?: string | null;
+  data: string;
+  horaInicio: string;
+  mentoraNome: string;
+  zoomUrl: string;
+}): Promise<ResultadoEmail> {
+  const { para, nome, data, horaInicio, mentoraNome, zoomUrl } = params;
+  const primeiroNome = (nome?.trim().split(/\s+/)[0] || "").trim();
+  const ola = primeiroNome ? `Olá, ${primeiroNome}!` : "Olá!";
+  const dataLonga = dataLongaBrasilia(data);
+  const hora = horaCurta(horaInicio);
+  const linkSeguro = /^https:\/\//i.test(zoomUrl.trim()) ? zoomUrl.trim() : null;
+  const portalUrl = `${APP_URL}/p/plantao`;
+
+  const corpo = `
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${esc(ola)}</p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      Seu plantão de dúvidas começa em <strong>1 hora</strong>:
+      <strong>${esc(dataLonga)}</strong>, às <strong>${esc(hora)}</strong>,
+      com <strong>${esc(mentoraNome)}</strong>.
+    </p>
+    ${
+      linkSeguro
+        ? `${botao(linkSeguro, "Entrar na sala")}
+    <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6560;">
+      Se o botão não funcionar, copie este endereço:<br>
+      <span style="word-break:break-all;">${esc(linkSeguro)}</span>
+    </p>`
+        : `${botao(portalUrl, "Abrir o plantão")}`
+    }`;
+
+  const texto = [
+    ola,
+    "",
+    `Seu plantão de dúvidas começa em 1 hora: ${dataLonga}, às ${hora}, com ${mentoraNome}.`,
+    linkSeguro ? `Sala: ${linkSeguro}` : `Acesse: ${portalUrl}`,
+  ].join("\n");
+
+  return enviar({
+    para,
+    assunto: `Seu plantão começa em 1 hora — ${hora} com ${mentoraNome}`,
+    html: layout({
+      preheader: `Seu plantão com ${mentoraNome} começa em 1 hora.`,
+      titulo: "Seu plantão é daqui a pouco",
+      corpo,
+    }),
+    texto,
+  });
+}

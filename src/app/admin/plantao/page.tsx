@@ -24,6 +24,7 @@ import { adminNavItems } from "@/lib/nav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlantaoCalendario } from "@/components/admin/plantao-calendario";
 import { PlantaoAcessos } from "@/components/admin/plantao-acessos";
+import { PlantaoMentoras } from "@/components/admin/plantao-mentoras";
 
 export const metadata = { title: "Admin — Plantão" };
 
@@ -87,6 +88,7 @@ export default async function AdminPlantaoPage({
           <TabsList>
             <TabsTrigger value="calendario">Calendário</TabsTrigger>
             <TabsTrigger value="acessos">Acessos</TabsTrigger>
+            <TabsTrigger value="mentoras">Mentoras</TabsTrigger>
           </TabsList>
 
           <TabsContent value="calendario" className="mt-4">
@@ -101,6 +103,10 @@ export default async function AdminPlantaoPage({
 
           <TabsContent value="acessos" className="mt-4">
             <PlantaoAcessos alunos={alunos} />
+          </TabsContent>
+
+          <TabsContent value="mentoras" className="mt-4">
+            <PlantaoMentoras mentoras={mentoras} />
           </TabsContent>
         </Tabs>
       </main>

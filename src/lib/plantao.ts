@@ -83,3 +83,14 @@ export function limitesDoMes(
 export function normalizarEmail(email: string): string {
   return email.trim().toLowerCase();
 }
+
+/**
+ * Validação de formato de e-mail — regex simples (não RFC completa, de
+ * propósito: o objetivo é pegar erro de digitação óbvio, não recusar e-mail
+ * real com sintaxe incomum). Usada no cliente (feedback imediato) E no
+ * servidor (`editarMentora`/`criarMentora`) — o formulário não é fronteira,
+ * a Server Action precisa validar de novo.
+ */
+export function emailValido(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}

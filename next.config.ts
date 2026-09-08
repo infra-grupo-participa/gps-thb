@@ -59,6 +59,26 @@ const nextConfig: NextConfig = {
       //
       // /p/* — Plantão de Dúvidas: PRECISA ser embedável na área de membros
       // da Hotmart (domínio próprio do Club incluso).
+      //
+      // ⚠️ `https://*.hotmart.com` é MAIS LARGO do que a intenção: esse
+      // domínio é compartilhado por TODOS os produtores da plataforma, não só
+      // pelo Grupo Participa. Qualquer outro produtor pode embedar
+      // `/p/plantao` dentro do produto dele. Não vaza dado por si só (a
+      // página exige login próprio), mas abre superfície de clickjacking
+      // sobre o formulário que pede e-mail + senha + 4 dígitos do documento.
+      // Achado do `security-pentester` em 08/09/2026.
+      //
+      // Mantido POR ORA de propósito: o Club é servido em
+      // `hm.nivelouro.com.br`, mas não foi possível confirmar de fora se
+      // algum caminho da Hotmart (preview no editor, fallback de domínio)
+      // ainda serve por `*.hotmart.com` — e derrubar isso às cegas tira 421
+      // pessoas do ar. `frame-src` do lado deles não é observável daqui.
+      //
+      // 🔑 COMO FECHAR, no ensaio do passo 5 do ATIVAR-PLANTAO-AGORA.md:
+      // abrir o plantão dentro do iframe da Hotmart e ler no DevTools →
+      // Network → Headers o `Referer`/`Sec-Fetch-Site`, ou rodar
+      // `document.referrer` no console do topo. Se vier só
+      // `hm.nivelouro.com.br`, apagar as duas entradas `hotmart.com` daqui.
       {
         source: "/p/:path*",
         headers: [

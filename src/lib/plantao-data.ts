@@ -164,13 +164,14 @@ export async function getMentoras(): Promise<MentoraAdmin[]> {
   const { data } = await supabase
     .schema("gps")
     .from("plantao_mentoras")
-    .select("id, nome, ativa")
+    .select("id, nome, email, ativa")
     .order("nome")
     .limit(50);
 
   return (data ?? []).map((m) => ({
     id: m.id as string,
     nome: m.nome as string,
+    email: m.email as string | null,
     ativa: m.ativa as boolean,
   }));
 }

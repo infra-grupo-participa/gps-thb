@@ -58,10 +58,19 @@ export interface SlotAdmin extends SlotPublico {
   observacao: string | null;
 }
 
-/** Uma mentora, para o admin escolher ao criar/editar um plantão. */
+/**
+ * Uma mentora, para o admin escolher ao criar/editar um plantão E para a
+ * aba de gestão de mentoras (`PlantaoMentoras`).
+ *
+ * `email: null` é um estado válido mas perigoso: `gps.plantao_aviso_mentora_pendente`
+ * filtra mentora sem e-mail de propósito (RPC nunca manda para endereço vazio) —
+ * uma mentora ATIVA sem e-mail simplesmente não recebe o aviso de véspera dos
+ * plantões dela. A UI precisa avisar isso, não só guardar o dado.
+ */
 export interface MentoraAdmin {
   id: string;
   nome: string;
+  email: string | null;
   ativa: boolean;
 }
 

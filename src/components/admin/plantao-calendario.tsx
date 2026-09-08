@@ -550,14 +550,7 @@ function FormularioSlot({
         <Button type="button" variant="outline" onClick={onCancelar} disabled={pending}>
           Cancelar
         </Button>
-        <Button
-          type="submit"
-          // Criar OU editar exige mentoraId (uuid); sem uma leitura de
-          // mentoras no backend não há id confiável para enviar em nenhum
-          // dos dois casos — ver nota de divergência no topo do arquivo.
-          disabled
-          title="Falta a lista de mentoras no backend (id + nome) para salvar com segurança"
-        >
+        <Button type="submit" disabled={pending}>
           {slot ? "Salvar alterações" : "Criar plantão"}
         </Button>
       </div>

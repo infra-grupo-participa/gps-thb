@@ -12,12 +12,6 @@
  * `bloqueioExcecao`: hoje 20 pessoas perderam o acesso ao Plantão por terem
  * migrado para o Programa de Implementação Assistida, e isso não aparecia em
  * NENHUMA tela — só dava para ver rodando SQL direto no banco.
- *
- * ⚠️ CONTRATO PENDENTE: `AlunoPlantaoAdmin` (em `@/lib/plantao-tipos`) ainda
- * não tem `bloqueadoPorPrograma`/`bloqueioExcecao` — declarados localmente
- * aqui (`AlunoPlantaoAdminComBloqueio`) até o backend expor os campos em
- * `getAlunosPlantao()` (`src/lib/plantao-data.ts`). Ver nota de divergência
- * no relatório desta tarefa.
  */
 
 import { useMemo, useState, useTransition } from "react";
@@ -50,16 +44,6 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 
-/**
- * Extensão local do contrato — ver aviso no cabeçalho do arquivo.
- * `bloqueioExcecao`: quando true, a pessoa está em `bloqueado_por_programa`
- * mas a equipe abriu uma exceção manual (continua com acesso ao Plantão).
- */
-export interface AlunoPlantaoAdminComBloqueio extends AlunoPlantaoAdmin {
-  bloqueadoPorPrograma: boolean;
-  bloqueioExcecao: boolean;
-}
-
 function normalizar(texto: string): string {
   return texto
     .normalize("NFD")
@@ -70,7 +54,7 @@ function normalizar(texto: string): string {
 export function PlantaoAcessos({
   alunos,
 }: {
-  alunos: AlunoPlantaoAdminComBloqueio[];
+  alunos: AlunoPlantaoAdmin[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -102,7 +86,7 @@ export function PlantaoAcessos({
     });
   }
 
-  function onRevogar(a: AlunoPlantaoAdminComBloqueio) {
+  function onRevogar(a: AlunoPlantaoAdmin) {
     if (
       !window.confirm(
         `Revogar o acesso de ${a.nome} ao plantão? Ele para de conseguir entrar até você reativar.`,
@@ -114,7 +98,7 @@ export function PlantaoAcessos({
     toast.success("Acesso revogado.");
   }
 
-  function onReativar(a: AlunoPlantaoAdminComBloqueio) {
+  function onReativar(a: AlunoPlantaoAdmin) {
     executar(a.id, () => reativarAcessoPlantao(a.id));
     toast.success("Acesso reativado.");
   }

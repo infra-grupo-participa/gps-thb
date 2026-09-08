@@ -302,7 +302,20 @@ Avisar a pessoa sempre.
 `*.hotmart.com`). Calendário **mensal**; 3 mentoras (Isabela, Elaine, Cristiane);
 **1 inscrição ativa por vez**, que encerra sozinha quando `inicio_em` passa; **sem limite
 de vagas**; botão revela o link do Zoom **de 1h antes a 1h depois** e isso **registra
-presença**; e-mail de confirmação + NPS.
+presença**; NPS depois da sessão.
+
+**Regras de prazo (do calendário oficial do Acelera):**
+- **Inscrição até as 12:00 do dia ANTERIOR** (cut-off, fuso America/Sao_Paulo).
+  Antes dava para entrar até o minuto do início — e o aviso de véspera da
+  mentora sai de manhã, então a lista dela podia crescer depois de enviada.
+- **O e-mail ao aluno sai 1 HORA ANTES**, já com o link da sala — e é o
+  ÚNICO e-mail. Inscrever-se não dispara nada. O e-mail no ato não podia
+  levar o link (revelar grava presença), então era aviso sem ação.
+- **A partir daí o cancelamento TRAVA**: link liberado = vaga consumida.
+  🔑 Só trava se o slot TIVER `zoom_url` — sem sala não houve liberação, e o
+  aluno não perde o direito de cancelar por pendência da equipe. As duas
+  regras dependem da MESMA condição de propósito.
+- **Sessões de 120 min** (o sistema usava 60 até 08/09).
 
 ### ⚠️ `/p/plantao` virou rota PÚBLICA sem login (2026-09-08)
 
@@ -367,14 +380,45 @@ GRANT passou antes do RLS. Continua valendo com o novo modelo público.
 `src/app/api/plantao/manutencao/route.ts`; `src/components/plantao/**`,
 `src/components/admin/plantao-*`.
 
-**Job diário** (`/api/plantao/manutencao`, para `pg_cron` 1×/dia): envia NPS pendente,
-expurga sessões vencidas e eventos com mais de 90 dias.
+**Job DE HORA EM HORA** (`/api/plantao/manutencao`, `pg_cron` com `'0 * * * *'`):
+envia NPS pendente, **avisa a mentora na véspera**, **manda o e-mail com o link da
+sala 1h antes**, **reconcilia a elegibilidade** (quem entrou no Programa perde o
+Plantão) e expurga eventos com mais de 90 dias.
+🔴 **De hora em hora, não 1×/dia:** a janela do e-mail da sala é de 1 HORA. Com cron
+diário, só os plantões que começam na hora seguinte à execução receberiam e-mail.
 ⚠️ **Exige `PLANTAO_MANUTENCAO_SEGREDO` (mín. 16 chars) na Hostinger E o mesmo valor no
 banco** (`alter role authenticator set app.plantao_manutencao_segredo = '...'`). A guarda
-**falha fechado**: sem o segredo, as 3 RPCs recusam tudo com 42501. Isso é proposital —
+**falha fechado**: sem o segredo, as RPCs de manutenção recusam tudo com 42501. Isso é proposital —
 a versão anterior comparava com `current_setting(...,true)`, que devolve NULL quando não
 configurado, fazendo o `if` não disparar e o **DELETE em massa executar para qualquer
 chamada anônima**.
+
+### 🔑 Elegibilidade: o Plantão é do Acelera (2026-09-08)
+
+O Plantão pertence ao **Acelera Holding**, produto separado do **Programa de
+Implementação Assistida** (o GPS). Quem migrou para o Programa **não
+participa**. São **20 de 422** — as pessoas que estão nas duas bases.
+
+⚠️ **Inclusive quem pagou o Programa cheio.** A regra literal distinguia quem
+teve o desconto de ~R$ 1 mil (o valor do Acelera) de quem não teve — mas esse
+dado **não existe de forma utilizável**: não está em `cs.vw_gps_acessos`, e
+`cs.contatos_hm` (que tem `valor_pago`) não liga por e-mail. Decisão tomada
+com o custo na mesa, entre 3 opções.
+
+`plantao_alunos.bloqueado_por_programa` + `bloqueio_excecao`:
+- o admin **vê** quem perdeu, na aba **Alunos** de `/admin/plantao`;
+- reverter uma pessoa é um `update`, **sem deploy**;
+- `bloqueio_excecao = true` impede o job noturno de rebloquear — sem ela, o
+  desbloqueio manual duraria até a madrugada seguinte.
+
+🔴 **Casar por E-MAIL, nunca por documento.** Além do CPF que multiplica (caso
+Eder Fagundes), o documento pode ser **CNPJ de empresa com DUAS PESSOAS
+diferentes**: Marisa Tiedt (Acelera) e Gilton Silva (Programa) dividem o CNPJ
+da GPS Contadores. Por documento a Marisa seria bloqueada indevidamente.
+
+⚠️ **O sistema NÃO explica ao bloqueado por que ele não entra** — a recusa usa
+a mesma mensagem de qualquer outra falha, senão qualquer um descobriria quem
+comprou o quê testando e-mails. **Alguém tem que avisar por fora.**
 
 **Lição de fuso incorporada:** `plantao_slots.inicio_em` é coluna **gerada**
 (`(data + hora_inicio) at time zone 'America/Sao_Paulo'`). Toda comparação com `now()` usa
@@ -681,7 +725,23 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-09-08 — **Diário Fase 2: log de ações do aluno**. `gps.aluno_eventos`
+_Última atualização: 2026-09-08 — **o Plantão virou link público sem login**.
+Saíram 2 tabelas (`plantao_acessos`, `plantao_sessoes`, ambas vazias), 5 RPCs de
+login/sessão e 537 linhas de front (sonda de cookie de terceiro, guarda de
+CHIPS/Safari, login, troca de senha) — com elas foi embora todo o risco de iframe
+no Safari, que nunca chegou a ser testado. A identidade agora é o **e-mail**,
+conferido contra os 422 do Acelera: quem sabe o e-mail age pela pessoa, risco
+aceito com as alternativas na mesa (a senha padrão anterior era a mesma para os
+422 e ninguém trocou — o modelo antigo já era isso, com mais peças). Entraram
+rate limit por IP (10/15min, e IP ausente cai num balde comum) e o interruptor
+`app.plantao_inscricao_aberta`, que desliga TODAS as escritas sem deploy.
+Junto: elegibilidade do Acelera (20 de 422 bloqueados), job de reconciliação,
+cut-off de meio-dia da véspera, e-mail com o link 1h antes + trava de
+cancelamento, e a Semana 1 de setembro publicada. Aprovado pelo
+`security-pentester` sobre o SQL versionado. **Cron passa a ser DE HORA EM
+HORA**; deploy continua manual. Ver `ATIVAR-PLANTAO-AGORA.md`._
+
+_Anterior: 2026-09-08 — **Diário Fase 2: log de ações do aluno**. `gps.aluno_eventos`
 (append-only por trigger, só-admin), trilha única fundindo log do aluno + diário da equipe + ações
 administrativas, filtros Foco/Janela no servidor. Macro por agregação **na leitura** — micro-evento
 é o único que se grava. 3 índices com `explain analyze` colado (um deles matando varredura sem teto

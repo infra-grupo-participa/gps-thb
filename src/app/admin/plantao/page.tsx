@@ -25,10 +25,7 @@ import { AppHeader } from "@/components/app-header";
 import { adminNavItems } from "@/lib/nav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlantaoCalendario } from "@/components/admin/plantao-calendario";
-import {
-  PlantaoAcessos,
-  type AlunoPlantaoAdminComBloqueio,
-} from "@/components/admin/plantao-acessos";
+import { PlantaoAcessos } from "@/components/admin/plantao-acessos";
 import { PlantaoMentoras } from "@/components/admin/plantao-mentoras";
 
 export const metadata = { title: "Admin — Plantão" };
@@ -107,16 +104,7 @@ export default async function AdminPlantaoPage({
           </TabsContent>
 
           <TabsContent value="acessos" className="mt-4">
-            {/*
-              ⚠️ DIVERGÊNCIA (não é meu escopo, ver relatório da tarefa):
-              `getAlunosPlantao()` (src/lib/plantao-data.ts, backend) ainda
-              não devolve `bloqueadoPorPrograma`/`bloqueioExcecao`. Cast
-              documentado até o contrato ser atualizado lá — a UI já está
-              pronta para os campos.
-            */}
-            <PlantaoAcessos
-              alunos={alunos as AlunoPlantaoAdminComBloqueio[]}
-            />
+            <PlantaoAcessos alunos={alunos} />
           </TabsContent>
 
           <TabsContent value="mentoras" className="mt-4">

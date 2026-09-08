@@ -229,9 +229,21 @@ export function MinhaInscricaoCard({
           </div>
         )}
 
-        {inscricao.janelaAberta ? (
+        {/*
+          🔑 Decide por `podeCancelar`, que o BANCO calcula
+          (`plantao_minha_inscricao`) espelhando exatamente a trava de
+          `plantao_cancelar` — inclusive o "só trava se houver sala".
+
+          Decidir por `janelaAberta` (só tempo) mentia duas vezes quando o
+          plantão ainda não tem `zoom_url`: escondia o botão que o servidor
+          aceitaria, e dizia "a sala já foi liberada" sem sala nenhuma. Era o
+          caso dos 3 plantões reais de setembro, todos sem Zoom.
+        */}
+        {!inscricao.podeCancelar ? (
           <p className="text-xs text-muted-foreground">
-            O prazo para cancelar terminou — a sala já foi liberada.
+            {inscricao.temSala
+              ? "O prazo para cancelar terminou — a sala já foi liberada."
+              : "O prazo para cancelar terminou."}
           </p>
         ) : (
           <Button

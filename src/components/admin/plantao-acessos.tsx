@@ -1,14 +1,23 @@
 "use client";
 
 /**
- * Plantão de Dúvidas — Acelera Holding. Gestão de acesso dos alunos (admin).
+ * Plantão de Dúvidas — Acelera Holding. Aba "Alunos" do admin.
  *
  * ⚠️ NÃO é o "agendamento de reunião com a equipe", removido em 10/08/2026
  * (commit b457005) e PROIBIDO de reconstruir.
  *
- * Lista `AlunoPlantaoAdmin` com busca e as ações: revogar, reativar, limpar
- * senha, carregar lote. NUNCA exibe senha nem hash — "limpar senha" só apaga
- * a credencial (o aluno cria uma nova no próximo acesso, como sempre).
+ * A rota pública deixou de ter login (não há mais senha nem sessão própria
+ * do plantão) — por isso saíram as colunas "tem senha"/"último acesso" e o
+ * botão "Limpar senha". No lugar, mostramos `bloqueadoPorPrograma` e
+ * `bloqueioExcecao`: hoje 20 pessoas perderam o acesso ao Plantão por terem
+ * migrado para o Programa de Implementação Assistida, e isso não aparecia em
+ * NENHUMA tela — só dava para ver rodando SQL direto no banco.
+ *
+ * ⚠️ CONTRATO PENDENTE: `AlunoPlantaoAdmin` (em `@/lib/plantao-tipos`) ainda
+ * não tem `bloqueadoPorPrograma`/`bloqueioExcecao` — declarados localmente
+ * aqui (`AlunoPlantaoAdminComBloqueio`) até o backend expor os campos em
+ * `getAlunosPlantao()` (`src/lib/plantao-data.ts`). Ver nota de divergência
+ * no relatório desta tarefa.
  */
 
 import { useMemo, useState, useTransition } from "react";
@@ -19,16 +28,13 @@ import {
   UserRoundIcon,
   ShieldOffIcon,
   ShieldCheckIcon,
-  KeyRoundIcon,
   UploadIcon,
-  CircleCheckIcon,
-  CircleDashedIcon,
+  TriangleAlertIcon,
 } from "lucide-react";
 import type { AlunoPlantaoAdmin } from "@/lib/plantao-tipos";
 import {
   revogarAcessoPlantao,
   reativarAcessoPlantao,
-  limparSenha,
   carregarLoteAcelera,
 } from "@/app/admin/plantao/actions";
 import { Input } from "@/components/ui/input";
@@ -44,6 +50,16 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 
+/**
+ * Extensão local do contrato — ver aviso no cabeçalho do arquivo.
+ * `bloqueioExcecao`: quando true, a pessoa está em `bloqueado_por_programa`
+ * mas a equipe abriu uma exceção manual (continua com acesso ao Plantão).
+ */
+export interface AlunoPlantaoAdminComBloqueio extends AlunoPlantaoAdmin {
+  bloqueadoPorPrograma: boolean;
+  bloqueioExcecao: boolean;
+}
+
 function normalizar(texto: string): string {
   return texto
     .normalize("NFD")
@@ -51,16 +67,11 @@ function normalizar(texto: string): string {
     .toLowerCase();
 }
 
-function formatarData(iso: string | null): string {
-  if (!iso) return "Nunca";
-  return new Date(iso).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-export function PlantaoAcessos({ alunos }: { alunos: AlunoPlantaoAdmin[] }) {
+export function PlantaoAcessos({
+  alunos,
+}: {
+  alunos: AlunoPlantaoAdminComBloqueio[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [busca, setBusca] = useState("");
@@ -91,7 +102,7 @@ export function PlantaoAcessos({ alunos }: { alunos: AlunoPlantaoAdmin[] }) {
     });
   }
 
-  function onRevogar(a: AlunoPlantaoAdmin) {
+  function onRevogar(a: AlunoPlantaoAdminComBloqueio) {
     if (
       !window.confirm(
         `Revogar o acesso de ${a.nome} ao plantão? Ele para de conseguir entrar até você reativar.`,
@@ -103,21 +114,9 @@ export function PlantaoAcessos({ alunos }: { alunos: AlunoPlantaoAdmin[] }) {
     toast.success("Acesso revogado.");
   }
 
-  function onReativar(a: AlunoPlantaoAdmin) {
+  function onReativar(a: AlunoPlantaoAdminComBloqueio) {
     executar(a.id, () => reativarAcessoPlantao(a.id));
     toast.success("Acesso reativado.");
-  }
-
-  function onLimparSenha(a: AlunoPlantaoAdmin) {
-    if (
-      !window.confirm(
-        `Limpar a senha de ${a.nome}? Ele(a) não conseguirá mais entrar com a senha atual — no próximo acesso, digita uma senha nova e ela vira a credencial dele(a) (como no primeiro acesso).`,
-      )
-    ) {
-      return;
-    }
-    executar(a.id, () => limparSenha(a.id));
-    toast.success("Senha apagada — o aluno cria uma nova no próximo acesso.");
   }
 
   function onCarregarLote() {
@@ -170,8 +169,7 @@ export function PlantaoAcessos({ alunos }: { alunos: AlunoPlantaoAdmin[] }) {
             <TableRow>
               <TableHead>Aluno</TableHead>
               <TableHead>Lote</TableHead>
-              <TableHead>Senha</TableHead>
-              <TableHead>Último login</TableHead>
+              <TableHead>Bloqueio por programa</TableHead>
               <TableHead>Inscrições</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -193,18 +191,23 @@ export function PlantaoAcessos({ alunos }: { alunos: AlunoPlantaoAdmin[] }) {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{a.lote}</TableCell>
                   <TableCell>
-                    {a.temSenha ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-foreground">
-                        <CircleCheckIcon className="size-3.5 text-primary" /> Definida
+                    {!a.bloqueadoPorPrograma ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : a.bloqueioExcecao ? (
+                      <span
+                        className="inline-flex items-center gap-1 text-xs text-foreground"
+                        title="Migrou para o Programa de Implementação, mas a equipe abriu uma exceção manual — continua com acesso ao Plantão."
+                      >
+                        <TriangleAlertIcon className="size-3.5 text-amber-600" /> Exceção aberta
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <CircleDashedIcon className="size-3.5" /> Ainda não
+                      <span
+                        className="inline-flex items-center gap-1 text-xs text-destructive"
+                        title="Migrou para o Programa de Implementação Assistida — perdeu o acesso ao Plantão."
+                      >
+                        <TriangleAlertIcon className="size-3.5" /> Perdeu o acesso
                       </span>
                     )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatarData(a.ultimoLoginEm)}
                   </TableCell>
                   <TableCell className="text-sm tabular-nums">{a.inscricoesQtd}</TableCell>
                   <TableCell>
@@ -214,17 +217,6 @@ export function PlantaoAcessos({ alunos }: { alunos: AlunoPlantaoAdmin[] }) {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1.5">
-                      {a.temSenha ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={emAcao}
-                          onClick={() => onLimparSenha(a)}
-                          title="Apaga a senha atual — o aluno cria uma nova no próximo acesso"
-                        >
-                          <KeyRoundIcon className="size-4" /> Limpar senha
-                        </Button>
-                      ) : null}
                       {a.ativo ? (
                         <Button
                           variant="ghost"

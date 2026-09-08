@@ -5,26 +5,28 @@
  * ⚠️ NÃO é o "agendamento de reunião com a equipe", removido em 10/08/2026
  * (commit b457005) e PROIBIDO de reconstruir.
  *
- * Server Component: lê o cookie de sessão do plantão (via `sessaoAtual`) e
- * decide entre a tela de login (guardada pela sonda de cookie de terceiro)
- * e o calendário do mês. Navegação entre meses por `?m=YYYY-MM` com `Link`
- * — nunca token na URL, nunca refetch em cascata.
+ * Server Component: SEM login. `?e=<email>` é a identidade (opcional) e
+ * `?m=YYYY-MM` o mês (opcional) — nunca cookie, nunca token, nunca senha.
+ * A inscrição vale na hora do clique: quem chega sem `?e=` vê o calendário
+ * público + formulário de identificação; quem chega com `?e=` (depois de se
+ * identificar) vê também o card da própria inscrição, se houver.
  *
- * Quando havia cookie de sessão mas ele não resolveu mais nada (expirou, foi
- * revogado, ou o aluno perdeu acesso ao Plantão por ter migrado para o
- * Programa de Implementação — `bloqueado_por_programa`), a tela de login
- * recebe um aviso NEUTRO ("sua sessão expirou"), sempre o mesmo texto
- * independente do motivo — ver `sessaoAtual` em `actions.ts`.
+ * O e-mail que entra por `?e=` NUNCA é tratado como comprovado aqui — a
+ * confirmação contra a base de compradores do Acelera acontece dentro de
+ * `inscrever()`/`buscarCalendario()`, no servidor. Este componente só lê a
+ * query string e repassa.
  */
 
 import type { Metadata } from "next";
-import { sessaoAtual, buscarCalendario, buscarMinhaInscricao } from "@/app/p/plantao/actions";
-import { mesAtualSaoPaulo } from "@/lib/plantao";
-import { AcessoBloqueado } from "@/components/plantao/acesso-bloqueado";
-import { TrocarSenhaPlantao } from "@/components/plantao/trocar-senha-plantao";
+import {
+  buscarCalendario,
+  buscarMinhaInscricao,
+} from "@/app/p/plantao/actions";
+import { mesAtualSaoPaulo, normalizarEmail, emailValido } from "@/lib/plantao";
 import { CalendarioMes } from "@/components/plantao/calendario-mes";
 import { MinhaInscricaoCard } from "@/components/plantao/minha-inscricao-card";
 import { NpsForm } from "@/components/plantao/nps-form";
+import { IdentificacaoForm } from "@/components/plantao/identificacao-form";
 
 export const metadata: Metadata = { title: "Calendário" };
 
@@ -39,56 +41,51 @@ function parseMes(m: string | undefined): { ano: number; mes: number } {
 export default async function PlantaoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ m?: string }>;
+  searchParams: Promise<{ m?: string; e?: string; n?: string }>;
 }) {
-  const { sessao, sessaoExpirou } = await sessaoAtual();
-
-  if (!sessao) {
-    // Mensagem sempre neutra — nunca diferenciar "expirou", "foi revogada"
-    // ou "aluno bloqueado por ter migrado de produto": a rota é pública, e
-    // diferenciar aqui confirmaria a um estranho que aquele e-mail comprou.
-    return (
-      <AcessoBloqueado
-        avisoInicial={
-          sessaoExpirou ? "Sua sessão expirou. Entre novamente." : undefined
-        }
-      />
-    );
-  }
-
-  // Senha ainda provisória (1º acesso com a senha padrão da Hotmart, ou
-  // login seguinte de quem ainda não trocou): a sessão já existe, mas o
-  // aluno não pode usar o plantão antes de definir a própria senha.
-  if (sessao.precisaTrocarSenha) {
-    return <TrocarSenhaPlantao />;
-  }
-
-  const { m } = await searchParams;
+  const { m, e, n } = await searchParams;
   const { ano, mes } = parseMes(m);
 
+  const email =
+    e && emailValido(e) ? normalizarEmail(e) : null;
+  const nome = n?.trim() || null;
+
   const [calendario, minhaInscricao] = await Promise.all([
-    buscarCalendario(ano, mes),
-    buscarMinhaInscricao(),
+    buscarCalendario(ano, mes, email ?? undefined),
+    email ? buscarMinhaInscricao(email) : Promise.resolve(null),
   ]);
 
   return (
     <div className="flex flex-col gap-4">
       <p className="rounded-lg border border-dashed bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        Este acesso é exclusivo da Acelera Holding e é separado do seu acesso
-        ao Programa de Implementação Assistida.
+        Este plantão é exclusivo de quem comprou o Acelera Holding.
       </p>
 
-      <p className="text-sm">
-        Olá, <span className="font-medium">{sessao.nome}</span>.
-      </p>
+      {!email ? (
+        <IdentificacaoForm />
+      ) : !nome ? (
+        // Chegou com `?e=` mas sem `?n=` (ex.: link salvo antes de se
+        // identificar) — pede o nome de novo para poder se inscrever
+        // (InscricaoPainel exige os dois), mas isso NÃO impede ver a
+        // inscrição/card/NPS que já existir, abaixo.
+        <IdentificacaoForm emailInicial={email} />
+      ) : (
+        <p className="text-sm">
+          Inscrevendo como <span className="font-medium">{nome}</span>.
+        </p>
+      )}
 
-      {minhaInscricao ? (
-        <MinhaInscricaoCard inscricao={minhaInscricao} />
+      {email && minhaInscricao ? (
+        <MinhaInscricaoCard inscricao={minhaInscricao} email={email} />
       ) : null}
 
       {/* NPS: só quando o aluno esteve presente e o plantão já terminou. */}
-      {minhaInscricao && minhaInscricao.encerrado && minhaInscricao.presencaEm && !minhaInscricao.npsEm ? (
-        <NpsForm inscricaoId={minhaInscricao.inscricaoId} />
+      {email &&
+      minhaInscricao &&
+      minhaInscricao.encerrado &&
+      minhaInscricao.presencaEm &&
+      !minhaInscricao.npsEm ? (
+        <NpsForm inscricaoId={minhaInscricao.inscricaoId} email={email} />
       ) : null}
 
       {calendario.ok ? (
@@ -96,6 +93,8 @@ export default async function PlantaoPage({
           ano={ano}
           mes={mes}
           slots={calendario.slots}
+          email={email}
+          nome={nome}
           minhaInscricaoAtiva={
             minhaInscricao && !minhaInscricao.encerrado ? minhaInscricao : null
           }

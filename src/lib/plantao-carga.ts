@@ -17,7 +17,7 @@ import "server-only";
  * - sumiu do arquivo → NÃO desativa (decisão do Marcio: ausência no CSV não
  *   é cancelamento; só `Cancelou? = SIM`, fora do escopo desta carga, desativa).
  *
- * NUNCA toca `plantao_acessos` nem `plantao_inscricoes`: quem já definiu
+ * NUNCA toca `plantao_inscricoes`: quem já
  * senha continua entrando exatamente como antes da re-carga.
  */
 

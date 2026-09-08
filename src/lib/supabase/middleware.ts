@@ -48,7 +48,8 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
     // Plantão de Dúvidas: rota pública embedada em iframe na Hotmart, com
-    // login próprio (cookie gps_plantao_sessao), fora do Supabase Auth.
+    // rota PÚBLICA de verdade desde 08/09/2026: sem login, sem cookie, sem
+    // sessão. A identidade é o e-mail, conferido dentro das RPCs.
     pathname.startsWith("/p/") ||
     // Job diário do plantão, chamado por pg_cron via HTTP — sem sessão
     // Supabase, por definição. Sem esta linha o proxy devolvia 307 para

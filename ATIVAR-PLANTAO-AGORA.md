@@ -1,47 +1,45 @@
-# Ativar o Plantão — roteiro de execução (revisado em 08/09/2026)
+# Ativar o Plantão — roteiro de execução (revisado em 08/09/2026, sem login)
 
-Substitui o passo a passo do `ATIVAR-PLANTAO.md`, que ficou **desatualizado**:
-o 1º acesso não pede mais os 4 dígitos do documento, e a ordem dos passos
-mudou por causa de uma janela perigosa (ver passo 5).
+Substitui as versões anteriores. O plantão **deixou de ter login**: é link
+público, e o aluno se inscreve informando nome + e-mail. Sumiram a senha
+padrão, a troca obrigatória de senha e todo o tratamento de cookie de
+terceiro no Safari — com eles, sumiu também metade do risco de entrega.
 
-> ⚠️ Os segredos NÃO estão neste arquivo — o repositório é público. Gere-os na
-> hora e use o **mesmo valor** onde indicado.
+> ⚠️ Os segredos NÃO estão neste arquivo — o repositório é público.
 
 ## Estado conferido no banco em 08/09/2026
 
 | Item | Estado |
 |---|---|
-| 7 tabelas `plantao_*` | ✅ existem |
-| 422 alunos do Acelera carregados | ✅ (402 aptos + 20 bloqueados) |
-| 3 mentoras + e-mails cadastrados | ✅ `isabela@` / `elaine@` / `cristiane@advmais.com` |
-| Código (rota pública, painel, job) | ✅ commitado |
-| Inscrições existentes | 0 — **o produto nunca foi usado** |
-| `app.plantao_senha_padrao` | ❌ **não setado** |
+| Tabelas do plantão | ✅ 5 (eram 7 — `plantao_acessos` e `plantao_sessoes` dropadas) |
+| RPCs de login/sessão | ✅ **nenhuma** (as 5 dropadas, sem sobrecarga por token) |
+| 422 alunos do Acelera | ✅ carregados (402 aptos + 20 bloqueados) |
+| 3 mentoras + e-mails | ✅ `isabela@` / `elaine@` / `cristiane@advmais.com` |
+| 3 plantões da Semana 1 | ✅ publicados, **sem link do Zoom** |
+| Inscrições | 0 — o produto nunca foi usado |
 | `app.plantao_manutencao_segredo` | ❌ **não setado** |
 | Envs na Hostinger | ❌ **não setadas** |
-| Cron `plantao-manutencao-diaria` | ❌ **não agendado** |
-| Deploy do código novo | ❌ **pendente** (é manual) |
-| Teste real em navegador | ❌ **nunca feito** |
+| Cron | ❌ **não agendado** |
+| Deploy | ❌ **pendente** (é manual) |
+| Teste em navegador | ❌ **nunca feito** |
 
 ---
 
 ## ⚠️ Antes de tudo: os 20 que perderam o Plantão
 
-20 dos 422 compradores do Acelera também estão no Programa de Implementação e,
-por decisão de 08/09/2026, **perderam o acesso ao Plantão**. A lista nominal
-está em `plantao-20-bloqueados.csv` (gerada fora do repo, porque tem dado
-pessoal).
+20 dos 422 compradores do Acelera também estão no Programa de Implementação
+e, por decisão de 08/09/2026, **perderam o acesso ao Plantão**. Lista nominal
+em `plantao-20-bloqueados.csv` (fora do repo — dado pessoal).
 
-🔴 **O sistema não vai explicar nada a eles.** Por segurança, a recusa usa a
-mesma mensagem de "senha errada" — dizer "você migrou para o Programa" num
-login público permitiria a qualquer um descobrir quem comprou o quê. Então:
+🔴 **O sistema não vai explicar nada a eles**: a recusa usa a mesma mensagem
+de qualquer outra falha, para não confirmar a um estranho que aquele e-mail
+comprou.
 
-- [ ] **Avisar os 20 por WhatsApp/e-mail ANTES da abertura.** Sem isso, são 20
-      pessoas tentando entrar em loop e 20 tickets de suporte.
-- [ ] **Conferir a lista** antes do passo 10. É ponto de não-retorno: depois que
-      alguém cria senha e se inscreve, desfazer é caro; agora é um `update`.
+- [ ] **Avisar os 20 por WhatsApp/e-mail ANTES da abertura**
+- [ ] **Conferir a lista** antes do passo 8
 
-Reverter uma pessoa (sem deploy):
+Agora eles aparecem no painel: `/admin/plantao` → aba **Alunos** → coluna de
+bloqueio. Reverter uma pessoa, sem deploy:
 
 ```sql
 update gps.plantao_alunos
@@ -49,47 +47,36 @@ update gps.plantao_alunos
  where lower(btrim(email)) = 'pessoa@exemplo.com';
 ```
 
-> `bloqueio_excecao = true` é o que impede o job noturno de rebloquear. Sem
-> essa flag, o desbloqueio dura até a próxima madrugada.
+> `bloqueio_excecao = true` impede o job noturno de rebloquear.
 
 ---
 
-## Passo 1 — Senha padrão do 1º acesso (SQL Editor)
-
-```sql
-alter role authenticator set app.plantao_senha_padrao = '<a senha que será divulgada>';
-```
-
-**Seguro fazer sozinho:** falha fechado. Sem o setting, nenhum 1º acesso é
-criado — a recusa é a mensagem genérica de sempre.
-
-🔴 **Mas não divulgue a senha ainda.** Ver passo 5.
-
-## Passo 2 — Envs na Hostinger
+## Passo 1 — Envs na Hostinger
 
 ```
 PLANTAO_MANUTENCAO_SEGREDO=<segredo, mín. 16 caracteres>
-NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=<32 bytes em base64: openssl rand -base64 32>
+NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=<32 bytes base64: openssl rand -base64 32>
 ```
 
-A segunda **não é opcional**: sem ela cada build gera uma chave nova e derruba
-as Server Actions em voo **do portal inteiro**, não só do plantão.
+A segunda **não é opcional**: sem ela, cada build gera uma chave nova e
+derruba as Server Actions em voo **do portal inteiro**.
 
-## Passo 3 — Segredo do job no banco — **o MESMO valor do passo 2**
+## Passo 2 — Segredo do job no banco — **o MESMO valor**
 
 ```sql
 alter role authenticator set app.plantao_manutencao_segredo = '<o mesmo segredo>';
 ```
 
-🔴 **Fazer o 3 sem o 2 deixa PIOR que desligado:** as RPCs passam a aceitar,
-mas o job manda um segredo diferente e falha com **401** em vez do 503 atual —
-diagnóstico mais obscuro.
+🔴 **Fazer o 2 sem o 1 deixa PIOR que desligado:** o job passa de 503
+(diagnóstico claro) para 401 (obscuro).
 
-## Passo 4 — Deploy (manual; o push NÃO publica)
+> Não há mais senha padrão a configurar — esse passo morreu com o login.
+
+## Passo 3 — Deploy (manual; o push NÃO publica)
 
 ```bash
 git pull && npm install && npm run build
-# reiniciar a app no hPanel (ou: touch tmp/restart.txt)
+# reiniciar no hPanel (ou: touch tmp/restart.txt)
 ```
 
 Conferir:
@@ -103,29 +90,16 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST \
 | Resposta | Significa |
 |---|---|
 | **401** | ✅ certo |
-| **503** | falta o `alter role` do passo 3 |
-| **500** | falta a env do passo 2 |
+| **503** | falta o `alter role` do passo 2 |
+| **500** | falta a env do passo 1 |
 | **307** | o proxy está barrando (não deveria) |
 
-## Passo 5 — 🔴 A janela perigosa entre o passo 1 e o 4
-
-Entre setar a senha padrão (passo 1) e publicar o código novo (passo 4), o
-portal no ar ainda é o **antigo**: ele pede os 4 dígitos do documento e não
-conhece a tela de troca de senha.
-
-O banco ignora o campo do documento. Então, nessa janela, quem digitar a senha
-padrão **entra** — e cai no código velho, que **não mostra a tela de troca**.
-Resultado: fica com a senha provisória e acesso, sem nunca trocar.
-
-**Como evitar:** faça o passo 1 e o passo 4 na mesma janela, e **só divulgue a
-senha padrão depois do deploy concluído** (passo 10).
-
-## Passo 6 — Agendar o job diário
+## Passo 4 — Agendar o job — 🔴 **DE HORA EM HORA**, não 1×/dia
 
 ```sql
 select cron.schedule(
-  'plantao-manutencao-diaria',
-  '0 9 * * *',  -- 09:00 UTC = 06:00 em São Paulo
+  'plantao-manutencao-horaria',
+  '0 * * * *',  -- toda hora cheia
   $$
   select net.http_post(
     url := 'https://programa.timeholdingbrasil.com.br/api/plantao/manutencao',
@@ -139,50 +113,70 @@ select cron.schedule(
 );
 ```
 
+🔴 **Por que de hora em hora:** o e-mail com o link da sala sai **1 hora antes**
+do plantão, e a janela de envio é de 1 hora. Com cron diário, só os plantões
+que começam na hora seguinte à execução receberiam e-mail — todos os outros
+ficariam sem.
+
 ⚠️ **URL sem barra final.** Com barra, o Next devolve 308, o `pg_net` não segue
 redirect e o job morre em silêncio.
 
-O job faz, tudo idempotente: envia NPS pendente, avisa a mentora na véspera,
-reconcilia a elegibilidade (quem entrou no Programa perde o Plantão), expurga
-sessões vencidas e eventos com mais de 90 dias.
+O job faz, tudo idempotente: NPS pendente, **aviso de véspera à mentora**,
+**e-mail com o link da sala (1h antes)**, **reconciliação da elegibilidade** e
+expurgo de eventos com mais de 90 dias.
 
 ---
 
-## Passo 7 — Ensaio em navegador (nunca foi feito)
+## Passo 5 — Ensaio em navegador (nunca foi feito)
 
-1. `/admin/plantao` → criar um plantão de teste (mentora, data, hora)
-2. **Publicar** — funciona **sem link do Zoom** desde 08/09
-3. Abrir `/p/plantao` **dentro do iframe da Hotmart**, com um e-mail real da
-   lista e a **senha padrão** (não pede mais documento)
-4. Conferir que aparece a **tela de troca de senha** e que ela é obrigatória
-5. Trocar a senha → conferir que cai no calendário
-6. Inscrever-se → conferir a **contagem de participantes** no horário
-7. Conferir que o card diz "o link aparece aqui quando a equipe publicar" e
-   **não** oferece "Entrar na sala" (isso gravaria presença numa sala que não
-   existe)
-8. No dia seguinte de manhã, conferir se a mentora recebeu o e-mail de véspera
-   com a lista de inscritos
+1. `/admin/plantao` → conferir os 3 plantões da Semana 1
+2. Abrir `/p/plantao` **dentro do iframe da Hotmart** — deve mostrar o
+   calendário **sem pedir nada** (é público agora)
+3. Informar nome + e-mail de um comprador real → inscrever
+4. Conferir a **contagem de participantes** no horário
+5. Conferir que o card diz "o link aparece aqui quando a equipe publicar" e
+   **não** oferece "Entrar na sala" (gravaria presença numa sala inexistente)
+6. Trocar de mês e voltar — a identidade deve se manter (`?e=` preservado)
+7. Cadastrar um `zoom_url` num plantão de teste que comece em menos de 1h e
+   conferir: o e-mail chega com o link, e o cancelamento passa a ser recusado
 
-**Teste em Safari também.** Ele não implementa CHIPS: a tela deve pedir "Ativar
-acesso" ou oferecer "abrir em nova aba" — nunca voltar ao login em loop.
+**Teste em Safari também** — mas o risco caiu muito: sem cookie de sessão, não
+há mais CHIPS nem Storage Access API no caminho.
 
-## Passo 8 — Fechar o `frame-ancestors`
+## Passo 6 — Fechar o `frame-ancestors`
 
-Achado do `security-pentester` (médio): a CSP em `next.config.ts` libera
-`https://*.hotmart.com` inteiro — domínio compartilhado por **todos** os
-produtores da plataforma. Outro produtor poderia embedar `/p/plantao` e
-sobrepor elementos no formulário de senha (clickjacking). Não foi restringido
-às cegas porque derrubar o host errado tira os 422 do ar.
-
-**Com o iframe aberto**, rode no console:
+A CSP de `/p/*` libera `https://*.hotmart.com` inteiro — domínio compartilhado
+por **todos** os produtores da plataforma. Com o iframe aberto, rode no console:
 
 ```js
 document.referrer   // ou, dentro do iframe: location.ancestorOrigins
 ```
 
 Se aparecer **apenas** `hm.nivelouro.com.br`, apague as duas entradas
-`hotmart.com` da CSP e faça novo deploy.
+`hotmart.com` da CSP em `next.config.ts` e faça novo deploy.
 
-## Passo 9 — Conferir a lista dos 20 (ver topo)
+## Passo 7 — Conferir a lista dos 20 (ver topo)
 
-## Passo 10 — Só então divulgar a senha padrão aos 402
+## Passo 8 — Divulgar o link público aos 402
+
+```
+https://programa.timeholdingbrasil.com.br/p/plantao
+```
+
+Não há senha a distribuir. Quem estiver na base do Acelera se inscreve
+informando nome e e-mail **da compra**.
+
+---
+
+## Se algo der errado — desligar sem deploy
+
+```sql
+-- Para TODAS as escritas (inscrever/cancelar/presença). Leitura continua.
+alter role authenticator set app.plantao_inscricao_aberta = 'false';
+
+-- Tirar um plantão específico do ar
+update gps.plantao_slots set publicado = false where id = '<slot>';
+
+-- Revogar uma pessoa
+update gps.plantao_alunos set ativo = false where lower(btrim(email)) = '<email>';
+```

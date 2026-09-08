@@ -48,6 +48,16 @@ export interface MinhaInscricao {
    * existe.
    */
   temSala: boolean;
+  /**
+   * false quando o prazo de cancelamento já passou — a partir de 1h antes do
+   * início, quando a sala é liberada e o e-mail com o link é enviado, a vaga
+   * está consumida (decisão de 08/09/2026).
+   *
+   * Espelha exatamente a regra de `gps.plantao_cancelar` (inclusive o "só
+   * trava se houver sala"), para a tela mostrar o estado ANTES do clique em
+   * vez de deixar a pessoa descobrir por um erro.
+   */
+  podeCancelar: boolean;
 }
 
 /** Slot como o admin vê/edita — inclui os campos de gestão. */
@@ -88,35 +98,24 @@ export interface AlunoPlantaoAdmin {
   nome: string;
   email: string;
   lote: string;
-  temSenha: boolean;
-  ultimoLoginEm: string | null;
   ativo: boolean;
   inscricoesQtd: number;
+  /**
+   * Perdeu o Plantao por estar no Programa de Implementacao — o Plantao
+   * pertence ao Acelera Holding (decisao 08/09/2026). Hoje sao 20 de 422, e
+   * ate esta mudanca isso NAO aparecia em tela nenhuma: so por SQL.
+   */
+  bloqueadoPorPrograma: boolean;
+  /**
+   * O admin liberou esta pessoa a mao. O job noturno de reconciliacao nunca
+   * a toca — sem esta flag, o desbloqueio duraria ate a proxima madrugada.
+   */
+  bloqueioExcecao: boolean;
 }
 
 /** Retorno padrão das Server Actions de mutação do plantão. */
 export type ResultadoAcao = { ok: true } | { ok: false; erro: string };
 
-/**
- * Sessão do aluno do plantão, resolvida a partir do cookie.
- *
- * `precisaTrocarSenha` vem direto de `gps.plantao_sessao` (coluna
- * `senha_provisoria`, desde 08/09/2026) — não é mais um cookie-sinal
- * separado. Fonte única de verdade: o banco.
- */
-export interface SessaoPlantao {
-  alunoPlantaoId: string;
-  nome: string;
-  /** true enquanto a conta ainda usa a senha padrão do 1º acesso. */
-  precisaTrocarSenha: boolean;
-}
-
 /** Janela do Zoom: abre 1h antes do início, fecha 1h depois. */
 export const JANELA_ANTES_MIN = 60;
 export const JANELA_DEPOIS_MIN = 60;
-
-/** Piso de senha — mesmo mínimo de `gps.admin_definir_senha`. */
-export const SENHA_MIN = 8;
-
-/** Nome do cookie de sessão do plantão (isolado do cookie do Supabase Auth). */
-export const COOKIE_SESSAO = "gps_plantao_sessao";

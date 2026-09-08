@@ -25,7 +25,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const NOTAS = Array.from({ length: 11 }, (_, i) => i); // 0..10
 
-export function NpsForm({ inscricaoId }: { inscricaoId: string }) {
+export function NpsForm({
+  inscricaoId,
+  email,
+}: {
+  inscricaoId: string;
+  /** E-mail informado no formulário de identificação — dono da inscrição. */
+  email: string;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [nota, setNota] = useState<number | null>(null);
@@ -49,7 +56,7 @@ export function NpsForm({ inscricaoId }: { inscricaoId: string }) {
       return;
     }
     startTransition(async () => {
-      const res = await registrarNps(inscricaoId, nota, comentario);
+      const res = await registrarNps(email, inscricaoId, nota, comentario);
       if (!res.ok) {
         toast.error(res.erro);
         return;

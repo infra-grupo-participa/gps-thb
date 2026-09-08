@@ -123,31 +123,30 @@ export async function getInscritosDoSlot(slotId: string): Promise<InscritoAdmin[
 /** Lista de alunos do plantão para o painel de gestão de acesso. */
 export async function getAlunosPlantao(): Promise<AlunoPlantaoAdmin[]> {
   const supabase = await createClient();
+  // `plantao_acessos` foi DROPADA com o login (08/09/2026) — daí sumirem
+  // `temSenha`/`ultimoLoginEm`. No lugar entram os dois campos de
+  // elegibilidade, que decidem quem participa e até aqui não apareciam em
+  // tela nenhuma: só por SQL direto no banco.
   const { data } = await supabase
     .schema("gps")
     .from("plantao_alunos")
     .select(
-      "id, nome, email, lote, ativo, plantao_acessos(ultimo_login_em), plantao_inscricoes(id)",
+      "id, nome, email, lote, ativo, bloqueado_por_programa, bloqueio_excecao, plantao_inscricoes(id)",
     )
     .order("nome")
     .limit(LIMITE_ALUNOS);
 
   return (data ?? []).map((a) => {
-    const acesso = a.plantao_acessos as unknown as
-      | { ultimo_login_em: string | null }
-      | { ultimo_login_em: string | null }[]
-      | null;
-    const acessoRow = Array.isArray(acesso) ? acesso[0] : acesso;
     const inscricoes = (a.plantao_inscricoes as unknown[]) ?? [];
     return {
       id: a.id as string,
       nome: a.nome as string,
       email: a.email as string,
       lote: a.lote as string,
-      temSenha: Boolean(acessoRow),
-      ultimoLoginEm: acessoRow?.ultimo_login_em ?? null,
       ativo: a.ativo as boolean,
       inscricoesQtd: inscricoes.length,
+      bloqueadoPorPrograma: Boolean(a.bloqueado_por_programa),
+      bloqueioExcecao: Boolean(a.bloqueio_excecao),
     };
   });
 }

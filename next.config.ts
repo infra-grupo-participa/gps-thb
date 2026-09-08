@@ -63,10 +63,10 @@ const nextConfig: NextConfig = {
       // ⚠️ `https://*.hotmart.com` é MAIS LARGO do que a intenção: esse
       // domínio é compartilhado por TODOS os produtores da plataforma, não só
       // pelo Grupo Participa. Qualquer outro produtor pode embedar
-      // `/p/plantao` dentro do produto dele. Não vaza dado por si só (a
-      // página exige login próprio), mas abre superfície de clickjacking
-      // sobre o formulário que pede e-mail + senha + 4 dígitos do documento.
-      // Achado do `security-pentester` em 08/09/2026.
+      // `/p/plantao` dentro do produto dele. Não vaza dado por si só, mas
+      // abre superfície de clickjacking sobre o formulário — que desde
+      // 08/09/2026 pede nome + e-mail (não mais senha nem documento: o login
+      // saiu). Achado do `security-pentester`.
       //
       // Mantido POR ORA de propósito: o Club é servido em
       // `hm.nivelouro.com.br`, mas não foi possível confirmar de fora se
@@ -79,6 +79,14 @@ const nextConfig: NextConfig = {
       // Network → Headers o `Referer`/`Sec-Fetch-Site`, ou rodar
       // `document.referrer` no console do topo. Se vier só
       // `hm.nivelouro.com.br`, apagar as duas entradas `hotmart.com` daqui.
+      //
+      // ⚠️ `Referrer-Policy` é OBRIGATÓRIO aqui, não higiene: desde que o
+      // login saiu, a identidade viaja na URL (`?e=<email>&n=<nome>`). Sem
+      // esta política, qualquer recurso cross-origin carregado pela página
+      // (analytics da Hotmart, pixel, fonte externa) receberia o e-mail do
+      // comprador no header `Referer`. `strict-origin-when-cross-origin`
+      // manda só a origem para fora, preservando a URL completa na navegação
+      // interna. Achado do `security-pentester` em 08/09/2026.
       {
         source: "/p/:path*",
         headers: [
@@ -87,6 +95,7 @@ const nextConfig: NextConfig = {
             value:
               "frame-ancestors https://hm.nivelouro.com.br https://*.hotmart.com https://hotmart.com",
           },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
       },
       // Todo o resto — nunca deve ser embedado (login, área do aluno, admin).
@@ -95,6 +104,7 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
       },
     ];

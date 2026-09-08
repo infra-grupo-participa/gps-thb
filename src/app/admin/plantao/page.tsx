@@ -6,7 +6,9 @@
  *
  * Server Component: abre o mês (por `?m=YYYY-MM` ou o mês corrente), busca
  * com `getSlotsDoMesAdmin()` e `getAlunosPlantao()`, renderiza o calendário
- * editável e a lista de acessos em abas.
+ * editável e a aba "Alunos" (ex-"Acessos" — a rota pública deixou de ter
+ * login, então a aba não gerencia mais senha/sessão, só o cadastro do
+ * aluno e o bloqueio por migração de programa).
  */
 
 import { redirect } from "next/navigation";
@@ -23,7 +25,10 @@ import { AppHeader } from "@/components/app-header";
 import { adminNavItems } from "@/lib/nav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlantaoCalendario } from "@/components/admin/plantao-calendario";
-import { PlantaoAcessos } from "@/components/admin/plantao-acessos";
+import {
+  PlantaoAcessos,
+  type AlunoPlantaoAdminComBloqueio,
+} from "@/components/admin/plantao-acessos";
 import { PlantaoMentoras } from "@/components/admin/plantao-mentoras";
 
 export const metadata = { title: "Admin — Plantão" };
@@ -87,7 +92,7 @@ export default async function AdminPlantaoPage({
         <Tabs defaultValue="calendario">
           <TabsList>
             <TabsTrigger value="calendario">Calendário</TabsTrigger>
-            <TabsTrigger value="acessos">Acessos</TabsTrigger>
+            <TabsTrigger value="acessos">Alunos</TabsTrigger>
             <TabsTrigger value="mentoras">Mentoras</TabsTrigger>
           </TabsList>
 
@@ -102,7 +107,16 @@ export default async function AdminPlantaoPage({
           </TabsContent>
 
           <TabsContent value="acessos" className="mt-4">
-            <PlantaoAcessos alunos={alunos} />
+            {/*
+              ⚠️ DIVERGÊNCIA (não é meu escopo, ver relatório da tarefa):
+              `getAlunosPlantao()` (src/lib/plantao-data.ts, backend) ainda
+              não devolve `bloqueadoPorPrograma`/`bloqueioExcecao`. Cast
+              documentado até o contrato ser atualizado lá — a UI já está
+              pronta para os campos.
+            */}
+            <PlantaoAcessos
+              alunos={alunos as AlunoPlantaoAdminComBloqueio[]}
+            />
           </TabsContent>
 
           <TabsContent value="mentoras" className="mt-4">

@@ -8,7 +8,9 @@
  * (commit b457005) e PROIBIDO de reconstruir.
  *
  * Regra de negócio: 1 inscrição ativa por vez — só escolhe outra depois que
- * a anterior passar.
+ * a anterior passar. Cancelamento vale só até 1h antes do início — dali em
+ * diante a sala é liberada e some a possibilidade de cancelar (avisado ANTES
+ * de o aluno se inscrever, não só no clique de cancelar).
  *
  * Sem limite de vagas: a contagem de participantes aparece (decisão do Marcio,
  * 08/09/2026 — o aluno escolhe melhor o horário sabendo o movimento), mas
@@ -40,10 +42,16 @@ function rotuloParticipantes(qtd: number): string {
 
 export function InscricaoPainel({
   slots,
+  email,
+  nome,
   minhaInscricaoAtiva,
   onConcluido,
 }: {
   slots: SlotPublico[];
+  /** E-mail informado no formulário de identificação (rota pública). */
+  email: string | null;
+  /** Nome informado junto com o e-mail. */
+  nome: string | null;
   /** Inscrição ativa (não encerrada) do aluno, em QUALQUER dia — trava escolher outro plantão. */
   minhaInscricaoAtiva: MinhaInscricao | null;
   onConcluido: () => void;
@@ -55,8 +63,12 @@ export function InscricaoPainel({
   const minha = slots.find((s) => s.minhaInscricao);
 
   function inscreverNoSlot(slot: SlotPublico) {
+    if (!email || !nome) {
+      toast.error("Informe seu nome e e-mail antes de se inscrever.");
+      return;
+    }
     startTransition(async () => {
-      const res = await inscrever(slot.slotId);
+      const res = await inscrever(email, nome, slot.slotId);
       if (!res.ok) {
         toast.error(res.erro);
         return;
@@ -91,6 +103,10 @@ export function InscricaoPainel({
 
   return (
     <div className="flex flex-col gap-2">
+      <p className="rounded-lg border border-dashed bg-muted/40 p-2.5 text-xs text-muted-foreground">
+        Você pode cancelar a qualquer momento até 1 hora antes do início — a
+        partir daí a sala é liberada e o cancelamento não é mais possível.
+      </p>
       {slots.map((slot) => {
         const ehMinha = slot.minhaInscricao;
         return (

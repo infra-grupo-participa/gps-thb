@@ -60,15 +60,40 @@ function diasDaGrade(ano: number, mes: number): (string | null)[] {
   return dias;
 }
 
+/**
+ * URL do mês preservando a identidade informada.
+ *
+ * ⚠️ Sem isto, trocar de mês descartava `?e=`/`?n=` e a pessoa tinha de se
+ * identificar de novo — reexpondo o e-mail numa navegação nova, e perdendo a
+ * marcação de "seu plantão" no calendário. Achado do `security-pentester`.
+ */
+function hrefMes(
+  ano: number,
+  mes: number,
+  email: string | null,
+  nome: string | null,
+): string {
+  const qs = new URLSearchParams({ m: paramMes(ano, mes) });
+  if (email) qs.set("e", email);
+  if (nome) qs.set("n", nome);
+  return `/p/plantao?${qs.toString()}`;
+}
+
 export function CalendarioMes({
   ano,
   mes,
   slots,
+  email,
+  nome,
   minhaInscricaoAtiva,
 }: {
   ano: number;
   mes: number;
   slots: SlotPublico[];
+  /** E-mail informado no formulário de identificação, ou null (rota pública sem identificação ainda). */
+  email: string | null;
+  /** Nome informado junto com o e-mail — só usado para a chamada de `inscrever`. */
+  nome: string | null;
   /** Inscrição ativa (não encerrada) do aluno, ou null. Trava escolher outro plantão. */
   minhaInscricaoAtiva: MinhaInscricao | null;
 }) {
@@ -98,7 +123,7 @@ export function CalendarioMes({
       {/* Cabeçalho: navegação do mês */}
       <div className="flex items-center justify-between gap-2 rounded-xl border bg-card p-3 shadow-sm">
         <Link
-          href={`/p/plantao?m=${paramMes(anterior.ano, anterior.mes)}`}
+          href={hrefMes(anterior.ano, anterior.mes, email, nome)}
           className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           aria-label="Mês anterior"
         >
@@ -109,7 +134,7 @@ export function CalendarioMes({
           {MESES[mes - 1]} de {ano}
         </div>
         <Link
-          href={`/p/plantao?m=${paramMes(proximo.ano, proximo.mes)}`}
+          href={hrefMes(proximo.ano, proximo.mes, email, nome)}
           className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           aria-label="Próximo mês"
         >
@@ -227,6 +252,8 @@ export function CalendarioMes({
           </DialogHeader>
           <InscricaoPainel
             slots={slotsDoDiaAberto}
+            email={email}
+            nome={nome}
             minhaInscricaoAtiva={minhaInscricaoAtiva}
             onConcluido={() => setDiaAberto(null)}
           />

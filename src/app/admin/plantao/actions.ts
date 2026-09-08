@@ -235,18 +235,18 @@ export async function carregarLoteAcelera(): Promise<
   return { ok: true, ...resultado };
 }
 
-/** Revoga o acesso: desativa o aluno e apaga TODAS as sessões dele. */
+/**
+ * Revoga o acesso ao plantão: desativa o aluno.
+ *
+ * Não há mais sessão a derrubar — `plantao_sessoes` foi dropada com o login
+ * (08/09/2026). Sem login, `ativo = false` é a revogação completa: as RPCs
+ * públicas exigem `ativo` para qualquer operação, então a pessoa deixa de
+ * conseguir se inscrever, cancelar ou revelar a sala na mesma hora.
+ */
 export async function revogarAcessoPlantao(alunoPlantaoId: string): Promise<ResultadoAcao> {
   if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
 
   const supabase = await createClient();
-
-  const { error: erroSessoes } = await supabase
-    .schema("gps")
-    .from("plantao_sessoes")
-    .delete()
-    .eq("aluno_plantao_id", alunoPlantaoId);
-  if (erroSessoes) return { ok: false, erro: "Não foi possível revogar as sessões." };
 
   const { error } = await supabase
     .schema("gps")
@@ -274,34 +274,7 @@ export async function reativarAcessoPlantao(alunoPlantaoId: string): Promise<Res
   return { ok: true };
 }
 
-/**
- * Apaga a credencial do aluno (não o cadastro): no próximo login, o e-mail
- * cadastrado passa de novo pelo fluxo de "1º acesso" e a senha digitada vira
- * a nova credencial. Espelha o `limparSenha` que o Marcio já conhece do
- * `GerenciarAcesso` do aluno do GPS.
- */
-export async function limparSenha(alunoPlantaoId: string): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
 
-  const supabase = await createClient();
-
-  const { error: erroSessoes } = await supabase
-    .schema("gps")
-    .from("plantao_sessoes")
-    .delete()
-    .eq("aluno_plantao_id", alunoPlantaoId);
-  if (erroSessoes) return { ok: false, erro: "Não foi possível encerrar as sessões." };
-
-  const { error } = await supabase
-    .schema("gps")
-    .from("plantao_acessos")
-    .delete()
-    .eq("aluno_plantao_id", alunoPlantaoId);
-  if (error) return { ok: false, erro: "Não foi possível limpar a senha." };
-
-  revalidatePath("/admin/plantao");
-  return { ok: true };
-}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Mentoras (`gps.plantao_mentoras`) — antes só editável por SQL direto.

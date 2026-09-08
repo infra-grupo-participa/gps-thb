@@ -304,38 +304,65 @@ Avisar a pessoa sempre.
 de vagas**; botão revela o link do Zoom **de 1h antes a 1h depois** e isso **registra
 presença**; e-mail de confirmação + NPS.
 
-**Identidade PRÓPRIA, isolada de `auth.users`** — a decisão central. Medido: **210 dos 421**
-compradores da Acelera já têm conta em `auth.users` (banco compartilhado por 5 sistemas).
-Um formulário público que definisse senha ali entregaria a conta do CNHF/sip/workbook
-dessas pessoas. Por isso: `gps.plantao_alunos` + `plantao_acessos` (bcrypt via
-`extensions.crypt`) + `plantao_sessoes` (token de 32 bytes, guarda-se só o sha256).
-**Efeito colateral desejado:** o "acesso restrito ao calendário" sai de graça — sem sessão
-Supabase, o `proxy.ts` já barra essa pessoa em qualquer outra rota. É estrutural, não uma
-verificação que alguém pode esquecer.
+### ⚠️ `/p/plantao` virou rota PÚBLICA sem login (2026-09-08)
 
-**Acesso ao banco:** `anon` **não tem GRANT em nenhuma** das 7 tabelas `plantao_*`. Tudo
-passa por RPC `security definer` (`revoke from public` **antes** do `grant to anon`). É o
-antídoto explícito ao incidente CNHF, onde o GRANT passou antes do RLS.
+**Mudança de arquitetura.** O modelo anterior (identidade própria com senha,
+cookie de sessão, sonda de cookie de terceiro para CHIPS/Safari) foi
+**substituído**: qualquer um abre `/p/plantao` e vê o calendário; para se
+inscrever, só informa **nome + e-mail** (`?e=<email>&n=<nome>` na URL, nunca
+cookie/token/senha) — o servidor confere o e-mail contra a base de
+compradores do Acelera **dentro de `inscrever()`**, na hora do clique. Sem
+essa confirmação no e-mail informado, a inscrição não vai adiante.
 
-**1º acesso exige os 4 últimos dígitos do documento da compra.** O Marcio primeiro aceitou
-sem verificação; o `security-pentester` mostrou que a resposta devolvia `primeiro_acesso=true`
-e **denunciava quem ainda não tinha entrado**, permitindo varrer os 421 e tomar contas em
-lote. Com a trava, saber o e-mail deixa de bastar. Cobertura: 375 dos 421; os **46 sem
-documento** entram pelo botão **"Liberar 1º acesso"** do admin (a liberação **se consome**
-no primeiro uso). O campo fica **sempre visível** — exibi-lo só no 1º acesso reabriria a
-enumeração.
+**Removidos por completo (537 linhas):** `src/app/p/plantao/sonda/route.ts`
+(sonda de cookie de terceiro), `src/components/plantao/acesso-bloqueado.tsx`
+(guarda de CHIPS/Safari), `plantao-login.tsx`, `trocar-senha-plantao.tsx`.
+Não há mais `SessaoPlantao`, cookie `gps_plantao_sessao` nem
+`plantao_sessoes` no caminho da UI.
 
-**Iframe:** cookie `gps_plantao_sessao` com `HttpOnly; Secure; SameSite=None; Partitioned`
-(CHIPS resolve Chrome/Edge). Safari não implementa CHIPS → Storage Access API (exige gesto)
-→ e, em último caso, **abrir em nova aba** (first-party, sempre funciona). Uma **sonda**
-(`/p/plantao/sonda`) detecta o bloqueio **antes** de mostrar o formulário — senão o aluno
-digita a senha certa e volta ao login, em loop.
+**Novo componente:** `src/components/plantao/identificacao-form.tsx` (client,
+nome + e-mail, navega para `?e=&n=`). `page.tsx` continua Server Component,
+lendo `searchParams` (`m`, `e`, `n`); sem e-mail mostra o formulário; com
+e-mail mas sem nome (link salvo antes de identificar) pede o nome de novo
+sem esconder a inscrição já existente; com os dois mostra "Inscrevendo como
+{nome}". `InscricaoPainel`/`MinhaInscricaoCard`/`NpsForm` recebem `email`
+por prop em vez de ler sessão.
 
-**Headers de frame (limpeza que a feature trouxe):** o portal **não tinha** `X-Frame-Options`
-nem CSP — qualquer site podia embedar o `/login`. Agora `/p/*` tem `frame-ancestors` com
-allowlist e **todo o resto** tem `DENY` + `frame-ancestors 'none'`.
+**Cancelamento tem prazo, avisado ANTES de inscrever:** a partir de 1h antes
+do início (mesmo instante em que a sala libera e `janelaAberta` vira true),
+`cancelar()` deixa de funcionar. `InscricaoPainel` mostra o aviso do prazo
+acima da lista de slots; `MinhaInscricaoCard` troca o botão "Cancelar
+inscrição" por um texto ("o prazo para cancelar terminou") quando
+`janelaAberta` é true — não deixa a pessoa descobrir só no clique.
 
-**Arquivos:** migrations `20260901000001`→`...05`; `src/lib/plantao{,-tipos,-data,-carga}.ts`,
+**Aba do admin renomeada "Acessos" → "Alunos"**
+(`src/components/admin/plantao-acessos.tsx`): saíram as colunas "tem
+senha"/"último acesso" e o botão "Limpar senha" (não existe mais senha).
+Entrou a coluna **bloqueio por programa**, mostrando
+`bloqueadoPorPrograma`/`bloqueioExcecao` — hoje 20 pessoas perderam o
+Plantão por terem migrado para o Programa de Implementação e isso não
+aparecia em NENHUMA tela, só por SQL direto no banco.
+⚠️ **Contrato pendente:** `AlunoPlantaoAdmin` (`src/lib/plantao-tipos.ts`) e
+`getAlunosPlantao()` (`src/lib/plantao-data.ts`) ainda não expõem esses dois
+campos — a UI declara `AlunoPlantaoAdminComBloqueio` localmente e o
+`admin/plantao/page.tsx` faz cast documentado até o backend atualizar.
+
+⚠️ **Identidade PRÓPRIA superada:** a ideia original (`gps.plantao_alunos` +
+`plantao_acessos` com bcrypt) tinha como efeito colateral bloquear qualquer
+outra rota via `proxy.ts` por falta de sessão Supabase — isso **não existe
+mais**: a rota é pública de verdade agora, sem sessão nenhuma envolvida.
+
+**Acesso ao banco:** `anon` **não tem GRANT em nenhuma** das tabelas
+`plantao_*`. Tudo passa por RPC `security definer` (`revoke from public`
+**antes** do `grant to anon`) — antídoto explícito ao incidente CNHF, onde o
+GRANT passou antes do RLS. Continua valendo com o novo modelo público.
+
+**Headers de frame (limpeza que a feature trouxe):** o portal **não tinha**
+`X-Frame-Options` nem CSP — qualquer site podia embedar o `/login`. Agora
+`/p/*` tem `frame-ancestors` com allowlist e **todo o resto** tem `DENY` +
+`frame-ancestors 'none'`.
+
+**Arquivos:** `src/lib/plantao{,-tipos,-data,-carga}.ts`,
 `src/lib/email-plantao.ts`; `src/app/p/**`, `src/app/admin/plantao/**`,
 `src/app/api/plantao/manutencao/route.ts`; `src/components/plantao/**`,
 `src/components/admin/plantao-*`.

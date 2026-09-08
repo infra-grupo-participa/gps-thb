@@ -7,9 +7,14 @@
  * (commit b457005) e PROIBIDO de reconstruir.
  *
  * Três estados:
- * - antes da janela → contagem regressiva ("a sala abre 1 hora antes");
+ * - antes da janela → contagem regressiva ("a sala abre 1 hora antes") +
+ *   botão "Cancelar inscrição";
  * - dentro da janela → botão "Entrar na sala", que AVISA antes de revelar
  *   (revelar confirma presença) — idempotente: reclicar não duplica nada;
+ *   o botão de cancelar SOME e vira aviso ("o prazo para cancelar
+ *   terminou") — `janelaAberta` é o mesmo instante em que a sala libera e
+ *   em que `cancelar()` passa a recusar no servidor, então a UI antecipa
+ *   isso em vez de deixar a pessoa descobrir só no clique;
  * - depois → "esta sala já encerrou" (some o botão de entrar; NPS mora em
  *   `NpsForm`, componente separado, renderizado por quem chama este card).
  */
@@ -53,8 +58,11 @@ function urlSegura(valor: string): boolean {
 
 export function MinhaInscricaoCard({
   inscricao,
+  email,
 }: {
   inscricao: MinhaInscricao;
+  /** E-mail informado no formulário de identificação — dono da inscrição. */
+  email: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -94,7 +102,7 @@ export function MinhaInscricaoCard({
       return;
     }
     startTransition(async () => {
-      const res = await revelarLink(inscricao.inscricaoId);
+      const res = await revelarLink(email, inscricao.inscricaoId);
       if (!res.ok) {
         toast.error(res.erro);
         return;
@@ -120,7 +128,7 @@ export function MinhaInscricaoCard({
       return;
     }
     startTransition(async () => {
-      const res = await cancelar(inscricao.inscricaoId);
+      const res = await cancelar(email, inscricao.inscricaoId);
       if (!res.ok) {
         toast.error(res.erro);
         return;
@@ -221,7 +229,11 @@ export function MinhaInscricaoCard({
           </div>
         )}
 
-        {!presencaJaConfirmada ? (
+        {inscricao.janelaAberta ? (
+          <p className="text-xs text-muted-foreground">
+            O prazo para cancelar terminou — a sala já foi liberada.
+          </p>
+        ) : (
           <Button
             variant="ghost"
             size="sm"
@@ -231,7 +243,7 @@ export function MinhaInscricaoCard({
           >
             Cancelar inscrição
           </Button>
-        ) : null}
+        )}
       </CardContent>
     </Card>
   );

@@ -12,7 +12,7 @@
  * Roda sem sessão de aluno/admin (chamado via HTTP pelo pg_cron), então lê
  * e escreve por RPCs SECURITY DEFINER dedicadas (`plantao_nps_pendente`,
  * `plantao_marcar_nps_enviado`, `plantao_expurgar`) — as tabelas
- * `plantao_inscricoes`/`plantao_sessoes`/`plantao_eventos` só têm policy de
+ * `plantao_inscricoes`/`plantao_eventos` só têm policy de
  * admin, então leitura/escrita direta via `.from()` seria sempre vazia.
  *
  * ⚠️ Essas 3 RPCs fazem DELETE em massa e disparo de e-mail; como estão
@@ -23,7 +23,7 @@
  * qualquer chamada anônima ao PostgREST poderia derrubar sessões de todo
  * mundo ou martelar envio de NPS.
  *
- * Seis tarefas, todas IDEMPOTENTES (rodar de novo no mesmo dia não duplica
+ * Cinco tarefas, todas IDEMPOTENTES (rodar de novo no mesmo dia não duplica
  * nem corrompe nada):
  *  (a) envia NPS pendente e marca `nps_email_em`;
  *  (a2) avisa a MENTORA na véspera (quem vai, que horas, quantos) e carimba
@@ -33,7 +33,6 @@
  *       cancela as inscrições futuras de quem acabou de ser bloqueado;
  *  (a4) manda o e-mail com o LINK DA SALA 1h antes do inicio (unico e-mail
  *       ao aluno) e carimba `plantao_inscricoes.email_sala_em`;
- *  (b) expurga sessões expiradas;
  *  (c) expurga eventos com mais de 90 dias (retenção decidida pelo Marcio).
  */
 
@@ -74,7 +73,6 @@ export async function POST(request: NextRequest) {
     elegibilidadeInscricoesCanceladas: 0,
     emailsSalaEnviados: 0,
     emailsSalaFalhas: 0,
-    sessoesExpurgadas: 0,
     eventosExpurgados: 0,
   };
 
@@ -255,7 +253,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // (b) e (c) — expurgo de sessões expiradas e eventos com mais de 90 dias.
+  // (c) — expurgo de eventos com mais de 90 dias. O expurgo de sessões saiu
+  // junto com o login (08/09/2026): não há mais `plantao_sessoes`.
   const { data: expurgo, error: erroExpurgo } = await supabase.rpc(
     "plantao_expurgar",
     { p_segredo: segredo },
@@ -268,7 +267,6 @@ export async function POST(request: NextRequest) {
     );
   }
   const linhaExpurgo = Array.isArray(expurgo) ? expurgo[0] : expurgo;
-  resultado.sessoesExpurgadas = linhaExpurgo?.sessoes_expurgadas ?? 0;
   resultado.eventosExpurgados = linhaExpurgo?.eventos_expurgados ?? 0;
 
   return NextResponse.json({ ok: true, ...resultado });

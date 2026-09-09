@@ -55,7 +55,7 @@ import { ConfirmacaoEquipe } from "./confirmacao-equipe";
 import { DialogoExcluirCliente } from "./dialogos";
 import { DialogoDesfavoritar } from "../dialogo-desfavoritar";
 import { contarPorFase, filtrarPorBusca, ordenarClientes } from "./ordenacao";
-import type { Ordenacao } from "./tipos";
+import { ROTULO_ORDENACAO, type Ordenacao } from "./tipos";
 
 export function ClientesManager({
   alunoId,
@@ -263,13 +263,18 @@ export function ClientesManager({
               onValueChange={(v) => v && setOrdenacao(v as Ordenacao)}
             >
               <SelectTrigger size="sm" className="w-[190px]">
-                <SelectValue />
+                <SelectValue>
+                  {(v: Ordenacao) => `Ordenar: ${ROTULO_ORDENACAO[v]}`}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="recentes">Ordenar: mais recentes</SelectItem>
-                <SelectItem value="nome">Ordenar: nome</SelectItem>
-                <SelectItem value="perda">Ordenar: maior perda</SelectItem>
-                <SelectItem value="reuniao">Ordenar: data da reunião</SelectItem>
+                {(
+                  Object.keys(ROTULO_ORDENACAO) as Ordenacao[]
+                ).map((o) => (
+                  <SelectItem key={o} value={o}>
+                    Ordenar: {ROTULO_ORDENACAO[o]}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           ) : null}

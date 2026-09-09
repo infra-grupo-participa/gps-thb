@@ -43,7 +43,7 @@ export function WhatsappLink({ href }: { href: string }) {
       target="_blank"
       rel="noopener noreferrer"
       title="Abrir no WhatsApp"
-      className="inline-flex items-center text-green-600 hover:text-green-700"
+      className="foco-visivel inline-flex items-center rounded-sm text-sucesso-foreground hover:opacity-80"
       onClick={(e) => e.stopPropagation()}
     >
       <MessageCircle className="size-4" />
@@ -132,7 +132,7 @@ export function FiltroChip({
       <span
         className={
           "rounded-full px-1.5 text-[10px] " +
-          (ativo ? "bg-primary-foreground/20" : "bg-muted")
+          (ativo ? "bg-black/25" : "bg-muted")
         }
       >
         {qtd}

@@ -14,7 +14,7 @@
  */
 
 import Link from "next/link";
-import { AlertCircle, LifeBuoy } from "lucide-react";
+import { LifeBuoy } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import { ROTULO_TIPO } from "@/components/admin/diario-labels";
 import { formatarDataHora, formatarData } from "@/lib/datas";
@@ -96,11 +96,7 @@ export function AlunoCard({
               </Badge>
             ) : null}
             {pendencias > 0 ? (
-              <Badge
-                variant="destructive"
-                className="gap-1 text-[10px]"
-              >
-                <AlertCircle className="size-3" aria-hidden />
+              <Badge variant="danger" className="text-[10px]">
                 {pendencias}{" "}
                 {pendencias === 1 ? "pendência" : "pendências"}
               </Badge>
@@ -111,11 +107,7 @@ export function AlunoCard({
                 novo não avisava ninguém E não era visível. Zero
                 consulta nova — é o mesmo Map do badge acima. */}
             {chamados > 0 ? (
-              <Badge
-                variant="destructive"
-                className="gap-1 text-[10px]"
-              >
-                <LifeBuoy className="size-3" aria-hidden />
+              <Badge variant="warning" icone={LifeBuoy} className="text-[10px]">
                 {chamados}{" "}
                 {chamados === 1 ? "chamado aberto" : "chamados abertos"}
               </Badge>
@@ -154,7 +146,7 @@ export function AlunoCard({
                     ? "…"
                     : null}
                 </span>
-                <span className="shrink-0 text-muted-foreground/80">
+                <span className="shrink-0 text-muted-foreground">
                   · {formatarDataHora(atendimento.ultimaNotaEm)}
                 </span>
               </>
@@ -165,7 +157,7 @@ export function AlunoCard({
             )}
           </div>
 
-          <div className="mt-0.5 truncate text-xs text-muted-foreground/80">
+          <div className="mt-0.5 truncate text-xs text-muted-foreground">
             {desde ? (
               <>Entrou em {formatarData(desde)} · </>
             ) : null}
@@ -195,10 +187,10 @@ export function AlunoCard({
               cadeado na mesma etapa. O total apenas listado continua
               visível, ao lado, para a diferença não sumir. */}
           <div className="text-center">
-            <div className="text-sm font-semibold tabular-nums">
+            <div className="numero text-base font-semibold">
               {clientesComDados}/{META_CLIENTES}
             </div>
-            <div className="text-[10px] uppercase text-muted-foreground">
+            <div className="rotulo text-muted-foreground">
               <span aria-hidden>
                 completos · {clientesPreenchidos} listados
               </span>
@@ -210,20 +202,20 @@ export function AlunoCard({
             </div>
           </div>
           <div className="text-center">
-            <div className="text-sm font-semibold">{agendados}/15</div>
-            <div className="text-[10px] uppercase text-muted-foreground">
+            <div className="numero text-base font-semibold">{agendados}/15</div>
+            <div className="rotulo text-muted-foreground">
               reuniões
             </div>
           </div>
           <div className="text-center">
             <div
-              className="text-sm font-semibold tabular-nums"
+              className="numero text-base font-semibold"
               title={honorarios.descricao}
             >
               <span aria-hidden>{honorarios.visual}</span>
               <span className="sr-only">{honorarios.descricao}</span>
             </div>
-            <div className="text-[10px] uppercase text-muted-foreground">
+            <div className="rotulo text-muted-foreground">
               honorários
             </div>
           </div>

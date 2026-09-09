@@ -24,24 +24,29 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <Card className={cn("[--card-spacing:--spacing(8)]", className)}>
-      <CardContent className="grid justify-items-center gap-3 text-center">
+    // `raised`: o vazio é uma peça inteira, não mais um item da lista. Antes
+    // ficava plano no meio de outros cards planos e parecia falha de carga.
+    <Card
+      elevacao="raised"
+      className={cn("[--card-spacing:--spacing(10)]", className)}
+    >
+      <CardContent className="grid justify-items-center gap-4 text-center">
         {icone ? (
           <span
             aria-hidden
-            className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground [&>svg]:size-5"
+            className="flex size-12 items-center justify-center rounded-full bg-superficie-afundada text-muted-foreground [&>svg]:size-6"
           >
             {icone}
           </span>
         ) : null}
-        <div className="grid max-w-prose gap-1">
-          <p className="font-medium text-foreground">{titulo}</p>
+        <div className="grid max-w-[52ch] gap-1.5">
+          <p className="font-heading titulo-h2 text-foreground">{titulo}</p>
           {descricao ? (
-            <p className="text-sm text-muted-foreground">{descricao}</p>
+            <p className="corpo text-muted-foreground">{descricao}</p>
           ) : null}
         </div>
         {acao ? (
-          <div className="flex flex-wrap justify-center gap-2">{acao}</div>
+          <div className="mt-1 flex flex-wrap justify-center gap-2">{acao}</div>
         ) : null}
       </CardContent>
     </Card>

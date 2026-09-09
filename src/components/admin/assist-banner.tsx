@@ -20,18 +20,17 @@ export function AssistBanner({ aluno }: { aluno: Aluno | null }) {
 
   return (
     <>
-      {/* Moldura ao redor da tela */}
-      <div
-        aria-hidden
-        className="previa-oculta pointer-events-none fixed inset-0 z-40 border-[3px] border-primary"
-      />
+      {/* Faixa superior de 4 px, no lugar da moldura de 3 px em `fixed
+          inset-0`: a moldura atravessava o header e encostava no conteúdo sem
+          respiro — parecia erro de renderização, não sinal de contexto. E,
+          por ser `fixed`, passava POR CIMA da marca no canto superior
+          esquerdo. Uma faixa no fluxo não cobre nada. */}
+      <div aria-hidden className="previa-oculta h-1 w-full bg-primary" />
 
       {/* Barra informativa */}
-      <div className="previa-oculta border-b border-primary/30 bg-primary/10">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-2 text-sm">
-          <Badge className="gap-1">
-            <ShieldCheck className="size-3" /> Modo assistência
-          </Badge>
+      <div className="previa-oculta border-b border-primary/30 bg-accent">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-4 py-2 text-sm">
+          <Badge icone={ShieldCheck}>Modo assistência</Badge>
           <span className="text-muted-foreground">
             Você está no ambiente de{" "}
             <span className="font-medium text-foreground">{nome}</span>. As
@@ -40,13 +39,16 @@ export function AssistBanner({ aluno }: { aluno: Aluno | null }) {
         </div>
       </div>
 
-      {/* Etiqueta fixa no canto */}
-      <div className="previa-oculta fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg">
+      {/* Etiqueta fixa no canto. `z-30` (era 50): abaixo de diálogo e toast,
+          senão a pílula cobria o que o admin acabou de abrir. */}
+      <div className="previa-oculta fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-(--shadow-hover)">
         <ShieldCheck className="size-3.5" />
         <span className="max-w-[40vw] truncate">Assistindo: {nome}</span>
         <Link
           href="/admin"
-          className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary-foreground/20 px-2 py-0.5 hover:bg-primary-foreground/30"
+          // Branco sobre `primary-foreground/20` (laranja clareado) dava 2,47:1.
+          // Fundo branco sólido com o texto no laranja escuro: 5,75:1.
+          className="foco-visivel ml-1 inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 font-semibold text-accent-foreground hover:bg-white/90"
         >
           <ArrowLeft className="size-3" /> Sair
         </Link>

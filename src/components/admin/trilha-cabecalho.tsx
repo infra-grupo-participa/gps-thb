@@ -27,7 +27,7 @@ export function TrilhaCabecalho({
             <LogIn className="size-4" />
           </div>
           <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="rotulo text-muted-foreground">
               Primeiro acesso
             </div>
             <div className="text-sm">
@@ -47,7 +47,7 @@ export function TrilhaCabecalho({
             <History className="size-4" />
           </div>
           <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="rotulo text-muted-foreground">
               Último acesso
             </div>
             <div className="text-sm">

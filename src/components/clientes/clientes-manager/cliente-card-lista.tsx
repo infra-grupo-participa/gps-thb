@@ -79,7 +79,11 @@ export function ClienteCardLista({
             className="h-8 flex-1 text-xs"
             aria-label={`Fase de ${c.nome || "cliente sem nome"}`}
           >
-            <SelectValue />
+            <SelectValue>
+              {(v: FaseCliente) =>
+                FASES_CLIENTE.find((f) => f.id === v)?.rotulo ?? v
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {FASES_CLIENTE.map((f) => (

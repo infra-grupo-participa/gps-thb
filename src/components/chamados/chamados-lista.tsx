@@ -4,8 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatarDataHora } from "@/lib/datas";
 import { rotuloStatus, type Chamado, type StatusChamado } from "@/lib/chamados-tipos";
-import { BADGE_ATENCAO } from "@/components/chamados/badges";
-import { cn } from "@/lib/utils";
 
 /** Só o "a bola é sua" ganha destaque. O resto é contorno ou cinza. */
 function ehSuaVez(status: StatusChamado, visao: "aluno" | "admin"): boolean {
@@ -57,8 +55,13 @@ export function ChamadosLista({
                 </Link>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <Badge
-                    variant={c.status === "fechado" ? "secondary" : "outline"}
-                    className={cn(ehSuaVez(c.status, visao) && BADGE_ATENCAO)}
+                    variant={
+                      c.status === "fechado"
+                        ? "success"
+                        : ehSuaVez(c.status, visao)
+                          ? "warning"
+                          : "neutral"
+                    }
                   >
                     {rotuloStatus(c.status, visao)}
                   </Badge>

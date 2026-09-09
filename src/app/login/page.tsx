@@ -27,9 +27,9 @@ export default async function LoginPage({
         </div>
       </div>
 
-      <Card>
+      <Card elevacao="raised" size="lg">
         <CardHeader>
-          <h1 className="text-lg font-semibold">Bem-vindo de volta</h1>
+          <h1 className="font-heading titulo-h2">Bem-vindo de volta</h1>
           <p className="text-sm text-muted-foreground">
             Acesse sua conta para continuar.
           </p>

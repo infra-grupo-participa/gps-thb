@@ -96,8 +96,7 @@ export function MateriaisView({
                   {etapaNomes[etapa] ?? ""}
                 </h2>
                 {!liberada ? (
-                  <Badge variant="outline" className="gap-1 text-[10px]">
-                    <Lock className="size-3" /> bloqueada
+                  <Badge variant="neutral" className="text-[10px]">bloqueada
                   </Badge>
                 ) : null}
               </div>

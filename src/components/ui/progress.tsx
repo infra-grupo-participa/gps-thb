@@ -29,7 +29,10 @@ function ProgressTrack({ className, ...props }: ProgressPrimitive.Track.Props) {
   return (
     <ProgressPrimitive.Track
       className={cn(
-        "relative flex h-1 w-full items-center overflow-x-hidden rounded-full bg-muted",
+        // h-2, não h-1: a barra de progresso da etapa liberada era um fio de
+        // 1 px que praticamente desaparecia da tela. Trilho na superfície
+        // afundada + inset ring, para a barra vazia ainda ler como trilho.
+        "relative flex h-2 w-full items-center overflow-x-hidden rounded-full bg-superficie-afundada inset-ring inset-ring-black/5",
         className
       )}
       data-slot="progress-track"
@@ -45,7 +48,10 @@ function ProgressIndicator({
   return (
     <ProgressPrimitive.Indicator
       data-slot="progress-indicator"
-      className={cn("h-full bg-primary transition-all", className)}
+      className={cn(
+        "h-full rounded-full bg-primary transition-[width] duration-300 ease-out",
+        className
+      )}
       {...props}
     />
   )

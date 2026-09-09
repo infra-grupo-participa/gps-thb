@@ -2,7 +2,15 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, UserRoundPlus, TriangleAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  AtSign,
+  GraduationCap,
+  MapPin,
+  TriangleAlert,
+  UserRound,
+  UserRoundPlus,
+} from "lucide-react";
 import {
   cadastrarAluno,
   listarTurmas,
@@ -19,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Secao } from "@/components/ui/secao";
 import {
   Select,
   SelectContent,
@@ -198,10 +207,7 @@ export function CadastrarAlunoForm({
         </div>
       ) : null}
 
-      <section className="grid gap-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Identificação
-        </h3>
+      <Secao nivel="h3" titulo="Identificação" icone={<UserRound />} classeConteudo="grid gap-3">
         <Campo
           id="na-nome"
           label="Nome completo *"
@@ -247,12 +253,9 @@ export function CadastrarAlunoForm({
             placeholder="Advogado(a)"
           />
         </div>
-      </section>
+      </Secao>
 
-      <section className="grid gap-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Programa
-        </h3>
+      <Secao nivel="h3" titulo="Programa" icone={<GraduationCap />} classeConteudo="grid gap-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
             <Label htmlFor="na-plano">Plano</Label>
@@ -290,12 +293,9 @@ export function CadastrarAlunoForm({
             </Select>
           </div>
         </div>
-      </section>
+      </Secao>
 
-      <section className="grid gap-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Endereço
-        </h3>
+      <Secao nivel="h3" titulo="Endereço" icone={<MapPin />} classeConteudo="grid gap-3">
         <div className="grid gap-3 sm:grid-cols-[1fr_2fr_auto]">
           <Campo
             id="na-cep"
@@ -348,12 +348,9 @@ export function CadastrarAlunoForm({
             onChange={setComplemento}
           />
         </div>
-      </section>
+      </Secao>
 
-      <section className="grid gap-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Presença digital
-        </h3>
+      <Secao nivel="h3" titulo="Presença digital" icone={<AtSign />} classeConteudo="grid gap-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo
             id="na-instagram"
@@ -377,7 +374,7 @@ export function CadastrarAlunoForm({
           onChange={setLinkFacebook}
           placeholder="https://facebook.com/..."
         />
-      </section>
+      </Secao>
 
       <Button type="submit" disabled={pending}>
         <UserRoundPlus className="size-4" />

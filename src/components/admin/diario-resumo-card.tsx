@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NotebookPen, AlertCircle } from "lucide-react";
+import { NotebookPen } from "lucide-react";
 import type { ResumoDiario } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,7 +39,7 @@ export function DiarioResumoCard({
           <NotebookPen className="size-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="rotulo text-muted-foreground">
             Diário do aluno
           </div>
           <div className="text-sm text-muted-foreground">
@@ -63,7 +63,7 @@ export function DiarioResumoCard({
       </div>
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="rotulo text-muted-foreground">
             Diário do aluno
           </span>
           <Badge variant="outline" className="text-[10px]">
@@ -82,8 +82,7 @@ export function DiarioResumoCard({
         </div>
       </div>
       {resumo.pendenciasAbertas > 0 ? (
-        <Badge variant="destructive" className="shrink-0 gap-1">
-          <AlertCircle className="size-3" />
+        <Badge variant="danger" className="shrink-0">
           {resumo.pendenciasAbertas}{" "}
           {resumo.pendenciasAbertas === 1 ? "pendência" : "pendências"}
         </Badge>

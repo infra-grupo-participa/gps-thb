@@ -2,7 +2,13 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Lock } from "lucide-react";
+import {
+  CalendarCheck,
+  ListChecks,
+  Lock,
+  TrendingDown,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import type {
   ClienteEtapa1,
@@ -17,7 +23,6 @@ import {
 } from "@/lib/etapa1";
 import { calcularEnfases } from "@/lib/enfase";
 import { brl } from "@/lib/moeda";
-import { cn } from "@/lib/utils";
 import {
   definirEnfaseTarefa,
   marcarTarefa,
@@ -28,7 +33,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
+import { KpiCard } from "@/components/ui/kpi-card";
 
 export function Etapa1Guide({
   alunoId,
@@ -114,35 +119,46 @@ export function Etapa1Guide({
   }
 
   return (
-    <div className="grid gap-6">
+    // `ritmo-secao`: o espaço entre seções vem de UMA variável
+    // (`--gap-secao`, 24 no celular / 32 no desktop), não de um `gap-6` por tela.
+    <div className="ritmo-secao">
       {/* Progresso */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          titulo="Progresso da etapa"
+        {/* Estes 4 números usavam um `MetricCard` PRÓPRIO, escrito neste
+            arquivo (sem ícone, rótulo em caixa alta), enquanto o `/admin`
+            usava o `KpiCard` do design system (com chip laranja). Eram dois
+            desenhos de cartão de número na mesma marca. Fica o do sistema. */}
+        <KpiCard
+          icone={<ListChecks />}
+          rotulo="Progresso da etapa"
           valor={`${progressoPct}%`}
-          detalhe={`${totalConcluidas} de ${TAREFAS_ETAPA1.length} tarefas`}
-        >
-          <Progress value={progressoPct} className="mt-2" />
-        </MetricCard>
+          meta={progressoPct}
+          hint={`${totalConcluidas} de ${TAREFAS_ETAPA1.length} tarefas`}
+        />
         {/* PL3 — a tarefa 1 exige nome + telefone + nível (`comDados`), e era
             `preenchidos` (só o nome) que aparecia aqui: o aluno lia "30/30" ao
             lado de um cadeado dizendo "faltam N clientes com nome, telefone e
             nível". Um número, uma verdade — o outro vira detalhe. */}
-        <MetricCard
-          titulo="Clientes com os dados"
+        <KpiCard
+          icone={<Users />}
+          rotulo="Clientes com os dados"
           valor={`${comDados}/${META_CLIENTES}`}
-          detalhe={`${preenchidos} listados · ${comDados} com nome, telefone e nível`}
+          meta={(comDados / META_CLIENTES) * 100}
+          hint={`${preenchidos} listados · ${comDados} com nome, telefone e nível`}
         />
-        <MetricCard
-          titulo="Reuniões agendadas"
+        <KpiCard
+          icone={<CalendarCheck />}
+          rotulo="Reuniões agendadas"
           valor={`${agendados}/${META_REUNIOES}`}
-          detalhe="meta de 15 reuniões"
+          meta={(agendados / META_REUNIOES) * 100}
+          hint="meta de 15 reuniões"
           destaque={agendados >= META_REUNIOES}
         />
-        <MetricCard
-          titulo="Perda pela inércia (total)"
+        <KpiCard
+          icone={<TrendingDown />}
+          rotulo="Perda pela inércia (total)"
           valor={brl(perdaTotal)}
-          detalhe="soma dos seus clientes"
+          hint="soma dos seus clientes"
         />
       </div>
 
@@ -159,7 +175,13 @@ export function Etapa1Guide({
               contato e guarda os documentos de cada cliente.
             </p>
           </div>
-          <Link href={clientesHref} className={buttonVariants()}>
+          {/* Era o ÚNICO botão laranja sólido da tela, acima do passo a
+              passo: a CTA mais forte da Etapa 01 mandava o aluno EMBORA dela.
+              O laranja cheio volta a ser do passo atual. */}
+          <Link
+            href={clientesHref}
+            className={buttonVariants({ variant: "outline" })}
+          >
             Ir para Clientes
           </Link>
         </CardContent>
@@ -263,37 +285,3 @@ export function Etapa1Guide({
   );
 }
 
-function MetricCard({
-  titulo,
-  valor,
-  detalhe,
-  destaque,
-  children,
-}: {
-  titulo: string;
-  valor: string;
-  detalhe: string;
-  destaque?: boolean;
-  children?: React.ReactNode;
-}) {
-  return (
-    <Card>
-      <CardContent>
-        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {titulo}
-        </div>
-        <div
-          className={cn(
-            "mt-1 text-2xl font-semibold",
-            // Mesmo motivo do `KpiCard`: `text-primary` no branco é 2,97:1.
-            destaque && "text-accent-foreground",
-          )}
-        >
-          {valor}
-        </div>
-        <div className="text-xs text-muted-foreground">{detalhe}</div>
-        {children}
-      </CardContent>
-    </Card>
-  );
-}

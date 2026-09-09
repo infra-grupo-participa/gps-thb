@@ -192,7 +192,7 @@ export function ClienteFicha({
             href={wpp}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-green-600/30 bg-green-600/10 px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-600/20"
+            className="foco-visivel inline-flex items-center gap-1.5 rounded-md border border-sucesso-foreground/25 bg-sucesso px-3 py-1.5 text-sm font-medium text-sucesso-foreground transition hover:brightness-97"
           >
             <MessageCircle className="size-4" /> WhatsApp
           </a>
@@ -237,7 +237,11 @@ export function ClienteFicha({
               <Label htmlFor="f-nivel">Nível de relacionamento</Label>
               <Select value={nivel} onValueChange={(v) => setNivel(v ?? "")}>
                 <SelectTrigger id="f-nivel">
-                  <SelectValue placeholder="Selecione" />
+                  <SelectValue placeholder="Selecione">
+                    {(v: string) =>
+                      NIVEIS_RELACIONAMENTO.find((n) => n.id === v)?.rotulo ?? v
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {NIVEIS_RELACIONAMENTO.map((n) => (
@@ -292,7 +296,13 @@ export function ClienteFicha({
                 onValueChange={(v) => setFase((v as FaseCliente) || "prospeccao")}
               >
                 <SelectTrigger id="f-fase" aria-describedby="f-fase-ajuda">
-                  <SelectValue />
+                  {/* Sem função de render o Base UI imprime o VALOR do
+                      banco: a ficha mostrava `quente`, `contratado` e `D`. */}
+                  <SelectValue>
+                    {(v: FaseCliente) =>
+                      FASES_CLIENTE.find((f) => f.id === v)?.rotulo ?? v
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {FASES_CLIENTE.map((f) => (
@@ -472,7 +482,11 @@ export function ClienteFicha({
               <Label htmlFor="f-disc">Perfil DISC</Label>
               <Select value={disc} onValueChange={(v) => setDisc(v ?? "")}>
                 <SelectTrigger id="f-disc">
-                  <SelectValue placeholder="—" />
+                  <SelectValue placeholder="—">
+                    {(v: string) =>
+                      PERFIS_DISC.find((d) => d.id === v)?.rotulo ?? v
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {PERFIS_DISC.map((d) => (

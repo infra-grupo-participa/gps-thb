@@ -10,6 +10,7 @@
  */
 
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import { formatarDataSoDia } from "@/lib/datas";
@@ -54,8 +55,10 @@ export function ClientesTabela({
   setExcluindo: (c: ClienteEtapa1) => void;
 }) {
   return (
-    <div className="hidden overflow-x-auto sm:block">
-    <Table>
+    // `-mx-*`/`px-*`: a rolagem lateral vai até a borda do card, senão a
+    // última coluna some atrás do padding em vez de rolar.
+    <div className="scrollbar-none -mx-(--card-spacing) hidden overflow-x-auto px-(--card-spacing) sm:block">
+    <Table className="min-w-[54rem]">
       <TableHeader>
         <TableRow>
           <TableHead className="w-8"></TableHead>
@@ -73,7 +76,11 @@ export function ClientesTabela({
           return (
             <TableRow
               key={c.id}
-              className={c.acompanhado_equipe ? "bg-primary/5" : ""}
+              className={
+                c.acompanhado_equipe
+                  ? "bg-accent/40 hover:bg-accent/60"
+                  : "hover:bg-muted/60"
+              }
             >
               <TableCell>
                 <StarButton
@@ -114,7 +121,15 @@ export function ClientesTabela({
                     className="h-7 w-[140px] text-xs"
                     aria-label={`Fase de ${c.nome || "cliente sem nome"}`}
                   >
-                    <SelectValue />
+                    {/* Função de render obrigatória: sem ela o Base UI imprime o VALOR
+                        do banco, não o rótulo — a coluna mostrava
+                        `prospeccao`/`fechamento`/`contratado`, minúsculo e sem
+                        acento, na cara do aluno. */}
+                    <SelectValue>
+                      {(v: FaseCliente) =>
+                        FASES_CLIENTE.find((f) => f.id === v)?.rotulo ?? v
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {FASES_CLIENTE.map((f) => (
@@ -139,21 +154,27 @@ export function ClientesTabela({
                   >
                     Abrir ficha
                   </Link>
-                  {/* PL9 — separador + margem: o destrutivo estava
-                      encostado em "Abrir ficha" e o erro de mira
-                      apagava a linha inteira. */}
+                  {/* "Excluir" aparecia escrito, em cor de destaque, OITO
+                      vezes — a ação destrutiva estava mais visível que a ação
+                      principal, e as ~72 px por linha eram o que empurrava a
+                      coluna "Ações" para fora da tela em 1366 px. Vira ícone
+                      com `aria-label` (o nome do cliente vai no rótulo, então
+                      o leitor de tela ganha em precisão) e só ganha o vermelho
+                      na intenção — `ghost-danger`.
+                      PL9 — separador + margem: o destrutivo estava encostado
+                      em "Abrir ficha" e o erro de mira apagava a linha. */}
                   <Button
-                    variant="ghost"
-                    size="sm"
+                    variant="ghost-danger"
+                    size="icon-sm"
                     aria-label={`Excluir ${c.nome || "cliente sem nome"}`}
-                    className="ml-3 border-l pl-3 text-destructive hover:text-destructive"
+                    className="ml-2 disabled:opacity-40"
                     onClick={() => {
                       setErroDialogo(null);
                       setExcluindo(c);
                     }}
                     disabled={pending}
                   >
-                    Excluir
+                    <Trash2 aria-hidden />
                   </Button>
                 </div>
               </TableCell>

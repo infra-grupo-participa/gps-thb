@@ -1,3 +1,4 @@
+import { Map } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
@@ -19,6 +20,7 @@ import { calcularMetricasEtapa1, resumoHonorarios } from "@/lib/etapa1";
 import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
+import { Secao } from "@/components/ui/secao";
 import { EtapasOverview } from "@/components/etapas-overview";
 import { FavoritoDestaque } from "@/components/etapa/favorito-destaque";
 import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
@@ -184,12 +186,9 @@ export default async function HomePage() {
               <FavoritoDestaque cliente={favorito} basePath="" />
             ) : null}
 
-            <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Seu caminho
-              </h2>
+            <Secao titulo="Seu caminho" icone={<Map />}>
               <EtapasOverview etapas={etapas} basePath="" pctPorEtapa={pcts} dense />
-            </section>
+            </Secao>
           </div>
 
           <aside className="lg:col-span-1">

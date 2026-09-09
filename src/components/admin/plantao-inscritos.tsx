@@ -58,8 +58,7 @@ export function PlantaoInscritos({ inscritos }: { inscritos: InscritoAdmin[] }) 
             </TableCell>
             <TableCell>
               {i.presencaEm ? (
-                <Badge variant="secondary" className="gap-1">
-                  <CheckCircle2Icon className="size-3" /> Presente
+                <Badge variant="success" icone={CheckCircle2Icon}>Presente
                 </Badge>
               ) : (
                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">

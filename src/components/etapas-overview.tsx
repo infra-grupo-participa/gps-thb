@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Lock, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { Etapa } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -68,10 +68,12 @@ export function EtapasOverview({
                   {etapa.ordem}
                 </IconeChip>
                 {liberada ? (
-                  <Badge variant="secondary">Disponível</Badge>
+                  // Era `secondary` — o MESMO cinza de "sem login" e de "2 pessoas".
+                  // A etapa liberada é a única coisa acionável de um muro de 6
+                  // cards; agora ela se acha em um segundo.
+                  <Badge variant="success">Disponível</Badge>
                 ) : (
-                  <Badge variant="outline" className="gap-1">
-                    <Lock className="size-3" /> Em breve
+                  <Badge variant="neutral">Em breve
                   </Badge>
                 )}
               </div>

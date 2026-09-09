@@ -62,8 +62,7 @@ export function EtapasControle({ etapasIniciais }: { etapasIniciais: Etapa[] }) 
                     Liberada
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="mt-0.5 gap-1 text-[10px]">
-                    <Lock className="size-3" /> Bloqueada
+                  <Badge variant="neutral" className="mt-0.5 text-[10px]">Bloqueada
                   </Badge>
                 )}
               </div>

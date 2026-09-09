@@ -14,14 +14,17 @@ export function ConfirmacaoEquipe({
   etapa1Href: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+    // Verde do TOKEN semântico, não `emerald-*` cru: esta tela mostrava três
+    // linguagens de cor ao mesmo tempo (banner emerald, barra laranja de meta,
+    // chips de filtro) e nenhuma vinha do mesmo lugar.
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sucesso-foreground/25 bg-sucesso px-4 py-3">
       <div className="flex items-start gap-3">
-        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-sucesso-foreground" />
         <div>
-          <div className="text-sm font-semibold text-emerald-800">
+          <div className="corpo font-semibold text-sucesso-foreground">
             A equipe vai acompanhar {cliente.nome || "este cliente"}
           </div>
-          <p className="text-xs text-emerald-700/80">
+          <p className="corpo-sm text-sucesso-foreground">
             Cliente confirmado para o apoio da equipe. Os próximos passos da
             Etapa 01 (do passo 4 em diante) estão liberados.
           </p>
@@ -29,7 +32,10 @@ export function ConfirmacaoEquipe({
       </div>
       <Link
         href={etapa1Href}
-        className={buttonVariants({ size: "sm" }) + " shrink-0"}
+        // `outline`, não sólido: o laranja cheio é reservado a UMA ação por
+        // tela e nesta o primário é "Adicionar" cliente. Dois botões laranja
+        // lado a lado não dizem qual é a ação da página.
+        className={buttonVariants({ variant: "outline", size: "sm" }) + " shrink-0 bg-card"}
       >
         Continuar na Etapa 01 <ArrowRight className="size-4" />
       </Link>

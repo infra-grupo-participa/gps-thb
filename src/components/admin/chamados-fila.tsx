@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatarDataHora } from "@/lib/datas";
 import { rotuloStatus, type ChamadoNaFila } from "@/lib/chamados-tipos";
-import { BADGE_ATENCAO } from "@/components/chamados/badges";
 import { cn } from "@/lib/utils";
 
 /**
@@ -109,8 +108,7 @@ export function ChamadosFila({
                     </p>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <Badge
-                        variant="outline"
-                        className={cn(c.status === "aberto" && BADGE_ATENCAO)}
+                        variant={c.status === "aberto" ? "warning" : "neutral"}
                       >
                         {rotuloStatus(c.status, "admin")}
                       </Badge>

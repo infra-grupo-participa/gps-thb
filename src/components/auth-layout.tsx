@@ -1,6 +1,7 @@
 import { Map, Users, FolderOpen, BookOpen } from "lucide-react";
 import { ThbLogo } from "@/components/thb-logo";
 import { IconeChip } from "@/components/ui/kpi-card";
+import { PadraoTrilha } from "@/components/ui/padrao-trilha";
 
 const DESTAQUES = [
   { Icon: Map, texto: "Roteiro guiado das 6 etapas da holding" },
@@ -12,23 +13,20 @@ const DESTAQUES = [
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-2">
-      {/* Painel de marca (desktop) */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-primary to-orange-700 p-10 text-primary-foreground lg:flex">
-        <div
-          aria-hidden
-          className="absolute -right-24 -top-24 size-72 rounded-full bg-white/10 blur-2xl"
-        />
-        <div
-          aria-hidden
-          className="absolute -bottom-20 -left-16 size-64 rounded-full bg-black/10 blur-2xl"
-        />
+      {/* Painel de marca (desktop).
+          Era gradiente laranja + dois blobs com `blur-2xl` — três dos clichês
+          que aparecem igual em qualquer template e não dizem nada do produto.
+          Agora é laranja SÓLIDO da marca com o padrão de trilha por cima: a
+          decoração passou a ser o que o produto é (um roteiro com marcos). */}
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-marca-solida p-12 text-white lg:flex">
+        <PadraoTrilha opacidade={0.18} />
 
         <div className="relative flex items-center gap-3">
-          {/* Anel branco: o selo é laranja e sumiria no gradiente do painel. */}
+          {/* Anel branco: o selo é laranja e sumiria no painel da mesma cor. */}
           <ThbLogo size="sm" className="size-11 ring-2 ring-white/80" />
           <div className="leading-tight">
-            <div className="font-semibold">Time Holding Brasil</div>
-            <div className="text-sm text-primary-foreground/80">
+            <div className="font-heading font-semibold">Time Holding Brasil</div>
+            <div className="text-sm text-white/85">
               Implementação Assistida
             </div>
           </div>
@@ -38,15 +36,15 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
           {/* Texto de marca, não título do documento: o `h1` da página é o
               título do cartão de formulário (A11Y2). Era um `h2` sem `h1`
               acima dele no desktop — hierarquia quebrada. */}
-          <p className="max-w-sm font-heading text-3xl font-semibold leading-tight">
+          <p className="max-w-[22ch] titulo-xl text-balance">
             Sua 1ª holding, do primeiro contato à entrega.
           </p>
-          <ul className="mt-8 grid gap-3">
+          <ul className="mt-10 grid gap-3.5">
             {DESTAQUES.map(({ Icon, texto }) => (
-              <li key={texto} className="flex items-center gap-3 text-sm">
-                {/* Mesmo chip do resto do sistema (VIS2); aqui sobre o
-                    gradiente, então a cor vem do override, não do token. */}
-                <IconeChip className="size-8 bg-white/15 text-primary-foreground">
+              <li key={texto} className="flex items-center gap-3 corpo">
+                {/* Mesmo chip do resto do sistema (VIS2); aqui sobre o laranja
+                    sólido, então a cor vem do override, não do token. */}
+                <IconeChip className="bg-black/15 text-white">
                   <Icon />
                 </IconeChip>
                 {texto}
@@ -55,7 +53,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
           </ul>
         </div>
 
-        <div className="relative text-xs text-primary-foreground/70">
+        <div className="relative corpo-sm text-white/85">
           Programa de Implementação Assistida
         </div>
       </div>

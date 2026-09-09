@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, Sparkles, EyeOff, RotateCcw, Lock } from "lucide-react";
+import { ArrowUpRight, Sparkles, EyeOff, RotateCcw } from "lucide-react";
 import type { TarefaDef } from "@/lib/etapa1";
 import type { Enfase } from "@/lib/enfase";
 import type { ModoEnfase } from "@/lib/types";
@@ -53,7 +53,11 @@ export function TarefaItem({
       (enfase === "realce"
         ? "bg-primary/5 ring-1 ring-primary/30"
         : enfase === "esmaecer"
-          ? "opacity-45 hover:opacity-100 hover:bg-muted/50"
+          // Era `opacity-45`, que derrubava o contraste do título e da
+          // descrição das tarefas 4 a 8 para um cinza quase ilegível. VIS3
+          // vale para "futura" também: o estado se diz por cor de TEXTO
+          // (`muted-foreground`, 5,42:1 — AA), não por opacidade no bloco.
+          ? "text-muted-foreground [&_*]:text-muted-foreground hover:bg-muted/50 hover:text-foreground hover:[&_*]:text-inherit"
           : "hover:bg-muted/50");
 
   return (
@@ -78,8 +82,7 @@ export function TarefaItem({
             // `secondary` (fundo cinza sólido) em vez de `outline`: sem a
             // opacidade do container, o chip precisa se sustentar sozinho — e
             // texto cinza sobre borda fina lia pior que o próprio título.
-            <Badge variant="secondary" className="gap-1 text-[10px]">
-              <Lock className="size-3" aria-hidden />{" "}
+            <Badge variant="neutral" className="text-[10px]">
               {motivoBloqueio ?? "Após escolher o cliente da equipe"}
             </Badge>
           ) : null}
@@ -89,8 +92,7 @@ export function TarefaItem({
             </Badge>
           ) : null}
           {enfase === "realce" && !concluida && !bloqueada ? (
-            <Badge className="gap-1 text-[10px]">
-              <Sparkles className="size-3" /> Foco agora
+            <Badge icone={Sparkles} className="text-[10px]">Foco agora
             </Badge>
           ) : null}
         </div>
@@ -148,7 +150,7 @@ export function TarefaItem({
           // Revela no hover E no foco: `group-hover` sozinho deixava os
           // controles de ênfase quase invisíveis para quem navega por Tab.
           <div className="previa-oculta mt-2 flex items-center gap-1 opacity-70 transition group-hover:opacity-100 focus-within:opacity-100">
-            <span className="mr-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <span className="mr-1 text-[10px] font-semibold text-muted-foreground">
               Destaque:
             </span>
             <EnfaseBtn

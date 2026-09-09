@@ -80,8 +80,7 @@ export function CardSlot({
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             {cancelado ? (
-              <Badge variant="destructive" className="gap-1">
-                <CalendarOffIcon className="size-3" /> Cancelado
+              <Badge variant="danger" icone={CalendarOffIcon}>Cancelado
               </Badge>
             ) : (
               <Badge variant={slot.publicado ? "default" : "secondary"}>
@@ -89,8 +88,7 @@ export function CardSlot({
               </Badge>
             )}
             {!slot.zoomUrl && !cancelado ? (
-              <Badge variant="destructive" className="gap-1">
-                <VideoOffIcon className="size-3" /> Sem link do Zoom
+              <Badge variant="danger" icone={VideoOffIcon}>Sem link do Zoom
               </Badge>
             ) : null}
             <button

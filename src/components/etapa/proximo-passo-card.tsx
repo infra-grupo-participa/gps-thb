@@ -44,7 +44,7 @@ export function ProximoPassoCard({
           <Lock className="size-5" />
         </div>
         <div className="min-w-40 flex-1">
-          <div className="text-xs font-semibold uppercase tracking-wide text-accent-foreground">
+          <div className="rotulo text-accent-foreground">
             Destrave o próximo passo
           </div>
           <div className="font-medium">{bloqueio}</div>
@@ -76,7 +76,7 @@ export function ProximoPassoCard({
         <PlayCircle className="size-6" />
       </div>
       <div className="min-w-40 flex-1">
-        <div className="text-xs font-semibold uppercase tracking-wide text-accent-foreground">
+        <div className="rotulo text-accent-foreground">
           Continue de onde parou
         </div>
         <div className="truncate font-medium">

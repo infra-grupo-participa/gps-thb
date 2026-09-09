@@ -27,7 +27,7 @@ export function FavoritoDestaque({
               <Star className="size-5 fill-primary" />
             </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-accent-foreground">
+              <div className="rotulo text-accent-foreground">
                 Cliente acompanhado pela equipe
               </div>
               <div className="text-lg font-semibold">
@@ -53,7 +53,7 @@ export function FavoritoDestaque({
                         target="_blank"
                         rel="noopener noreferrer"
                         title="Abrir no WhatsApp"
-                        className="text-green-600 hover:text-green-700"
+                        className="foco-visivel rounded-sm text-sucesso-foreground hover:opacity-80"
                       >
                         <MessageCircle className="size-4" />
                       </a>

@@ -1,8 +1,17 @@
 "use client";
 
-/** Uma linha da lista no CELULAR (a tabela só aparece a partir de `sm`). */
+/**
+ * Uma linha da lista no CELULAR (a tabela só aparece a partir de `sm`).
+ *
+ * 🎨 Onda B (B8/B.10): item de lista no padrão único do portal — identidade à
+ * esquerda, métrica à direita, ação destrutiva FORA da linha de leitura. Antes
+ * "Excluir" vinha escrito, em vermelho, com o mesmo peso de "Ficha": a ação
+ * que apaga nome, telefone, perda pela inércia e contrato era a mais visível
+ * do card.
+ */
 
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import { formatarDataSoDia } from "@/lib/datas";
@@ -17,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { MarcaRecusou, StarButton, WhatsappLink } from "./clientes-chips";
 
 export function ClienteCardLista({
@@ -37,29 +47,32 @@ export function ClienteCardLista({
   const wpp = linkWhatsapp(c.telefone);
   return (
     <div
-      className={
-        "rounded-lg border p-3 " + (c.acompanhado_equipe ? "border-primary bg-primary/5" : "")
-      }
+      className={cn(
+        "rounded-xl border bg-card p-3",
+        // O cliente da equipe se diz por forma + cor de marca, não por
+        // opacidade nem por um ícone de 16 px sozinho.
+        c.acompanhado_equipe && "border-primary/50 bg-accent/50",
+      )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2">
           <StarButton ativo={c.acompanhado_equipe} onClick={() => onEquipe(c)} />
           <Link
             href={fichaHref(c.id)}
-            className="truncate font-medium hover:text-accent-foreground hover:underline"
+            className="foco-visivel rounded-sm font-medium text-balance hover:text-accent-foreground hover:underline"
           >
             {c.nome || "Sem nome"}
           </Link>
           <MarcaRecusou cliente={c} />
         </div>
         {c.perda_inercia != null ? (
-          <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+          <span className="numero shrink-0 text-sm font-semibold text-muted-foreground">
             {brl(c.perda_inercia)}
           </span>
         ) : null}
       </div>
 
-      <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="mt-2 flex items-center gap-2 corpo-sm text-muted-foreground">
         {c.telefone ? mascaraTelefone(c.telefone) : "sem telefone"}
         {wpp ? <WhatsappLink href={wpp} /> : null}
         {c.data_reuniao_preliminar ? (
@@ -99,15 +112,18 @@ export function ClienteCardLista({
         >
           Ficha
         </Link>
+        {/* Ícone, não texto: o vermelho só aparece na intenção (`ghost-danger`)
+            e o nome do cliente vai no `aria-label`, então o leitor de tela
+            ganha precisão em vez de ouvir "Excluir" oito vezes seguidas. */}
         <Button
-          variant="ghost"
-          size="sm"
+          variant="ghost-danger"
+          size="icon-sm"
           aria-label={`Excluir ${c.nome || "cliente sem nome"}`}
-          className="ml-2 border-l pl-3 text-destructive hover:text-destructive"
+          className="ml-1 disabled:opacity-40"
           onClick={() => onExcluir(c)}
           disabled={pending}
         >
-          Excluir
+          <Trash2 aria-hidden />
         </Button>
       </div>
     </div>

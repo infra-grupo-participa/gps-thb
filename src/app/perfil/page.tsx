@@ -34,7 +34,7 @@ export default async function PerfilPage() {
         papelRotulo="Aluno"
         navItems={navDoAluno(ctx)}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Meu perfil"
           voltar={

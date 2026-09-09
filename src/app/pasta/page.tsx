@@ -27,7 +27,7 @@ export default async function PastaPage() {
         papelRotulo="Aluno"
         navItems={navDoAluno(ctx)}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         {/* UX6 — o cabeçalho afirmava "todos os documentos… organizados no
             Drive" mesmo para quem ainda não tem pasta nenhuma. A descrição
             passa a depender do estado real do ambiente. */}

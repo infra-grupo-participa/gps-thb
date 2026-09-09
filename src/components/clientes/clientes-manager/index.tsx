@@ -27,7 +27,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { LayoutGrid, List as ListIcon } from "lucide-react";
+import { LayoutGrid, List as ListIcon, Users } from "lucide-react";
 import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
 import { META_CLIENTES, resumoHonorarios } from "@/lib/etapa1";
 import {
@@ -37,7 +37,8 @@ import {
   removerCliente,
 } from "@/app/clientes/actions";
 import { MetaHonorarios } from "@/components/etapa1/meta-honorarios";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Secao } from "@/components/ui/secao";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -213,41 +214,44 @@ export function ClientesManager({
       ) : null}
       <Card>
       <CardHeader className="gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <CardTitle className="text-base">Meus clientes</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {preenchidos} de {META_CLIENTES} preenchidos · gerencie o contato e
-              os documentos.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-md border p-0.5">
-              <ViewButton
-                ativo={view === "lista"}
-                onClick={() => setView("lista")}
-              >
-                <ListIcon className="size-4" /> Lista
-              </ViewButton>
-              <ViewButton
-                ativo={view === "quadro"}
-                onClick={() => setView("quadro")}
-              >
-                <LayoutGrid className="size-4" /> Quadro
-              </ViewButton>
+        {/* `Secao` no lugar do par CardTitle + parágrafo: a mesma cabeça de
+            "Seu caminho" e "Passo a passo", com a régua amarrando o título ao
+            conteúdo. Sem `numero` — "Meus clientes" não é passo de sequência
+            nenhuma, e numeração decorativa é o clichê que o componente existe
+            para não reintroduzir. */}
+        <Secao
+          icone={<Users />}
+          titulo="Meus clientes"
+          descricao={`${preenchidos} de ${META_CLIENTES} preenchidos · gerencie o contato e os documentos.`}
+          acao={
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-lg border p-0.5">
+                <ViewButton
+                  ativo={view === "lista"}
+                  onClick={() => setView("lista")}
+                >
+                  <ListIcon className="size-4" /> Lista
+                </ViewButton>
+                <ViewButton
+                  ativo={view === "quadro"}
+                  onClick={() => setView("quadro")}
+                >
+                  <LayoutGrid className="size-4" /> Quadro
+                </ViewButton>
+              </div>
+              <Button onClick={addCliente} disabled={pending}>
+                Adicionar
+              </Button>
             </div>
-            <Button onClick={addCliente} disabled={pending}>
-              Adicionar
-            </Button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Meta de faturamento do ambiente (B8) — some da tela de ninguém:
             os três estados de `MetaHonorarios` cobrem "sem contratado",
             "contratado sem valor" e "com valor". */}
         <MetaHonorarios
           resumo={honorarios}
-          className="rounded-lg border bg-muted/30 p-3"
+          className="rounded-lg bg-superficie-afundada p-3"
         />
 
         <div className="flex flex-wrap items-center gap-3">
@@ -304,7 +308,7 @@ export function ClientesManager({
 
       <CardContent>
         {clientes.length === 0 ? (
-          <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed bg-superficie-afundada p-8 text-center text-sm text-muted-foreground">
             Nenhum cliente ainda. Clique em{" "}
             <span className="font-medium">Adicionar</span> para começar.
           </div>
@@ -316,7 +320,7 @@ export function ClientesManager({
             onToggleEquipe={toggleEquipe}
           />
         ) : listaOrdenada.length === 0 ? (
-          <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed bg-superficie-afundada p-8 text-center text-sm text-muted-foreground">
             Nenhum cliente encontrado com esse filtro/busca.
           </div>
         ) : (

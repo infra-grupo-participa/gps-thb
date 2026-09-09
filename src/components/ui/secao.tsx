@@ -47,7 +47,12 @@ export function Secao({
 
   return (
     <section className={cn(className)}>
-      <div className="flex items-center gap-3">
+      {/* `flex-wrap`: com uma `acao` larga (o par Lista/Quadro + "Adicionar"
+          da aba Clientes), a linha do cabeçalho não cabia em 390 px e, como o
+          `Card` é `overflow-hidden`, o excesso era CORTADO em vez de rolar —
+          e junto com ele a barra de meta e os chips de filtro, que herdavam a
+          largura da linha. Quebrando, a ação cai para a linha de baixo. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {marcador != null ? (
           <span
             aria-hidden
@@ -59,7 +64,7 @@ export function Secao({
         <Tag className="font-heading titulo-h2 text-foreground">{titulo}</Tag>
         {/* A régua. `min-w-0` + `flex-1` para ela encolher antes do título. */}
         <span aria-hidden className="h-px min-w-4 flex-1 bg-borda-fina" />
-        {acao ? <div className="shrink-0">{acao}</div> : null}
+        {acao ? <div className="ml-auto shrink-0">{acao}</div> : null}
       </div>
       {descricao ? (
         <p className="mt-1.5 max-w-[62ch] corpo-sm text-muted-foreground">

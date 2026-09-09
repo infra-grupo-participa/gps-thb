@@ -78,6 +78,19 @@
      (#B04300, o mesmo laranja escurecido do `accent-foreground`) dá
      **5,75:1**. Não substitui `--primary`: fill de ação continua sendo ele. */
   --color-marca-solida: #b04300;
+  /* Laranja de AÇÃO — o preenchimento do botão primário.
+     `--primary` (#FF6300) com branco dá **2,98:1** (medido no DOM, texto de
+     14 px): reprovava o WCAG 1.4.3 no botão mais clicado do portal. Este
+     (#C74600) com branco dá **4,88:1** e passa AA. Escolhido em vez do
+     `marca-solida` (#B04300, 5,75:1) de propósito: `marca-solida` é a
+     SUPERFÍCIE de marca (login, hero, badge), e se o botão usasse o mesmo tom
+     a ação primária deixaria de se distinguir do enfeite. Fica um degrau mais
+     claro que a superfície e um degrau mais escuro que a marca decorativa.
+     O HOVER é o passo seguinte da mesma escada: `marca-solida`.
+     ⚠️ `#FF6300` continua sendo a marca (ícone, chip, régua da aba ativa,
+     anel de foco) — só não pinta fundo com texto branco por cima.
+     Reversível em uma linha: trocar por `var(--primary)` volta ao de antes. */
+  --color-marca-acao: #c74600;
 
   --color-sucesso: #e8f5ec;
   --color-sucesso-foreground: #186a3b;
@@ -281,6 +294,16 @@
    esconde o que é exclusivo do admin. É puramente visual — a sessão continua
    sendo a do admin e as permissões não mudam. */
 html[data-previa="aluno"] .previa-oculta { display: none !important; }
+
+/* A pílula "Assistindo: …" (`admin/assist-banner.tsx`) é `fixed` no canto
+   inferior direito e COBRIA o conteúdo — na foto do diagnóstico ela estava por
+   cima do card da Etapa 06. Ela não ocupa espaço no fluxo, então a compensação
+   tem de vir de fora: enquanto a pílula existe na página, o `<main>` ganha
+   respiro no rodapé. Uma regra, em vez de um `pb-*` colado em cada uma das 8
+   páginas do modo assistência (que a nona esqueceria). */
+body:has([data-assistindo]) main {
+  padding-bottom: 4.5rem;
+}
 
 /* Barra de rolagem escondida no contêiner de abas do header (app-header.tsx):
    em 360 px as 7 abas do modo assistência rolam na horizontal, e a barra

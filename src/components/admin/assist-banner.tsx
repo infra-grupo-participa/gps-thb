@@ -40,8 +40,12 @@ export function AssistBanner({ aluno }: { aluno: Aluno | null }) {
       </div>
 
       {/* Etiqueta fixa no canto. `z-30` (era 50): abaixo de diálogo e toast,
-          senão a pílula cobria o que o admin acabou de abrir. */}
-      <div className="previa-oculta fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-(--shadow-hover)">
+          senão a pílula cobria o que o admin acabou de abrir.
+          `data-assistindo` é o gancho da regra do `globals.css` que dá
+          `padding-bottom` ao `<main>` — a pílula é `fixed`, não ocupa espaço no
+          fluxo e COBRIA o fim do conteúdo (na foto do diagnóstico, o card da
+          Etapa 06). Uma regra, em vez de um `pb-*` esquecido na página nova. */}
+      <div data-assistindo className="previa-oculta fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full bg-marca-solida px-3 py-1.5 text-xs font-medium text-white shadow-(--shadow-hover)">
         <ShieldCheck className="size-3.5" />
         <span className="max-w-[40vw] truncate">Assistindo: {nome}</span>
         <Link

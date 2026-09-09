@@ -4,6 +4,7 @@ import { getContextoSessao } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
 import {
   getEtapas,
+  getEtapasLiberadasPara,
   getAlunoById,
   getClientesEtapa1,
   getProgressoAluno,
@@ -15,7 +16,11 @@ import {
 } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
+import {
+  etapasComLiberacaoDoAluno,
+  pctPorEtapa,
+  proximoPasso,
+} from "@/lib/etapas";
 import { calcularMetricasEtapa1, resumoHonorarios } from "@/lib/etapa1";
 import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
@@ -102,7 +107,13 @@ export default async function HomePage() {
     membros,
     alunoSocio,
   ] = await Promise.all([
-    getEtapas(),
+    // Liberação POR ALUNO: `coalesce(override, global)`. O override
+    // (`gps.etapa_liberacao_aluno`) manda nos dois sentidos — libera quem está
+    // adiantado e trava quem precisa refazer. As duas leituras vão juntas para
+    // não virar `await` em série no caminho crítico da home.
+    Promise.all([getEtapas(), getEtapasLiberadasPara(alunoId)]).then(
+      ([todas, overrides]) => etapasComLiberacaoDoAluno(todas, overrides),
+    ),
     getAlunoById(alunoId),
     getClientesEtapa1(alunoId),
     getProgressoAluno(alunoId),
@@ -139,10 +150,24 @@ export default async function HomePage() {
   // zero query nova. A regra mora em `resumoHonorarios` para que a home, a aba
   // Clientes e o painel do admin mostrem o MESMO número.
   const honorarios = resumoHonorarios(clientes);
-  const valoresPct = Object.values(pcts);
+  // 🔑 Progresso geral = média das etapas LIBERADAS (decisão de produto de
+  // 09/09/2026), não das seis. Dividindo por 6, a Etapa 01 inteira — tudo o
+  // que o aluno TEM como fazer hoje — aparecia como 17%, e ele lia isso como
+  // "quase nada feito". A régua vai escrita na tela ("1 de 6 etapas"), e
+  // `pctPorEtapa` continua igual: o número POR etapa não mudou.
+  const liberadas = etapas.filter((e) => e.liberada);
+  const valoresPct = liberadas.map((e) => pcts[e.id] ?? 0);
   const progressoGeral = valoresPct.length
     ? Math.round(valoresPct.reduce((a, b) => a + b, 0) / valoresPct.length)
     : 0;
+
+  // A etapa que o hero anuncia é a do próximo passo; sem passo pendente (tudo
+  // em dia), é a liberada mais avançada. Nunca inventa etapa: sem nenhuma
+  // liberada, o hero fica só com a identidade.
+  const etapaDoHero =
+    (passo ? etapas.find((e) => e.id === passo.etapa) : null) ??
+    [...liberadas].sort((a, b) => b.ordem - a.ordem)[0] ??
+    null;
 
   return (
     <>
@@ -152,7 +177,8 @@ export default async function HomePage() {
         papelRotulo="Aluno"
         navItems={navDoAluno(ctx)}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      {/* `pb-16`: o conteúdo encostava no fim da viewport (B.3 do plano). */}
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Seu programa"
           descricao="Onde você está no Programa de Implementação Assistida — e o que fazer agora."
@@ -171,6 +197,16 @@ export default async function HomePage() {
           turma={turma}
           perfil={membro?.perfil ?? {}}
           editHref="/perfil"
+          programa={
+            etapaDoHero
+              ? {
+                  etapaOrdem: etapaDoHero.ordem,
+                  etapaNome: etapaDoHero.nome,
+                  pct: pcts[etapaDoHero.id] ?? 0,
+                  honorariosTotal: honorarios.total,
+                }
+              : undefined
+          }
         />
 
         {passo ? (
@@ -179,7 +215,12 @@ export default async function HomePage() {
           </div>
         ) : null}
 
-        {/* Conteúdo: jornada (principal) + resumo (apoio) lado a lado. */}
+        {/* Conteúdo: jornada (principal) + resumo (apoio) lado a lado.
+            🔑 No CELULAR o resumo sobe (`order-first`): a home mobile tinha
+            5.350 px e o painel com progresso, meta e números do aluno era a
+            ÚLTIMA coisa da página — ele rolava seis cards de etapa (≈900 px)
+            para chegar aos próprios números. `order-*` no grid, sem duplicar
+            DOM: um só `<aside>`, que no desktop volta para a direita. */}
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
             {favorito ? (
@@ -191,10 +232,12 @@ export default async function HomePage() {
             </Secao>
           </div>
 
-          <aside className="lg:col-span-1">
+          <aside className="order-first lg:order-none lg:col-span-1">
             <div className="lg:sticky lg:top-6">
               <HomeResumo
                 progressoGeral={progressoGeral}
+                etapasLiberadas={liberadas.length}
+                totalEtapas={etapas.length}
                 clientes={m1.preenchidos}
                 clientesComDados={m1.comDados}
                 agendados={m1.agendados}

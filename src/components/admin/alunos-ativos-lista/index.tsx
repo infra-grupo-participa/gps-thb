@@ -205,6 +205,10 @@ export function AlunosAtivosLista({
 
   return (
     <div className="grid gap-3">
+      {/* Duas fileiras, não uma sopa: em cima a BUSCA e a ORDEM (o que muda a
+          leitura da lista inteira); embaixo os FILTROS (o que tira gente da
+          lista). Antes eram seis caixas de seleção nuas espalhadas com a busca
+          e o select em duas linhas, e a barra parecia formulário. */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-[240px] flex-1">
           <Search
@@ -240,6 +244,9 @@ export function AlunosAtivosLista({
           </SelectContent>
         </Select>
 
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
         <FiltroCheckbox
           rotulo="Só com pendência"
           total={totalComPendencia}

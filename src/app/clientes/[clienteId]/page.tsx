@@ -32,7 +32,7 @@ export default async function ClienteFichaPage({
         papelRotulo="Aluno"
         navItems={navDoAluno(ctx)}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader
           titulo={cliente.nome || "Novo cliente"}
           voltar={

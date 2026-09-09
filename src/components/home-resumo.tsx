@@ -14,9 +14,17 @@ import { Separator } from "@/components/ui/separator";
  * As linhas vêm de `KpiLinha` (`ui/kpi-card`): o "chip de ícone" que existia
  * aqui era a 4ª cópia do mesmo bloco no projeto (VIS2). O `pt-6` que estava no
  * `CardContent` somava ao padding do `Card` e saiu (VIS1).
+ *
+ * 🎨 Onda B (B5): as três linhas viram grade — 2 colunas onde o card ocupa a
+ * largura da página (celular e tablet, depois da subida do painel para o topo)
+ * e 1 coluna na barra lateral do desktop, que tem 350 px. "Perda pela inércia"
+ * ficou empilhada: o maior número da tela saía em corpo pequeno, com o rótulo
+ * quebrado em duas linhas encostando nele.
  */
 export function HomeResumo({
   progressoGeral,
+  etapasLiberadas,
+  totalEtapas,
   clientes,
   clientesComDados,
   agendados,
@@ -24,6 +32,16 @@ export function HomeResumo({
   honorarios,
 }: {
   progressoGeral: number;
+  /**
+   * Quantas etapas estão liberadas para este aluno e quantas o programa tem.
+   *
+   * 🔑 A média é das etapas LIBERADAS (decisão de produto de 09/09/2026).
+   * Dividir por 6 fazia a Etapa 01 inteira aparecer como 17% — o aluno que
+   * terminou tudo o que podia fazer lia "quase nada feito". O rótulo diz a
+   * régua na cara: "Progresso nas etapas liberadas · 1 de 6".
+   */
+  etapasLiberadas: number;
+  totalEtapas: number;
   /** `preenchidos`: clientes com nome. É a lista, não o que a tarefa 1 cobra. */
   clientes: number;
   /**
@@ -41,18 +59,22 @@ export function HomeResumo({
   honorarios: ResumoHonorarios;
 }) {
   return (
-    <Card>
+    <Card elevacao="raised">
       <CardContent className="grid gap-4">
         <div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="flex items-center gap-1.5 font-medium">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+            <span className="flex items-center gap-1.5 text-sm font-medium">
               <TrendingUp className="size-4 text-primary" aria-hidden />
-              Progresso geral
+              Progresso nas etapas liberadas
             </span>
-            <span className="font-semibold text-accent-foreground">{progressoGeral}%</span>
+            <span className="numero text-xl font-semibold text-accent-foreground">
+              {progressoGeral}%
+            </span>
           </div>
           <Progress value={progressoGeral} className="mt-2" />
-          <p className="mt-1 text-xs text-muted-foreground">média das 6 etapas</p>
+          <p className="mt-1.5 corpo-sm text-muted-foreground">
+            {etapasLiberadas} de {totalEtapas} etapas
+          </p>
         </div>
 
         {/* Faturamento logo abaixo do progresso: são as duas leituras de
@@ -61,32 +83,36 @@ export function HomeResumo({
 
         <Separator />
 
-        <KpiLinha
-          icone={<Users />}
-          rotulo="Clientes"
-          valor={
-            clientesComDados == null
-              ? `${clientes}/30`
-              : `${clientesComDados}/30`
-          }
-          hint={
-            clientesComDados == null
-              ? "da sua lista"
-              : `${clientes} listados · ${clientesComDados} com nome, telefone e nível`
-          }
-        />
-        <KpiLinha
-          icone={<CalendarCheck />}
-          rotulo="Reuniões agendadas"
-          valor={`${agendados}/15`}
-          hint="meta de 15"
-        />
-        <KpiLinha
-          icone={<Coins />}
-          rotulo="Perda pela inércia"
-          valor={brl(perdaTotal)}
-          hint="soma dos clientes"
-        />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+          <KpiLinha
+            icone={<Users />}
+            rotulo="Clientes"
+            valor={
+              clientesComDados == null
+                ? `${clientes}/30`
+                : `${clientesComDados}/30`
+            }
+            hint={
+              clientesComDados == null
+                ? "da sua lista"
+                : `${clientes} listados · ${clientesComDados} com nome, telefone e nível`
+            }
+          />
+          <KpiLinha
+            icone={<CalendarCheck />}
+            rotulo="Reuniões agendadas"
+            valor={`${agendados}/15`}
+            hint="meta de 15"
+          />
+          <KpiLinha
+            icone={<Coins />}
+            rotulo="Perda pela inércia"
+            valor={brl(perdaTotal)}
+            hint="soma dos clientes"
+            empilhado
+            destaque
+          />
+        </div>
       </CardContent>
     </Card>
   );

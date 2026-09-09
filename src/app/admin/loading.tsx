@@ -7,7 +7,7 @@ export default function AdminLoading() {
   return (
     <>
       <HeaderSkeleton />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Painel do administrador"
           descricao="Gerencie os acessos e acompanhe os alunos em implementação assistida."

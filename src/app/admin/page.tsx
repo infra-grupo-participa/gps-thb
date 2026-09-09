@@ -111,15 +111,17 @@ export default async function AdminPage({
         homeHref="/admin"
         navItems={adminNavItems({ chamadosAbertos })}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Painel do administrador"
           descricao="Gerencie os acessos e acompanhe os alunos em implementação assistida."
           acao={<CriarAcesso />}
         />
 
-        {/* Resumo */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Resumo — 2x2 no celular (era 1x4: os quatro KPIs em coluna comiam
+            ~500 px antes de qualquer conteúdo). Os números são curtos, então
+            cabem em meia largura sem encolher a escala. */}
+        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
           <KpiCard
             icone={<Users className="size-4" />}
             rotulo="Alunos no programa"
@@ -156,7 +158,7 @@ export default async function AdminPage({
         </div>
 
         <Tabs defaultValue="ativos" className="gap-6">
-          <TabsList>
+          <TabsList variant="line">
             <TabsTrigger value="ativos">
               Alunos ativos
               <Badge variant="secondary" className="ml-1.5 text-[10px]">

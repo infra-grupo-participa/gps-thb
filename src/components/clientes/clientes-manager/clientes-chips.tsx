@@ -66,10 +66,10 @@ export function StarButton({
         ativo ? "Cliente acompanhado pela equipe" : "Marcar como cliente da equipe"
       }
       className={
-        "shrink-0 transition " +
+        "foco-visivel shrink-0 rounded-sm transition " +
         (ativo
           ? "text-accent-foreground"
-          : "text-muted-foreground/40 hover:text-muted-foreground")
+          : "text-muted-foreground/60 hover:text-muted-foreground")
       }
     >
       <Star className={"size-4 " + (ativo ? "fill-accent-foreground" : "")} />
@@ -90,10 +90,13 @@ export function ViewButton({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={ativo}
       className={
-        "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition " +
+        // `bg-primary` com texto branco dá 2,98:1 em 12 px e reprovava o
+        // WCAG 1.4.3. `marca-acao` (#C74600) com branco: 4,88:1, medido.
+        "foco-visivel inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition " +
         (ativo
-          ? "bg-primary text-primary-foreground"
+          ? "bg-marca-acao text-white"
           : "text-muted-foreground hover:text-foreground")
       }
     >
@@ -122,17 +125,19 @@ export function FiltroChip({
       title={titulo}
       aria-pressed={ativo}
       className={
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition " +
+        // Mesma correção de contraste do `ViewButton`: branco sobre #FF6300
+        // era 2,98:1 num chip de 12 px.
+        "foco-visivel inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition " +
         (ativo
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-background text-muted-foreground hover:bg-muted")
+          ? "border-marca-acao bg-marca-acao text-white"
+          : "border-borda-forte bg-card text-muted-foreground hover:bg-muted hover:text-foreground")
       }
     >
       {rotulo}
       <span
         className={
-          "rounded-full px-1.5 text-[10px] " +
-          (ativo ? "bg-black/25" : "bg-muted")
+          "numero rounded-full px-1.5 text-[10px] font-semibold " +
+          (ativo ? "bg-black/25 text-white" : "bg-superficie-afundada text-neutro-foreground")
         }
       >
         {qtd}

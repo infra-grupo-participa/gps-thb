@@ -35,6 +35,43 @@ export function parseFiltroFila(v: string | undefined): FiltroFila {
   return v === "aberto" || v === "respondido" ? v : "todos";
 }
 
+/** Iniciais do ambiente, para dar rosto a fila. */
+function iniciais(nome: string | null): string {
+  const partes = (nome ?? "").trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  return (partes[0][0] + (partes[1]?.[0] ?? "")).toUpperCase();
+}
+
+/**
+ * Ha quantos dias inteiros o chamado esta parado.
+ *
+ * 🔑 E o SINAL QUE ORDENA A FILA e nao aparecia nela: a lista vem do banco por
+ * `ultima_mensagem_em` crescente, e a tela mostrava "Última mensagem em
+ * 02/09/2026, 08:20". A data e o dado; "parado ha 7 dias" e a informacao — e
+ * sem ela a ordem da lista parecia arbitraria.
+ *
+ * Calculado no SERVIDOR (este e um Server Component, sem hidratacao): nao ha
+ * relogio de cliente para divergir. A data exata continua na tela, ao lado.
+ */
+/**
+ * Relógio da requisição, isolado do corpo do componente.
+ *
+ * Mesmo motivo (e mesmo padrão) de `desdeDaJanela` em
+ * `admin/aluno/[alunoId]/diario/page.tsx`: o linter do React Compiler
+ * (`react-hooks/purity`) reprova `Date.now()` chamado direto durante o render,
+ * inclusive em Server Component. Lido UMA vez por render, nunca por item — com
+ * uma leitura por chamado, dois da mesma hora poderiam sair como "há 6 dias" e
+ * "há 7 dias" na virada do dia.
+ */
+function agoraMs(): number {
+  return Date.now();
+}
+
+function diasParado(iso: string, agora: number): number {
+  const ms = agora - new Date(iso).getTime();
+  return Math.max(0, Math.floor(ms / 86_400_000));
+}
+
 export function ChamadosFila({
   chamados,
   filtro,
@@ -44,6 +81,7 @@ export function ChamadosFila({
 }) {
   const visiveis =
     filtro === "todos" ? chamados : chamados.filter((c) => c.status === filtro);
+  const agora = agoraMs();
 
   return (
     <div className="grid gap-4">
@@ -60,10 +98,12 @@ export function ChamadosFila({
               prefetch={false}
               aria-current={filtro === op.valor ? "true" : undefined}
               className={cn(
-                "rounded-full border px-3 py-1 text-xs font-medium transition",
+                // Mesma linguagem de chip da aba Clientes e do painel.
+                // `bg-marca-acao` (#C74600) com branco: 4,88:1, medido.
+                "foco-visivel rounded-full border px-3 py-1 text-xs font-medium transition",
                 filtro === op.valor
-                  ? "border-primary bg-primary/10 text-accent-foreground"
-                  : "border-border text-muted-foreground hover:bg-muted",
+                  ? "border-marca-acao bg-marca-acao text-white"
+                  : "border-borda-forte bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
               {op.rotulo} ({qtd})
@@ -87,47 +127,81 @@ export function ChamadosFila({
           }
         />
       ) : (
-        <ul className="grid gap-3">
-          {visiveis.map((c) => (
-            <li key={c.id}>
-              <Card className="transition hover:shadow-sm has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring/50">
-                <CardContent className="flex items-center gap-3 py-4">
-                  {/* Mesma razão da lista do aluno: em 360 px a pílula na
-                      mesma linha do assunto cortava o assunto. */}
-                  <div className="grid min-w-0 flex-1 gap-1.5">
-                    <Link
-                      href={`/admin/chamados/${c.id}`}
-                      prefetch={false}
-                      className="font-medium outline-none hover:underline"
+        <ul className="grid gap-2">
+          {visiveis.map((c) => {
+            const dias = diasParado(c.ultima_mensagem_em, agora);
+            // So vira chip quando ha espera de verdade: "parado ha 0 dias" nao
+            // e sinal, e ruido. A partir de 3 dias o tom sobe para risco — a
+            // escada de severidade que a fila nao tinha.
+            const espera =
+              dias >= 1
+                ? {
+                    texto: `parado há ${dias} ${dias === 1 ? "dia" : "dias"}`,
+                    variante:
+                      dias >= 3 ? ("danger" as const) : ("warning" as const),
+                  }
+                : null;
+            return (
+              <li key={c.id}>
+                <Card
+                  interativo
+                  className="[--card-spacing:--spacing(3)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring/50"
+                >
+                  <CardContent className="flex items-center gap-3">
+                    <span
+                      aria-hidden
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-superficie-afundada font-heading text-xs font-semibold text-neutro-foreground"
                     >
-                      {c.assunto}
-                    </Link>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {c.aluno_nome ?? "Ambiente sem nome"}
-                      {c.aluno_email ? ` · ${c.aluno_email}` : null}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <Badge
-                        variant={c.status === "aberto" ? "warning" : "neutral"}
-                      >
-                        {rotuloStatus(c.status, "admin")}
-                      </Badge>
-                      <p className="text-xs text-muted-foreground">
-                        Última mensagem em{" "}
-                        <time dateTime={c.ultima_mensagem_em}>
-                          {formatarDataHora(c.ultima_mensagem_em)}
-                        </time>
+                      {iniciais(c.aluno_nome)}
+                    </span>
+                    {/* Mesma razão da lista do aluno: em 360 px a pílula na
+                        mesma linha do assunto cortava o assunto. */}
+                    <div className="grid min-w-0 flex-1 gap-1">
+                      <h3 className="min-w-0">
+                        <Link
+                          href={`/admin/chamados/${c.id}`}
+                          prefetch={false}
+                          className="font-heading text-sm font-semibold outline-none hover:underline"
+                        >
+                          {c.assunto}
+                        </Link>
+                      </h3>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {c.aluno_nome ?? "Ambiente sem nome"}
+                        {c.aluno_email ? ` · ${c.aluno_email}` : null}
                       </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <Badge
+                          variant={c.status === "aberto" ? "warning" : "neutral"}
+                          className="text-[10px]"
+                        >
+                          {rotuloStatus(c.status, "admin")}
+                        </Badge>
+                        {espera ? (
+                          <Badge
+                            variant={espera.variante}
+                            icone={false}
+                            className="text-[10px]"
+                          >
+                            {espera.texto}
+                          </Badge>
+                        ) : null}
+                        <p className="text-xs text-muted-foreground">
+                          <time dateTime={c.ultima_mensagem_em}>
+                            {formatarDataHora(c.ultima_mensagem_em)}
+                          </time>
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <ChevronRight
-                    aria-hidden
-                    className="size-4 shrink-0 text-muted-foreground"
-                  />
-                </CardContent>
-              </Card>
-            </li>
-          ))}
+                    <ChevronRight
+                      aria-hidden
+                      className="size-4 shrink-0 text-muted-foreground"
+                    />
+                  </CardContent>
+                </Card>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

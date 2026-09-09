@@ -166,13 +166,42 @@ export function KpiLinha({
   valor,
   hint,
   destaque,
+  empilhado = false,
 }: {
   icone: React.ReactNode;
   rotulo: string;
   valor: string;
   hint?: string;
   destaque?: boolean;
+  /**
+   * Número EMBAIXO do rótulo, em `numero-lg`, em vez de à direita.
+   *
+   * Existe para o número longo numa coluna estreita: "Perda pela inércia"
+   * (R$ 2.955.000,00 — o maior número da home) dividia 350 px com o próprio
+   * rótulo, que quebrava em duas linhas e encostava no valor. Empilhado, o
+   * número ganha a largura inteira e o rótulo cabe em uma linha.
+   */
+  empilhado?: boolean;
 }) {
+  if (empilhado) {
+    return (
+      <div className="flex items-start gap-3">
+        <IconeChip>{icone}</IconeChip>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium">{rotulo}</div>
+          <div
+            className={cn("numero-lg mt-0.5", destaque && "text-accent-foreground")}
+          >
+            {valor}
+          </div>
+          {hint ? (
+            <div className="corpo-sm text-muted-foreground">{hint}</div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-3">
       <IconeChip>{icone}</IconeChip>

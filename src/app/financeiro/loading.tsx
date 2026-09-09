@@ -19,7 +19,7 @@ export default function FinanceiroLoading() {
   return (
     <>
       <HeaderSkeleton />
-      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Financeiro"
           descricao="Quanto você já faturou na mentoria e como está o pagamento do seu programa."

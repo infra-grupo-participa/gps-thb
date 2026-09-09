@@ -19,7 +19,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        // ⚠️ CONTRASTE — o preenchimento NÃO é `--primary`.
+        // `bg-primary` (#FF6300) com `text-primary-foreground` (branco) dá
+        // **2,98:1** no DOM, com texto de 14 px: reprovava o WCAG 1.4.3 no
+        // botão mais clicado do portal. `marca-acao` (#C74600) com branco dá
+        // **4,88:1** — medido, não estimado — e o hover cai para
+        // `marca-solida` (#B04300, **5,75:1**), um passo mais escuro da mesma
+        // escada. O laranja de marca (#FF6300) continua vivo onde é
+        // DECORATIVO: ícone, chip, régua da aba ativa, anel de foco.
+        // Reversível em uma linha (ver `--color-marca-acao` no globals.css).
+        default:
+          "bg-marca-acao text-primary-foreground hover:bg-marca-solida",
         // Laranja SÓLIDO é reservado a uma ação primária por tela. Toda
         // secundária sai em neutro (`outline`/`secondary`/`ghost`) — antes o
         // único botão sólido da Etapa 01 era o do banner "Ir para Clientes",

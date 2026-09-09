@@ -46,7 +46,7 @@ export function NotaRapida({
   return (
     <Dialog open={aberto} onOpenChange={setAberto}>
       <DialogTrigger
-        render={<Button type="button" variant="ghost" size="sm" />}
+        render={<Button type="button" variant="outline" size="sm" />}
         // O rótulo visível ("Nota rápida") se repete em todo card: sem o nome
         // no nome acessível, o leitor de tela lista 100 botões idênticos.
         aria-label={`Nota rápida no diário de ${nomeDoAluno}`}

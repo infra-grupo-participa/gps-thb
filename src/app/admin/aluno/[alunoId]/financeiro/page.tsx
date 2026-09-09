@@ -62,7 +62,7 @@ export default async function AdminAlunoFinanceiroPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader
           voltar={
             <Link

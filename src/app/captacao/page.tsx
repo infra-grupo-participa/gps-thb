@@ -23,7 +23,7 @@ export default async function CaptacaoPage() {
           continua sendo o corpo, agora só com o texto. Antes o `h1` morava
           dentro do card centralizado e o topo desta aba não batia com o de
           nenhuma outra. */}
-      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Portal de Captação"
           acao={<Badge variant="outline">Em breve</Badge>}

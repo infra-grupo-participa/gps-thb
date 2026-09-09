@@ -28,7 +28,7 @@ export default async function ClientesPage() {
         papelRotulo="Aluno"
         navItems={navDoAluno(ctx)}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Clientes"
           descricao="Cadastre e acompanhe seus clientes potenciais e o contato com eles."

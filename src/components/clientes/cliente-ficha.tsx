@@ -23,11 +23,16 @@ import {
   Calendar,
   User,
   ExternalLink,
+  IdCard,
+  ListChecks,
+  FileSignature,
+  NotebookPen,
 } from "lucide-react";
 import { atualizarCliente, definirClienteEquipe } from "@/app/clientes/actions";
 import { brlInteiro } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Secao } from "@/components/ui/secao";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,11 +95,41 @@ export function ClienteFicha({
   const [pending, startTransition] = useTransition();
 
   const wpp = linkWhatsapp(telefone);
+  const contratoLimpo = contratoUrl.trim();
   const faseAtual = FASES_CLIENTE.find((f) => f.id === fase);
+
+  /**
+   * Há edição pendente na tela?
+   *
+   * 🔑 A ficha tem 1.000 px de rolagem e o "Salvar" morava no fim dela, sem
+   * barra fixa e sem nenhum sinal de que algo tinha mudado: dava para digitar
+   * a perda pela inércia de um cliente, rolar para cima, trocar de aba e
+   * perder tudo em silêncio. A comparação é contra o `cliente` que veio do
+   * servidor — a mesma origem dos `useState` iniciais —, campo a campo e na
+   * MESMA normalização que `salvar()` envia (`trim`, `|| null`, máscara de
+   * telefone). Se divergir, a barra mente nos dois sentidos.
+   */
+  const alterado =
+    nome.trim() !== (cliente.nome ?? "").trim() ||
+    (telefone.trim() || null) !==
+      (cliente.telefone ? mascaraTelefone(cliente.telefone) : null) ||
+    (nivel || null) !== (cliente.nivel_relacionamento ?? null) ||
+    problemas.length !== (cliente.problemas ?? []).length ||
+    problemas.some((p) => !(cliente.problemas ?? []).includes(p)) ||
+    perda !== numeroParaMoeda(cliente.perda_inercia) ||
+    fase !== (cliente.fase ?? "prospeccao") ||
+    (dataReuniao || null) !== (cliente.data_reuniao_preliminar ?? null) ||
+    (disc || null) !== (cliente.perfil_disc ?? null) ||
+    aderiu !== cliente.aderiu_reuniao ||
+    msgPadrao !== cliente.mensagem_padrao_enviada ||
+    estudoCaso !== cliente.estudo_caso_enviado ||
+    ligacao !== cliente.ligacao_realizada ||
+    (registro.trim() || null) !== (cliente.registro_contato ?? null) ||
+    honorarios !== numeroParaMoeda(cliente.valor_honorarios) ||
+    (contratoLimpo || null) !== (cliente.contrato_url ?? null);
 
   const contratado = fase === "contratado";
   const honorariosValor = moedaParaNumero(honorarios);
-  const contratoLimpo = contratoUrl.trim();
   // Mesma regra do CHECK no banco (migração ...090): https, sem espaço, de 12 a
   // 2000 caracteres. Aqui é conveniência — a garantia é a do banco.
   const contratoInvalido =
@@ -175,6 +210,22 @@ export function ClienteFicha({
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center gap-2">
+        {/* A fase sobe para o topo, como CHIP: o verde que existia era uma
+            caixa de 300 px em volta do formulário do contrato — cor de estado
+            aplicada à moldura, não ao estado. Agora o token semântico da fase
+            (`FASES_CLIENTE.cor`, contraste medido) diz onde o cliente está,
+            e a caixa colorida some. */}
+        {faseAtual ? (
+          <span
+            className={
+              "inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold " +
+              faseAtual.cor
+            }
+            title={faseAtual.ajuda}
+          >
+            {faseAtual.rotulo}
+          </span>
+        ) : null}
         <Button
           type="button"
           variant={acompanhado ? "default" : "outline"}
@@ -199,11 +250,22 @@ export function ClienteFicha({
         ) : null}
       </div>
 
+      {/* TRÊS SEÇÕES, não três caixas aninhadas.
+          A ficha era um formulário de 1.000 px dentro de um card só, com
+          "Problemas" (borda cinza), "Andamento do contato" (borda cinza) e
+          "Contrato" (fundo verde) como card-dentro-de-card-dentro-de-card —
+          três tratamentos diferentes, um deles com uma cor sem explicação
+          sistêmica. `Secao` é a MESMA cabeça de "Seu caminho" e "Meus
+          clientes": marcador, título e régua. Sem `numero`: preencher a ficha
+          não é uma sequência de passos. */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Dados do cliente</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-5">
+        <CardContent className="grid gap-8">
+        <Secao
+          icone={<IdCard />}
+          titulo="Dados do cliente"
+          nivel="h3"
+          classeConteudo="grid gap-5"
+        >
           <div className="grid gap-2">
             <Label htmlFor="f-nome">Nome</Label>
             <div className="relative">
@@ -261,7 +323,7 @@ export function ClienteFicha({
             <legend className="mb-2 text-sm leading-none font-medium">
               Problemas (marque ao menos um)
             </legend>
-            <div className="grid gap-2 rounded-md border p-3 sm:grid-cols-2">
+            <div className="grid gap-2 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2">
               {PROBLEMAS_7.map((p) => (
                 <label
                   key={p.id}
@@ -334,9 +396,14 @@ export function ClienteFicha({
             </div>
           </div>
 
-          <div className="grid gap-3 rounded-md border p-3">
-            <span className="text-sm font-medium">Andamento do contato</span>
-            <div className="grid gap-2 sm:grid-cols-2">
+        </Secao>
+
+        <Secao
+          icone={<ListChecks />}
+          titulo="Andamento do contato"
+          nivel="h3"
+        >
+          <div className="grid gap-2 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2">
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox
                   checked={msgPadrao}
@@ -365,8 +432,10 @@ export function ClienteFicha({
                 />
                 Aderiu à reunião (grupo de WhatsApp)
               </label>
-            </div>
           </div>
+        </Secao>
+
+        <Secao icone={<FileSignature />} titulo="Contrato" nivel="h3">
 
           {/* ---- Contrato (Fase 7-B) ----
               Só aparece em "Contratado", porque só contratado conta na meta.
@@ -374,8 +443,7 @@ export function ClienteFicha({
               o aviso de que saiu da meta. Esconder dado que o aluno digitou é
               perdê-lo em silêncio (B9-b). */}
           {contratado ? (
-            <div className="grid gap-3 rounded-md border border-emerald-600/40 bg-emerald-600/5 p-3">
-              <span className="text-sm font-medium">Contrato</span>
+            <div className="grid gap-3">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="f-honorarios">Honorários contratados</Label>
@@ -448,8 +516,9 @@ export function ClienteFicha({
               </div>
             </div>
           ) : honorariosValor != null || contratoLimpo ? (
-            <div className="grid gap-1.5 rounded-md border border-amber-500/50 bg-amber-500/10 p-3">
-              <span className="text-sm font-medium">Contrato</span>
+            // Fora de "Contratado" o valor sobrevive, mas não conta na meta —
+            // e isso é ATENÇÃO, não decoração: o token semântico diz o estado.
+            <div className="grid gap-1.5 rounded-lg bg-atencao p-3 text-atencao-foreground">
               <p className="text-sm">
                 Honorários registrados:{" "}
                 <strong className="tabular-nums">
@@ -470,12 +539,20 @@ export function ClienteFicha({
                   <span className="sr-only">(abre em nova aba)</span>
                 </a>
               ) : null}
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs">
                 Mova o cliente de volta para Contratado para editar e voltar a
                 contar na meta. O valor não é apagado.
               </p>
             </div>
-          ) : null}
+          ) : (
+            <p className="corpo-sm text-muted-foreground">
+              Os honorários e o link do contrato aparecem aqui quando o cliente
+              entra na fase Contratado.
+            </p>
+          )}
+        </Secao>
+
+        <Secao icone={<NotebookPen />} titulo="Registro e perfil" nivel="h3" classeConteudo="grid gap-5">
 
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">
@@ -509,14 +586,27 @@ export function ClienteFicha({
               rows={4}
             />
           </div>
-
-          <div className="flex justify-end">
-            <Button onClick={salvar} disabled={pending}>
-              {pending ? "Salvando..." : "Salvar ficha"}
-            </Button>
-          </div>
+        </Secao>
         </CardContent>
       </Card>
+
+      {/* BARRA DE SALVAR FIXA. `sticky bottom-0` fora do `Card` — o `Card` é
+          `overflow-hidden` e recortaria qualquer coisa grudada nele. O aviso
+          de alteração não salva é `aria-live="polite"`: quem não vê a barra
+          precisa ouvir que há algo pendente antes de sair da tela. */}
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-end gap-3 border-t bg-card/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-4 sm:shadow-(--shadow-raised)">
+        <p aria-live="polite" className="mr-auto corpo-sm text-muted-foreground">
+          {alterado
+            ? "Você tem alterações não salvas nesta ficha."
+            : "Tudo salvo."}
+        </p>
+        {/* O botão NUNCA é desabilitado por `alterado`: se a comparação
+            errar por um campo, o aluno fica preso sem conseguir salvar a
+            ficha. O sinal é informativo; salvar de novo é inofensivo. */}
+        <Button onClick={salvar} disabled={pending}>
+          {pending ? "Salvando..." : "Salvar ficha"}
+        </Button>
+      </div>
 
       {/* PL11 — o botão da estrela continua montado acima: é para lá que o
           foco volta quando o aluno desiste. O nome vem do campo em edição,

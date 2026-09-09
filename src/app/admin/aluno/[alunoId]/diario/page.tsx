@@ -185,7 +185,7 @@ export default async function AdminAlunoDiarioPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader
           titulo={`Diário de ${aluno?.nome ?? ""}`}
           descricao="Trilha única: o que o aluno fez no portal e o que a equipe observou, combinou ou deixou pendente. Visível só para o admin."

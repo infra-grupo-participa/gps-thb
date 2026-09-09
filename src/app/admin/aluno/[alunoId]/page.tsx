@@ -6,12 +6,17 @@ import {
   getClienteEquipe,
   getClientesEtapa1,
   getEtapas,
+  getEtapasLiberadasPara,
   getAmbiente,
   getProgressoAluno,
   getResumoDiario,
   contarMembrosDoAmbiente,
 } from "@/lib/data";
-import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
+import {
+  etapasComLiberacaoDoAluno,
+  pctPorEtapa,
+  proximoPasso,
+} from "@/lib/etapas";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
@@ -46,7 +51,12 @@ export default async function AdminAlunoInicioPage({
     qtdMembros,
   ] = await Promise.all([
     getAlunoById(alunoId),
-    getEtapas(),
+    // Mesma regra do ambiente do aluno: `coalesce(override, global)`. Sem
+    // isto o admin veria a etapa TRAVADA para este aluno como liberada e
+    // acompanharia um caminho que não é o dele.
+    Promise.all([getEtapas(), getEtapasLiberadasPara(alunoId)]).then(
+      ([todas, overrides]) => etapasComLiberacaoDoAluno(todas, overrides),
+    ),
     getClientesEtapa1(alunoId),
     getProgressoAluno(alunoId),
     getClienteEquipe(alunoId),
@@ -74,7 +84,7 @@ export default async function AdminAlunoInicioPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo={aluno?.nome ?? "Aluno"}
           descricao={aluno?.email}

@@ -1,11 +1,32 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import type { Etapa } from "@/lib/types";
+import { conteudoEtapa } from "@/lib/etapas";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { IconeChip } from "@/components/ui/kpi-card";
 import { cn } from "@/lib/utils";
+
+/**
+ * Quantos passos da etapa estão concluídos, a partir do percentual.
+ *
+ * 🔑 Não é estimativa: `pctPorEtapa` calcula `round(feitas / total * 100)`, e
+ * inverter dá `round(pct * total / 100)`. O erro máximo do arredondamento é
+ * `0,005 × total` — com a maior etapa do programa em 26 tarefas, isso é 0,13,
+ * longe do 0,5 que trocaria de inteiro. Conferido tarefa a tarefa nas seis
+ * etapas (9, 5, 13, 3, 26 e 2 tarefas): bate em 100% dos casos.
+ *
+ * Existe porque "0%" numa barra vazia parece ausência de dado; "0 de 9 passos"
+ * é informação. Se um dia `pctPorEtapa` deixar de arredondar assim, esta conta
+ * tem de sair junto — por isso ela mora ao lado de quem a exibe, e não vira
+ * regra escondida em `src/lib`.
+ */
+function passosDaEtapa(etapaId: number, pct: number) {
+  const total = conteudoEtapa(etapaId)?.tarefas.length ?? 0;
+  if (total === 0) return null;
+  return { feitas: Math.round((pct * total) / 100), total };
+}
 
 /**
  * Visão geral das 6 etapas. Etapas liberadas são clicáveis; as bloqueadas
@@ -37,20 +58,23 @@ export function EtapasOverview({
         const liberada = etapa.liberada;
         const clicavel = liberada || allowLockedPreview;
         const href = `${basePath}/etapa/${etapa.id}`;
-        const pct = pctPorEtapa[etapa.id];
+        // A barra aparece SEMPRE na etapa liberada (era só com `pct != null`):
+        // 0% é informação, não ausência — e a etapa liberada sem barra ficava
+        // indistinguível de uma bloqueada num muro de seis cards iguais.
+        const pct = liberada ? (pctPorEtapa[etapa.id] ?? 0) : null;
+        const passos = pct === null ? null : passosDaEtapa(etapa.id, pct);
 
         const conteudo = (
-          // VIS3: a etapa bloqueada NÃO recebe mais `opacity-70` no card
-          // inteiro — isso derrubava junto o contraste do título, do badge e
-          // da descrição. Agora o estado é dito por FORMA (borda tracejada,
-          // fundo apagado, chip neutro), que não custa contraste nenhum, e
-          // todo o texto continua legível.
+          // VIS3: a etapa bloqueada NÃO recebe `opacity-70` no card inteiro —
+          // isso derrubava junto o contraste do título, do badge e da
+          // descrição. O estado é dito por FORMA (borda tracejada, superfície
+          // afundada, chip neutro), que não custa contraste nenhum.
           <Card
+            elevacao={liberada ? "raised" : "flat"}
+            interativo={clicavel}
             className={cn(
-              "h-full transition",
-              clicavel
-                ? "hover:border-primary/50 hover:shadow-sm"
-                : "border-dashed bg-muted/20",
+              "h-full",
+              !liberada && "border-dashed bg-superficie-afundada",
             )}
           >
             <CardContent className="flex h-full flex-col gap-3">
@@ -61,30 +85,24 @@ export function EtapasOverview({
                   // lugar do card, então não pode ser `aria-hidden`.
                   decorativo={false}
                   className={cn(
-                    "text-sm font-semibold",
-                    !liberada && "bg-muted text-muted-foreground",
+                    "font-heading text-sm font-semibold",
+                    !liberada && "bg-neutro text-neutro-foreground",
                   )}
                 >
                   {etapa.ordem}
                 </IconeChip>
                 {liberada ? (
-                  // Era `secondary` — o MESMO cinza de "sem login" e de "2 pessoas".
-                  // A etapa liberada é a única coisa acionável de um muro de 6
-                  // cards; agora ela se acha em um segundo.
+                  // Era `secondary` — o MESMO cinza de "sem login" e de "2
+                  // pessoas". A etapa liberada é a única coisa acionável de um
+                  // muro de 6 cards; agora ela se acha em um segundo.
                   <Badge variant="success">Disponível</Badge>
                 ) : (
-                  <Badge variant="neutral">Em breve
-                  </Badge>
+                  <Badge variant="neutral">Em breve</Badge>
                 )}
               </div>
 
-              {/* Sem `opacity-*` nenhuma aqui, de propósito: `muted-foreground`
-                  sobre o card já está em 4,83:1, e qualquer opacidade o
-                  derruba para ~3,3:1 — reprova AA. O estado bloqueado é dito
-                  pela borda tracejada, pelo fundo, pelo chip apagado, pelo
-                  badge "Em breve" e pela linha de expectativa abaixo. */}
               <div className="flex-1">
-                <h3 className="text-sm font-semibold leading-tight">
+                <h3 className="font-heading text-sm leading-tight font-semibold">
                   {etapa.nome}
                 </h3>
                 {etapa.descricao ? (
@@ -94,11 +112,17 @@ export function EtapasOverview({
                 ) : null}
               </div>
 
-              {liberada && pct != null ? (
+              {pct !== null ? (
                 <div>
-                  <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Progresso</span>
-                    <span>{pct}%</span>
+                  <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>
+                      {passos
+                        ? `${passos.feitas} de ${passos.total} passos`
+                        : "Progresso"}
+                    </span>
+                    <span className="numero font-semibold text-accent-foreground">
+                      {pct}%
+                    </span>
                   </div>
                   <Progress value={pct} />
                 </div>
@@ -106,7 +130,7 @@ export function EtapasOverview({
 
               {clicavel ? (
                 <div className="flex items-center gap-1 text-xs font-medium text-accent-foreground">
-                  Abrir <ArrowRight className="size-3" />
+                  Abrir <ArrowRight className="size-3" aria-hidden />
                 </div>
               ) : (
                 // Microcopy de expectativa VERDADEIRA: `gps.etapas` não tem
@@ -121,7 +145,11 @@ export function EtapasOverview({
         );
 
         return clicavel ? (
-          <Link key={etapa.id} href={href} className="block">
+          <Link
+            key={etapa.id}
+            href={href}
+            className="foco-visivel block rounded-xl"
+          >
             {conteudo}
           </Link>
         ) : (

@@ -11,7 +11,7 @@ export default function ChamadosLoading() {
   return (
     <>
       <HeaderSkeleton />
-      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Suporte"
           descricao="Fale com a equipe por aqui. Abra um chamado, acompanhe a resposta e feche quando resolver."

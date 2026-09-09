@@ -80,14 +80,14 @@ export default async function AdminPlantaoPage({
         homeHref="/admin"
         navItems={adminNavItems()}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Plantão de Dúvidas"
           descricao="Acelera Holding — agenda das mentoras, inscritos e acesso dos alunos."
         />
 
         <Tabs defaultValue="calendario">
-          <TabsList>
+          <TabsList variant="line">
             <TabsTrigger value="calendario">Calendário</TabsTrigger>
             <TabsTrigger value="acessos">Alunos</TabsTrigger>
             <TabsTrigger value="mentoras">Mentoras</TabsTrigger>

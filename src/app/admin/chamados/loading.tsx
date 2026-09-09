@@ -6,7 +6,7 @@ export default function AdminChamadosLoading() {
   return (
     <>
       <HeaderSkeleton />
-      <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Chamados"
           descricao="Suporte do portal. O mais parado aparece primeiro — a fila existe para ninguém ficar sem resposta."

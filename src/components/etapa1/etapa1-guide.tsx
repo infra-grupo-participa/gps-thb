@@ -3,7 +3,9 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
+  ArrowUpRight,
   CalendarCheck,
+  Check,
   ListChecks,
   Lock,
   TrendingDown,
@@ -34,6 +36,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { KpiCard } from "@/components/ui/kpi-card";
+import { cn } from "@/lib/utils";
 
 export function Etapa1Guide({
   alunoId,
@@ -122,8 +125,12 @@ export function Etapa1Guide({
     // `ritmo-secao`: o espaço entre seções vem de UMA variável
     // (`--gap-secao`, 24 no celular / 32 no desktop), não de um `gap-6` por tela.
     <div className="ritmo-secao">
-      {/* Progresso */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Progresso — 2x2 no celular (era 1x4: os quatro cards de largura
+          total comiam ~480 px de rolagem antes do primeiro passo). O da perda
+          fica com as duas colunas porque o número é longo: "R$ 2.955.000,00"
+          em 30 px não cabe em 171 px, e encolher a fonte só dele quebraria a
+          escala. */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Estes 4 números usavam um `MetricCard` PRÓPRIO, escrito neste
             arquivo (sem ícone, rótulo em caixa alta), enquanto o `/admin`
             usava o `KpiCard` do design system (com chip laranja). Eram dois
@@ -155,6 +162,7 @@ export function Etapa1Guide({
           destaque={agendados >= META_REUNIOES}
         />
         <KpiCard
+          className="col-span-2 lg:col-span-1"
           icone={<TrendingDown />}
           rotulo="Perda pela inércia (total)"
           valor={brl(perdaTotal)}
@@ -183,6 +191,7 @@ export function Etapa1Guide({
             className={buttonVariants({ variant: "outline" })}
           >
             Ir para Clientes
+            <ArrowUpRight aria-hidden />
           </Link>
         </CardContent>
       </Card>
@@ -199,9 +208,9 @@ export function Etapa1Guide({
             você preenche os clientes.
           </p>
         </CardHeader>
-        <CardContent className="grid gap-1">
+        <CardContent className="grid gap-3">
           {!temFavorito ? (
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-accent/60 px-3 py-2.5">
               <div className="flex items-start gap-2">
                 <Lock className="mt-0.5 size-4 shrink-0 text-primary" />
                 <p className="text-sm">
@@ -219,39 +228,87 @@ export function Etapa1Guide({
               </Link>
             </div>
           ) : null}
-          {TAREFAS_ETAPA1.map((t) => {
-            const travadoPorFavorito = Boolean(t.exigeFavorito) && !temFavorito;
-            const travadoPorTarefa =
-              t.exigeTarefa != null && !tarefaConcluida(t.exigeTarefa);
-            const bloqueada = travadoPorFavorito || travadoPorTarefa;
-            const faltam = META_CLIENTES - Math.min(comDados, META_CLIENTES);
+          {/* TRILHO VERTICAL NUMERADO.
+              A Etapa 01 é uma sequência de verdade (1.1 → 8) e não parecia
+              uma: nove tarefas com a mesma altura, o mesmo recuo e a mesma
+              tipografia, com o número perdido dentro do título em texto
+              corrido. Este é um dos raros casos em que numeração merece
+              tratamento gráfico — aqui ela é o conteúdo, não enfeite.
+              `<ol>` porque a ordem importa; o marcador é `aria-hidden` e o
+              código continua no nome acessível de cada item. */}
+          <ol className="relative grid gap-1 pl-11">
+            <span
+              aria-hidden
+              className="absolute top-4 bottom-4 left-[1.0625rem] w-px bg-borda-fina"
+            />
+            {TAREFAS_ETAPA1.map((t) => {
+              const travadoPorFavorito = Boolean(t.exigeFavorito) && !temFavorito;
+              const travadoPorTarefa =
+                t.exigeTarefa != null && !tarefaConcluida(t.exigeTarefa);
+              const bloqueada = travadoPorFavorito || travadoPorTarefa;
+              const faltam = META_CLIENTES - Math.min(comDados, META_CLIENTES);
+              const concluida = tarefaConcluida(t.num);
+              const foco = enfases[t.num] === "realce" && !concluida && !bloqueada;
 
-            return (
-              <TarefaItem
-                key={t.num}
-                tarefa={t}
-                concluida={tarefaConcluida(t.num)}
-                pending={pending}
-                onToggle={(v) => toggleTarefa(t.num, v)}
-                enfase={enfases[t.num]}
-                clientesHref={clientesHref}
-                isAdmin={isAdmin}
-                overrideAtual={overrides[t.num] ?? null}
-                onEnfase={(modo) => setEnfase(t.num, modo)}
-                bloqueada={bloqueada}
-                // Quando as duas travas valem, a de tarefa vem primeiro: é a
-                // que o aluno resolve antes. O favorito segue no default.
-                motivoBloqueio={
-                  travadoPorTarefa ? "Após listar os 30 clientes" : undefined
-                }
-                detalheBloqueio={
-                  travadoPorTarefa
-                    ? `Faltam ${faltam} cliente(s) com nome, telefone e nível de relacionamento preenchidos.`
-                    : undefined
-                }
-              />
-            );
-          })}
+              return (
+                <li key={t.num} className="relative">
+                  {/* Estado do passo dito pelo MARCADOR, sem opacidade:
+                      concluído verde, atual em laranja sólido, travado
+                      neutro tracejado, futuro em contorno fino. */}
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "absolute top-2 -left-11 flex size-[2.125rem] items-center justify-center rounded-full border font-heading text-[0.6875rem] font-semibold",
+                      concluida &&
+                        "border-transparent bg-sucesso text-sucesso-foreground",
+                      !concluida &&
+                        foco &&
+                        "border-transparent bg-marca-solida text-white",
+                      !concluida &&
+                        !foco &&
+                        bloqueada &&
+                        "border-dashed bg-neutro text-neutro-foreground",
+                      !concluida &&
+                        !foco &&
+                        !bloqueada &&
+                        "bg-card text-muted-foreground",
+                    )}
+                  >
+                    {concluida ? (
+                      <Check className="size-4" />
+                    ) : bloqueada ? (
+                      <Lock className="size-3.5" />
+                    ) : (
+                      (t.codigo ?? String(t.num))
+                    )}
+                  </span>
+                  <TarefaItem
+                    tarefa={t}
+                    concluida={concluida}
+                    pending={pending}
+                    onToggle={(v) => toggleTarefa(t.num, v)}
+                    enfase={enfases[t.num]}
+                    clientesHref={clientesHref}
+                    isAdmin={isAdmin}
+                    overrideAtual={overrides[t.num] ?? null}
+                    onEnfase={(modo) => setEnfase(t.num, modo)}
+                    bloqueada={bloqueada}
+                    mostrarCodigo={false}
+                    // Quando as duas travas valem, a de tarefa vem primeiro: é
+                    // a que o aluno resolve antes. O favorito segue no default.
+                    motivoBloqueio={
+                      travadoPorTarefa ? "Após listar os 30 clientes" : undefined
+                    }
+                    detalheBloqueio={
+                      travadoPorTarefa
+                        ? `Faltam ${faltam} cliente(s) com nome, telefone e nível de relacionamento preenchidos.`
+                        : undefined
+                    }
+                  />
+                </li>
+              );
+            })}
+          </ol>
         </CardContent>
       </Card>
 

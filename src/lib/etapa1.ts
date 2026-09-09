@@ -77,6 +77,18 @@ export const FASES_CLIENTE: {
   coluna: string;
   /** Uma linha explicando o que a fase significa. */
   ajuda: string;
+  /**
+   * Par fundo/texto da fase, em TOKENS SEMÂNTICOS do portal — nunca classe
+   * Tailwind crua. Antes eram `bg-amber-100 text-amber-900` e
+   * `bg-emerald-600 text-white`, escritos aqui, fora do sistema de badge:
+   * a regra de negócio carregava paleta, e ninguém media o contraste.
+   * Medido no DOM, com o texto em 12 px (a fase aparece como chip):
+   *   prospeccao  #5C5751 sobre #F1EEEA = **6,18:1**  (era 5,56:1)
+   *   fechamento  #8A5300 sobre #FFF4E0 = **5,81:1**  (era 3,65:1 — reprovava)
+   *   contratado  #186A3B sobre #E8F5EC = **5,91:1**  (era 3,77:1 — reprovava)
+   * Mesma cor e mesmo significado de antes (cinza / âmbar / verde); o que
+   * mudou é o tom, para passar AA, e a origem, que agora é o token.
+   */
   cor: string;
 }[] = [
   {
@@ -84,21 +96,21 @@ export const FASES_CLIENTE: {
     rotulo: "Prospecção",
     coluna: "Prospecção",
     ajuda: "Ainda em contato — mensagem, ligação, tentativa de agenda.",
-    cor: "bg-muted text-muted-foreground",
+    cor: "bg-neutro text-neutro-foreground",
   },
   {
     id: "fechamento",
     rotulo: "Fechamento",
     coluna: "Fechamento",
     ajuda: "Da reunião preliminar ao croqui estrutural.",
-    cor: "bg-amber-100 text-amber-900",
+    cor: "bg-atencao text-atencao-foreground",
   },
   {
     id: "contratado",
     rotulo: "Contratado",
     coluna: "Contratados",
     ajuda: "Contrato fechado — segue para a execução.",
-    cor: "bg-emerald-600 text-white",
+    cor: "bg-sucesso text-sucesso-foreground",
   },
 ];
 

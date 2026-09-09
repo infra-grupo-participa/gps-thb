@@ -21,6 +21,7 @@ export function TarefaItem({
   bloqueada = false,
   motivoBloqueio,
   detalheBloqueio,
+  mostrarCodigo = true,
 }: {
   tarefa: TarefaDef;
   concluida: boolean;
@@ -38,6 +39,13 @@ export function TarefaItem({
   motivoBloqueio?: string;
   /** Linha explicativa sob o título, só quando bloqueada. */
   detalheBloqueio?: string;
+  /**
+   * `false` quando quem chama já desenha o número do passo por fora — é o caso
+   * do trilho vertical da Etapa 01, em que o código vira o marcador da
+   * sequência. Sem isto o "1.1" apareceria duas vezes na mesma linha.
+   * Default `true`: as etapas 2–6 (`EtapaGuide`) não mudam.
+   */
+  mostrarCodigo?: boolean;
 }) {
   const codigo = t.codigo ?? String(t.num);
 
@@ -76,7 +84,14 @@ export function TarefaItem({
               (concluida ? "text-muted-foreground line-through" : "")
             }
           >
-            {codigo}. {t.titulo}
+            {mostrarCodigo ? (
+              `${codigo}. `
+            ) : (
+              // O código saiu do texto visível (virou o marcador do trilho,
+              // que é `aria-hidden`) — mas continua no nome lido em voz alta.
+              <span className="sr-only">Passo {codigo}. </span>
+            )}
+            {t.titulo}
           </span>
           {bloqueada ? (
             // `secondary` (fundo cinza sólido) em vez de `outline`: sem a

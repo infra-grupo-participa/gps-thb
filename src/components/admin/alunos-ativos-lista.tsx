@@ -6,7 +6,7 @@ import { AlertCircle, Search, Users } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import { casaTodosOsTermos, semAcento } from "@/lib/texto";
 import { ROTULO_TIPO } from "@/components/admin/diario-labels";
-import { formatarDataHora } from "@/lib/datas";
+import { formatarDataHora, formatarData } from "@/lib/datas";
 import { NotaRapida } from "@/components/admin/nota-rapida";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -64,19 +64,6 @@ const ORDENS: OrdemAlunos[] = [
 /** Cliente e servidor formatam no MESMO fuso: sem isto o SSR (UTC) e o
  * navegador (BRT) divergem em toda data depois das 21h e a hidratação quebra. */
 const FUSO = "America/Sao_Paulo";
-
-const fmtData = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: FUSO,
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
-
-const fmtDataHora = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: FUSO,
-  dateStyle: "short",
-  timeStyle: "short",
-});
 
 /** "YYYY-MM-DD" no fuso de Brasília — base para contar dias de CALENDÁRIO. */
 const fmtDiaIso = new Intl.DateTimeFormat("en-CA", {
@@ -685,7 +672,7 @@ export function AlunosAtivosLista({
 
                     <div className="mt-0.5 truncate text-xs text-muted-foreground/80">
                       {desde ? (
-                        <>Entrou em {fmtData.format(new Date(desde))} · </>
+                        <>Entrou em {formatarData(desde)} · </>
                       ) : null}
                       {ultimoAcesso ? (
                         <>
@@ -694,7 +681,7 @@ export function AlunosAtivosLista({
                               pode cair num dia diferente do da hidratação. */}
                           <span
                             suppressHydrationWarning
-                            title={fmtDataHora.format(new Date(ultimoAcesso))}
+                            title={formatarDataHora(ultimoAcesso)}
                           >
                             {descreverAcesso(ultimoAcesso, agora)}
                           </span>

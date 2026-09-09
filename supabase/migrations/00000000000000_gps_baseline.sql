@@ -58,6 +58,12 @@
 --      — expor o schema ao PostgREST é config de role no cluster, não do
 --      schema, e sobrescrever a lista aqui derrubaria os outros schemas. Fica
 --      como passo manual (está no CLAUDE.md).
+--   6) A família de GESTÃO DE ACESSO do admin — `admin_user_do_aluno`,
+--      `admin_alvo_e_equipe`, `admin_status_acesso`, `admin_definir_senha`,
+--      `admin_adicionar_socio` (SECURITY DEFINER sobre auth.users) — está no
+--      retrato próprio `20260909000118_gps_admin_gestao_de_acesso_baseline.sql`,
+--      extraído do banco em 09/09 depois que o Fable apontou a omissão.
+--      `admin_excluir_acesso` → ...0114; `admin_adotar_login_existente` → ...0020.
 --
 -- REVERSÃO: nenhuma. Não há o que reverter — o arquivo não muda estado.
 -- ═══════════════════════════════════════════════════════════════════════════

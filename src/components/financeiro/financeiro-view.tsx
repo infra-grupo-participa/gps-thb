@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatarData } from "@/lib/datas";
 import { hojeSaoPaulo } from "@/lib/plantao";
 import type { ContratoFinanceiro, ResultadoFinanceiro } from "@/lib/financeiro";
 import { cn } from "@/lib/utils";
@@ -48,18 +49,11 @@ const brl = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
-const fmtDataHora = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  timeZone: "America/Sao_Paulo",
-});
-
-/** `timestamptz` do banco → "dd/mm/aaaa" no fuso de São Paulo. */
+/** `timestamptz` do banco → "dd/mm/aaaa" no fuso de São Paulo (via `@/lib/datas`). */
 function dataHora(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : fmtDataHora.format(d);
+  return Number.isNaN(d.getTime()) ? null : formatarData(iso);
 }
 
 /**

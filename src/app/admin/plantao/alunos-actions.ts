@@ -15,6 +15,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
+import { emailValido } from "@/lib/texto";
+import { traduzirErroBanco } from "@/lib/erros";
 import type { ResultadoAcao } from "@/lib/plantao-tipos";
 
 /**
@@ -72,4 +74,44 @@ export async function reativarAcessoPlantao(alunoPlantaoId: string): Promise<Res
 
   revalidatePath("/admin/plantao");
   return { ok: true };
+}
+
+/**
+ * Adiciona (ou reativa) alguém na base do Plantão pelo e-mail, sem SQL.
+ *
+ * `gps.plantao_alunos` é um CSV CONGELADO (421 linhas, lote 2026-08): nada
+ * atualiza essa lista sozinho — o job noturno só REMOVE quem migrou para o
+ * Programa, nunca ADICIONA quem comprou o Acelera depois da carga. Esta ação
+ * é o remédio, no lugar de liberar por SQL direto (caso real: Bianca Estacio,
+ * compradora desde 17/08, recusada na inscrição em 09/09).
+ *
+ * Idempotente: chamar de novo para o mesmo e-mail reativa e atualiza os
+ * dados, nunca duplica (`on conflict (email)` na RPC).
+ */
+export async function liberarAlunoPlantao(dados: {
+  email: string;
+  nome: string;
+  documento?: string;
+  telefone?: string;
+}): Promise<ResultadoAcao & { reativado?: boolean }> {
+  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+
+  const email = dados.email.trim();
+  const nome = dados.nome.trim();
+  if (!emailValido(email)) return { ok: false, erro: "Informe um e-mail válido." };
+  if (!nome) return { ok: false, erro: "Informe o nome." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.schema("gps").rpc("admin_liberar_aluno_plantao", {
+    p_email: email,
+    p_nome: nome,
+    p_documento: dados.documento?.trim() || null,
+    p_telefone: dados.telefone?.trim() || null,
+  });
+  if (error) {
+    return { ok: false, erro: traduzirErroBanco("admin/liberarAlunoPlantao", error, { email }) };
+  }
+
+  revalidatePath("/admin/plantao");
+  return { ok: true, reativado: Boolean((data as { reativado?: boolean } | null)?.reativado) };
 }

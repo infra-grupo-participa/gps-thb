@@ -43,6 +43,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LiberarAlunoPlantao } from "@/components/admin/liberar-aluno-plantao";
 
 function normalizar(texto: string): string {
   return texto
@@ -135,10 +136,13 @@ export function PlantaoAcessos({
             aria-label="Buscar aluno do plantão"
           />
         </div>
-        <Button onClick={onCarregarLote} disabled={carregandoLote} variant="outline">
-          <UploadIcon className="size-4" />
-          {carregandoLote ? "Carregando lote..." : "Carregar lote"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <LiberarAlunoPlantao />
+          <Button onClick={onCarregarLote} disabled={carregandoLote} variant="outline">
+            <UploadIcon className="size-4" />
+            {carregandoLote ? "Carregando lote..." : "Carregar lote"}
+          </Button>
+        </div>
       </div>
 
       {filtrados.length === 0 ? (

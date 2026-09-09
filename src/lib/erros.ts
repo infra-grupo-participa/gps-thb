@@ -154,6 +154,10 @@ const FRASES_DO_BANCO: Record<string, string> = {
     "O contrato deixou de estar livre. Recarregue o diagnóstico.",
   "O contrato não está vinculado a este aluno.":
     "O contrato não está vinculado a este aluno.",
+
+  // --- gps.admin_liberar_aluno_plantao (migração ...175) ---
+  "Informe um e-mail válido.": "Informe um e-mail válido.",
+  "Informe o nome.": "Informe o nome.",
 };
 
 /**

@@ -3,6 +3,7 @@ import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getClientesEtapa1 } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { ClientesManager } from "@/components/clientes/clientes-manager";
 
 export const metadata = { title: "Clientes" };
@@ -29,13 +30,11 @@ export default async function ClientesPage() {
           financeiro: ctx.papelMembro === "titular",
         })}
       />
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Clientes</h1>
-          <p className="text-muted-foreground">
-            Cadastre e acompanhe seus clientes potenciais e o contato com eles.
-          </p>
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+        <PageHeader
+          titulo="Clientes"
+          descricao="Cadastre e acompanhe seus clientes potenciais e o contato com eles."
+        />
 
         <ClientesManager
           alunoId={alunoId}

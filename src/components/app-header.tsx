@@ -24,25 +24,23 @@ export function AppHeader({
         para o relógio de inatividade viver. */}
     <AutoLogout />
     <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
-        <div className="flex items-center gap-6">
-          <Link href={homeHref} className="flex items-center gap-3">
-            <ThbLogo size="sm" />
-            <div className="leading-tight">
-              <div className="text-sm font-semibold">Time Holding Brasil</div>
-              <div className="text-xs text-muted-foreground">
-                Programa de Implementação Assistida
-              </div>
+      {/* Um `NavTabs` só (A11Y4): antes existiam dois — `hidden md:block` e
+          `md:hidden` — o que duplicava o DOM e punha cada link duas vezes na
+          ordem de tabulação. Aqui o mesmo nó muda de posição por `order` +
+          `flex-wrap`: no celular ele quebra para a segunda linha (rolando na
+          horizontal), no desktop fica entre a marca e a conta. */}
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-4 px-4 py-2.5 md:h-16 md:flex-nowrap md:py-0">
+        <Link href={homeHref} className="order-1 flex items-center gap-3">
+          <ThbLogo size="sm" />
+          <div className="leading-tight">
+            <div className="text-sm font-semibold">Time Holding Brasil</div>
+            <div className="text-xs text-muted-foreground">
+              Programa de Implementação Assistida
             </div>
-          </Link>
-          {navItems && navItems.length > 0 ? (
-            <div className="hidden md:block">
-              <NavTabs items={navItems} />
-            </div>
-          ) : null}
-        </div>
+          </div>
+        </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="order-2 ml-auto flex items-center gap-3 md:order-3">
           <div className="hidden text-right sm:block">
             <div className="text-sm font-medium leading-tight">
               {nome ?? email}
@@ -54,13 +52,16 @@ export function AppHeader({
           </Badge>
           <LogoutButton />
         </div>
-      </div>
 
-      {navItems && navItems.length > 0 ? (
-        <div className="border-t px-4 py-2 md:hidden">
-          <NavTabs items={navItems} />
-        </div>
-      ) : null}
+        {navItems && navItems.length > 0 ? (
+          // 360 px com 7 abas (modo assistência + Financeiro) não cabe: rola
+          // na horizontal em vez de espremer. `md:overflow-visible` para o
+          // anel de foco não ser cortado no desktop, onde tudo cabe.
+          <div className="scrollbar-none order-3 -mx-4 mt-2 w-[calc(100%+2rem)] overflow-x-auto border-t px-4 pt-2 md:order-2 md:mx-0 md:mt-0 md:ml-2 md:w-auto md:flex-1 md:overflow-visible md:border-t-0 md:pt-0">
+            <NavTabs items={navItems} />
+          </div>
+        ) : null}
+      </div>
     </header>
     </>
   );

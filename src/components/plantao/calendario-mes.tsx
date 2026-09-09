@@ -41,8 +41,12 @@ const MESES = [
  * maiúsculiza TODA palavra: a tela mostrava "Setembro De 2026". `::first-letter`
  * também não serve aqui — o ícone antes do texto impede a pseudo-classe de
  * aplicar. Então é em JS mesmo.
+ *
+ * Exportado porque o calendário do admin (`admin/plantao-calendario.tsx`)
+ * tinha o mesmo bug com a mesma causa — duas cópias do rótulo é como o bug
+ * sobreviveu à primeira correção.
  */
-function rotuloMes(mes: number, ano: number): string {
+export function rotuloMes(mes: number, ano: number): string {
   const nome = MESES[mes - 1];
   return `${nome.charAt(0).toUpperCase()}${nome.slice(1)} de ${ano}`;
 }

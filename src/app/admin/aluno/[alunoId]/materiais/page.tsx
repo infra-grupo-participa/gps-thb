@@ -4,6 +4,7 @@ import { getAlunoById, getEtapas, getAmbiente } from "@/lib/data";
 import { listarMateriais } from "@/lib/materiais";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { MateriaisView } from "@/components/materiais/materiais-view";
 
@@ -43,13 +44,11 @@ export default async function AdminAlunoMateriaisPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Materiais</h1>
-          <p className="text-muted-foreground">
-            Acervo de aulas e modelos de todas as etapas.
-          </p>
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+        <PageHeader
+          titulo="Materiais"
+          descricao="Acervo de aulas e modelos de todas as etapas."
+        />
 
         <MateriaisView
           materiais={listarMateriais()}

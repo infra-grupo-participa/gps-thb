@@ -5,6 +5,7 @@ import { getAlunoById, getEtapas } from "@/lib/data";
 import { conteudoEtapa } from "@/lib/etapas";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { EtapaConteudo } from "@/components/etapa/etapa-conteudo";
 
 export default async function EtapaAlunoPage({
@@ -40,18 +41,18 @@ export default async function EtapaAlunoPage({
           financeiro: ctx.papelMembro === "titular",
         })}
       />
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-6">
-          <Link
-            href="/"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Voltar ao início
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold">
-            Etapa {String(n).padStart(2, "0")} — {etapaInfo.nome}
-          </h1>
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+        <PageHeader
+          titulo={`Etapa ${String(n).padStart(2, "0")} — ${etapaInfo.nome}`}
+          voltar={
+            <Link
+              href="/"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Voltar ao início
+            </Link>
+          }
+        />
 
         <EtapaConteudo alunoId={alunoId} n={n} basePath="" isAdmin={false} />
       </main>

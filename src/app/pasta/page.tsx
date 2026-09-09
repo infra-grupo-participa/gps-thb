@@ -3,6 +3,7 @@ import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getAmbiente } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { PastaView } from "@/components/pasta/pasta-view";
 
 export const metadata = { title: "Pasta" };
@@ -28,13 +29,11 @@ export default async function PastaPage() {
           financeiro: ctx.papelMembro === "titular",
         })}
       />
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Minha pasta</h1>
-          <p className="text-muted-foreground">
-            Todos os documentos e arquivos do seu processo, organizados no Drive.
-          </p>
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+        <PageHeader
+          titulo="Minha pasta"
+          descricao="Todos os documentos e arquivos do seu processo, organizados no Drive."
+        />
 
         <PastaView
           alunoId={ctx.alunoId}

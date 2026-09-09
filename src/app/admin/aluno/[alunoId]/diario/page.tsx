@@ -15,6 +15,7 @@ import { montarTrilha } from "@/lib/log-agregacao";
 import type { ItemTrilha } from "@/lib/types";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { DiarioForm } from "@/components/admin/diario-form";
 import { DiarioTimeline } from "@/components/admin/diario-timeline";
@@ -179,14 +180,11 @@ export default async function AdminAlunoDiarioPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main className="mx-auto w-full max-w-4xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Diário de {aluno?.nome}</h1>
-          <p className="text-muted-foreground">
-            Trilha única: o que o aluno fez no portal e o que a equipe
-            observou, combinou ou deixou pendente. Visível só para o admin.
-          </p>
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 py-8">
+        <PageHeader
+          titulo={`Diário de ${aluno?.nome ?? ""}`}
+          descricao="Trilha única: o que o aluno fez no portal e o que a equipe observou, combinou ou deixou pendente. Visível só para o admin."
+        />
 
         <div className="mb-6">
           <TrilhaCabecalho

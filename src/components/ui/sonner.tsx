@@ -1,15 +1,17 @@
 "use client"
 
-import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
+// Tema fixo em "light": o portal não tem tema escuro — não existe provider de
+// tema e nada nunca adiciona a classe que o ativaria. A dependência de tema
+// (a única consumidora dela no projeto) saiu do `package.json`: com ela o
+// Sonner lia "system" e pintava o toast escuro para quem usa o SO no escuro,
+// fundo escuro num app claro. Tema escuro é feature, não polimento.
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="light"
       className="toaster group"
       icons={{
         success: (

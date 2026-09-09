@@ -7,7 +7,7 @@ import { ThbLogo } from "@/components/thb-logo";
 
 export default function Error({ reset }: { error: Error; reset: () => void }) {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
+    <main id="conteudo" className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
       <ThbLogo />
       <div className="flex flex-col items-center gap-2">
         <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">

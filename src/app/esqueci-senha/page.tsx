@@ -15,7 +15,7 @@ export default function EsqueciSenhaPage() {
 
       <Card>
         <CardHeader>
-          <h2 className="text-lg font-semibold">Redefinir senha</h2>
+          <h1 className="text-lg font-semibold">Redefinir senha</h1>
           <p className="text-sm text-muted-foreground">
             Informe seu e-mail e enviaremos um link para criar uma nova senha.
           </p>

@@ -4,6 +4,7 @@ import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getMembroDoUsuario, getTurmaCodigo } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { PerfilEditor } from "@/components/perfil/perfil-editor";
 import { TrocarSenha } from "@/components/perfil/trocar-senha";
 import type { Aluno } from "@/lib/types";
@@ -35,16 +36,18 @@ export default async function PerfilPage() {
           financeiro: ctx.papelMembro === "titular",
         })}
       />
-      <main className="mx-auto w-full max-w-3xl px-4 py-8">
-        <div className="mb-6">
-          <Link
-            href="/"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Voltar ao início
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold">Meu perfil</h1>
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-8">
+        <PageHeader
+          titulo="Meu perfil"
+          voltar={
+            <Link
+              href="/"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Voltar ao início
+            </Link>
+          }
+        />
 
         <div className="grid gap-6">
           <PerfilEditor

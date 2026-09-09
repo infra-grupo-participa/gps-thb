@@ -4,6 +4,8 @@ import type { Etapa } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { IconeChip } from "@/components/ui/kpi-card";
+import { cn } from "@/lib/utils";
 
 /**
  * Visão geral das 6 etapas. Etapas liberadas são clicáveis; as bloqueadas
@@ -26,10 +28,10 @@ export function EtapasOverview({
 }) {
   return (
     <div
-      className={
-        "grid gap-4 " +
-        (dense ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3")
-      }
+      className={cn(
+        "grid gap-4",
+        dense ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3",
+      )}
     >
       {etapas.map((etapa) => {
         const liberada = etapa.liberada;
@@ -38,26 +40,33 @@ export function EtapasOverview({
         const pct = pctPorEtapa[etapa.id];
 
         const conteudo = (
+          // VIS3: a etapa bloqueada NÃO recebe mais `opacity-70` no card
+          // inteiro — isso derrubava junto o contraste do título, do badge e
+          // da descrição. Agora o estado é dito por FORMA (borda tracejada,
+          // fundo apagado, chip neutro), que não custa contraste nenhum, e
+          // todo o texto continua legível.
           <Card
-            className={
-              "h-full transition " +
-              (clicavel
+            className={cn(
+              "h-full transition",
+              clicavel
                 ? "hover:border-primary/50 hover:shadow-sm"
-                : "opacity-70")
-            }
+                : "border-dashed bg-muted/20",
+            )}
           >
             <CardContent className="flex h-full flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
-                <div
-                  className={
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold " +
-                    (liberada
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground")
-                  }
+                <IconeChip
+                  destaque={liberada}
+                  // O número da etapa é conteúdo: não aparece em nenhum outro
+                  // lugar do card, então não pode ser `aria-hidden`.
+                  decorativo={false}
+                  className={cn(
+                    "text-sm font-semibold",
+                    !liberada && "bg-muted text-muted-foreground",
+                  )}
                 >
                   {etapa.ordem}
-                </div>
+                </IconeChip>
                 {liberada ? (
                   <Badge variant="secondary">Disponível</Badge>
                 ) : (
@@ -67,6 +76,11 @@ export function EtapasOverview({
                 )}
               </div>
 
+              {/* Sem `opacity-*` nenhuma aqui, de propósito: `muted-foreground`
+                  sobre o card já está em 4,83:1, e qualquer opacidade o
+                  derruba para ~3,3:1 — reprova AA. O estado bloqueado é dito
+                  pela borda tracejada, pelo fundo, pelo chip apagado, pelo
+                  badge "Em breve" e pela linha de expectativa abaixo. */}
               <div className="flex-1">
                 <h3 className="text-sm font-semibold leading-tight">
                   {etapa.nome}
@@ -89,10 +103,17 @@ export function EtapasOverview({
               ) : null}
 
               {clicavel ? (
-                <div className="flex items-center gap-1 text-xs font-medium text-primary">
+                <div className="flex items-center gap-1 text-xs font-medium text-accent-foreground">
                   Abrir <ArrowRight className="size-3" />
                 </div>
-              ) : null}
+              ) : (
+                // Microcopy de expectativa VERDADEIRA: `gps.etapas` não tem
+                // campo de previsão, então não existe data a prometer. Ocupa
+                // o mesmo lugar do "Abrir →" para os cards ficarem alinhados.
+                <p className="text-xs text-muted-foreground">
+                  Libera conforme sua turma avança
+                </p>
+              )}
             </CardContent>
           </Card>
         );
@@ -102,7 +123,11 @@ export function EtapasOverview({
             {conteudo}
           </Link>
         ) : (
-          <div key={etapa.id}>{conteudo}</div>
+          // Não é clicável e não recebe foco: `aria-disabled` diz ao leitor de
+          // tela o que a borda tracejada diz ao olho.
+          <div key={etapa.id} aria-disabled="true">
+            {conteudo}
+          </div>
         );
       })}
     </div>

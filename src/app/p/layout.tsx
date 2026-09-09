@@ -40,16 +40,21 @@ export default function PlantaoPublicoLayout({
         <header className="flex items-center gap-2.5">
           <ThbLogo size="sm" />
           <div className="min-w-0 leading-tight">
-            <div className="truncate text-sm font-semibold">
+            {/* `h1` da área pública (A11Y2): `/p/plantao` não tinha nenhum.
+                O título já é este — vira o cabeçalho de documento em vez de
+                ganhar uma segunda faixa repetindo a mesma frase no iframe. */}
+            <h1 className="truncate text-sm font-semibold">
               Plantão de Dúvidas
-            </div>
+            </h1>
             <div className="truncate text-xs text-muted-foreground">
               Acelera Holding — Time Holding Brasil
             </div>
           </div>
         </header>
 
-        <main className="flex flex-1 flex-col gap-4">{children}</main>
+        <main id="conteudo" className="flex flex-1 flex-col gap-4">
+          {children}
+        </main>
 
         <footer className="pt-2 pb-1 text-center text-[11px] leading-snug text-muted-foreground">
           Time Holding Brasil

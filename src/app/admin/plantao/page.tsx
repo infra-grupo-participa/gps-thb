@@ -23,6 +23,7 @@ import {
 import { mesAtualSaoPaulo } from "@/lib/plantao";
 import type { InscritoAdmin } from "@/lib/plantao-tipos";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { adminNavItems } from "@/lib/nav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlantaoCalendario } from "@/components/admin/plantao-calendario";
@@ -79,14 +80,11 @@ export default async function AdminPlantaoPage({
         homeHref="/admin"
         navItems={adminNavItems()}
       />
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Plantão de Dúvidas</h1>
-          <p className="text-muted-foreground">
-            Acelera Holding — agenda das mentoras, inscritos e acesso dos
-            alunos.
-          </p>
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+        <PageHeader
+          titulo="Plantão de Dúvidas"
+          descricao="Acelera Holding — agenda das mentoras, inscritos e acesso dos alunos."
+        />
 
         <Tabs defaultValue="calendario">
           <TabsList>

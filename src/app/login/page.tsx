@@ -18,14 +18,18 @@ export default async function LoginPage({
       <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
         <ThbLogo />
         <div>
-          <h1 className="text-lg font-semibold">Implementação Assistida</h1>
+          {/* Marca, não título: o `h1` da página é "Bem-vindo de volta", que
+              existe nos dois tamanhos de tela (A11Y2). */}
+          <p className="font-heading text-lg font-semibold">
+            Implementação Assistida
+          </p>
           <p className="text-sm text-muted-foreground">Time Holding Brasil</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <h2 className="text-lg font-semibold">Bem-vindo de volta</h2>
+          <h1 className="text-lg font-semibold">Bem-vindo de volta</h1>
           <p className="text-sm text-muted-foreground">
             Acesse sua conta para continuar.
           </p>

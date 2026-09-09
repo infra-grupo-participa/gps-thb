@@ -2,7 +2,15 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Não existe tema escuro neste portal: não há `ThemeProvider` e nada nunca
+   adiciona a classe que ativaria o `dark:`. Os ~30 tokens do bloco `.dark`
+   foram removidos (eram CSS morto que fazia `dark:` parecer funcionar).
+   O variant continua declarado, apontando para um atributo que ninguém
+   escreve: sem ele o Tailwind v4 volta ao padrão `prefers-color-scheme`, e as
+   classes `dark:` que o shadcn já trouxe em ~20 arquivos de `ui/*` passariam a
+   pintar meio-tema para quem usa o SO no escuro. Tema escuro é feature — volta
+   com provider de verdade e QA das 24 telas, não com um bloco de tokens. */
+@custom-variant dark (&:is([data-tema-escuro] *));
 
 @theme inline {
   --color-background: var(--background);
@@ -84,40 +92,6 @@
   --sidebar-ring: #ff6300;
 }
 
-.dark {
-  --background: #0b0f17;
-  --foreground: #e5e7eb;
-  --card: #131a24;
-  --card-foreground: #e5e7eb;
-  --popover: #131a24;
-  --popover-foreground: #e5e7eb;
-  --primary: #ff6300;
-  --primary-foreground: #ffffff;
-  --secondary: #1c2430;
-  --secondary-foreground: #e5e7eb;
-  --muted: #1c2430;
-  --muted-foreground: #9aa4b2;
-  --accent: #2a1a0d;
-  --accent-foreground: #ffd7b3;
-  --destructive: #ef4444;
-  --border: rgba(255, 255, 255, 0.1);
-  --input: rgba(255, 255, 255, 0.14);
-  --ring: #ff6300;
-  --chart-1: #ff6300;
-  --chart-2: #ff8a4d;
-  --chart-3: #fdba74;
-  --chart-4: #c2410c;
-  --chart-5: #7a2e00;
-  --sidebar: #0f141d;
-  --sidebar-foreground: #e5e7eb;
-  --sidebar-primary: #ff6300;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1c2430;
-  --sidebar-accent-foreground: #e5e7eb;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #ff6300;
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -139,3 +113,28 @@
    esconde o que é exclusivo do admin. É puramente visual — a sessão continua
    sendo a do admin e as permissões não mudam. */
 html[data-previa="aluno"] .previa-oculta { display: none !important; }
+
+/* Barra de rolagem escondida no contêiner de abas do header (app-header.tsx):
+   em 360 px as 7 abas do modo assistência rolam na horizontal, e a barra
+   nativa comeria altura e apareceria por cima dos rótulos. O conteúdo
+   continua rolável por toque, roda e teclado. */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* WCAG 2.3.3 / 2.2.2 — quem pede menos movimento não leva o pulso infinito do
+   Skeleton nem nenhuma outra animação em laço. O esqueleto continua visível
+   (é a forma da página), só para de pulsar. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

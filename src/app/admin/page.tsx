@@ -9,13 +9,14 @@ import {
 } from "@/lib/data";
 import { Users, UserCheck, UserX, Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { adminNavItems } from "@/lib/nav";
 import { CriarAcesso } from "@/components/admin/criar-acesso";
 import { SolicitacaoCard } from "@/components/admin/solicitacao-card";
 import { EtapasControle } from "@/components/admin/etapas-controle";
 import { AlunosAtivosLista } from "@/components/admin/alunos-ativos-lista";
-import { StatCard } from "@/components/stat-card";
-import { Card, CardContent } from "@/components/ui/card";
+import { KpiCard } from "@/components/ui/kpi-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -60,43 +61,38 @@ export default async function AdminPage() {
         homeHref="/admin"
         navItems={adminNavItems()}
       />
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold">Painel do administrador</h1>
-            <p className="text-muted-foreground">
-              Gerencie os acessos e acompanhe os alunos em implementação
-              assistida.
-            </p>
-          </div>
-          <CriarAcesso />
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+        <PageHeader
+          titulo="Painel do administrador"
+          descricao="Gerencie os acessos e acompanhe os alunos em implementação assistida."
+          acao={<CriarAcesso />}
+        />
 
         {/* Resumo */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            icon={<Users className="size-4" />}
-            label="Alunos no programa"
-            value={String(alunos.length)}
+          <KpiCard
+            icone={<Users className="size-4" />}
+            rotulo="Alunos no programa"
+            valor={String(alunos.length)}
             hint="em implementação assistida"
             destaque
           />
-          <StatCard
-            icon={<UserCheck className="size-4" />}
-            label="Com login"
-            value={String(comLogin)}
+          <KpiCard
+            icone={<UserCheck className="size-4" />}
+            rotulo="Com login"
+            valor={String(comLogin)}
             hint="já podem acessar"
           />
-          <StatCard
-            icon={<UserX className="size-4" />}
-            label="Sem login"
-            value={String(semLogin)}
+          <KpiCard
+            icone={<UserX className="size-4" />}
+            rotulo="Sem login"
+            valor={String(semLogin)}
             hint="ambiente sem acesso"
           />
-          <StatCard
-            icon={<Inbox className="size-4" />}
-            label="Solicitações"
-            value={String(pendentes.length)}
+          <KpiCard
+            icone={<Inbox className="size-4" />}
+            rotulo="Solicitações"
+            valor={String(pendentes.length)}
             hint="aguardando decisão"
           />
         </div>
@@ -129,11 +125,11 @@ export default async function AdminPage() {
           {/* Solicitações */}
           <TabsContent value="solicitacoes">
             {solicitacoesComMatch.length === 0 ? (
-              <Card>
-                <CardContent className="p-10 text-center text-sm text-muted-foreground">
-                  Nenhuma solicitação pendente.
-                </CardContent>
-              </Card>
+              <EmptyState
+                icone={<Inbox />}
+                titulo="Nenhuma solicitação pendente."
+                descricao="Quando alguém pedir acesso ao portal, o pedido aparece aqui para você aprovar ou recusar."
+              />
             ) : (
               <div className="grid gap-3">
                 {solicitacoesComMatch.map(({ solicitacao, alunoSugerido }) => (

@@ -4,6 +4,7 @@ import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getMembrosDoAmbiente, getTurmaCodigo } from "@/lib/data";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { PerfilEditor } from "@/components/perfil/perfil-editor";
 import type { Aluno } from "@/lib/types";
@@ -41,18 +42,18 @@ export default async function AdminAlunoPerfilPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main className="mx-auto w-full max-w-3xl px-4 py-8">
-        <div className="mb-6">
-          <Link
-            href={base}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Voltar ao ambiente do aluno
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold">
-            Perfil de {aluno?.nome}
-          </h1>
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-8">
+        <PageHeader
+          titulo={`Perfil de ${aluno?.nome ?? ""}`}
+          voltar={
+            <Link
+              href={base}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Voltar ao ambiente do aluno
+            </Link>
+          }
+        />
 
         <PerfilEditor
           aluno={(aluno ?? { id: alunoId }) as Aluno}

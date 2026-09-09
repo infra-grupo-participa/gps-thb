@@ -42,7 +42,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 
 function normalizar(texto: string): string {
   return texto
@@ -142,11 +142,10 @@ export function PlantaoAcessos({
       </div>
 
       {filtrados.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Nenhum aluno encontrado.
-          </CardContent>
-        </Card>
+        <EmptyState
+          titulo="Nenhum aluno encontrado."
+          descricao="Ajuste a busca ou carregue um lote de compradores do Acelera para liberar o acesso."
+        />
       ) : (
         <Table>
           <TableHeader>

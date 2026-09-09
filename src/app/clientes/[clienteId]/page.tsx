@@ -4,6 +4,7 @@ import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getClienteById } from "@/lib/data";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
 
 export default async function ClienteFichaPage({
@@ -33,18 +34,18 @@ export default async function ClienteFichaPage({
           financeiro: ctx.papelMembro === "titular",
         })}
       />
-      <main className="mx-auto w-full max-w-4xl px-4 py-8">
-        <div className="mb-6">
-          <Link
-            href="/clientes"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Voltar aos clientes
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold">
-            {cliente.nome || "Novo cliente"}
-          </h1>
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 py-8">
+        <PageHeader
+          titulo={cliente.nome || "Novo cliente"}
+          voltar={
+            <Link
+              href="/clientes"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Voltar aos clientes
+            </Link>
+          }
+        />
 
         <ClienteFicha cliente={cliente} alunoId={alunoId} />
       </main>

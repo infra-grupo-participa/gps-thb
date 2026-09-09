@@ -77,11 +77,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { PlantaoInscritos } from "@/components/admin/plantao-inscritos";
-
-const MESES = [
-  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-];
+import { rotuloMes } from "@/components/plantao/calendario-mes";
 
 /** Teto do "repetir semanalmente" — mesmo clamp que `criarSlot` aplica no servidor. */
 const MAX_REPETICOES = 12;
@@ -459,9 +455,12 @@ export function PlantaoCalendario({
         >
           <ChevronLeftIcon className="size-4" />
         </Link>
-        <div className="flex items-center gap-1.5 font-medium capitalize">
+        {/* `capitalize` maiúsculizava toda palavra e a tela dizia
+            "Setembro De 2026". Mesmo bug, mesma correção do calendário
+            público: o rótulo vem pronto de `rotuloMes()`. */}
+        <div className="flex items-center gap-1.5 font-medium">
           <CalendarDaysIcon className="size-4 text-primary" aria-hidden />
-          {MESES[mes - 1]} de {ano}
+          {rotuloMes(mes, ano)}
         </div>
         <Link
           href={`/admin/plantao?m=${paramMes(proximo.ano, proximo.mes)}`}

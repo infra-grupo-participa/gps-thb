@@ -13,6 +13,7 @@ import {
 import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { EtapasOverview } from "@/components/etapas-overview";
 import { FavoritoDestaque } from "@/components/etapa/favorito-destaque";
 import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
@@ -58,22 +59,22 @@ export default async function AdminAlunoInicioPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-6">
-          <Link
-            href="/admin"
-            className="previa-oculta text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Voltar aos alunos
-          </Link>
-          <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-semibold">{aluno?.nome ?? "Aluno"}</h1>
-              <p className="text-muted-foreground">{aluno?.email}</p>
-            </div>
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+        <PageHeader
+          titulo={aluno?.nome ?? "Aluno"}
+          descricao={aluno?.email}
+          voltar={
+            <Link
+              href="/admin"
+              className="previa-oculta text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Voltar aos alunos
+            </Link>
+          }
+          acao={
             <GerenciarAcesso alunoId={alunoId} nomeAluno={aluno?.nome ?? null} />
-          </div>
-        </div>
+          }
+        />
 
         <div className="mb-6">
           <DiarioResumoCard resumo={resumoDiario} basePath={base} />

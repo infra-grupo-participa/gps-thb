@@ -4,6 +4,7 @@ import { getAlunoById, getEtapas } from "@/lib/data";
 import { listarMateriais } from "@/lib/materiais";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { MateriaisView } from "@/components/materiais/materiais-view";
 
 export const metadata = { title: "Materiais" };
@@ -35,14 +36,11 @@ export default async function MateriaisPage() {
           financeiro: ctx.papelMembro === "titular",
         })}
       />
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Materiais</h1>
-          <p className="text-muted-foreground">
-            Seu acervo de aulas e modelos — reunidos de todas as etapas, num só
-            lugar.
-          </p>
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+        <PageHeader
+          titulo="Materiais"
+          descricao="Seu acervo de aulas e modelos — reunidos de todas as etapas, num só lugar."
+        />
 
         <MateriaisView
           materiais={listarMateriais()}

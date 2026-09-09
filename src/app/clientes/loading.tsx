@@ -9,7 +9,7 @@ export default function ClientesLoading() {
   return (
     <>
       <HeaderSkeleton />
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
         <PageHeader
           titulo="Clientes"
           descricao="Cadastre e acompanhe seus clientes potenciais e o contato com eles."

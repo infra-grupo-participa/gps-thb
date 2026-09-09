@@ -5,21 +5,27 @@ import { cn } from "@/lib/utils";
  * Chip de ícone da marca — UM tamanho e UMA cor para o sistema inteiro.
  *
  * O mesmo bloco existia copiado em 4 lugares, em dois tamanhos (`size-8` e
- * `size-9`). Fica `size-9`. É decorativo: o rótulo em texto está sempre ao
- * lado, então `aria-hidden` evita ruído no leitor de tela.
+ * `size-9`). Fica `size-9`. Por padrão é decorativo: o rótulo em texto está
+ * sempre ao lado, então `aria-hidden` evita ruído no leitor de tela.
+ *
+ * `decorativo={false}` para o caso em que o conteúdo do chip é a informação
+ * (o número da etapa em `etapas-overview`, que não aparece em nenhum outro
+ * lugar do card) — aí esconder do leitor de tela seria perder conteúdo.
  */
 export function IconeChip({
   children,
   destaque,
+  decorativo = true,
   className,
 }: {
   children: React.ReactNode;
   destaque?: boolean;
+  decorativo?: boolean;
   className?: string;
 }) {
   return (
     <span
-      aria-hidden
+      aria-hidden={decorativo || undefined}
       className={cn(
         "flex size-9 shrink-0 items-center justify-center rounded-lg [&>svg]:size-4",
         destaque
@@ -65,7 +71,11 @@ export function KpiCard({
         <div
           className={cn(
             "mt-2 text-2xl font-semibold tabular-nums",
-            destaque && "text-primary",
+            // `text-primary` (#FF6300 sobre branco) dá 2,97:1 — reprova até em
+            // texto grande (3:1). `accent-foreground` é o mesmo laranja
+            // escurecido (#B04300): 5,76:1 sobre o branco do card, passa AA em
+            // qualquer tamanho. Medido, não estimado.
+            destaque && "text-accent-foreground",
           )}
         >
           {valor}

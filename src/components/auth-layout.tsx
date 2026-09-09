@@ -1,5 +1,6 @@
 import { Map, Users, FolderOpen, BookOpen } from "lucide-react";
 import { ThbLogo } from "@/components/thb-logo";
+import { IconeChip } from "@/components/ui/kpi-card";
 
 const DESTAQUES = [
   { Icon: Map, texto: "Roteiro guiado das 6 etapas da holding" },
@@ -34,15 +35,20 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="relative">
-          <h2 className="max-w-sm text-3xl font-semibold leading-tight">
+          {/* Texto de marca, não título do documento: o `h1` da página é o
+              título do cartão de formulário (A11Y2). Era um `h2` sem `h1`
+              acima dele no desktop — hierarquia quebrada. */}
+          <p className="max-w-sm font-heading text-3xl font-semibold leading-tight">
             Sua 1ª holding, do primeiro contato à entrega.
-          </h2>
+          </p>
           <ul className="mt-8 grid gap-3">
             {DESTAQUES.map(({ Icon, texto }) => (
               <li key={texto} className="flex items-center gap-3 text-sm">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/15">
-                  <Icon className="size-4" />
-                </span>
+                {/* Mesmo chip do resto do sistema (VIS2); aqui sobre o
+                    gradiente, então a cor vem do override, não do token. */}
+                <IconeChip className="size-8 bg-white/15 text-primary-foreground">
+                  <Icon />
+                </IconeChip>
                 {texto}
               </li>
             ))}
@@ -54,10 +60,14 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Formulário */}
-      <div className="flex min-h-screen items-center justify-center p-4">
+      {/* Formulário — é o conteúdo principal das 4 telas de entrada, e o alvo
+          do skip link do layout raiz. */}
+      <main
+        id="conteudo"
+        className="flex min-h-screen items-center justify-center p-4"
+      >
         <div className="w-full max-w-sm">{children}</div>
-      </div>
+      </main>
     </div>
   );
 }

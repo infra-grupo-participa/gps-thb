@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { Material, TipoMaterial } from "@/lib/materiais";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
@@ -79,11 +80,10 @@ export function MateriaisView({
       </div>
 
       {grupos.length === 0 ? (
-        <Card>
-          <CardContent className="p-10 text-center text-sm text-muted-foreground">
-            Nenhum material encontrado.
-          </CardContent>
-        </Card>
+        <EmptyState
+          titulo="Nenhum material encontrado."
+          descricao="Tente outra busca ou volte o filtro para “Todos”."
+        />
       ) : (
         grupos.map(([etapa, itens]) => {
           const liberada = etapasLiberadas[etapa];

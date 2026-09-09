@@ -12,14 +12,17 @@ export default function CadastroPage() {
       <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
         <ThbLogo />
         <div>
-          <h1 className="text-lg font-semibold">Implementação Assistida</h1>
+          {/* Marca, não título: o `h1` da página é "Criar conta". */}
+          <p className="font-heading text-lg font-semibold">
+            Implementação Assistida
+          </p>
           <p className="text-sm text-muted-foreground">Time Holding Brasil</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <h2 className="text-lg font-semibold">Criar conta</h2>
+          <h1 className="text-lg font-semibold">Criar conta</h1>
           <p className="text-sm text-muted-foreground">
             Cadastre-se com seu CPF/CNPJ e e-mail. Seus dados são vinculados
             automaticamente e você já acessa o programa.

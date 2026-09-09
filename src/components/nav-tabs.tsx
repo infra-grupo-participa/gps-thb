@@ -48,7 +48,9 @@ export function NavTabs({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center gap-1">
+    // `w-max` para o contêiner rolável do header medir a largura real das abas
+    // em vez de espremê-las (o pior caso é 7 abas em 360 px).
+    <nav className="flex w-max items-center gap-1">
       {items.map((item) => {
         const ativo = item.exact
           ? pathname === item.href
@@ -65,9 +67,12 @@ export function NavTabs({ items }: { items: NavItem[] }) {
             // Nada muda para o usuário: a rota carrega ao clicar.
             prefetch={false}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition",
+              "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition",
               ativo
-                ? "bg-primary/10 text-primary"
+                // `text-primary` (#FF6300) sobre `bg-primary/10` dava 2,9:1 —
+                // reprova em texto de 14 px. O par accent do próprio tema
+                // (#B04300 sobre #FFEDD5) é o mesmo laranja com 5,9:1.
+                ? "bg-accent text-accent-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
               item.adminOnly && "previa-oculta",
             )}

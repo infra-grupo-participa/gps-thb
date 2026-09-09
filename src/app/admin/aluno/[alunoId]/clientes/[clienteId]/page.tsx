@@ -4,6 +4,7 @@ import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getClienteById, getAmbiente } from "@/lib/data";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
 
@@ -37,18 +38,18 @@ export default async function AdminAlunoClienteFichaPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main className="mx-auto w-full max-w-4xl px-4 py-8">
-        <div className="mb-6">
-          <Link
-            href={`${base}/clientes`}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Voltar aos clientes
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold">
-            {cliente.nome || "Novo cliente"}
-          </h1>
-        </div>
+      <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 py-8">
+        <PageHeader
+          titulo={cliente.nome || "Novo cliente"}
+          voltar={
+            <Link
+              href={`${base}/clientes`}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Voltar aos clientes
+            </Link>
+          }
+        />
 
         <ClienteFicha cliente={cliente} alunoId={alunoId} />
       </main>

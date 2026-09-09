@@ -52,6 +52,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Dialog,
   DialogContent,
@@ -165,11 +166,10 @@ export function PlantaoMentoras({ mentoras }: { mentoras: MentoraAdmin[] }) {
       </div>
 
       {mentoras.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Nenhuma mentora cadastrada.
-          </CardContent>
-        </Card>
+        <EmptyState
+          titulo="Nenhuma mentora cadastrada."
+          descricao="Cadastre a primeira mentora para poder marcá-la nos plantões do calendário."
+        />
       ) : (
         <Table>
           <TableHeader>

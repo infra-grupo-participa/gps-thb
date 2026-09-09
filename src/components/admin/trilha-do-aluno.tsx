@@ -1,6 +1,7 @@
 import { History, AlertTriangle } from "lucide-react";
 import type { ItemTrilha } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Separator } from "@/components/ui/separator";
 import { TrilhaItem } from "@/components/admin/trilha-item";
 
@@ -69,14 +70,19 @@ export function TrilhaDoAluno({
 }) {
   if (itens.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
-          <History className="size-6" />
-          {janelaAtiva
+      <EmptyState
+        icone={<History />}
+        titulo={
+          janelaAtiva
             ? `Nenhum registro nos últimos ${janelaAtiva}.`
-            : "Nenhum registro na trilha ainda."}
-        </CardContent>
-      </Card>
+            : "Nenhum registro na trilha ainda."
+        }
+        descricao={
+          janelaAtiva
+            ? "Escolha uma janela maior acima, ou registre uma nota para começar a trilha deste período."
+            : "Cada acesso do aluno e cada nota da equipe entram aqui automaticamente."
+        }
+      />
     );
   }
 

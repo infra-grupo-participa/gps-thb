@@ -5,6 +5,7 @@ import { getAlunoById, getEtapas, getAmbiente } from "@/lib/data";
 import { conteudoEtapa } from "@/lib/etapas";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { EtapaConteudo } from "@/components/etapa/etapa-conteudo";
 import { Badge } from "@/components/ui/badge";
@@ -44,23 +45,23 @@ export default async function AdminAlunoEtapaPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-6">
-          <Link
-            href={base}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Voltar ao início do aluno
-          </Link>
-          <div className="mt-2 flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">
-              Etapa {String(n).padStart(2, "0")} — {etapaInfo?.nome}
-            </h1>
-            {!etapaInfo?.liberada ? (
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+        <PageHeader
+          titulo={`Etapa ${String(n).padStart(2, "0")} — ${etapaInfo?.nome ?? ""}`}
+          voltar={
+            <Link
+              href={base}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Voltar ao início do aluno
+            </Link>
+          }
+          acao={
+            !etapaInfo?.liberada ? (
               <Badge variant="outline">Bloqueada para o aluno</Badge>
-            ) : null}
-          </div>
-        </div>
+            ) : null
+          }
+        />
 
         <EtapaConteudo alunoId={alunoId} n={n} basePath={base} isAdmin />
       </main>

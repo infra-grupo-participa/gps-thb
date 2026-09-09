@@ -16,6 +16,7 @@ import {
   calcularMetricasEtapa1,
 } from "@/lib/etapa1";
 import { calcularEnfases } from "@/lib/enfase";
+import { cn } from "@/lib/utils";
 import {
   definirEnfaseTarefa,
   marcarTarefa,
@@ -282,9 +283,11 @@ function MetricCard({
           {titulo}
         </div>
         <div
-          className={
-            "mt-1 text-2xl font-semibold " + (destaque ? "text-primary" : "")
-          }
+          className={cn(
+            "mt-1 text-2xl font-semibold",
+            // Mesmo motivo do `KpiCard`: `text-primary` no branco é 2,97:1.
+            destaque && "text-accent-foreground",
+          )}
         >
           {valor}
         </div>

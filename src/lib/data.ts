@@ -126,9 +126,22 @@ export interface AlunoGps {
   desde: string | null;
   /** Maior `auth.users.last_sign_in_at` entre os membros. ISO. `null` = nunca entrou. */
   ultimoAcesso: string | null;
+  /**
+   * Soma de `valor_honorarios` dos clientes em `fase='contratado'`, em reais.
+   * `null` = nenhum contratado com valor registrado — NUNCA exibir como
+   * `R$ 0,00` (a coluna nasceu vazia nas 879 linhas na migração ...090).
+   */
+  honorariosContratados: number | null;
+  /** Quantos clientes do ambiente estão em `fase='contratado'`. */
+  contratados: number;
+  /** Desses, quantos ainda sem `valor_honorarios`. */
+  contratadosSemValor: number;
 }
 
-/** Linha crua de `gps.admin_painel_alunos()` (migração 20260909000050). */
+/**
+ * Linha crua de `gps.admin_painel_alunos()` (migração 20260909000050; as três
+ * colunas de honorários entraram na 20260909000091).
+ */
 interface LinhaPainelAlunos {
   aluno_id: string;
   qtd_membros: number;
@@ -140,6 +153,10 @@ interface LinhaPainelAlunos {
   clientes_com_perda: number;
   agendados: number;
   tarefas_concluidas: number[] | null;
+  /** `numeric` do Postgres. Chega como número no JSON; `null` = nenhum valor. */
+  honorarios_contratados: number | null;
+  contratados: number;
+  contratados_sem_valor: number;
 }
 
 /**
@@ -215,6 +232,16 @@ export async function getAlunosGps(): Promise<AlunoGps[]> {
       agendados: l.agendados,
       desde: l.desde,
       ultimoAcesso: l.ultimo_acesso,
+      // `numeric` pode chegar como string em alguns caminhos do PostgREST.
+      // `Number(null)` é 0 — por isso o teste de nulidade vem ANTES da
+      // conversão: transformar "não informado" em zero aqui produziria um
+      // faturamento plausível e falso no card do painel.
+      honorariosContratados:
+        l.honorarios_contratados == null
+          ? null
+          : Number(l.honorarios_contratados),
+      contratados: l.contratados ?? 0,
+      contratadosSemValor: l.contratados_sem_valor ?? 0,
     };
   });
 }

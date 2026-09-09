@@ -186,6 +186,8 @@ const ROTULO_MACRO_POR_TIPO: Partial<
   cliente_ligacao: (n) => `Registrou ligação com ${n} clientes`,
   cliente_aderiu_reuniao: (n) => `${n} clientes aderiram à reunião`,
   cliente_reuniao_agendada: (n) => `Agendou reunião com ${n} clientes`,
+  cliente_honorarios_definidos: (n) =>
+    `Registrou honorários de ${n} clientes`,
   tarefa_concluida: (n) => `Concluiu ${n} tarefas`,
   tarefa_reaberta: (n) => `Reabriu ${n} tarefas`,
 };

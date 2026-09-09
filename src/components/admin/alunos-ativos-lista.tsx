@@ -32,7 +32,8 @@ type OrdemAlunos =
   | "clientes"
   | "tempo_de_casa"
   | "ultimo_acesso"
-  | "nota_recente";
+  | "nota_recente"
+  | "honorarios";
 
 /**
  * Rótulo de cada ordenação. Existe porque `SelectValue` do Base UI mostra o
@@ -48,6 +49,7 @@ const ROTULO_ORDEM: Record<OrdemAlunos, string> = {
   tempo_de_casa: "mais tempo de casa",
   ultimo_acesso: "acesso mais recente",
   nota_recente: "nota mais recente",
+  honorarios: "honorários",
 };
 
 const ORDENS: OrdemAlunos[] = [
@@ -58,6 +60,7 @@ const ORDENS: OrdemAlunos[] = [
   "tempo_de_casa",
   "ultimo_acesso",
   "nota_recente",
+  "honorarios",
 ];
 
 /** Cliente e servidor formatam no MESMO fuso: sem isto o SSR (UTC) e o
@@ -111,6 +114,53 @@ function descreverAcesso(iso: string | null, agora: number): string {
 /** Dias sem acessar; `null` (nunca entrou) conta como infinito. */
 function diasSemAcesso(iso: string | null, agora: number): number {
   return iso ? diasDesde(iso, agora) : Number.POSITIVE_INFINITY;
+}
+
+/** Compacto para o card ("R$ 42 mil"): o número aqui é de comparação, não de
+ * conferência — o valor exato vai no `title` e no texto do leitor de tela. */
+const fmtHonorarios = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+const fmtHonorariosExato = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
+/**
+ * O que o card mostra na coluna de honorários — e o que ele DIZ.
+ *
+ * 🔑 As colunas nasceram NULL (migração ...090). "R$ 0,00" aqui seria uma
+ * afirmação sobre o faturamento de gente real feita em cima de campo recém
+ * criado. Por isso ausência é sempre "—", e o `title`/`sr-only` explica QUAL
+ * ausência: nenhum contratado, ou contratado sem valor registrado.
+ */
+function honorariosDoCard(
+  total: number | null,
+  contratados: number,
+  semValor: number,
+): { visual: string; descricao: string } {
+  if (contratados === 0) {
+    return { visual: "—", descricao: "Nenhum cliente contratado" };
+  }
+  const plural = contratados === 1 ? "contratado" : "contratados";
+  if (total === null) {
+    return {
+      visual: "—",
+      descricao: `${contratados} ${plural}, nenhum com honorários registrados`,
+    };
+  }
+  const base = `${fmtHonorariosExato.format(total)} em ${contratados} ${plural}`;
+  return {
+    visual: fmtHonorarios.format(total),
+    descricao:
+      semValor > 0
+        ? `${base} · ${semValor} ainda sem valor registrado`
+        : base,
+  };
 }
 
 const DIAS_INATIVO = 30;
@@ -298,6 +348,16 @@ export function AlunosAtivosLista({
       if (ordem === "ultimo_acesso") {
         return porData(a.ultimoAcesso, b.ultimoAcesso, "desc") ?? porNome(a, b);
       }
+      if (ordem === "honorarios") {
+        // Maior primeiro; quem não tem valor vai SEMPRE para o fim (não é
+        // "R$ 0", é ausência de dado). Desempate por nome, como nas demais.
+        const va = a.honorariosContratados;
+        const vb = b.honorariosContratados;
+        if (va == null && vb == null) return porNome(a, b);
+        if (va == null) return 1;
+        if (vb == null) return -1;
+        return vb - va || porNome(a, b);
+      }
       if (ordem === "nota_recente") {
         // Quem não tem nota vai para o fim — é o mesmo `porData`, então
         // "sem nota" nunca se disfarça de "nota antiquíssima".
@@ -468,10 +528,18 @@ export function AlunosAtivosLista({
             pct,
             clientesPreenchidos,
             agendados,
+            honorariosContratados,
+            contratados,
+            contratadosSemValor,
             desde,
             ultimoAcesso,
           }) => {
             const atendimento = atendimentoDe(alunoId);
+            const honorarios = honorariosDoCard(
+              honorariosContratados,
+              contratados,
+              contratadosSemValor,
+            );
             const pendencias = atendimento.pendenciasAbertas;
             const nome = aluno?.nome ?? "Aluno sem nome";
             return (
@@ -603,6 +671,18 @@ export function AlunosAtivosLista({
                       <div className="text-sm font-semibold">{agendados}/15</div>
                       <div className="text-[10px] uppercase text-muted-foreground">
                         reuniões
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div
+                        className="text-sm font-semibold tabular-nums"
+                        title={honorarios.descricao}
+                      >
+                        <span aria-hidden>{honorarios.visual}</span>
+                        <span className="sr-only">{honorarios.descricao}</span>
+                      </div>
+                      <div className="text-[10px] uppercase text-muted-foreground">
+                        honorários
                       </div>
                     </div>
                     <div className="w-32">

@@ -69,6 +69,22 @@ export function FavoritoDestaque({
                     Perda: {brl.format(cliente.perda_inercia)}
                   </span>
                 ) : null}
+                {/* Honorários só quando existem. `null` NÃO vira R$ 0,00:
+                    dizer "R$ 0,00" a quem ainda não registrou nada é afirmar
+                    um faturamento que o portal não conhece. */}
+                {cliente.valor_honorarios != null ? (
+                  <span
+                    className="tabular-nums"
+                    title={
+                      cliente.fase === "contratado"
+                        ? "Honorários contratados — contam na meta do ambiente"
+                        : "Honorários registrados — não contam na meta fora de Contratado"
+                    }
+                  >
+                    Honorários: {brl.format(cliente.valor_honorarios)}
+                    {cliente.fase === "contratado" ? null : " (fora da meta)"}
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>

@@ -1,4 +1,6 @@
 import { TrendingUp, Users, CalendarCheck, Coins } from "lucide-react";
+import type { ResumoHonorarios } from "@/lib/etapa1";
+import { MetaHonorarios } from "@/components/etapa1/meta-honorarios";
 import { Card, CardContent } from "@/components/ui/card";
 import { KpiLinha } from "@/components/ui/kpi-card";
 import { Progress } from "@/components/ui/progress";
@@ -22,11 +24,14 @@ export function HomeResumo({
   clientes,
   agendados,
   perdaTotal,
+  honorarios,
 }: {
   progressoGeral: number;
   clientes: number;
   agendados: number;
   perdaTotal: number;
+  /** Meta de faturamento do ambiente (B8) — calculada em `resumoHonorarios`. */
+  honorarios: ResumoHonorarios;
 }) {
   return (
     <Card>
@@ -42,6 +47,10 @@ export function HomeResumo({
           <Progress value={progressoGeral} className="mt-2" />
           <p className="mt-1 text-xs text-muted-foreground">média das 6 etapas</p>
         </div>
+
+        {/* Faturamento logo abaixo do progresso: são as duas leituras de
+            "onde eu estou" — uma do programa, outra do dinheiro. */}
+        <MetaHonorarios resumo={honorarios} />
 
         <Separator />
 

@@ -13,7 +13,11 @@ import {
   ArrowRight,
 } from "lucide-react";
 import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
-import { FASES_CLIENTE, META_CLIENTES } from "@/lib/etapa1";
+import {
+  FASES_CLIENTE,
+  META_CLIENTES,
+  resumoHonorarios,
+} from "@/lib/etapa1";
 import { mascaraTelefone } from "@/lib/masks";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import {
@@ -22,6 +26,7 @@ import {
   mudarFaseCliente,
   removerCliente,
 } from "@/app/etapa-1/actions";
+import { MetaHonorarios } from "@/components/etapa1/meta-honorarios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,7 +75,11 @@ export function ClientesManager({
   const preenchidos = clientes.filter((c) => c.nome.trim() !== "").length;
 
   // Tudo em memória, sobre os ≤ 30 clientes já carregados: nenhuma ida nova ao
-  // banco para contar ou filtrar por fase.
+  // banco para contar, somar ou filtrar por fase. A meta usa `clientes` (a
+  // lista inteira), NUNCA a lista filtrada: filtrar por fase não pode mudar o
+  // faturamento do ambiente.
+  const honorarios = useMemo(() => resumoHonorarios(clientes), [clientes]);
+
   const contagemFase = useMemo(
     () =>
       FASES_CLIENTE.map((f) => ({
@@ -216,6 +225,14 @@ export function ClientesManager({
             </Button>
           </div>
         </div>
+
+        {/* Meta de faturamento do ambiente (B8) — some da tela de ninguém:
+            os três estados de `MetaHonorarios` cobrem "sem contratado",
+            "contratado sem valor" e "com valor". */}
+        <MetaHonorarios
+          resumo={honorarios}
+          className="rounded-lg border bg-muted/30 p-3"
+        />
 
         <div className="flex flex-wrap items-center gap-3">
           <Input

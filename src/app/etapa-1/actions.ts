@@ -28,6 +28,8 @@ export type PatchCliente = Partial<
     | "data_reuniao_preliminar"
     | "aderiu_reuniao"
     | "perfil_disc"
+    | "valor_honorarios"
+    | "contrato_url"
   >
 >;
 
@@ -52,6 +54,11 @@ const CHAVES_PATCH_CLIENTE: ReadonlySet<string> = new Set([
   "data_reuniao_preliminar",
   "aderiu_reuniao",
   "perfil_disc",
+  // Honorários e link do contrato (migração 20260909000090). Estar só no
+  // `Pick` acima não bastaria: o tipo some na compilação e o filtro abaixo
+  // descartaria os dois em runtime — a feature nasceria morta, sem erro.
+  "valor_honorarios",
+  "contrato_url",
 ]);
 
 function filtrarPatch(patch: PatchCliente): PatchCliente {
@@ -60,6 +67,65 @@ function filtrarPatch(patch: PatchCliente): PatchCliente {
     if (CHAVES_PATCH_CLIENTE.has(k)) limpo[k] = v;
   }
   return limpo as PatchCliente;
+}
+
+/**
+ * Normaliza e valida os dois campos de contrato ANTES de mandar ao banco.
+ *
+ * Os CHECKs de `gps.etapa1_clientes` (migração ...090) são a garantia — esta
+ * função existe para o erro chegar ao aluno em português em vez de
+ * `23514 violates check constraint`, e para que o campo esvaziado na tela vire
+ * `null` em vez de `''` (string vazia não casa `^https://…` e derrubaria o
+ * salvamento inteiro da ficha).
+ *
+ * Server Action é endpoint HTTP: os `typeof` não são paranoia, uma chamada
+ * forjada manda o que quiser.
+ */
+function validarPatch(patch: PatchCliente): {
+  patch?: PatchCliente;
+  erro?: string;
+} {
+  const saida: Record<string, unknown> = { ...patch };
+
+  if ("valor_honorarios" in saida) {
+    const v = saida.valor_honorarios;
+    if (v === null || v === undefined || v === "") {
+      saida.valor_honorarios = null;
+    } else if (typeof v !== "number" || !Number.isFinite(v)) {
+      return { erro: "Honorários: informe um valor numérico." };
+    } else if (v < 0) {
+      return { erro: "Honorários não podem ser negativos." };
+    } else if (v > 9_999_999_999.99) {
+      // Teto do numeric(12,2) da coluna — sem isso o erro vira 22003.
+      return { erro: "Honorários: valor acima do limite permitido." };
+    }
+  }
+
+  if ("contrato_url" in saida) {
+    const v = saida.contrato_url;
+    if (v === null || v === undefined) {
+      saida.contrato_url = null;
+    } else if (typeof v !== "string") {
+      return { erro: "Link do contrato inválido." };
+    } else {
+      const url = v.trim();
+      if (url === "") {
+        saida.contrato_url = null;
+      } else if (!url.startsWith("https://")) {
+        return {
+          erro: "O link do contrato precisa começar com https:// (o endereço do Drive).",
+        };
+      } else if (/\s/.test(url)) {
+        return { erro: "O link do contrato não pode conter espaços." };
+      } else if (url.length < 12 || url.length > 2000) {
+        return { erro: "Link do contrato inválido (tamanho fora do permitido)." };
+      } else {
+        saida.contrato_url = url;
+      }
+    }
+  }
+
+  return { patch: saida as PatchCliente };
 }
 
 function revalidar(alunoId: string) {
@@ -103,11 +169,13 @@ export async function atualizarCliente(
 ) {
   const seguro = filtrarPatch(patch);
   if (Object.keys(seguro).length === 0) return { erro: "Nada para salvar." };
+  const { patch: validado, erro: erroValidacao } = validarPatch(seguro);
+  if (erroValidacao || !validado) return { erro: erroValidacao };
   const supabase = await createClient();
   const { error } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
-    .update(seguro)
+    .update(validado)
     .eq("id", clienteId);
 
   if (error) return { erro: error.message };

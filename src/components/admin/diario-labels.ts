@@ -54,6 +54,7 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   cliente_aderiu_reuniao: "Cliente aderiu à reunião",
   cliente_reuniao_agendada: "Agendou reunião",
   cliente_excluido: "Excluiu cliente",
+  cliente_honorarios_definidos: "Registrou os honorários do cliente",
   tarefa_concluida: "Concluiu tarefa",
   tarefa_reaberta: "Reabriu tarefa",
   conta_criada: "Conta criada",

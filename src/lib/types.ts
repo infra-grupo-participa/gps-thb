@@ -171,6 +171,20 @@ export interface ClienteEtapa1 {
   perfil_disc: PerfilDisc | null;
   acompanhado_equipe: boolean;
   ordem: number;
+  /**
+   * Honorários CONTRATADOS deste cliente, em reais (migração 20260909000090).
+   * `null` = não informado, e isso **nunca** pode virar `R$ 0,00` na tela.
+   * Só entra na meta de R$ 150.000 enquanto `fase === "contratado"` — a regra
+   * vive em `resumoHonorarios` (src/lib/etapa1.ts) e em
+   * `gps.admin_painel_alunos()`, nunca numa constraint da coluna: o valor
+   * sobrevive a voltar de fase, apenas deixa de contar.
+   */
+  valor_honorarios: number | null;
+  /**
+   * Link https do contrato no Drive. LINK, não upload — o documento do cliente
+   * continua fora do GPS. O CHECK do banco exige `https://` sem espaço.
+   */
+  contrato_url: string | null;
 }
 
 export type StatusSolicitacao = "pendente" | "aprovada" | "recusada";
@@ -307,6 +321,9 @@ export const TIPOS_EVENTO = [
   "cliente_aderiu_reuniao",
   "cliente_reuniao_agendada",
   "cliente_excluido",
+  // Auditoria de `valor_honorarios` (migração 20260909000092). `contrato_url`
+  // não é auditado de propósito — link muda por manutenção de pasta.
+  "cliente_honorarios_definidos",
   "tarefa_concluida",
   "tarefa_reaberta",
   "conta_criada",

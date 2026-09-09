@@ -15,9 +15,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
-import { calcularMetricasEtapa1 } from "@/lib/etapa1";
+import { calcularMetricasEtapa1, resumoHonorarios } from "@/lib/etapa1";
 import { alunoNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { EtapasOverview } from "@/components/etapas-overview";
 import { FavoritoDestaque } from "@/components/etapa/favorito-destaque";
 import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
@@ -38,9 +39,14 @@ export default async function HomePage() {
     const recusada = solicitacao?.status === "recusada";
 
     return (
-      <main className="flex min-h-screen items-center justify-center p-4">
+      <main
+        id="conteudo"
+        className="flex min-h-screen items-center justify-center p-4"
+      >
         <Card className="max-w-md">
-          <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
+          {/* Sem `pt-6`: o `Card` já paga `py-(--card-spacing)` — o padding
+              somava e o topo do card ficava maior que a base. */}
+          <CardContent className="flex flex-col items-center gap-4 text-center">
             <ThbLogo />
             <Badge variant={recusada ? "destructive" : "secondary"}>
               {recusada ? "Solicitação não aprovada" : "Aguardando liberação"}
@@ -118,6 +124,10 @@ export default async function HomePage() {
   for (const p of progressoTodas.filter((p) => p.etapa === 1))
     manual1[p.tarefa] = p.concluida;
   const m1 = calcularMetricasEtapa1(clientes, manual1);
+  // Meta de faturamento (B8): mesma lista de clientes já carregada acima —
+  // zero query nova. A regra mora em `resumoHonorarios` para que a home, a aba
+  // Clientes e o painel do admin mostrem o MESMO número.
+  const honorarios = resumoHonorarios(clientes);
   const valoresPct = Object.values(pcts);
   const progressoGeral = valoresPct.length
     ? Math.round(valoresPct.reduce((a, b) => a + b, 0) / valoresPct.length)
@@ -133,7 +143,13 @@ export default async function HomePage() {
           financeiro: ctx.papelMembro === "titular",
         })}
       />
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+        <PageHeader
+          titulo="Seu programa"
+          descricao="Onde você está no Programa de Implementação Assistida — e o que fazer agora."
+          className="mb-4"
+        />
+
         {membros.length > 1 ? (
           <AmbienteCompartilhadoBanner
             nomeTitular={alunoAmbiente?.nome ?? null}
@@ -176,6 +192,7 @@ export default async function HomePage() {
                 clientes={m1.preenchidos}
                 agendados={m1.agendados}
                 perdaTotal={m1.perdaTotal}
+                honorarios={honorarios}
               />
             </div>
           </aside>

@@ -13,6 +13,14 @@ export const META_REUNIOES = 15;
 /** Quantidade de clientes potenciais a listar. */
 export const META_CLIENTES = 30;
 
+/**
+ * Meta de faturamento por AMBIENTE, em reais (B8): soma dos honorários
+ * CONTRATADOS, programa inteiro — não por ano nem por turma, porque nenhuma
+ * coluna de `gps.etapa1_clientes` registra competência hoje. Valor
+ * CONTRATADO, não recebido: o portal não sabe o que entrou no caixa do aluno.
+ */
+export const META_HONORARIOS = 150_000;
+
 /** Os 7 problemas — o cliente deve ter ao menos um. */
 export const PROBLEMAS_7: { id: string; rotulo: string }[] = [
   { id: "dividendos", rotulo: "Recebe dividendos relevantes" },
@@ -307,5 +315,56 @@ export function calcularMetricasEtapa1(
     agendados,
     perdaTotal,
     ...resumo,
+  };
+}
+
+/**
+ * Resumo dos honorários de um ambiente — a comprovação de faturamento (B8).
+ *
+ * `total` é `number | null` de propósito: `null` significa "nenhum contratado
+ * tem valor registrado" e é DIFERENTE de `R$ 0,00`. A coluna
+ * `valor_honorarios` nasceu vazia nas 879 linhas; um `?? 0` aqui faria a tela
+ * anunciar "faturamento zero" para quem simplesmente ainda não digitou —
+ * número plausível e errado. Quem consome é obrigado a tratar os três estados.
+ */
+export interface ResumoHonorarios {
+  /** Soma dos contratados COM valor. `null` quando nenhum contratado tem valor. */
+  total: number | null;
+  /** Quantos clientes estão em `fase === "contratado"`. */
+  contratados: number;
+  /** Desses, quantos ainda com `valor_honorarios` nulo. */
+  contratadosSemValor: number;
+  /** 0–100, limitado a 100. `null` quando `total` é `null`. */
+  pct: number | null;
+}
+
+/**
+ * Contagem pura dos honorários a partir das linhas de cliente.
+ *
+ * Mesma razão de existir de `resumoEtapa1`: a tela do aluno e o painel do
+ * admin têm de mostrar O MESMO número, e a regra ("só `fase = 'contratado'`
+ * conta") não pode existir solta em SQL e em JS com liberdade de divergir.
+ * O espelho em SQL é a CTE `cli` de `gps.admin_painel_alunos()` (migração
+ * 20260909000091) — mudar um lado obriga a mudar o outro.
+ *
+ * Cliente que voltou de fase mantém o valor no banco (B9-b, sem constraint) e
+ * simplesmente não é contado aqui.
+ */
+export function resumoHonorarios(clientes: ClienteEtapa1[]): ResumoHonorarios {
+  const contratados = clientes.filter((c) => c.fase === "contratado");
+  const comValor = contratados.filter((c) => c.valor_honorarios != null);
+
+  const total = comValor.length
+    ? comValor.reduce((soma, c) => soma + (c.valor_honorarios ?? 0), 0)
+    : null;
+
+  return {
+    total,
+    contratados: contratados.length,
+    contratadosSemValor: contratados.length - comValor.length,
+    pct:
+      total === null
+        ? null
+        : Math.min(100, Math.round((total / META_HONORARIOS) * 100)),
   };
 }

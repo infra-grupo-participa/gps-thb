@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ThbLogo } from "@/components/thb-logo";
+import Image from "next/image";
 
 /**
  * Layout PRÓPRIO da área pública "/p" (Plantão de Dúvidas).
@@ -45,20 +45,38 @@ export default function PlantaoPublicoLayout({
       */}
       <style>{`html,body{background:#fff !important;}`}</style>
       <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-3 py-4 sm:max-w-lg sm:px-4">
-        <header className="flex items-center gap-2.5">
-          <ThbLogo size="sm" />
-          <div className="min-w-0 leading-tight">
-            {/* `h1` da área pública (A11Y2): `/p/plantao` não tinha nenhum.
-                O título já é este — vira o cabeçalho de documento em vez de
-                ganhar uma segunda faixa repetindo a mesma frase no iframe. */}
-            <h1 className="truncate text-sm font-semibold">
-              Plantão de Dúvidas
-            </h1>
-            <div className="truncate text-xs text-muted-foreground">
-              Acelera Holding — Time Holding Brasil
-            </div>
-          </div>
+        {/*
+          A logo do Acelera Holding (public/logo-acelera.svg) foi desenhada para
+          fundo escuro: a palavra "ACELERA" é um degrade branco->prata que SOME
+          sobre branco ou laranja. Por isso ela vive dentro de um cartão na cor
+          de marca do Acelera (#180b00), que também funciona como cabeçalho da
+          página. `next/image` com `unoptimized`: o otimizador do Next recusa
+          SVG por padrão (mesmo motivo do `ThbLogo`).
+        */}
+        <header className="flex items-center justify-center rounded-xl bg-[#180b00] px-4 py-3">
+          <Image
+            src="/logo-acelera.svg"
+            alt="Acelera Holding"
+            width={1664}
+            height={345}
+            unoptimized
+            priority
+            className="h-auto w-full max-w-[220px]"
+          />
         </header>
+
+        <div className="min-w-0 leading-tight">
+          {/* `h1` da área pública (A11Y2): `/p/plantao` não tinha nenhum.
+              O título já é este — vira o cabeçalho de documento em vez de
+              ganhar uma segunda faixa repetindo a mesma frase no iframe. */}
+          <h1 className="truncate text-sm font-semibold">
+            Plantão de Dúvidas
+          </h1>
+          <div className="truncate text-xs text-muted-foreground">
+            Plantão de Dúvidas do Acelera Holding — atendimento pela equipe do
+            Acelera
+          </div>
+        </div>
 
         <main id="conteudo" className="flex flex-1 flex-col gap-4">
           {children}

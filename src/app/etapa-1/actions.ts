@@ -31,6 +31,37 @@ export type PatchCliente = Partial<
   >
 >;
 
+/**
+ * Allowlist em RUNTIME das chaves de PatchCliente. O tipo acima só vale em
+ * compilação: Server Action é endpoint HTTP, e uma chamada forjada pode mandar
+ * `{ status: ... }` ou qualquer coluna da tabela. Sem esta lista, o
+ * congelamento de `status` (migração ...060) seria só uma promessa de tipo.
+ * Achado do pentest de 08/09/2026 (MÉDIO). Manter espelhada no Pick acima.
+ */
+const CHAVES_PATCH_CLIENTE: ReadonlySet<string> = new Set([
+  "nome",
+  "telefone",
+  "nivel_relacionamento",
+  "problemas",
+  "perda_inercia",
+  "registro_contato",
+  "mensagem_padrao_enviada",
+  "estudo_caso_enviado",
+  "ligacao_realizada",
+  "fase",
+  "data_reuniao_preliminar",
+  "aderiu_reuniao",
+  "perfil_disc",
+]);
+
+function filtrarPatch(patch: PatchCliente): PatchCliente {
+  const limpo: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(patch ?? {})) {
+    if (CHAVES_PATCH_CLIENTE.has(k)) limpo[k] = v;
+  }
+  return limpo as PatchCliente;
+}
+
 function revalidar(alunoId: string) {
   revalidatePath("/etapa-1");
   revalidatePath("/clientes");
@@ -70,11 +101,13 @@ export async function atualizarCliente(
   alunoId: string,
   patch: PatchCliente,
 ) {
+  const seguro = filtrarPatch(patch);
+  if (Object.keys(seguro).length === 0) return { erro: "Nada para salvar." };
   const supabase = await createClient();
   const { error } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
-    .update(patch)
+    .update(seguro)
     .eq("id", clienteId);
 
   if (error) return { erro: error.message };

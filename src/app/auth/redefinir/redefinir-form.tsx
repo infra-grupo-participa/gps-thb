@@ -44,6 +44,7 @@ export function RedefinirForm() {
         <Label htmlFor="senha">Nova senha</Label>
         <InputSenha
           id="senha"
+          autoComplete="new-password"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
           placeholder="Mínimo de 6 caracteres"
@@ -56,6 +57,7 @@ export function RedefinirForm() {
         <Label htmlFor="confirma">Confirmar nova senha</Label>
         <InputSenha
           id="confirma"
+          autoComplete="new-password"
           value={confirma}
           onChange={(e) => setConfirma(e.target.value)}
           required

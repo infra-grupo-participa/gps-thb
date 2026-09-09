@@ -379,7 +379,8 @@ export async function recusarSolicitacao(
     .from("solicitacoes_acesso")
     .update({
       status: "recusada",
-      observacao: observacao?.trim() || null,
+      // Teto no SERVIDOR (o maxLength do textarea é só do cliente) — pentest 09/09.
+      observacao: observacao?.trim().slice(0, 500) || null,
       decidido_em: new Date().toISOString(),
       decidido_por: user?.id ?? null,
     })

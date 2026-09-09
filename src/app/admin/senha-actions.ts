@@ -1,5 +1,6 @@
 "use server";
 
+import { emailValido } from "@/lib/texto";
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
@@ -186,7 +187,7 @@ const CODIGOS_COM_MENSAGEM_PARA_O_ADMIN = new Set(["42501", "22023", "P0002"]);
  */
 export async function definirSenhaMembro(
   membroId: string,
-  opts?: { senha?: string; enviarEmail?: boolean },
+  opts?: { senha?: string; enviarEmail?: boolean; confirmarOutrosSistemas?: boolean },
 ): Promise<{
   erro?: string;
   email?: string;
@@ -195,6 +196,9 @@ export async function definirSenhaMembro(
   papel?: PapelMembro;
   telefone?: string | null;
   nome?: string | null;
+  /** A conta tem papel em OUTRO sistema do grupo; nada foi alterado. Repita com `confirmarOutrosSistemas: true`. */
+  precisaConfirmar?: boolean;
+  programas?: string[];
 }> {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
 
@@ -204,6 +208,40 @@ export async function definirSenhaMembro(
   }
 
   const supabase = await createClient();
+
+  // Pentest de 09/09 (MÉDIO): `gps.admin_alvo_e_equipe` só enxerga public.perfis,
+  // mas auth.users é compartilhado por 7 sistemas. Antes de trocar a senha (e
+  // derrubar as sessões) de uma conta que é privilegiada em OUTRO portal, o admin
+  // precisa saber — e confirmar. Nada muda no banco até a confirmação.
+  if (opts?.confirmarOutrosSistemas !== true) {
+    const { data: membro } = await supabase
+      .schema("gps")
+      .from("membros")
+      .select("aluno_id")
+      .eq("id", membroId)
+      .maybeSingle();
+    if (membro?.aluno_id) {
+      const { data: status } = await supabase
+        .schema("gps")
+        .rpc("admin_status_acesso", { p_aluno_id: membro.aluno_id });
+      const emailDoMembro = (
+        (status as { membros?: { membro_id: string; email: string | null }[] } | null)?.membros ?? []
+      ).find((m) => m.membro_id === membroId)?.email;
+      if (emailDoMembro) {
+        const { data: prog } = await supabase
+          .schema("gps")
+          .rpc("admin_programas_do_email", { p_email: emailDoMembro });
+        const programas = (
+          (prog as { programas?: { programa: string }[] } | null)?.programas ?? []
+        )
+          .map((x) => x.programa)
+          .filter((nome) => nome !== "GPS");
+        if (programas.length > 0) {
+          return { precisaConfirmar: true, programas };
+        }
+      }
+    }
+  }
   const { data, error } = await supabase
     .schema("gps")
     .rpc("admin_definir_senha_membro", {
@@ -309,7 +347,7 @@ export async function adicionarSocioAluno(
     return { erro: "A senha precisa ter ao menos 8 caracteres." };
   }
   const email = opts?.email?.trim().toLowerCase();
-  if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+  if (!email || !emailValido(email)) {
     return { erro: "Informe um e-mail válido para o sócio." };
   }
 

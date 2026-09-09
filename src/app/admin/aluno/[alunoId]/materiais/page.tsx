@@ -3,9 +3,11 @@ import { getContextoSessao } from "@/lib/auth";
 import {
   getAlunoById,
   getEtapas,
+  getEtapasLiberadasPara,
   getAmbiente,
   contarMembrosDoAmbiente,
 } from "@/lib/data";
+import { etapasComLiberacaoDoAluno } from "@/lib/etapas";
 import { listarMateriais } from "@/lib/materiais";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
@@ -27,11 +29,15 @@ export default async function AdminAlunoMateriaisPage({
   if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapas, qtdMembros] = await Promise.all([
+  const [aluno, etapasGlobais, overrides, qtdMembros] = await Promise.all([
     getAlunoById(alunoId),
     getEtapas(),
+    // Mesma regra do ambiente do aluno: o admin vê o acervo com a liberação
+    // individual já aplicada (e continua podendo abrir o bloqueado).
+    getEtapasLiberadasPara(alunoId),
     contarMembrosDoAmbiente(alunoId),
   ]);
+  const etapas = etapasComLiberacaoDoAluno(etapasGlobais, overrides);
   const nomes: Record<number, string> = {};
   const liberadas: Record<number, boolean> = {};
   for (const e of etapas) {

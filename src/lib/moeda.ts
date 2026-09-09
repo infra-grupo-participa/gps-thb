@@ -41,12 +41,12 @@ const FMT_INTEIRO = new Intl.NumberFormat("pt-BR", {
  * o espaço é disputado. Quem usa é obrigado a expor o valor exato ao lado
  * (`title` + `sr-only`), porque compacto arredonda.
  */
-const FMT_COMPACTO = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
+// ⚠️ NÃO usar `notation: "compact"` aqui. A abreviação vem dos dados de locale
+// do ICU, e o ICU do Node (Hostinger) e o do navegador divergem: o servidor
+// renderizava "R$ 68 mil" e o cliente "R$ 68,0 mil" — erro de hidratação em
+// TODA abertura de /admin (achado da Onda A do design, 09/09). A conta é feita
+// à mão e só a parte numérica passa pelo Intl, com regra explícita de casas.
+const FMT_UMA_CASA = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
 
 /** "R$ 1.234,56" */
 export function brl(n: number): string {
@@ -60,7 +60,12 @@ export function brlInteiro(n: number): string {
 
 /** "R$ 42 mil" · "R$ 1,3 mi" — arredonda; exiba o exato junto. */
 export function brlCompacto(n: number): string {
-  return FMT_COMPACTO.format(n);
+  const abs = Math.abs(n);
+  if (!Number.isFinite(n) || abs < 1000) return FMT_INTEIRO.format(n);
+  const [divisor, sufixo] =
+    abs >= 1e9 ? [1e9, "bi"] : abs >= 1e6 ? [1e6, "mi"] : [1e3, "mil"];
+  const sinal = n < 0 ? "-" : "";
+  return `${sinal}R$ ${FMT_UMA_CASA.format(abs / divisor)} ${sufixo}`;
 }
 
 /**

@@ -117,6 +117,15 @@ export function assistenciaNavItems(
       icon: "diario",
       adminOnly: true,
     },
+    // Central de resolução (09/09): diagnóstico do ambiente + ações guardadas
+    // (acesso, pessoas, financeiro, trilha). `adminOnly`: some na prévia "como
+    // o aluno vê" — o aluno nunca tem essa tela.
+    {
+      href: `${base}/resolver`,
+      label: "Resolver",
+      icon: "resolver",
+      adminOnly: true,
+    },
   ];
 }
 

@@ -12,6 +12,7 @@ import {
   NotebookPen,
   Wallet,
   LifeBuoy,
+  Stethoscope,
   type LucideIcon,
 } from "lucide-react";
 
@@ -30,7 +31,8 @@ export interface NavItem {
     | "alunos"
     | "diario"
     | "financeiro"
-    | "suporte";
+    | "suporte"
+    | "resolver";
   /** casa exatamente (para o "Início"). */
   exact?: boolean;
   /** Item exclusivo do admin — some na pré-visualização. */
@@ -56,6 +58,7 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
   diario: NotebookPen,
   financeiro: Wallet,
   suporte: LifeBuoy,
+  resolver: Stethoscope,
 };
 
 export function NavTabs({ items }: { items: NavItem[] }) {

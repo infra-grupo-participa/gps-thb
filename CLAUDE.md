@@ -900,6 +900,107 @@ acesso" → "Remover" sócio pede confirmação nomeada (**cancele**) e nenhum t
 confirmação e — com a lista vazia mas `EMAIL_SUPORTE` definido — o aviso vermelho **não** afirma que
 ninguém recebe.
 
+### 💰 Financeiro v2 — painel de progresso da mentoria (2026-09-09, `fab0c9f`)
+
+A aba deixou de ser extrato frio e virou **o progresso financeiro do aluno na mentoria**, como
+o João explicou: (1) **meta de faturamento de R$ 150.000 durante o programa** (honorários dos
+clientes em `fase='contratado'` do ambiente) — bater a meta é o **próximo nível, o "Áureo"**;
+passar de **R$ 250.000** é o **"bônus do programa"** (o que é o bônus **não está escrito em
+lugar nenhum**: o Marcio não detalhou, não inventar); (2) **registro do pagamento do programa**
+(quanto pagou, parcelas, em dia/atrasado/quitado); (3) visual para o aluno e para a equipe.
+
+- **RPCs** (migração `…140`): `gps.financeiro_pode_ler(uuid)` é a **guarda única** (admin OU
+  titular na mesma linha de `gps.membros`; o sócio continua fora — B7-b); `gps.financeiro_do_aluno`
+  v2 (dropada e recriada — sem sobrecarga) lê **`cs.vw_hm_financeiro`** (regra financeira do sip:
+  `pacote_regra`, `pago`, `saldo_a_perseguir`, parcelas, `situacao`, `status_parcela`, próxima
+  cobrança…; cobertura 96 de 96 contratos, 94 alunos); `gps.financeiro_extrato_do_aluno` lê
+  **`cs.vw_hm_extrato`** (teto 200 linhas). Só leitura; `postgres` lê as views, `authenticated`
+  não → SECURITY DEFINER com `search_path=''`, `revoke` antes do `grant`.
+- **TS**: `src/lib/financeiro.ts` (`situacaoContrato` derivada: cancelado · quitado · atrasado ·
+  em_dia · indefinido — `saldo_parado` não ganhou rótulo inventado; `getExtratoDoAluno`);
+  `progressoFaturamento` + `BONUS_HONORARIOS = 250_000` em `src/lib/etapa1.ts`
+  (`META_HONORARIOS = 150_000` já existia); `getProgressoFaturamento` em `src/lib/data/clientes.ts`.
+- **UI** (`src/components/financeiro/`): `hero-faturamento.tsx` (valor grande + `BarraMarcos`
+  com os marcos 150k/250k + frase de estado: "Faltam R$ X para o Áureo" / "Você chegou ao Áureo"
+  / "passou dos R$ 250.000"), `contratos-fechados.tsx`, `programa-card.tsx` (badge de situação,
+  pago de total, trilha de parcelas, próximo vencimento, crédito e entrada como linhas próprias),
+  `extrato.tsx` (`<details>`, categoria e método legíveis), `ui/barra-marcos.tsx`. **Sem
+  contratado, o hero não mostra "R$ 0 de R$ 150.000" como resultado: mostra a instrução** (marcar
+  cliente como Contratado + informar honorários). `MetaHonorarios` (home/Clientes) usa a mesma
+  função de cálculo e os mesmos marcos.
+- **Regras mantidas**: B7-b (sócio não vê), B7-c (crédito/cancelamento nunca somados), B7-d
+  (`null` ≠ 0), B8 (150k = contratado, programa inteiro), B9. 31 de 125 ambientes seguem sem
+  registro no sip → "não disponível" **mas a seção da meta aparece mesmo assim** (depende dos
+  clientes, não do sip).
+- Provado no banco (JWT real, `set role authenticated`): titular lê (1 contrato, quitado, extrato
+  2 linhas), sócio do mesmo ambiente 42501 nas duas RPCs, casts das views OK.
+
+### 🩺 Central de resolução — o admin resolve dentro do sistema (2026-09-09)
+
+Pedido do João: acesso, sócio, financeiro e trilha se resolvem **pelo painel, sem SQL e sem
+dev**, sem causar confusão (diagnóstico → ação guardada → log → reversível). Spec do arquiteto e
+decisões em `docs/audits/2026-09-09-central/central-resolucao.md`.
+
+**Backend (`674e1e6`, migrações `…150` a `…159`, todas aplicadas e conferidas em transação com
+rollback — bloco B0–B9 da spec):**
+- `gps.admin_diagnostico_ambiente(uuid)` → jsonb com **20 verificações** `{chave, ok, valor,
+  detalhe}` (`ok=true` verde, `false` vermelho/âmbar, **`null` = informação sem juízo** — a tela
+  NÃO deduz cor por texto), `acesso` (= `admin_status_acesso`, reusada, não copiada), `direito`
+  (= `admin_direito_ao_acesso`), `membros` com a **pessoa** de cada um, `etapas` (global ×
+  override já resolvidos, com `origem/motivo/em`), `progresso`, `candidatos_financeiro`,
+  `solicitacoes_pendentes`. **Só leitura, 0 linhas de log.** `tarefa_atual` sai com `ok=null` e só
+  o número de concluídas: o catálogo de tarefas vive no TS e `proximoPasso()` é a regra única.
+- **Trilha**: `gps.etapa_liberacao_aluno` (override POR AMBIENTE, `coalesce(override, global)` —
+  libera quem está adiantado E trava quem precisa refazer), `gps.etapa_liberada_para(uuid,
+  smallint)` (SECURITY INVOKER; guarda com **`coalesce(…, false)`** — sem isso, sem JWT a guarda
+  virava NULL e a função respondia), `gps.admin_definir_liberacao_etapa` (`p_liberada = null`
+  REMOVE o override; motivo 3..300 obrigatório; log + evento `etapa_liberada/travada_pela_equipe`),
+  `gps.admin_reabrir_etapa` (**UPDATE `concluida=false`**, nunca DELETE; N eventos
+  `tarefa_reaberta` com ator `equipe` pela trigger; provado: 7 upd, 0 del).
+  **No TS a mesma regra é `etapaLiberadaPara`/`etapasComLiberacaoDoAluno` (`src/lib/etapas.ts`)**
+  — cada página do aluno troca `getEtapas()` por
+  `etapasComLiberacaoDoAluno(await getEtapas(), await getEtapasLiberadasPara(alunoId))` e nada
+  abaixo (`proximoPasso`, `EtapasOverview`, `listarMateriais`) precisa saber que existe override.
+  `getEtapas()` continua existindo (interruptor global do `/admin`).
+- **Pessoas**: `gps.membros.pessoa_aluno_id` (quem a pessoa É no cadastro; backfill 126 titulares =
+  identidade, 13 sócios pelo e-mail do login, **0 sem pessoa**, 0 duplicatas — `membros_pessoa_uk`
+  **não** criado, a RPC recusa duplicata), `gps.admin_vincular_pessoa_membro` (só sócio; `null`
+  desvincula), `gps.admin_trocar_titular` (sempre 1 titular; **decisão B-T1 opção A: o novo titular
+  PASSA a ver o Financeiro e o antigo deixa** — `gps.financeiro_pode_ler` não mudou; a confirmação
+  da tela escreve isso), `gps.admin_mover_membro` (só sócio; destino precisa de titular; o que ele
+  registrou **fica** no ambiente de origem; 2 linhas de log).
+- **Financeiro (decisão B-F1 opção A, a única peça que escreve fora do `gps`)**:
+  `gps.financeiro_candidatos_do_aluno` é a **regra única** de casamento (contrato órfão de
+  `cs.contatos_hm` cujo `public.compradores` tem o mesmo e-mail ou documento do `thb_alunos`;
+  sem e-mail e sem documento → vazio, nunca a base do sip; devolve só 4 dígitos do documento) e é
+  **peça interna** — ⚠️ neste projeto **toda função nova nasce com `execute` para
+  `authenticated`** (ALTER DEFAULT PRIVILEGES): função interna leva `revoke … from public, anon,
+  authenticated`, conferido em `pg_proc.proacl`. `admin_financeiro_candidatos` (teto 5 + `ja_tem`),
+  `admin_financeiro_vincular` (id explícito; candidato daquele aluno; **`and aluno_id is null`
+  DENTRO do update** — zero linha = 40001, nunca sucesso silencioso; escreve SÓ `aluno_id`),
+  `admin_financeiro_desvincular` (só do próprio aluno; devolve `vinculado_pelo_portal` — `false` =
+  veio do sip, a tela avisa antes). **Medido em rollback contra as 10 triggers de
+  `cs.contatos_hm`: 1 upd em `contatos_hm` + 1 ins em `acessos_log`, nenhuma outra tabela, 0
+  delete, `atualizado_em` intacto.** Injeção no id (`4' or 1=1 --`) → 42501.
+- **`gps.admin_direito_ao_acesso` ganhou `gp_is_admin()`** (`…159`): era SECURITY DEFINER sobre
+  `cs.vw_gps_acessos` SEM guarda e com execute para `authenticated` — **qualquer aluno logado lia
+  nome, e-mail, turma, plano e situação financeira de terceiros pela RPC**. Pré-existente
+  (retrato `…131`), corrigido aqui.
+- Catálogos: `acessos_log.acao` com 12 valores, `aluno_eventos.tipo` 20, `entidade` 4 (+`etapa`).
+  Rótulos em `diario-labels.ts`/`log-agregacao.ts`; 26 frases novas em `erros.ts`.
+  `mapearStatusAcesso` (`src/lib/data/central.ts`) é o **único mapeador** da RPC de acesso —
+  `senha-actions.ts` passou a usá-lo (módulo `"use server"` só exporta função async).
+- **Actions** (`src/app/admin/central-actions.ts`, todas com `ehAdmin()` e `{ erro }` traduzido):
+  `definirLiberacaoEtapa`, `reabrirEtapa`, `vincularPessoaMembro`, `trocarTitular`, `moverMembro`,
+  `vincularFinanceiro`, `desvincularFinanceiro`.
+
+**Frontend**: aba **"Resolver"** (`adminOnly`) em `assistenciaNavItems`, rota
+`/admin/aluno/[alunoId]/resolver` — checklist na ordem das 20 chaves, três estados por forma e
+texto, **botão só em linha vermelha/âmbar**, toda escrita em `DialogoConfirmacao` com
+consequência escrita e motivo quando a RPC exige; as escritas que já existiam em
+`GerenciarAcesso` (senha, adotar login, e-mail, sócio, remover) **não foram duplicadas**.
+Ver a seção de fechamento desta sessão para o que a tela entregou.
+
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 
 **Decisão do Marcio.** O motivo é **operacional, não técnico**: o fluxo não estava fluindo e

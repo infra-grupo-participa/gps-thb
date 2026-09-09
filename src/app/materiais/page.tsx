@@ -1,6 +1,11 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getEtapas } from "@/lib/data";
+import {
+  getAlunoById,
+  getEtapas,
+  getEtapasLiberadasPara,
+} from "@/lib/data";
+import { etapasComLiberacaoDoAluno } from "@/lib/etapas";
 import { listarMateriais } from "@/lib/materiais";
 import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
@@ -15,10 +20,14 @@ export default async function MateriaisPage() {
   if (ctx.papel === "admin") redirect("/admin");
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
-  const [aluno, etapas] = await Promise.all([
+  // O acervo respeita a liberação POR ALUNO: sem isto, o material de uma etapa
+  // liberada só para ele continuaria sem link (o corte é no servidor).
+  const [aluno, etapasGlobais, overrides] = await Promise.all([
     getAlunoById(ctx.alunoId),
     getEtapas(),
+    getEtapasLiberadasPara(ctx.alunoId),
   ]);
+  const etapas = etapasComLiberacaoDoAluno(etapasGlobais, overrides);
   const nomes: Record<number, string> = {};
   const liberadas: Record<number, boolean> = {};
   for (const e of etapas) {

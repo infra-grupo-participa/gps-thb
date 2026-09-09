@@ -4,10 +4,11 @@ import { getContextoSessao } from "@/lib/auth";
 import {
   getAlunoById,
   getEtapas,
+  getEtapasLiberadasPara,
   getAmbiente,
   contarMembrosDoAmbiente,
 } from "@/lib/data";
-import { conteudoEtapa } from "@/lib/etapas";
+import { conteudoEtapa, etapasComLiberacaoDoAluno } from "@/lib/etapas";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
@@ -33,11 +34,15 @@ export default async function AdminAlunoEtapaPage({
   if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapas, qtdMembros] = await Promise.all([
+  const [aluno, etapasGlobais, overrides, qtdMembros] = await Promise.all([
     getAlunoById(alunoId),
     getEtapas(),
+    // O espelho do admin tem de dizer o que o ALUNO vê: com a liberação
+    // individual, "Bloqueada para o aluno" só é verdade depois do override.
+    getEtapasLiberadasPara(alunoId),
     contarMembrosDoAmbiente(alunoId),
   ]);
+  const etapas = etapasComLiberacaoDoAluno(etapasGlobais, overrides);
   const etapaInfo = etapas.find((e) => e.id === n);
 
   return (

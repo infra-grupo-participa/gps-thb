@@ -983,8 +983,7 @@ function FormularioSlot({
   const [observacao, setObservacao] = useState(slot?.observacao ?? "");
   /** Só na criação: repete a mesma configuração nas próximas N semanas. */
   const [repetirSemanas, setRepetirSemanas] = useState(0);
-  // Ao editar, a mentora atual chega só pelo nome (SlotAdmin não carrega id);
-  // casa pelo nome contra a lista para pré-selecionar o valor certo.
+  // Ao editar, a mentora atual vem por `slot.mentoraId` (nunca pelo nome).
   const [mentoraId, setMentoraId] = useState(
     () => slot?.mentoraId ?? "",
   );

@@ -13,9 +13,10 @@
  *
  * A lista de mentoras chega por prop (`getMentoras()` em
  * `src/lib/plantao-data.ts`), porque `criarSlot`/`editarSlot` exigem o uuid
- * da mentora e `SlotAdmin` só carrega o nome. Ao editar — e no seletor inline
- * "Quem apresenta" — a mentora atual é pré-selecionada casando pelo nome
- * contra essa lista.
+ * da mentora. `SlotAdmin` traz `mentoraId`: ao editar — e no seletor inline
+ * "Quem apresenta" — a mentora atual é pré-selecionada pelo ID, nunca pelo
+ * nome (duas mentoras homônimas fariam um "salvar só o link" reatribuir a
+ * mentora em silêncio e zerar o aviso de véspera).
  *
  * FASE 8 (08/09/2026) — autonomia das operadoras, sem dev no meio:
  * - interruptor "Inscrições abertas/pausadas" (`gps.plantao_config`);
@@ -636,9 +637,10 @@ export function PlantaoCalendario({
                           {slot.canceladoMotivo
                             ? `Motivo: ${slot.canceladoMotivo}. `
                             : "Cancelado sem motivo registrado. "}
-                          Os inscritos foram avisados por e-mail e o plantão saiu do
-                          ar. Fica aqui como histórico; use remover para tirar da
-                          agenda.
+                          Os inscritos receberam aviso por e-mail no cancelamento
+                          (quem não recebeu precisa ser avisado por fora) e o plantão
+                          saiu do ar. Fica aqui como histórico; use remover para tirar
+                          da agenda.
                         </p>
                       ) : null}
 
@@ -656,7 +658,7 @@ export function PlantaoCalendario({
                       {!cancelado && !slot.encerrado ? (
                         <div className="mt-3 flex flex-wrap items-end justify-between gap-2 border-t pt-3">
                           <TrocaDeMentora
-                            key={slot.mentoraNome}
+                            key={slot.mentoraId}
                             slot={slot}
                             mentoras={mentoras}
                             pending={pending}
@@ -800,7 +802,7 @@ function TrocaDeMentora({
   emAcao: boolean;
   onTrocar: (mentoraId: string) => void;
 }) {
-  const atualId = mentoras.find((m) => m.nome === slot.mentoraNome)?.id ?? "";
+  const atualId = slot.mentoraId;
   const [escolhida, setEscolhida] = useState(atualId);
   const mudou = escolhida !== "" && escolhida !== atualId;
 
@@ -821,7 +823,7 @@ function TrocaDeMentora({
             <option value="">{slot.mentoraNome || "Escolha a mentora…"}</option>
           )}
           {mentoras
-            .filter((m) => m.ativa || m.nome === slot.mentoraNome)
+            .filter((m) => m.ativa || m.id === slot.mentoraId)
             .map((m) => (
               <option key={m.id} value={m.id}>
                 {m.nome}
@@ -984,7 +986,7 @@ function FormularioSlot({
   // Ao editar, a mentora atual chega só pelo nome (SlotAdmin não carrega id);
   // casa pelo nome contra a lista para pré-selecionar o valor certo.
   const [mentoraId, setMentoraId] = useState(
-    () => mentoras.find((m) => m.nome === slot?.mentoraNome)?.id ?? "",
+    () => slot?.mentoraId ?? "",
   );
 
   const serie = useMemo(
@@ -1021,7 +1023,7 @@ function FormularioSlot({
         >
           <option value="">Escolha a mentora…</option>
           {mentoras
-            .filter((m) => m.ativa || m.nome === slot?.mentoraNome)
+            .filter((m) => m.ativa || m.id === slot?.mentoraId)
             .map((m) => (
               <option key={m.id} value={m.id}>
                 {m.nome}

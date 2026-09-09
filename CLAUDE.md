@@ -174,7 +174,9 @@ Backend (não mexer sem necessidade — já pronto): `gps.aluno_notas`
 (`getDiarioDoAluno` — timeline com teto de 50; `getPendenciasAbertasDoAluno`
 — **sem teto**, para a pendência antiga nunca ficar sem botão de baixa;
 `getResumoDiario` — última nota + contagem exata via `count/head`;
-`getPendenciasPorAluno` — badges do painel; todas com `ehAdmin()` de guarda), `src/app/admin/diario-actions.ts`
+`gps.admin_painel_atendimento()` — pendências abertas + última nota (140 caracteres) por
+aluno, para os cards do painel; **substituiu `getPendenciasPorAluno`** em 09/09; todas com
+`ehAdmin()` de guarda), `src/app/admin/diario-actions.ts`
 (`registrarNota`/`darBaixaPendencia`, autoria sempre do `ctx.user.id` do
 servidor, nunca do cliente).
 
@@ -185,8 +187,8 @@ Frontend: card de resumo no topo do Modo Assistência
 `DiarioBaixaButton`) — a timeline recebe DUAS listas: as notas (teto de 50) e
 as pendências abertas (sem teto), exibidas numa seção fixa no topo com botão
 de baixa, sem repetir no histórico + badge/filtro de pendência na lista "Alunos ativos"
-do painel (`AlunosAtivosLista`, alimentada por `getPendenciasPorAluno()` —
-uma query só, filtro em memória).
+do painel (`AlunosAtivosLista`, alimentada por `gps.admin_painel_atendimento()`
+— uma RPC só, filtro em memória; ver a seção "Polimento geral + Fases 5, 6 e 7").
 
 > ⚠️ **NÃO adicionar "Diário" em `alunoNavItems`** (`src/lib/nav.ts`) — essa
 > função também é chamada pelo **aluno** com `basePath=""`, e qualquer item
@@ -466,8 +468,244 @@ Plano em `PLANO-9-FEATURES.md` (raiz). Ordem por esforço × risco. Entregue nes
   zeram `aviso_mentora_em` quando a mentora muda, publicar recusa mentora sem e-mail,
   criar com "repetir semanalmente por N semanas" (0–12).
 
-**Fora deste ciclo (dependem do Marcio):** notas por aluno (B2), ticket com anexo (B5/B6),
-financeiro (B7–B9), feature 1 (sócio — já existe). Ver tabela de bloqueios no plano.
+**Fora deste ciclo (dependiam do Marcio):** notas por aluno (B2), ticket com anexo (B5/B6),
+financeiro (B7–B9), feature 1 (sócio — já existe). **B2 e B5–B9 foram decididos em 09/09**
+por caminho conservador e reversível, e as Fases 5, 6 e 7 entraram — ver a seção abaixo e
+`PLANO-9-FEATURES.md`.
+
+### 🧽 Polimento geral + Fases 5, 6 e 7 (2026-09-09)
+
+Madrugada de 09/09, commits `f9a763a..cb8fbdd` (13). Duas frentes intercaladas: o **polimento
+do sistema inteiro** (plano em `tmp/squad/polimento.md`) e as **Fases 5, 6 e 7** das 9 features
+(plano em `tmp/squad/fases-5-6-7.md`, com B2 e B5–B9 decididos por caminho conservador e
+reversível). Nenhuma dependência nova; nas partes de polimento o saldo de código é negativo.
+
+#### (a) Design system mínimo — `src/components/ui/`
+
+**O quê:** `PageHeader`, `EmptyState`, `KpiCard`/`KpiLinha`/`IconeChip`, `ListaSkeleton`,
+`ErroPainel`. **Por quê:** o cabeçalho de página estava escrito à mão **17 vezes** (com `mt-2`
+em 5 e não nas outras 12), o "chip de ícone" existia em **4 cópias e 2 tamanhos**, e o
+`pt-5`/`pt-6` colado no `CardContent` **somava** ao `py-(--card-spacing)` que o `Card` já paga —
+cards com topo de 16, 36 e 40 px na mesma tela. `ui/skeleton.tsx` existia com **0 usos**.
+Commits `4631b59` (componentes + `loading.tsx` + `role="alert"` + skip link), `fff250f`
+(`PageHeader` nas 17 páginas), `44a0495` (contraste), `c49ded9` (telas de erro).
+
+**Regras que valem daqui para frente:**
+- Toda página nova usa `PageHeader` e envolve o conteúdo em **`<main id="conteudo">`** — é o
+  alvo do skip link "Pular para o conteúdo" do root layout. Sem ele o skip link não leva a
+  lugar nenhum.
+- **Contraste:** `text-primary` (#FF6300) dá **2,98:1** sobre fundo claro e reprova o WCAG 1.4.3
+  como texto. Texto, número, rótulo e link usam **`text-accent-foreground`** (#B04300, 5,76:1) —
+  34 ocorrências trocadas. `text-primary` fica **só decorativo** (ícone, chip só-ícone). Link
+  inline leva `underline-offset-4 hover:underline`, para não depender só de cor.
+- **Não existe tema escuro.** O bloco `.dark` (30 tokens que nada ativava) saiu do `globals.css`
+  e o `next-themes` saiu do `package.json`. Escrever `dark:` hoje é escrever CSS morto.
+- Erro de formulário leva `role="alert"` (os 4 formulários de entrada não anunciavam a falha).
+- `NavTabs` é renderizado **uma vez**, rolando na horizontal no celular — não dois DOMs.
+- Estado "bloqueado" se diz por **forma** (borda tracejada, chip neutro), nunca por `opacity`
+  no card inteiro, e a microcopy não promete data que `gps.etapas` não tem.
+
+**Carregamento e erro:** `loading.tsx` nas rotas pesadas (`/`, `/clientes`, `/etapa/[etapa]`,
+`/admin`, `/admin/aluno/[alunoId]`, `.../diario`, `/financeiro`, `/chamados`, `/chamados/[id]`,
+`/admin/chamados`) — título estático + esqueleto com a altura real do card, **nunca spinner
+centralizado**. `global-error.tsx` faltava: falha no root layout caía na tela crua do Next; ele
+emite o próprio `<html>/<body>` com CSS embutido e fonte do sistema, porque o layout que carrega
+Tailwind e `next/font` é justamente o que quebrou. A tela de erro mostra **`error.digest`**
+("Código: …") — o único fio entre a queixa do aluno e a linha do log; **`error.message` continua
+fora**. Boundaries de segmento em `/clientes` e no diário, sobre o `ErroPainel`.
+
+#### (b) Sessão memoizada, redirect fechado e headers (`f9a763a`)
+
+- `getContextoSessao()`/`ehAdmin()` viraram **memoizados por requisição** com `cache()` do
+  `react`. A página do Diário fazia **7 `auth.getUser()` + 7 `select perfis` por render**
+  (~57 ms por ida ao GoTrue em sa-east-1); medido depois: 13 chamadas às duas funções num render
+  RSC disparam **1** `getUser`. ⚠️ **Nunca trocar por `getSession()`** — ele não valida o JWT no
+  servidor; seria trocar latência por buraco de auth. `rg "getSession\(" src` tem de continuar 0.
+- **`destinoInterno()` (`src/lib/nav.ts`) é o único validador de `?redirect=`**, usado na página
+  e na action. Era open redirect explorável: `destino.startsWith("/")` aceitava `//evil.com` e
+  `/\evil.com`. Agora `//evil.com`, `/\evil.com`, `/%2f`, `/%5c` e esquemas viram `"/"` (29 casos
+  testados). Toda leitura nova de destino passa por ela.
+- `next.config.ts`: `X-Content-Type-Options: nosniff`, `Strict-Transport-Security` e
+  `Permissions-Policy` em todas as rotas, e **`poweredByHeader: false`**. Os `frame-ancestors`
+  do `/p/*` ficaram **intactos**.
+- Saíram: `src/app/agenda/` inteira (128 linhas órfãs — pasta só com `actions.ts`, sem
+  `page.tsx`, mas com **Server Actions compiladas e expostas**), `getAgenda`,
+  `getAgendaDeTodos`, `contarSolicitacoesPendentes`, `AgendaItem`/`AgendaItemComAluno`, e a rota
+  `/admin/solicitacoes` (virou entrada em `redirects()`). O N+1 do painel virou uma query
+  `.in()`. A tabela `agenda` continua de pé no banco, órfã — mesma regra das `gps.reuniao_*`:
+  remove-se o caminho de código, não o histórico.
+
+#### (c) Colunas explícitas e painel paginado (`6c1d446`)
+
+- **`src/lib/data.ts` não tem mais `select("*")`.** Os 10 viraram constantes `COLUNAS_*` por
+  tabela (`COLUNAS_CLIENTE` cobre os 20 campos de `ClienteEtapa1`, incluindo `fase`,
+  `valor_honorarios`, `contrato_url` e o `status` congelado do marcador "Recusou"). Motivo: o
+  egress do Supabase é teto **da organização**, dividido com o `sip`. **Query nova em `data.ts`
+  declara colunas.**
+- `gps.admin_painel_alunos` ganhou **`p_limite`** (default 200, faixa [1,1000]) e **`p_offset`**,
+  com **`total_ambientes`** em toda linha; a versão sem parâmetros foi **dropada** (sobrecarga =
+  1, conferido — sobrecarga ambígua já quebrou em runtime nos sistemas do João). Ordem com
+  desempate por `aluno_id`. Provado no banco: 3 lotes de 50 somam 125 = 125 distintos = 125 do
+  universo.
+- **Leitura A** do bloqueio de paginação: "Mostrar mais N" via `?mais=` (o lote mora na URL) e
+  rodapé honesto — *"Mostrando X de Y carregados · Z no programa; busca e filtros valem só sobre
+  os carregados"*. **Regra: busca e filtro do painel são em memória sobre o lote.** Se a base
+  crescer a ponto de o admin não achar quem procura, a saída é a Leitura B (busca no servidor),
+  que é feature, não ajuste.
+
+#### (d) Baseline do schema, log sem PII e segredo em tempo constante (`edae452`)
+
+- **`supabase/migrations/00000000000000_gps_baseline.sql` é um RETRATO do schema e NÃO se
+  aplica.** O núcleo do `gps` (15 tabelas, 48 policies, 3 funções, grants — inclusive o grant
+  **por coluna** de `gps.membros`) nasceu direto no banco; foi assim que
+  `admin_adotar_login_existente` viveu 15 dias quebrada. O arquivo foi extraído do banco real em
+  09/09 (`pg_attribute`/`pg_constraint`/`pg_policy`/grants), é idempotente e deixa **de fora** o
+  que migrations posteriores criam (`fase`, honorários, triggers do diário), para uma
+  reconstrução do zero não abortar. **Nenhum índice novo:** os que o plano cogitava já existiam.
+- **`src/lib/log.ts` (`logErro`) substitui `console.error`**: uma linha JSON com
+  `code`/`message`/`details`/`hint` e **redação de e-mail e dígitos**. Erro de servidor novo vai
+  por ele.
+- Segredo do `/api/plantao/manutencao` comparado com **`timingSafeEqual` sobre SHA-256** (tamanho
+  fixo), no lugar de `!==`.
+- O `eslint` passa a ignorar `server.js` (CommonJS do Passenger), `.agents` e `tmp` — `npm run
+  lint` voltou a ficar verde na `main`.
+
+#### (e) Fase 5 — o Diário descoberto (B2) (`1c0b253`)
+
+**B2 decidido: não existe tela de notas para o aluno.** A migração `20260908000001` proíbe **em
+texto** expor `gps.aluno_notas` ao aluno (PII de terceiro no texto livre). O pedido do Marcio
+("notas de status por aluno, histórico com data, nota nova no topo") já estava entregue — o
+defeito era ele não saber que existe. A Fase 5 é **descoberta e velocidade**, não tela nova.
+
+- **`gps.admin_painel_atendimento()`** (SECURITY INVOKER — a RLS só-admin continua a fonte de
+  verdade) devolve por aluno as pendências abertas e a **última nota cortada em 140 caracteres
+  no banco** (B2-b: a lista nunca carrega o texto inteiro). **Substitui
+  `getPendenciasPorAluno`**, que agregava em JavaScript.
+- No painel: linha da última nota em cada card, botão **"Nota rápida"** que abre o `DiarioForm`
+  embutido sem sair da lista (o foco volta ao botão), filtros "com nota nos últimos 7 dias" /
+  "sem nenhuma nota" e ordenação por nota recente. **O aluno nunca vê nada disso** (rota
+  `/admin`).
+- Conferido no banco: 22 alunos com nota, `max(resumo) = 140`, **zero escrita** em
+  `gps.aluno_notas`.
+- Junto: `SelectValue` mostrava o valor cru em vez do rótulo (Base UI) e o foco do link do card
+  era invisível sob `overflow-hidden`.
+
+#### (f) Fase 7-A — aba Financeiro (B7) (`184487f`)
+
+Rotas `/financeiro` (aluno) e `/admin/aluno/[id]/financeiro`.
+
+- **`gps.financeiro_do_aluno(uuid)`** (SECURITY DEFINER, `search_path` vazio, `revoke` antes do
+  `grant`) lê **`cs.contatos_hm`** — dado do `sip`, **só leitura**, e a tela diz de onde vem e
+  que não é editável ali. Devolve uma linha por contrato: total, pago, saldo.
+- **Guarda: admin OU titular do ambiente** na mesma linha de `gps.membros`. Provado no banco:
+  sem JWT 42501, titular lê, **sócio do mesmo ambiente 42501**.
+- 🔴 **B7-b: o SÓCIO NÃO VÊ o financeiro.** `alunoNavItems(basePath, { financeiro })` passou a
+  exigir a flag — a aba não aparece para ele e a página redireciona se ele digitar a URL. São
+  **13 sócios em 13 ambientes**: o contrato é do titular, o sócio nunca assinou. Abrir depois é
+  apagar o `exists (… papel='titular')` da guarda; ter mostrado a dívida de alguém não se desfaz.
+- **B7: 31 de 125 ambientes não têm registro** e veem *"Financeiro não disponível para este
+  cadastro"* — a aba **fica visível** de propósito, senão a lacuna de cadastro no `sip` ficaria
+  invisível para sempre; o admin vê o diagnóstico ("nenhum registro em `cs.contatos_hm`"). Os 2
+  alunos de produto **AURUM** levam aviso.
+- 🔴 **B7-c: `credito_valor_pago` e `cancelamento_valor` nunca entram na aritmética** — aparecem
+  como linha própria, rotulada. A semântica dos dois é do `sip` e não está provada aqui; somar
+  sem saber o sinal produz número plausível e errado.
+- 🔴 **B7-d: saldo desconhecido é `null` e a tela diz "não informado" — nunca R$ 0,00.**
+  `coalesce(total - pago, 0)` transformaria buraco em número.
+- `src/lib/financeiro.ts` concentra os derivados num lugar só: pago 15.000,04 de 15.000 vira
+  **"Quitado, R$ 0,00"** (tolerância de centavos), não "-R$ 0,04".
+
+#### (g) Fase 7-B — honorários e meta de R$ 150.000 (B8/B9) (`845f79d`)
+
+- `gps.etapa1_clientes` ganhou **`valor_honorarios`** (numeric ≥ 0) e **`contrato_url`** (https —
+  **LINK do Drive, não upload**; documento do cliente segue fora do GPS). **Zero backfill:** as
+  879 linhas nascem `NULL` e a UI **nunca** mostra `NULL` como R$ 0,00.
+- **B8: meta = R$ 150.000**, somando `valor_honorarios` dos clientes em `fase='contratado'` **do
+  ambiente**, **programa inteiro**, valor **contratado** (não recebido) — não existe coluna de
+  competência em `etapa1_clientes` que sustentasse recorte por ano ou turma. A regra vive em **um
+  lugar só**: `resumoHonorarios` (`src/lib/etapa1.ts`) e a RPC do painel
+  (`honorarios_contratados`/`contratados`/`contratados_sem_valor`, migração `…091`). Aparece na
+  home, na aba Clientes e no painel do admin.
+- 🔴 **B9-b: sem CHECK ligando o valor à fase.** Voltar de fase **não apaga** o valor, só o tira
+  da meta (a ficha o mostra em somente-leitura, com aviso). Constraint de coerência viraria
+  catraca: mover o cliente de volta falharia até alguém apagar o valor — e apagar dado por
+  mudança de estado é perda silenciosa.
+- **B9:** honorário é um **número que o próprio aluno digita sobre o cliente dele** — não é
+  família do Diário (que é texto da equipe **sobre o aluno**, com PII de terceiro). É visível e
+  editável pelo aluno, e visível ao admin.
+- O diário audita `valor_honorarios` (**evento `cliente_honorarios_definidos`**, detalhe
+  `{de,para}`, migração `…092`); **`contrato_url` não é auditado**. `PatchCliente` e a allowlist
+  em runtime ganharam os dois campos, com validação em português antes do CHECK.
+- Provado em transação com rollback: evento gravado, painel soma 1234.56 / 1 / 0, `aluno_eventos`
+  volta a 1.443.
+
+#### (h) Fase 6 — Suporte por chamados (B5/B6) (`cb8fbdd`)
+
+Rotas `/chamados` e `/chamados/[id]` (aluno), `/admin/chamados` e `/admin/chamados/[id]`
+(equipe), `/admin/aluno/[id]/chamados` (modo assistência).
+
+- **Não substitui e-mail nenhum:** medido `rg -in "suporte|mailto|contato@" src/` → **zero**
+  ocorrências. Não havia canal de suporte na UI. A copy correta é **"Fale com a equipe por
+  aqui"** — nunca "no lugar do e-mail".
+- **`gps.chamados` + `gps.chamado_mensagens`, append-only:** só RPC escreve, `authenticated` só
+  lê, `anon` não tem nada. O **papel do autor é derivado no servidor**. Tetos: 5 abertos por
+  ambiente, 20 mensagens por chamado, reabrir em até 7 dias, e-mail só quando o **status muda**.
+- **Anexo:** bucket **NOVO `gps-chamados`** (privado, 5 MB, `png/jpeg/webp/pdf`), path
+  `<aluno_id>/<uuid>.<ext>`, policies por prefixo; tamanho e MIME conferidos em
+  `storage.objects.metadata` pela RPC. Bucket novo em vez do `gps-documentos` órfão, que está
+  sem limite de tamanho e sem allowlist de MIME. 🔴 **B5-c: só o ALUNO anexa** — a equipe
+  responde com **texto e link** (ela já tem o Drive). Reverter é acrescentar
+  `or public.gp_is_admin()` em `gps.pode_anexar_chamado`.
+- 🔑 **Regra: anexo de chamado ≠ documento do cliente.** O anexo é **prova de um problema do
+  portal** (print de erro, comprovante), efêmero e com expurgo. Contrato, RG e matrícula
+  continuam **só no Drive** — a decisão de 07/2026 segue de pé e a UI diz isso em texto.
+- **B6 — retenção de 180 dias** após o fechamento, com **expurgo por clique do admin**, não
+  `pg_cron`. Motivo: apagar a linha de `storage.objects` por SQL **não apaga o byte** no object
+  store — um cron SQL reportaria sucesso e deixaria o arquivo. O expurgo real exige a Storage
+  API, que exige sessão, e o GPS **não usa `service_role`**: a sessão do admin no navegador é a
+  única credencial legítima disponível.
+- **`gps.config`** (`chamados_aberto` = interruptor que desliga a abertura **sem deploy**, no
+  padrão do Plantão; `chamados_email_equipe` = destinatários do aviso) é editável pela equipe em
+  `/admin/chamados`. O valor tem `check` de tamanho e **sem CR/LF** (injeção de cabeçalho de
+  e-mail). ⚠️ **`chamados_email_equipe` está VAZIO hoje** — o fallback é a env `EMAIL_SUPORTE`;
+  com as duas vazias o chamado é registrado e **ninguém é avisado** (`console.error` explícito +
+  aviso em destaque na tela do admin).
+- `admin_excluir_acesso` passou a apagar os chamados do ambiente; o painel de atendimento ganhou
+  `chamados_abertos`.
+- Provado com JWTs reais + `set role authenticated`, em transação com rollback: titular abre,
+  sócio do ambiente lê, outro ambiente **não** lê, admin responde (`respondido` + e-mail ao
+  aluno) e fecha; **0 chamados após o rollback**. Grants: `anon` sem nada; `authenticated` sem
+  `insert`/`delete` (só RPC); bucket privado com 3 policies em `storage.objects`.
+
+#### (i) Pendências para o João / Marcio
+
+1. 🔴 **`gps.senhas_bkp_20260810`** — cópia de **hashes bcrypt de `auth.users`** feita em
+   10/08/2026 (época da remoção do agendamento): `id`, `email`, `encrypted_password`,
+   `last_sign_in_at`, `copiado_em`. **RLS desligada e grants só para `postgres`** (não exposta
+   pela API), mas é dado sensível parado há um mês **sem finalidade**. Recomendação:
+   `drop table gps.senhas_bkp_20260810`. **Irreversível — decisão do João.**
+2. **B10** — a copy sequencial fecha a Etapa 01 para **58 de 63 ambientes**. É o pedido literal
+   do Marcio; falta levar o número a ele.
+3. **Ilan sem conta** — não existe em `auth.users`, logo não dá para promover a admin (Isabela e
+   Cristiane já são admin, Elaine é dev).
+4. **C7 — onde "recusou" mora.** As 3 fases não têm lugar para recusa; hoje é um marcador sobre o
+   `status` congelado. **Não remover `status` sem decidir isso.**
+5. **`frame-ancestors https://*.hotmart.com`** no `/p/plantao` libera **todo produtor da
+   Hotmart** a embedar a página. Fechar às cegas tira 421 pessoas do ar — depende do ensaio do
+   passo 5 do `ATIVAR-PLANTAO-AGORA.md` (abrir o Plantão dentro do iframe e ler o
+   `document.referrer`).
+6. **`chamados_email_equipe` vazio** — a equipe precisa preencher em `/admin/chamados`, ou o João
+   define `EMAIL_SUPORTE` no painel da Hostinger. Enquanto isso, chamado novo não avisa ninguém.
+7. **Validar as telas logado** (5 minutos; checklist completo na seção E de
+   `tmp/squad/polimento.md`): (1) `/admin` → aluno → Diário tem de abrir visivelmente mais
+   rápido; (2) navegar `/` → Clientes → Materiais em "Slow 3G" e ver **esqueleto**, não a tela
+   anterior congelada; (3) trocar de aba 4 vezes — o espaço acima do título tem de ser o mesmo;
+   (4) card de etapa bloqueada legível e com texto verdadeiro; (5) celular retrato: o header
+   rola na horizontal com as 7 abas; (6) teclado no `/login`: o primeiro Tab oferece "Pular para
+   o conteúdo" e o erro de senha é falado pelo leitor de tela; (7) painel cheio: rodapé
+   "Mostrando X de Y" e "Mostrar mais" trazendo o resto.
+
+**Pentest desta madrugada:** dois relatórios, ambos **APROVADOS** (0 crítico, 0 alto). Fases 5–7: 1 MÉDIO documentado (MIME de anexo vem do que o cliente declarou no PUT, não de inspeção de bytes — a trava real é `download=` em todo link; nunca servir anexo inline) e 1 BAIXO corrigido (equipe não anexa, agora imposto em `gps.chamado_gravar_mensagem`, migração ...116). Polimento: 1 MÉDIO corrigido (`gps.agenda`/`gps.reuniao_agendamentos` aceitavam escrita do dono pela REST — policies derrubadas e grants revogados, ...117, histórico preservado) e 1 BAIXO corrigido (`emailParaIlike` escapa `%`/`_`; `acharAlunoPorEmail` morta removida). Correções em `cd87aa5`.
 
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 
@@ -538,15 +776,26 @@ O que foi **removido** (código):
 - `/login` — login e-mail/senha (Supabase Auth). `/auth/signout` (POST).
 - `/` — Início do aluno (mapa das 6 etapas; admin → `/admin`; sem vínculo → aviso).
 - `/etapa/[n]` — guia da etapa. `/clientes` e `/clientes/[id]` (ficha+docs).
+- `/financeiro` — aba Financeiro do aluno (leitura de `cs.contatos_hm` pela RPC
+  `gps.financeiro_do_aluno`). **Só titular e admin** — o sócio não vê a aba nem a URL.
+- `/chamados` e `/chamados/[id]` — suporte do aluno (abrir chamado com anexo, responder).
 - `/materiais` — **acervo**: aulas + modelos de todas as etapas (busca/filtro por tipo), agregados
   de `CONTEUDO_ETAPAS` por `src/lib/materiais.ts` (`listarMateriais`). Navegação por abas com ícones
   (Início/Clientes/Materiais) em `NavTabs`.
-- Admin espelha em `/admin/aluno/[id]`, `.../etapa/[n]`, `.../clientes`, `.../clientes/[id]`, `.../materiais`.
+- Admin espelha em `/admin/aluno/[id]`, `.../etapa/[n]`, `.../clientes`, `.../clientes/[id]`,
+  `.../materiais`, `.../diario`, `.../financeiro` e `.../chamados`.
 - `/admin` — lista de alunos no GPS + "Adicionar aluno" (busca em `thb_alunos`). Header do admin
   tem só a aba **Alunos** (`adminNavItems` em `src/lib/nav.ts`) desde a remoção do agendamento.
 - `/admin/aluno/[alunoId]` — admin dentro do ambiente do aluno (modo assistência, editável).
 - `/cadastro` — auto-cadastro do aluno (Supabase signUp, metadata `origem=gps`).
-- `/admin/solicitacoes` — fila de solicitações de acesso (aprovar/recusar, match por e-mail).
+- `/admin/chamados` e `/admin/chamados/[id]` — fila de chamados da equipe + configuração de
+  `gps.config` (interruptor `chamados_aberto`, destinatários `chamados_email_equipe`) e expurgo
+  de anexos de chamado fechado há mais de 180 dias.
+- ~~`/admin/solicitacoes`~~ — **não existe mais como página** (09/09): virou `redirect` para
+  `/admin` em `redirects()` do `next.config.ts`. A fila de solicitações vive dentro de `/admin`.
+- ⚠️ **`/agenda` não existe** — a pasta `src/app/agenda/` foi apagada em 09/09; era só um
+  `actions.ts` órfão (sem `page.tsx`) do agendamento removido em 08/2026, com Server Actions
+  compiladas e expostas. **Não recriar.**
 - `/captacao` — bloqueado (placeholder "em breve").
 - `src/proxy.ts` — proteção de sessão (Next 16 usa `proxy`, não `middleware`). Públicas: `/login`, `/cadastro`, `/auth/*`.
 
@@ -722,15 +971,40 @@ limita à própria linha. Já estava resolvido; o documento é que não tinha si
 - [x] **`gps.admin_adotar_login_existente` consertada (2026-09-08):** estava quebrada desde 25/08
       por precedência de operadores (`||` vs `->>`); o botão de adotar login preexistente nunca
       funcionou. Migration `20260909000020` (também versiona a função, que só existia no banco).
+- [x] **Polimento geral (2026-09-09):** design system mínimo em `src/components/ui/`
+      (`PageHeader` + `<main id="conteudo">`, `EmptyState`, `KpiCard`, `ListaSkeleton`,
+      `ErroPainel`), `loading.tsx` nas rotas pesadas, `global-error.tsx`, contraste AA no
+      texto (`text-accent-foreground`), fim do `.dark`/`next-themes`; sessão memoizada com
+      `cache()`, open redirect do login fechado por `destinoInterno()`, `nosniff`/HSTS/
+      `Permissions-Policy` e `poweredByHeader:false`; `data.ts` sem `select("*")` e painel
+      paginado; baseline do schema `gps` versionado (retrato) + `logErro` JSON sem PII.
+      `src/app/agenda/` e a página `/admin/solicitacoes` removidas.
+- [x] **Fase 5 — Diário descoberto (2026-09-09):** `gps.admin_painel_atendimento()` +
+      última nota e "Nota rápida" no card do painel. B2 decidido: não há tela para o aluno.
+- [x] **Fase 7-A — aba Financeiro (2026-09-09):** `/financeiro` e
+      `/admin/aluno/[id]/financeiro`, RPC `gps.financeiro_do_aluno` lendo `cs.contatos_hm`
+      (só leitura). **Sócio não vê** (B7-b); 31 de 125 sem registro veem "não disponível".
+- [x] **Fase 7-B — honorários e meta de R$ 150.000 (2026-09-09):** `valor_honorarios` e
+      `contrato_url` em `etapa1_clientes` (zero backfill), `resumoHonorarios`, evento
+      `cliente_honorarios_definidos`. Sem catraca de fase (B9-b).
+- [x] **Fase 6 — Suporte por chamados (2026-09-09):** `/chamados` e `/admin/chamados`,
+      tabelas append-only, bucket `gps-chamados` (só o aluno anexa), `gps.config` com
+      interruptor, retenção de 180 dias com expurgo por clique do admin.
+- [ ] 🔴 **Decidir sobre `gps.senhas_bkp_20260810`** (hashes bcrypt de `auth.users`, RLS
+      desligada, sem grant à API, parada desde 10/08 sem finalidade). `drop table` é
+      irreversível — decisão do João. Ver "Polimento geral + Fases 5, 6 e 7".
+- [ ] **Preencher `chamados_email_equipe`** em `/admin/chamados` (ou `EMAIL_SUPORTE` no
+      painel da Hostinger). Hoje as duas estão vazias: chamado novo não avisa ninguém.
 - [ ] **Agendar o `pg_cron` do `primeiro_acesso`** — 1 comando, ver `ATIVAR-DIARIO-EVENTOS.md`.
       Sem isso, quem entrar depois do backfill não tem o evento capturado.
-- [ ] Endurecer RLS de `thb_alunos` (ver acima) antes de abrir o cadastro a alunos reais.
-      **Parcialmente resolvido:** um aluno logado hoje só enxerga a própria linha (conferido em
-      31/07 simulando o JWT do aluno) — confirmar se as policies antigas `read_authenticated`
-      ainda existem.
+- [x] **RLS de `thb_alunos` — ex-pendência DESARMADA (2026-09-08).** Testado com JWT real de
+      aluno: lê 1 linha. As policies `qual=true` são RESTRICTIVE e combinam com AND. Ver a
+      seção "✅ Ex-pendência de segurança" acima — **não reabrir**.
 - [ ] Verificar cadastro real ponta a ponta. (A dúvida sobre o GoTrue está respondida:
       `mailer_autoconfirm = true`, ou seja, o aluno entra sem confirmar o e-mail.)
-- [ ] Executar o deploy na Hostinger (clonar, `npm install`, `npm run build`, iniciar app).
+- [x] **Deploy na Hostinger ativo e AUTOMÁTICO** — push na `main` dispara o build Node
+      (confirmado em 09/09/2026 pelo painel de builds). Migrations continuam fora do push:
+      aplicar no Supabase ANTES. Ver `DEPLOY.md`.
 - [ ] Deixar o repositório privado, se desejado (`gh repo edit --visibility private`).
 - [x] E-mails transacionais (Resend): credenciais + acesso liberado (`src/lib/email.ts`).
 - [x] Domínio do portal trocado para `programa.timeholdingbrasil.com.br` (envs, `next.config.ts`,
@@ -769,7 +1043,17 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-09-08 (noite) — **Fases 1–4 e 8 das 9 features do Marcio**:
+_Última atualização: 2026-09-09 (madrugada) — **polimento geral + Fases 5, 6 e 7 das 9
+features** (`f9a763a..cb8fbdd`, 13 commits). Design system em `src/components/ui/`
+(`PageHeader` + `<main id="conteudo">`), `loading.tsx`/`global-error.tsx`, texto em laranja
+escuro (AA) e fim do `.dark`; sessão memoizada com `cache()` (1 `getUser` no lugar de 7),
+open redirect do login fechado por `destinoInterno()`, nosniff/HSTS/Permissions-Policy;
+`data.ts` sem `select("*")` e painel paginado; baseline do schema `gps` versionado (retrato,
+**não se aplica**) e `logErro` sem PII. Fase 5 (nota rápida no painel), 7-A (Financeiro —
+sócio não vê), 7-B (honorários + meta R$ 150.000) e 6 (chamados com anexo). Migrações
+...080 a ...120 aplicadas e conferidas no banco. Pentest em curso._
+
+_Anterior: 2026-09-08 (noite) — **Fases 1–4 e 8 das 9 features do Marcio**:
 campo de senha único com olho, busca/filtros no painel, `gps.admin_painel_alunos()` no
 lugar de varrer a base, copy sequencial (trava de UI), pré-visualização "como o aluno vê",
 cliente com FASE (status congelado por trigger; backfill por evidência 842/37/0) e Plantão

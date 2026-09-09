@@ -18,7 +18,17 @@ produção escutando na porta definida por `process.env.PORT`.
    git clone https://github.com/infra-grupo-participa/gps-thb.git .
    ```
 3. **Variáveis de ambiente** — as chaves públicas já estão em `.env.production`
-   (versionadas). Não é necessário segredo adicional para a Etapa 01.
+   (versionadas). Os **segredos** vão no painel da Hostinger, nunca no repo:
+
+   | Variável | Obrigatória? | Para quê |
+   |---|---|---|
+   | `RESEND_API_KEY` | sim (e-mail) | credenciais de acesso, liberação, avisos de chamado |
+   | `EMAIL_FROM` | sim | remetente; o domínio precisa estar **verificado** na Resend |
+   | `PLANTAO_MANUTENCAO_SEGREDO` | sim (Plantão) | ≥ 16 caracteres, **igual** ao setting `app.plantao_manutencao_segredo` no banco; a guarda falha FECHADO |
+   | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | recomendada | sem ela cada build gera chave nova e Server Actions em voo falham no deploy |
+   | `EMAIL_SUPORTE` | **opcional (nova em 09/2026)** | destinatário de aviso de chamado novo. É apenas **fallback**: a fonte primária é `gps.config.chamados_email_equipe`, editável em `/admin/chamados` **sem deploy**. Aceita vários e-mails separados por vírgula. ⚠️ **Com as duas vazias, chamado novo não avisa ninguém** (a action grava `console.error` e a tela do admin mostra o aviso). |
+
+   `EMAIL_EQUIPE` **não volta** — era do fluxo de reunião, removido em 08/2026.
    > Nunca coloque a `service_role` do Supabase no repositório nem no client.
 4. **Instalar e buildar** (no terminal da app / SSH):
    ```bash
@@ -45,8 +55,24 @@ npm run build
 
 ## Passos de banco que NÃO saem no `git pull`
 
-As migrations são aplicadas fora do deploy (Supabase), mas há um passo que **não
-é migration** e por isso não acontece sozinho:
+🔴 **Ordem obrigatória: migration primeiro, push depois.** O push na `main` publica o
+código em ~1,5 min; se a migration não estiver aplicada, o código novo chama coluna/RPC que
+não existe. E o inverso também morde: **trigger no banco + código antigo no ar = erro para o
+aluno** (aconteceu com a `…062` em 08/09). Aplicar no Supabase **antes**, na mesma janela.
+
+⚠️ **Tabela ou RPC nova exige recarregar o cache do PostgREST.** Sem isso o PostgREST
+responde `PGRST202`/`PGRST205` ("could not find the function/table in the schema cache") mesmo
+com o objeto criado e com grant. Depois de aplicar a migration, no SQL Editor:
+
+```sql
+notify pgrst, 'reload schema';
+```
+
+Valeu para as migrações de 09/09 que criaram `gps.chamados`, `gps.chamado_mensagens`,
+`gps.config` e as RPCs `gps.financeiro_do_aluno` / `gps.admin_painel_atendimento` /
+`gps.chamado_*`. Migration que só altera dado ou policy não precisa.
+
+Há ainda um passo que **não é migration** e por isso não acontece sozinho:
 
 - [ ] **Agendar o job diário do Diário** (uma vez, no SQL Editor) — ver
       [`ATIVAR-DIARIO-EVENTOS.md`](./ATIVAR-DIARIO-EVENTOS.md). Sem ele, o

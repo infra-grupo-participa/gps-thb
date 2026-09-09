@@ -1,97 +1,174 @@
 /**
- * Financeiro do aluno (Fase 7-A) — leitura do contrato do programa.
+ * Financeiro do aluno v2 — "Meu progresso financeiro" (09/09/2026).
  *
- * A fonte é `cs.contatos_hm`, tabela do **sip**, lida SÓ pela RPC
- * `gps.financeiro_do_aluno(uuid)` (SECURITY DEFINER, migração
- * `20260909000100_gps_financeiro_do_aluno.sql`). Este módulo **nunca escreve**
- * lá — o portal exibe, a equipe financeira atualiza.
+ * A aba é o **painel de progresso do aluno na mentoria**, não um extrato frio.
+ * Duas perguntas, duas fontes que não se misturam:
  *
- * 🔴 QUEM VÊ (B7-b): admin e o **titular** do ambiente. O **sócio não vê** — o
- * contrato de pagamento é do titular, o sócio nunca assinou. A guarda de
- * verdade é a da RPC (42501); a guarda daqui é defesa em profundidade, para
- * que uma página futura não vaze extrato por esquecer o redirect.
+ * 1. **Quanto EU faturei** — honorários dos clientes em `fase='contratado'`,
+ *    do banco do GPS (`gps.etapa1_clientes`). Meta R$ 150.000 = próximo nível
+ *    (**Áureo**); passar de R$ 250.000 = **bônus do programa**. Vive em
+ *    `progressoFaturamento` (`@/lib/etapa1`), reexportado aqui.
+ * 2. **Quanto EU devo do programa** — contrato com o Grupo Participa, lido do
+ *    **sip** por `gps.financeiro_do_aluno` e `gps.financeiro_extrato_do_aluno`
+ *    (migração `20260909000140`). Este módulo **nunca escreve** lá.
  *
- * 🔑 ARITMÉTICA (B7-c/B7-d): `creditoValorPago` e `cancelamentoValor` são
- * exibidos e **jamais somados/subtraídos** — a semântica deles é do sip e não
- * está provada aqui. Saldo desconhecido é `null` e a tela diz "não informado";
- * `coalesce(..., 0)` transformaria buraco em número (foi assim que um COALESCE
- * virou "taxa zero" por 5 semanas no sistema de disparos).
+ * 🔴 QUEM VÊ o item 2 (B7-b): admin e o **titular** do ambiente. O **sócio não
+ * vê** — o contrato de pagamento é do titular, o sócio nunca assinou. A guarda
+ * de verdade é a da RPC (42501, `gps.financeiro_pode_ler`); a daqui é defesa em
+ * profundidade, para que uma página futura não vaze extrato por esquecer o
+ * redirect. O item 1 NÃO tem essa trava: honorário é do ambiente e o sócio já
+ * vê a aba Clientes inteira.
+ *
+ * 🔑 ARITMÉTICA (B7-c/B7-d): `credito` é exibido e **jamais somado/subtraído** —
+ * a semântica dele é do sip e não está provada aqui. Valor que o sip não sabe
+ * chega `null` e a tela diz "não informado"; `?? 0` transformaria buraco em
+ * número (foi assim que um COALESCE virou "taxa zero" plausível por 5 semanas
+ * no sistema de disparos).
+ *
+ * 🔑 A UI NÃO REFAZ CONTA. `situacao`, `saldoExibido`, `pagoPct` e
+ * `divergenciaQuitacao` são derivados AQUI, uma vez, para a tela do aluno e a
+ * do admin darem a MESMA resposta.
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
+import { getClientesHonorarios } from "@/lib/data/clientes";
+import { progressoFaturamento } from "@/lib/etapa1";
 import { logErro, logAviso } from "@/lib/log";
+
+export type {
+  ProgressoFaturamento,
+  ContratadoResumo,
+  NivelFaturamento,
+} from "@/lib/etapa1";
+
+/**
+ * Reexportada de propósito: a aba Financeiro monta o progresso a partir das
+ * linhas de cliente que a página já carregou, e quem lê a página não deveria
+ * precisar saber que a conta mora em `etapa1.ts`.
+ *
+ * ⚠️ **Só de Server Component.** Este módulo importa `@/lib/supabase/server`;
+ * um client component que importar daqui puxa o SDK para o bundle. No client
+ * (ex.: `MetaHonorarios`), importe de `@/lib/etapa1`, que é puro.
+ */
+export { progressoFaturamento } from "@/lib/etapa1";
 
 /**
  * Abaixo disto, diferença é ruído de arredondamento — não é dívida nem
- * crédito. Medido no banco em 09/09: há contrato com `valor_pago` 15.000,06
- * contra `valor_total` 15.000,00, ou seja saldo −0,06. Sem esta tolerância a
- * tela mostraria "−R$ 0,06 a pagar" para quem quitou.
+ * crédito. Medido em 09/09: há contrato com pago 15.000,06 contra total
+ * 15.000,00. Sem esta tolerância a tela mostraria "−R$ 0,06 a pagar" para quem
+ * quitou.
  */
 export const TOLERANCIA_CENTAVOS = 0.5;
 
 /**
- * Teto do que se espera de uma leitura. Não trunca nada (truncar esconderia
- * contrato); só registra no log se algum dia passar disso — hoje o máximo
- * medido é 1 linha por aluno, 0 duplicados por (aluno, produto).
+ * Teto do que se espera de uma leitura de contratos. Não trunca nada (truncar
+ * esconderia contrato); só registra no log se algum dia passar disso — hoje o
+ * máximo medido é 1 linha por aluno.
  */
 const CONTRATOS_ESPERADOS = 20;
 
-/** Situação do contrato, derivada uma única vez aqui — a UI não recalcula. */
+/**
+ * Teto do extrato, imposto no SQL (`limit 200`). O SQL ordena por `pago_em`
+ * DESC, então o corte perde o pagamento MAIS ANTIGO, nunca o mais recente.
+ * Medido em 09/09: 232 pagamentos no sistema inteiro — ninguém é truncado hoje.
+ */
+const TETO_EXTRATO = 200;
+
+/**
+ * Situação do contrato, derivada uma única vez aqui — a UI não recalcula.
+ *
+ * O mapa vem da regra do sip (`situacao` + `status_parcela` de
+ * `cs.vw_hm_financeiro`), medido em 09/09:
+ *   situacao       → quitado(64) mensalidade_em_curso(27) saldo_parado(3)
+ *                    cancelado(1) incalculavel(1)
+ *   status_parcela → quitado(64) aguardando(26) em_dia(5) atrasado(1)
+ */
 export type SituacaoContrato =
-  /** `cancelamento_em` preenchido. A tela NÃO apresenta saldo a pagar. */
+  /** `cancelado` do sip ou `cancelamento_em` preenchido. Não apresenta saldo. */
   | "cancelado"
-  /** Quitado por data (`quitado_em`) ou porque o saldo zerou/ficou negativo. */
+  /** Quitado pela regra do sip. */
   | "quitado"
-  /** Há saldo positivo conhecido. */
-  | "em_aberto"
-  /** Não dá para saber: sem saldo manual e sem os dois valores da conta. */
+  /** Inadimplente ou parcela atrasada — é o único estado que pede ação. */
+  | "atrasado"
+  /** Mensalidade em curso / aguardando cobrança: nada a fazer agora. */
+  | "em_dia"
+  /**
+   * `incalculavel`, contrato sem linha na view, ou tudo nulo. A tela escreve
+   * "Não informado" — **nunca** "Em dia", que seria afirmar solvência sem base.
+   */
   | "indefinido";
 
 export interface ContratoFinanceiro {
+  /**
+   * Identificador OPACO do contrato no sip (`cs.contatos_hm.id` como texto).
+   * Serve para a linha técnica do admin e para casar as linhas do extrato com
+   * o contrato. Não é para exibir ao aluno.
+   */
+  contatoHmId: string | null;
   produto: string | null;
   plano: string | null;
   turma: string | null;
-  valorTotal: number | null;
-  valorPago: number | null;
-  /** `null` = não dá para calcular. NUNCA tratar como zero. */
-  saldo: number | null;
-  /** `true` = veio de `saldo_a_pagar_manual` (a equipe digitou). */
-  saldoEManual: boolean;
-  creditoValorPago: number | null;
-  cancelamentoValor: number | null;
-  cancelamentoEm: string | null;
-  pagamentoForma: string | null;
-  pagamentoParcelas: number | null;
-  pagamentoEm: string | null;
-  pagamentoPrevistoEm: string | null;
-  quitadoEm: string | null;
 
-  // ── Derivados (calculados aqui, no servidor, para as duas telas darem a
-  //    MESMA resposta). A UI lê estes campos; não refaz a conta. ──────────
+  // ── A regra do sip (fonte de verdade financeira) ─────────────────────────
+  /** `pacote_regra`: quanto o programa custa pela regra do sip. */
+  valorPrograma: number | null;
+  pago: number | null;
+  /** `saldo_a_perseguir`: o que a régua de cobrança ainda persegue. */
+  saldo: number | null;
+  /** B7-c: exibido rotulado, NUNCA somado a nada. */
+  credito: number | null;
+  parcelasPagas: number | null;
+  parcelasContratadas: number | null;
+  valorParcela: number | null;
+  quitado: boolean | null;
+  cancelado: boolean | null;
+  inadimplente: boolean | null;
+  /** `situacao` crua do sip — só para diagnóstico do admin. */
+  situacaoSip: string | null;
+  /** `status_parcela` cru do sip — só para diagnóstico do admin. */
+  statusParcela: string | null;
+  /** "YYYY-MM-DD" no fuso de São Paulo (o SQL já devolve `date`). */
+  proximaCobrancaEm: string | null;
+  ultimoPagamentoEm: string | null;
+  entradaValor: number | null;
+  entradaPagoEm: string | null;
+  cancelamentoEm: string | null;
+
+  // ── Derivados (calculados aqui, no servidor) ─────────────────────────────
 
   /** Ver `SituacaoContrato`. */
   situacao: SituacaoContrato;
   /**
    * O saldo que a tela deve mostrar:
-   * - `"quitado"` → `0` (nunca "−R$ 0,06");
    * - `"cancelado"` → `null` (contrato cancelado não apresenta saldo a pagar);
-   * - `"indefinido"` → `null` → a tela escreve **"não informado"**;
-   * - `"em_aberto"` → o valor.
+   * - `"quitado"`   → `0` (nunca "−R$ 0,06");
+   * - demais        → o saldo como está, **`null` continua `null`** e a tela
+   *   escreve "não informado" (B7-d).
    */
   saldoExibido: number | null;
   /**
+   * Percentual pago, 0–100, **pronto para a barra**: `pago_pct` do sip quando
+   * existe; senão calculado de `pago / valorPrograma`; `null` quando não dá
+   * para saber — e aí a tela mostra frase, não uma barra de 0%, que afirmaria
+   * "você não pagou nada".
+   */
+  pagoPct: number | null;
+  /**
    * Só para o **admin**: contrato apresentado como quitado cuja aritmética
-   * discorda (`saldo` fora da tolerância), **nos dois sentidos**:
-   * - positivo → marcado `quitado_em` mas a conta ainda aponta dívida;
-   * - negativo → pagou ACIMA do total (crédito) e a tela mostra R$ 0,00.
-   *
-   * `null` quando não há divergência. O aluno não é o público de uma
-   * divergência interna — para ele o contrato continua "Quitado" e o dinheiro
-   * dele não some; quem precisa do número é quem vai conferir com o
-   * financeiro.
+   * discorda (`saldo` fora da tolerância), **nos dois sentidos** (FN1):
+   * positivo → dito quitado com dívida na conta; negativo → pagou acima do
+   * total. `null` quando não há divergência. Para o aluno o contrato continua
+   * "Quitado" — quem precisa do número é quem vai conferir com o financeiro.
    */
   divergenciaQuitacao: number | null;
+  /**
+   * `true` quando o contrato existe em `cs.contatos_hm` mas **não tem linha**
+   * em `cs.vw_hm_financeiro` (o `left join` da RPC). É lacuna de cadastro no
+   * sip, não bug do portal — e o admin precisa enxergar isso escrito, senão a
+   * lacuna fica invisível para sempre.
+   */
+  semRegistroSip: boolean;
 }
 
 export type ResultadoFinanceiro =
@@ -103,33 +180,85 @@ export type ResultadoFinanceiro =
   /** Qualquer outra falha. NUNCA colapsar em `sem_registro`. */
   | { estado: "erro" };
 
-/** Linha crua da RPC `gps.financeiro_do_aluno()`. */
+/** Uma linha do extrato de pagamentos (`cs.vw_hm_extrato`). */
+export interface LinhaExtrato {
+  /**
+   * Casa com `ContratoFinanceiro.contatoHmId`. Não é anulável: a linha vem de
+   * um `join` pela CHAVE de `cs.contatos_hm`, então todo pagamento tem dono.
+   */
+  contatoHmId: string;
+  /** `sinal` | `mensalidade` | `saldo` | `compra_cheia` — cru; a UI rotula. */
+  categoria: string | null;
+  /**
+   * Número da parcela, quando o sip gravou um número. A RPC devolve `text`
+   * (o sip pode gravar "1/12", e `::integer` sobre isso seria 22P02 em
+   * runtime); aqui vira número só quando é número de verdade — senão `null`,
+   * e a UI escreve "Parcela" sem inventar um índice.
+   */
+  parcela: number | null;
+  valor: number | null;
+  /** "YYYY-MM-DD" no fuso de São Paulo. */
+  pagoEm: string | null;
+  /** `CREDIT_CARD`, `PIX`, `BILLET`… cru; a UI traduz e cai no texto cru. */
+  metodoPagamento: string | null;
+}
+
+export type ResultadoExtrato =
+  | {
+      estado: "ok";
+      linhas: LinhaExtrato[];
+      /** `true` quando bateu o teto de 200 — a UI avisa em vez de somar. */
+      truncado: boolean;
+    }
+  /** Contrato existe, pagamento nenhum registrado. */
+  | { estado: "sem_registro" }
+  | { estado: "sem_permissao" }
+  | { estado: "erro" };
+
+/** Linha crua de `gps.financeiro_do_aluno()`. */
 interface LinhaFinanceiro {
+  contato_hm_id: string | null;
   produto: string | null;
   plano: string | null;
   turma: string | null;
-  valor_total: number | string | null;
-  valor_pago: number | string | null;
+  valor_programa: number | string | null;
+  pago: number | string | null;
   saldo: number | string | null;
-  saldo_e_manual: boolean | null;
-  credito_valor_pago: number | string | null;
-  cancelamento_valor: number | string | null;
+  credito: number | string | null;
+  parcelas_pagas: number | string | null;
+  parcelas_contratadas: number | string | null;
+  valor_parcela: number | string | null;
+  pago_pct: number | string | null;
+  quitado: boolean | null;
+  cancelado: boolean | null;
+  inadimplente: boolean | null;
+  situacao: string | null;
+  status_parcela: string | null;
+  proxima_cobranca_em: string | null;
+  ultimo_pagamento_em: string | null;
+  entrada_valor: number | string | null;
+  entrada_pago_em: string | null;
   cancelamento_em: string | null;
-  pagamento_forma: string | null;
-  pagamento_parcelas: number | string | null;
-  pagamento_em: string | null;
-  pagamento_previsto_em: string | null;
-  quitado_em: string | null;
+}
+
+/** Linha crua de `gps.financeiro_extrato_do_aluno()`. */
+interface LinhaExtratoBruta {
+  contato_hm_id: string | null;
+  categoria: string | null;
+  parcela: string | null;
+  valor: number | string | null;
+  pago_em: string | null;
+  metodo_pagamento: string | null;
 }
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
- * `numeric` do Postgres pode chegar como number ou como string (PostgREST
- * serializa number, mas a precisão de `numeric` não é garantida em JS). Aceita
- * os dois e devolve `null` para qualquer coisa que não seja finita — string
- * vazia, `"NaN"`, `Infinity`. Buraco continua buraco: nunca vira 0.
+ * `numeric` do Postgres pode chegar como number ou como string (a precisão de
+ * `numeric` não é garantida em JS). Aceita os dois e devolve `null` para
+ * qualquer coisa que não seja finita — string vazia, `"NaN"`, `Infinity`.
+ * Buraco continua buraco: nunca vira 0.
  */
 function num(v: number | string | null | undefined): number | null {
   if (v === null || v === undefined || v === "") return null;
@@ -142,18 +271,35 @@ function inteiro(v: number | string | null | undefined): number | null {
   return n === null ? null : Math.trunc(n);
 }
 
-/** Derivação de situação/saldo exibido — testável e usada num lugar só. */
+function texto(v: string | null | undefined): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t === "" ? null : t;
+}
+
+/** `true` para o booleano do sip; `null`/`false` não afirmam nada. */
+function verdadeiro(v: boolean | null | undefined): boolean {
+  return v === true;
+}
+
+/**
+ * Situação + saldo exibido + divergência, derivados num lugar só.
+ *
+ * A ordem dos ramos é a regra: cancelado ganha de tudo (contrato morto não tem
+ * dívida a cobrar na tela), quitado ganha de atraso (parcela atrasada num
+ * contrato já quitado é resíduo de cadastro), e o que sobra sem informação cai
+ * em `indefinido` — **jamais** em `em_dia`, que seria afirmar solvência sem
+ * base.
+ */
 function derivar(
+  l: LinhaFinanceiro,
   saldo: number | null,
-  quitadoEm: string | null,
-  canceladoEm: string | null,
 ): Pick<
   ContratoFinanceiro,
   "situacao" | "saldoExibido" | "divergenciaQuitacao"
 > {
-  const zerado = saldo !== null && saldo <= TOLERANCIA_CENTAVOS;
-
-  if (canceladoEm !== null) {
+  const cancelado = verdadeiro(l.cancelado) || l.cancelamento_em !== null;
+  if (cancelado) {
     return {
       situacao: "cancelado",
       saldoExibido: null,
@@ -161,31 +307,80 @@ function derivar(
     };
   }
 
-  if (quitadoEm !== null || zerado) {
-    // A divergência NÃO depende de `quitado_em` (FN1, 09/09/2026). O ramo que
-    // faltava é o do saldo NEGATIVO acima da tolerância sem `quitado_em`:
-    // `zerado` é true, a tela escreve "Quitado, R$ 0,00" e o crédito real —
-    // dinheiro de gente — não aparecia em lugar nenhum, nem para o admin.
-    // Agora todo contrato apresentado como quitado com |saldo| fora do ruído
-    // de centavos carrega o número; a tela do aluno continua igual.
+  const situacaoSip = texto(l.situacao);
+  const statusParcela = texto(l.status_parcela);
+
+  if (
+    verdadeiro(l.quitado) ||
+    situacaoSip === "quitado" ||
+    statusParcela === "quitado"
+  ) {
+    // A divergência sai nos DOIS sentidos (FN1): o ramo do saldo negativo era
+    // dinheiro de gente que não aparecia em lugar nenhum, nem para o admin.
     const divergencia =
       saldo !== null && Math.abs(saldo) > TOLERANCIA_CENTAVOS ? saldo : null;
-    return { situacao: "quitado", saldoExibido: 0, divergenciaQuitacao: divergencia };
-  }
-
-  if (saldo === null) {
     return {
-      situacao: "indefinido",
-      saldoExibido: null,
-      divergenciaQuitacao: null,
+      situacao: "quitado",
+      saldoExibido: 0,
+      divergenciaQuitacao: divergencia,
     };
   }
 
-  return { situacao: "em_aberto", saldoExibido: saldo, divergenciaQuitacao: null };
+  if (verdadeiro(l.inadimplente) || statusParcela === "atrasado") {
+    return { situacao: "atrasado", saldoExibido: saldo, divergenciaQuitacao: null };
+  }
+
+  if (
+    situacaoSip === "mensalidade_em_curso" ||
+    statusParcela === "em_dia" ||
+    statusParcela === "aguardando"
+  ) {
+    return { situacao: "em_dia", saldoExibido: saldo, divergenciaQuitacao: null };
+  }
+
+  // `incalculavel`, `saldo_parado` sem status de parcela, contrato sem linha na
+  // view: o portal não sabe. Dizer "não informado" é a única resposta honesta.
+  return {
+    situacao: "indefinido",
+    saldoExibido: saldo,
+    divergenciaQuitacao: null,
+  };
 }
 
 /**
- * Extrato do contrato do ambiente `alunoId`. Uma entrada por REGISTRO de
+ * Percentual pronto para a barra. `pago_pct` do sip quando existe; senão a
+ * conta local; `null` quando não dá — e a tela mostra frase, não barra de 0%.
+ * A conta local só roda com `valorPrograma > 0`: dividir por zero (ou por
+ * `null`) produziria `Infinity`/`NaN` e uma barra cheia sem significado.
+ */
+function derivarPct(
+  pagoPct: number | null,
+  pago: number | null,
+  valorPrograma: number | null,
+): number | null {
+  if (pagoPct !== null) return Math.max(0, Math.min(100, pagoPct));
+  if (pago === null || valorPrograma === null || valorPrograma <= 0) return null;
+  return Math.max(0, Math.min(100, Math.round((pago / valorPrograma) * 100)));
+}
+
+/**
+ * Guarda TS do Financeiro do programa (defesa em profundidade da guarda da
+ * RPC). Um lugar só, para as duas leituras (contrato e extrato) não poderem
+ * divergir — alargar uma e esquecer a outra é como guarda de dinheiro vaza.
+ */
+async function podeVerFinanceiro(alunoId: string): Promise<boolean> {
+  // Barato: `getContextoSessao` é memoizado por requisição (`cache()`).
+  const ctx = await getContextoSessao();
+  return (
+    ctx?.papel === "admin" ||
+    (ctx?.papel === "aluno" &&
+      ctx.papelMembro === "titular" &&
+      ctx.alunoId === alunoId)
+  );
+}
+
+/**
+ * Contrato do programa do ambiente `alunoId`. Uma entrada por REGISTRO de
  * `cs.contatos_hm` — nunca uma soma por aluno (há produtos diferentes na mesma
  * tabela; somar misturaria o dinheiro de dois contratos).
  *
@@ -205,16 +400,7 @@ export async function getFinanceiroDoAluno(
     return { estado: "erro" };
   }
 
-  // Defesa em profundidade. A fronteira é a guarda da RPC (42501); esta aqui
-  // evita a ida ao banco e garante que nenhuma página nova exponha extrato por
-  // esquecer o redirect. Barato: getContextoSessao é memoizado por requisição.
-  const ctx = await getContextoSessao();
-  const podeVer =
-    ctx?.papel === "admin" ||
-    (ctx?.papel === "aluno" &&
-      ctx.papelMembro === "titular" &&
-      ctx.alunoId === alunoId);
-  if (!podeVer) return { estado: "sem_permissao" };
+  if (!(await podeVerFinanceiro(alunoId))) return { estado: "sem_permissao" };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -225,9 +411,7 @@ export async function getFinanceiroDoAluno(
     if (error.code === "42501") return { estado: "sem_permissao" };
     // Sem alunoId no log: identificador de ambiente é dado de pessoa. O código
     // do erro é o que serve para depurar.
-    logErro("getFinanceiroDoAluno", error, {
-      rpc: "gps.financeiro_do_aluno",
-    });
+    logErro("getFinanceiroDoAluno", error, { rpc: "gps.financeiro_do_aluno" });
     return { estado: "erro" };
   }
 
@@ -243,27 +427,128 @@ export async function getFinanceiroDoAluno(
 
   const contratos: ContratoFinanceiro[] = linhas.map((l) => {
     const saldo = num(l.saldo);
-    const cancelamentoEm = l.cancelamento_em ?? null;
-    const quitadoEm = l.quitado_em ?? null;
+    const pago = num(l.pago);
+    const valorPrograma = num(l.valor_programa);
+    const situacaoSip = texto(l.situacao);
+    const statusParcela = texto(l.status_parcela);
+
     return {
-      produto: l.produto ?? null,
-      plano: l.plano ?? null,
-      turma: l.turma ?? null,
-      valorTotal: num(l.valor_total),
-      valorPago: num(l.valor_pago),
+      contatoHmId: texto(l.contato_hm_id),
+      produto: texto(l.produto),
+      plano: texto(l.plano),
+      turma: texto(l.turma),
+      valorPrograma,
+      pago,
       saldo,
-      saldoEManual: l.saldo_e_manual === true,
-      creditoValorPago: num(l.credito_valor_pago),
-      cancelamentoValor: num(l.cancelamento_valor),
-      cancelamentoEm,
-      pagamentoForma: l.pagamento_forma ?? null,
-      pagamentoParcelas: inteiro(l.pagamento_parcelas),
-      pagamentoEm: l.pagamento_em ?? null,
-      pagamentoPrevistoEm: l.pagamento_previsto_em ?? null,
-      quitadoEm,
-      ...derivar(saldo, quitadoEm, cancelamentoEm),
+      credito: num(l.credito),
+      parcelasPagas: inteiro(l.parcelas_pagas),
+      parcelasContratadas: inteiro(l.parcelas_contratadas),
+      valorParcela: num(l.valor_parcela),
+      quitado: l.quitado ?? null,
+      cancelado: l.cancelado ?? null,
+      inadimplente: l.inadimplente ?? null,
+      situacaoSip,
+      statusParcela,
+      proximaCobrancaEm: l.proxima_cobranca_em ?? null,
+      ultimoPagamentoEm: l.ultimo_pagamento_em ?? null,
+      entradaValor: num(l.entrada_valor),
+      entradaPagoEm: l.entrada_pago_em ?? null,
+      cancelamentoEm: l.cancelamento_em ?? null,
+      pagoPct: derivarPct(num(l.pago_pct), pago, valorPrograma),
+      // Sem NENHUMA coluna da view: o `left join` não achou linha. É lacuna de
+      // cadastro no sip, e o card diz isso ao admin em vez de fingir contrato.
+      semRegistroSip:
+        situacaoSip === null &&
+        statusParcela === null &&
+        valorPrograma === null &&
+        pago === null &&
+        saldo === null,
+      ...derivar(l, saldo),
     };
   });
 
   return { estado: "ok", contratos };
+}
+
+/**
+ * Extrato de pagamentos do programa — a prova por trás do acumulado.
+ *
+ * Mesma guarda do contrato: o sócio recebe `sem_permissao` (B7-b). A ordem é
+ * do MAIS RECENTE para o mais antigo (imposta no SQL), porque o teto de 200 tem
+ * de cortar o pagamento velho, nunca o de ontem.
+ */
+export async function getExtratoDoAluno(
+  alunoId: string,
+): Promise<ResultadoExtrato> {
+  if (typeof alunoId !== "string" || !UUID_RE.test(alunoId)) {
+    logErro("getExtratoDoAluno", "alunoId invalido", {
+      tipo: typeof alunoId,
+      tamanho: typeof alunoId === "string" ? alunoId.length : null,
+    });
+    return { estado: "erro" };
+  }
+
+  if (!(await podeVerFinanceiro(alunoId))) return { estado: "sem_permissao" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("financeiro_extrato_do_aluno", { p_aluno_id: alunoId });
+
+  if (error) {
+    if (error.code === "42501") return { estado: "sem_permissao" };
+    logErro("getExtratoDoAluno", error, {
+      rpc: "gps.financeiro_extrato_do_aluno",
+    });
+    return { estado: "erro" };
+  }
+
+  const brutas = (data ?? []) as LinhaExtratoBruta[];
+  if (brutas.length === 0) return { estado: "sem_registro" };
+
+  const linhas: LinhaExtrato[] = brutas.map((l) => ({
+    // `?? ""` é inalcançável (o id é PK do lado interno do join) e existe só
+    // para o tipo não mentir: uma chave vazia erra o `produtoPorContrato` e a
+    // UI mostra "—", em vez de quebrar num índice nulo.
+    contatoHmId: texto(l.contato_hm_id) ?? "",
+    categoria: texto(l.categoria),
+    parcela: inteiro(l.parcela),
+    valor: num(l.valor),
+    pagoEm: l.pago_em ?? null,
+    metodoPagamento: texto(l.metodo_pagamento),
+  }));
+
+  const truncado = linhas.length >= TETO_EXTRATO;
+  if (truncado) {
+    logAviso("getExtratoDoAluno", "extrato no teto; linhas antigas omitidas", {
+      qtd: linhas.length,
+      teto: TETO_EXTRATO,
+    });
+  }
+
+  return { estado: "ok", linhas, truncado };
+}
+
+/**
+ * Progresso de faturamento do ambiente (meta de R$ 150.000 → Áureo → bônus).
+ *
+ * ⚠️ **Sem a trava do titular de propósito.** Isto não é o contrato do
+ * programa: são os honorários dos clientes DO AMBIENTE, que o sócio já vê
+ * inteiros na aba Clientes. A barreira aqui é a RLS de `gps.etapa1_clientes`,
+ * que já limita cada um ao próprio ambiente — pedir o progresso de um ambiente
+ * alheio devolve lista vazia, não dado de outro.
+ *
+ * A conta é `progressoFaturamento` (`@/lib/etapa1`), a MESMA que a home e a aba
+ * Clientes usam. Se fosse refeita aqui, o aluno veria dois números para a mesma
+ * pergunta.
+ */
+export async function getProgressoFaturamento(alunoId: string) {
+  if (typeof alunoId !== "string" || !UUID_RE.test(alunoId)) {
+    logErro("getProgressoFaturamento", "alunoId invalido", {
+      tipo: typeof alunoId,
+      tamanho: typeof alunoId === "string" ? alunoId.length : null,
+    });
+    return progressoFaturamento([]);
+  }
+  return progressoFaturamento(await getClientesHonorarios(alunoId));
 }

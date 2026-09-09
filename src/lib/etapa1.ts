@@ -21,6 +21,21 @@ export const META_CLIENTES = 30;
  */
 export const META_HONORARIOS = 150_000;
 
+/**
+ * Segundo marco do programa, em reais: passar disto dá direito ao **bônus do
+ * programa** (v2 da aba Financeiro, 09/09/2026).
+ *
+ * ⚠️ "bônus do programa" é literalmente tudo que se sabe. O Marcio não
+ * detalhou o que é o bônus, então **nenhuma tela pode dizer qual é** — nem
+ * "viagem", nem "desconto", nem percentual. Inventar o prêmio é prometer em
+ * nome da empresa. Quando ele definir, o texto muda num lugar só (a UI da aba
+ * e o `MetaHonorarios`); a constante fica.
+ *
+ * Bater `META_HONORARIOS` = próximo nível, o **Áureo**. Passar de
+ * `BONUS_HONORARIOS` = bônus.
+ */
+export const BONUS_HONORARIOS = 250_000;
+
 /** Os 7 problemas — o cliente deve ter ao menos um. */
 export const PROBLEMAS_7: { id: string; rotulo: string }[] = [
   { id: "dividendos", rotulo: "Recebe dividendos relevantes" },
@@ -323,6 +338,23 @@ export function calcularMetricasEtapa1(
  * anunciar "faturamento zero" para quem simplesmente ainda não digitou —
  * número plausível e errado. Quem consome é obrigado a tratar os três estados.
  */
+/**
+ * O mínimo que se precisa saber de um cliente para contar a meta.
+ *
+ * `ClienteEtapa1` satisfaz este formato, então nada muda para quem já chama
+ * `resumoHonorarios(clientes)`. Existir separado permite que a aba Financeiro
+ * leia do banco só estes 4 campos (`getClientesHonorarios`) em vez das 20
+ * colunas da ficha — o egress do Supabase tem teto DA ORGANIZAÇÃO, dividido
+ * com o sip, e `registro_contato`/`perda_inercia` são dado de terceiro que não
+ * tem por que trafegar até uma tela de dinheiro.
+ */
+export interface ClienteHonorarios {
+  id: string;
+  nome: string;
+  fase: FaseCliente;
+  valor_honorarios: number | null;
+}
+
 export interface ResumoHonorarios {
   /** Soma dos contratados COM valor. `null` quando nenhum contratado tem valor. */
   total: number | null;
@@ -346,7 +378,9 @@ export interface ResumoHonorarios {
  * Cliente que voltou de fase mantém o valor no banco (B9-b, sem constraint) e
  * simplesmente não é contado aqui.
  */
-export function resumoHonorarios(clientes: ClienteEtapa1[]): ResumoHonorarios {
+export function resumoHonorarios(
+  clientes: readonly ClienteHonorarios[],
+): ResumoHonorarios {
   const contratados = clientes.filter((c) => c.fase === "contratado");
   const comValor = contratados.filter((c) => c.valor_honorarios != null);
 
@@ -362,5 +396,120 @@ export function resumoHonorarios(clientes: ClienteEtapa1[]): ResumoHonorarios {
       total === null
         ? null
         : Math.min(100, Math.round((total / META_HONORARIOS) * 100)),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Progresso de faturamento na mentoria (aba Financeiro v2, 09/09/2026)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Onde o ambiente está na escada do programa.
+ *
+ * `em_andamento` cobre TAMBÉM o caso "nenhum contratado com valor" — a UI
+ * distingue pelo `faturado === null`, que é o estado "ainda não há o que
+ * mostrar", diferente de "faturou pouco".
+ */
+export type NivelFaturamento = "em_andamento" | "aureo" | "bonus";
+
+/** Um contratado na lista da aba — só o que a tela de dinheiro precisa. */
+export interface ContratadoResumo {
+  clienteId: string;
+  nome: string;
+  /** `null` = contratado sem honorários informados. NUNCA exibir como R$ 0,00. */
+  valor: number | null;
+}
+
+/**
+ * O painel de progresso financeiro do aluno na mentoria.
+ *
+ * 🔑 `faturado` é `number | null`: `null` significa "nenhum contratado tem
+ * valor registrado" e é DIFERENTE de R$ 0,00. A coluna `valor_honorarios`
+ * nasceu vazia nas 879 linhas; escrever "R$ 0 de R$ 150.000" seria uma
+ * afirmação sobre o faturamento do aluno que o portal não tem como fazer.
+ * Todos os derivados (`faltaParaMeta`, `faltaParaBonus`, `pctMeta`) seguem o
+ * mesmo caminho e são `null` junto.
+ */
+export interface ProgressoFaturamento {
+  /** Soma dos honorários dos clientes em `fase='contratado'`. */
+  faturado: number | null;
+  /** R$ 150.000 — bater é o próximo nível, o **Áureo**. */
+  meta: number;
+  /** R$ 250.000 — passar dá o **bônus do programa** (não detalhado). */
+  bonus: number;
+  /** Quanto falta para o Áureo. `0` quando já bateu. */
+  faltaParaMeta: number | null;
+  /** Quanto falta para o bônus. `0` quando já passou. */
+  faltaParaBonus: number | null;
+  /** 0–100 sobre a META (não sobre o bônus). Teto 100. */
+  pctMeta: number | null;
+  nivelAtual: NivelFaturamento;
+  /** Quantos clientes estão em `fase='contratado'`. */
+  contratados: number;
+  /** Desses, quantos ainda sem `valor_honorarios` — vira aviso na tela. */
+  contratadosSemValor: number;
+  /** Os contratados, do maior valor para o menor; sem valor por último. */
+  clientes: ContratadoResumo[];
+}
+
+/**
+ * Progresso de faturamento a partir das linhas de cliente do ambiente.
+ *
+ * 🔑 REGRA NUM LUGAR SÓ: a soma continua saindo de `resumoHonorarios` — esta
+ * função só acrescenta os marcos (Áureo/bônus) e a lista. Se a regra de "o que
+ * conta para a meta" fosse reescrita aqui, a home, a aba Clientes e a aba
+ * Financeiro ganhariam liberdade de divergir, e o aluno veria dois números
+ * para a mesma pergunta. O espelho em SQL é a CTE `cli` de
+ * `gps.admin_painel_alunos()` (migração 20260909000091).
+ *
+ * Pura de propósito (sem React, sem banco): a aba Financeiro a usa pelo
+ * servidor (`getProgressoFaturamento`) e o `MetaHonorarios` a usa no client
+ * com a lista que já tem em memória. Mesma conta, zero consulta nova.
+ */
+export function progressoFaturamento(
+  clientes: readonly ClienteHonorarios[],
+): ProgressoFaturamento {
+  const resumo = resumoHonorarios(clientes);
+  const faturado = resumo.total;
+
+  const contratados = clientes
+    .filter((c) => c.fase === "contratado")
+    .map<ContratadoResumo>((c) => ({
+      clienteId: c.id,
+      nome: c.nome,
+      valor: c.valor_honorarios ?? null,
+    }))
+    // Maior valor primeiro; quem ainda não tem valor fica no fim, onde a UI
+    // pede o preenchimento. `localeCompare` desempata para a ordem não dançar
+    // entre dois carregamentos da mesma tela.
+    .sort((a, b) => {
+      if (a.valor === b.valor) return a.nome.localeCompare(b.nome, "pt-BR");
+      if (a.valor === null) return 1;
+      if (b.valor === null) return -1;
+      return b.valor - a.valor;
+    });
+
+  const nivelAtual: NivelFaturamento =
+    faturado === null
+      ? "em_andamento"
+      : faturado >= BONUS_HONORARIOS
+        ? "bonus"
+        : faturado >= META_HONORARIOS
+          ? "aureo"
+          : "em_andamento";
+
+  return {
+    faturado,
+    meta: META_HONORARIOS,
+    bonus: BONUS_HONORARIOS,
+    faltaParaMeta:
+      faturado === null ? null : Math.max(0, META_HONORARIOS - faturado),
+    faltaParaBonus:
+      faturado === null ? null : Math.max(0, BONUS_HONORARIOS - faturado),
+    pctMeta: resumo.pct,
+    nivelAtual,
+    contratados: resumo.contratados,
+    contratadosSemValor: resumo.contratadosSemValor,
+    clientes: contratados,
   };
 }

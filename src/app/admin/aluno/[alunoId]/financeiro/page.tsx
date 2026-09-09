@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getMembrosDoAmbiente } from "@/lib/data";
-import { getFinanceiroDoAluno } from "@/lib/financeiro";
+import {
+  getExtratoDoAluno,
+  getFinanceiroDoAluno,
+  getProgressoFaturamento,
+} from "@/lib/financeiro";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
@@ -36,10 +40,14 @@ export default async function AdminAlunoFinanceiroPage({
   const membros = await getMembrosDoAmbiente(alunoId);
   if (membros.length === 0) notFound();
 
-  const [aluno, resultado] = await Promise.all([
+  const [aluno, resultado, extrato, progresso] = await Promise.all([
     getAlunoById(alunoId),
     getFinanceiroDoAluno(alunoId),
+    getExtratoDoAluno(alunoId),
+    getProgressoFaturamento(alunoId),
   ]);
+  const linhasExtrato = extrato.estado === "ok" ? extrato.linhas : [];
+  const extratoTruncado = extrato.estado === "ok" && extrato.truncado;
 
   return (
     <>
@@ -65,9 +73,16 @@ export default async function AdminAlunoFinanceiroPage({
             </Link>
           }
           titulo={`Financeiro de ${aluno?.nome ?? "aluno"}`}
-          descricao="Contrato do programa lido do cadastro financeiro do Grupo Participa. Somente leitura — o portal não edita esses valores. O sócio do ambiente não vê esta aba."
+          descricao="Faturamento do aluno na mentoria e o contrato do programa, lido do cadastro financeiro do Grupo Participa. Somente leitura — o portal não edita esses valores. O sócio do ambiente não vê esta aba."
         />
-        <FinanceiroView resultado={resultado} ehAdmin />
+        <FinanceiroView
+          progresso={progresso}
+          resultado={resultado}
+          linhasExtrato={linhasExtrato}
+          extratoTruncado={extratoTruncado}
+          ehAdmin
+          basePath={`/admin/aluno/${alunoId}`}
+        />
       </main>
     </>
   );

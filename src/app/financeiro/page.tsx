@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import { LifeBuoy } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById } from "@/lib/data";
-import { getFinanceiroDoAluno } from "@/lib/financeiro";
+import {
+  getExtratoDoAluno,
+  getFinanceiroDoAluno,
+  getProgressoFaturamento,
+} from "@/lib/financeiro";
 import { alunoNavItems, navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { FinanceiroView } from "@/components/financeiro/financeiro-view";
@@ -81,10 +85,20 @@ export default async function FinanceiroPage() {
     );
   }
 
-  const [aluno, resultado] = await Promise.all([
+  // Um lote só: as quatro leituras são independentes e o caminho crítico da
+  // aba é o round-trip a sa-east-1, não a CPU. Em série seriam ~4 idas a
+  // sa-east-1 empilhadas no LCP da aba.
+  const [aluno, resultado, extrato, progresso] = await Promise.all([
     getAlunoById(alunoId),
     getFinanceiroDoAluno(alunoId),
+    getExtratoDoAluno(alunoId),
+    getProgressoFaturamento(alunoId),
   ]);
+  // Extrato é apoio: falha ou ausência dele NÃO derruba a aba — a seção some
+  // e o resto da tela continua respondendo "quanto eu faturei" e "quanto
+  // falta pagar".
+  const linhasExtrato = extrato.estado === "ok" ? extrato.linhas : [];
+  const extratoTruncado = extrato.estado === "ok" && extrato.truncado;
 
   return (
     <>
@@ -97,9 +111,16 @@ export default async function FinanceiroPage() {
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-8">
         <PageHeader
           titulo="Financeiro"
-          descricao="Seu contrato com o Grupo Participa: quanto é, quanto já foi pago e o que ainda falta."
+          descricao="Quanto você já faturou na mentoria e como está o pagamento do seu programa."
         />
-        <FinanceiroView resultado={resultado} ehAdmin={false} />
+        <FinanceiroView
+          progresso={progresso}
+          resultado={resultado}
+          linhasExtrato={linhasExtrato}
+          extratoTruncado={extratoTruncado}
+          ehAdmin={false}
+          basePath=""
+        />
       </main>
     </>
   );

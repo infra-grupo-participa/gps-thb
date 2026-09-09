@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ClienteEtapa1 } from "@/lib/types";
+import type { ClienteHonorarios } from "@/lib/etapa1";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Clientes da Etapa 01 (`gps.etapa1_clientes`) e os dados da Etapa 03
@@ -99,4 +100,34 @@ export async function getClienteEquipe(
     .eq("acompanhado_equipe", true)
     .maybeSingle();
   return (data as ClienteEtapa1) ?? null;
+}
+
+/**
+ * As 4 colunas que a meta de faturamento precisa — e só elas.
+ *
+ * A aba Financeiro soma honorários; não tem por que carregar `perda_inercia`,
+ * `registro_contato` ou `problemas`, que são anotação do aluno sobre TERCEIROS
+ * (o cliente dele). Menos dado no payload é menos superfície e menos egress
+ * (teto DA ORGANIZAÇÃO, dividido com o sip).
+ *
+ * 🔑 Sem `.eq("fase", "contratado")` de propósito: quem decide o que conta para
+ * a meta é `resumoHonorarios` (src/lib/etapa1.ts), num lugar só. Filtrar aqui
+ * copiaria a regra para o SQL e daria a ela liberdade de divergir da home e da
+ * aba Clientes — e a função também precisa de `contratadosSemValor`, que é
+ * contagem sobre o mesmo conjunto. São ≤ 30 linhas por ambiente.
+ */
+const COLUNAS_CLIENTE_HONORARIOS = "id, nome, fase, valor_honorarios";
+
+export async function getClientesHonorarios(
+  alunoId: string,
+): Promise<ClienteHonorarios[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("etapa1_clientes")
+    .select(COLUNAS_CLIENTE_HONORARIOS)
+    .eq("aluno_id", alunoId)
+    .order("ordem")
+    .order("criado_em");
+  return (data ?? []) as ClienteHonorarios[];
 }

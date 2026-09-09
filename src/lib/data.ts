@@ -37,6 +37,7 @@ export {
   getClientesEtapa1,
   getClienteById,
   getClienteEquipe,
+  getClientesHonorarios,
   getAgendamentosEtapa3,
   getRevisaoEtapa3,
 } from "@/lib/data/clientes";

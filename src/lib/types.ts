@@ -122,12 +122,28 @@ export interface MembroStatus {
 }
 
 export type NivelRelacionamento = "frio" | "morno" | "quente";
+
+/**
+ * @deprecated Congelado desde a migração 20260909000060 — substituído por
+ * `FaseCliente`. A coluna `status` continua no banco (é o caminho de volta:
+ * `drop column fase` restaura o estado anterior sem restore de backup), mas
+ * NENHUM caminho de escrita da aplicação a toca. Não escrever. O único
+ * consumidor de leitura que resta é o marcador "Recusou" na UI, que some
+ * sozinho quando a coluna for removida.
+ */
 export type StatusCliente =
   | "pendente"
   | "contatado"
   | "agendado"
   | "recusou"
   | "realizada";
+
+/**
+ * Fase de negócio do cliente (migração 20260909000060), no lugar dos 5
+ * status. Sem catraca: o cliente pode voltar de fase.
+ */
+export type FaseCliente = "prospeccao" | "fechamento" | "contratado";
+
 export type PerfilDisc = "D" | "I" | "S" | "C";
 
 export interface ClienteEtapa1 {
@@ -142,7 +158,14 @@ export interface ClienteEtapa1 {
   mensagem_padrao_enviada: boolean;
   estudo_caso_enviado: boolean;
   ligacao_realizada: boolean;
+  /**
+   * @deprecated Congelado desde a migração 20260909000060. Não escrever —
+   * `PatchCliente` (src/app/etapa-1/actions.ts) já não aceita este campo.
+   * Continua sendo LIDO só pelo marcador "Recusou" da UI.
+   */
   status: StatusCliente;
+  /** Fase de negócio — substitui `status` (migração 20260909000060). */
+  fase: FaseCliente;
   data_reuniao_preliminar: string | null;
   aderiu_reuniao: boolean;
   perfil_disc: PerfilDisc | null;
@@ -294,7 +317,11 @@ export const TIPOS_EVENTO = [
   "cliente_cadastrado",
   "cliente_favoritado",
   "cliente_desfavoritado",
+  // Histórico: a captura ao vivo parou de gravar este tipo na migração
+  // 20260909000060, quando `status` congelou. As linhas antigas continuam na
+  // trilha e precisam de rótulo — por isso o tipo não sai daqui.
   "cliente_status_mudou",
+  "cliente_fase_mudou",
   "cliente_mensagem_padrao",
   "cliente_estudo_caso",
   "cliente_ligacao",

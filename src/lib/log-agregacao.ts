@@ -178,6 +178,7 @@ const ROTULO_MACRO_POR_TIPO: Partial<
   cliente_desfavoritado: (n) =>
     `Desfavoritou ${n} cliente${n === 1 ? "" : "s"}`,
   cliente_status_mudou: (n) => `Mudou o status de ${n} clientes`,
+  cliente_fase_mudou: (n) => `Mudou a fase de ${n} clientes`,
   cliente_mensagem_padrao: (n) =>
     `Enviou a mensagem padrão para ${n} clientes`,
   cliente_estudo_caso: (n) =>

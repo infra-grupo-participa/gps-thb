@@ -47,6 +47,7 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   cliente_favoritado: "Favoritou cliente",
   cliente_desfavoritado: "Desfavoritou cliente",
   cliente_status_mudou: "Mudou o status do cliente",
+  cliente_fase_mudou: "Mudou a fase do cliente",
   cliente_mensagem_padrao: "Enviou a mensagem padrão",
   cliente_estudo_caso: "Enviou a mensagem de estudo de caso",
   cliente_ligacao: "Registrou ligação",

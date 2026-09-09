@@ -2,9 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { ClienteEtapa1, ModoEnfase } from "@/lib/types";
+import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
 
-/** Campos do cliente que a UI pode atualizar. */
+/**
+ * Campos do cliente que a UI pode atualizar.
+ *
+ * `status` saiu da lista de propósito (migração 20260909000060): a coluna
+ * ficou CONGELADA no banco e é o caminho de volta da Fase 4 — enquanto
+ * nenhuma escrita a toca, `drop column fase` restaura o estado anterior sem
+ * restore de backup. Se voltar aqui, o caminho de volta morre em silêncio.
+ */
 export type PatchCliente = Partial<
   Pick<
     ClienteEtapa1,
@@ -17,7 +24,7 @@ export type PatchCliente = Partial<
     | "mensagem_padrao_enviada"
     | "estudo_caso_enviado"
     | "ligacao_realizada"
-    | "status"
+    | "fase"
     | "data_reuniao_preliminar"
     | "aderiu_reuniao"
     | "perfil_disc"
@@ -75,12 +82,26 @@ export async function atualizarCliente(
   return {};
 }
 
-export async function mudarStatusCliente(
+/**
+ * Move o cliente de fase (prospeccao | fechamento | contratado). Substitui
+ * `mudarStatusCliente`, removida na Fase 4 — as duas convivendo deixariam a
+ * coluna congelada aberta a escrita por um caminho esquecido.
+ *
+ * Sem catraca: o cliente pode voltar de fase (o quadro arrasta nos dois
+ * sentidos). A mudança é auditada no diário como `cliente_fase_mudou` pela
+ * trigger gps.aluno_eventos_capturar_etapa1_clientes.
+ *
+ * A autorização é do banco, não daqui: a RLS de gps.etapa1_clientes só deixa
+ * o dono do ambiente (gps.aluno_atual()) ou o admin (public.gp_is_admin())
+ * atualizarem a linha — `alunoId` serve para revalidar as rotas certas, não
+ * como credencial.
+ */
+export async function mudarFaseCliente(
   clienteId: string,
   alunoId: string,
-  status: ClienteEtapa1["status"],
-) {
-  return atualizarCliente(clienteId, alunoId, { status });
+  fase: FaseCliente,
+): Promise<{ erro?: string }> {
+  return atualizarCliente(clienteId, alunoId, { fase });
 }
 
 /** Define (ou remove) o cliente acompanhado pela equipe — no máximo um por aluno. */

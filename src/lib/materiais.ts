@@ -13,8 +13,27 @@ export interface Material {
   url?: string;
 }
 
-/** Lista todos os materiais (aulas e modelos) do programa, por etapa/tarefa. */
-export function listarMateriais(): Material[] {
+/**
+ * Lista todos os materiais (aulas e modelos) do programa, por etapa/tarefa.
+ *
+ * O corte de etapa bloqueada acontece AQUI, no servidor (pentest de 09/09/2026):
+ * `MateriaisView` é client component, então tudo que ela recebe vai no payload
+ * inicial da página — esconder o link só na renderização deixava a URL da aula
+ * de uma etapa trancada no view-source. Com `etapasLiberadas`, o material de
+ * etapa não liberada é listado (o aluno vê que existe) mas SEM `url`.
+ * `incluirBloqueados: true` é para admin/prévia, que podem abrir tudo.
+ */
+export function listarMateriais(opts?: {
+  etapasLiberadas?: Record<number, boolean>;
+  incluirBloqueados?: boolean;
+}): Material[] {
+  const todos = listarTodosOsMateriais();
+  if (!opts?.etapasLiberadas || opts.incluirBloqueados) return todos;
+  const liberadas = opts.etapasLiberadas;
+  return todos.map((m) => (liberadas[m.etapa] ? m : { ...m, url: undefined }));
+}
+
+function listarTodosOsMateriais(): Material[] {
   const out: Material[] = [];
   for (const [etapaStr, conteudo] of Object.entries(CONTEUDO_ETAPAS)) {
     const etapa = Number(etapaStr);

@@ -59,7 +59,7 @@ export default async function AdminAlunoMateriaisPage({
         />
 
         <MateriaisView
-          materiais={listarMateriais()}
+          materiais={listarMateriais({ etapasLiberadas: liberadas, incluirBloqueados: true })}
           etapaNomes={nomes}
           etapasLiberadas={liberadas}
           basePath={base}

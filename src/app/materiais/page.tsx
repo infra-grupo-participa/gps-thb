@@ -41,7 +41,7 @@ export default async function MateriaisPage() {
         />
 
         <MateriaisView
-          materiais={listarMateriais()}
+          materiais={listarMateriais({ etapasLiberadas: liberadas })}
           etapaNomes={nomes}
           etapasLiberadas={liberadas}
           basePath=""

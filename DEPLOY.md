@@ -29,6 +29,13 @@ produção escutando na porta definida por `process.env.PORT`.
    Fora do Passenger, o comando é `npm start` (que roda `node server.js`).
 
 ## Atualizações (novo deploy)
+
+> **Desde 09/2026 o deploy é AUTOMÁTICO: push na `main` dispara o build Node.js da Hostinger**
+> (fonte `git`, Node 24, `npm run build`, ~1,5 min). Confirmado em 09/09/2026 02:14 UTC pelo
+> painel de builds (`hosting_listNodeJSBuildsV1`). O fluxo manual abaixo fica só como fallback.
+> **Migrations continuam fora do push** — aplicar no Supabase ANTES do push, e na mesma janela:
+> trigger no banco + código antigo no ar = erro para o aluno (aconteceu com a ...062 em 08/09).
+
 ```bash
 git pull
 npm install

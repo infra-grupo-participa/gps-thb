@@ -242,7 +242,7 @@ export async function editarSlot(input: EditarSlotInput): Promise<ResultadoAcao>
 
   const trocouMentora = atual.mentora_id !== input.mentoraId;
 
-  const { error } = await supabase
+  const { error, data: linhas } = await supabase
     .schema("gps")
     .from("plantao_slots")
     .update({
@@ -256,7 +256,15 @@ export async function editarSlot(input: EditarSlotInput): Promise<ResultadoAcao>
       // a cada correção de observação ou de link da sala.
       ...(trocouMentora ? { aviso_mentora_em: null } : {}),
     })
-    .eq("id", input.slotId);
+    .eq("id", input.slotId)
+    // Repete a condição no UPDATE: outro admin pode ter cancelado entre a
+    // leitura acima e esta escrita (TOCTOU, pentest de 08/09). 0 linha = cancelado.
+    .is("cancelado_em", null)
+    .select("id");
+
+  if (!error && (!linhas || linhas.length === 0)) {
+    return { ok: false, erro: "Este plantão foi cancelado enquanto você editava." };
+  }
 
   if (error) {
     if (error.code === "23505") {
@@ -331,11 +339,17 @@ export async function trocarMentoraSlot(
     };
   }
 
-  const { error } = await supabase
+  const { error, data: linhas } = await supabase
     .schema("gps")
     .from("plantao_slots")
     .update({ mentora_id: mentoraId, aviso_mentora_em: null })
-    .eq("id", slotId);
+    .eq("id", slotId)
+    .is("cancelado_em", null)
+    .select("id");
+
+  if (!error && (!linhas || linhas.length === 0)) {
+    return { ok: false, erro: "Este plantão foi cancelado enquanto você trocava a mentora." };
+  }
 
   if (error) {
     // unique(mentora_id, data, hora_inicio): a mentora nova já tem plantão
@@ -410,13 +424,18 @@ export async function publicarSlot(
     };
   }
 
-  const { error } = await supabase
+  const { error, data: linhas } = await supabase
     .schema("gps")
     .from("plantao_slots")
     .update({ publicado })
-    .eq("id", slotId);
+    .eq("id", slotId)
+    .is("cancelado_em", null)
+    .select("id");
 
   if (error) return { ok: false, erro: "Não foi possível atualizar a publicação." };
+  if (!linhas || linhas.length === 0) {
+    return { ok: false, erro: "Este plantão foi cancelado e não pode mais ser publicado." };
+  }
 
   revalidatePath("/admin/plantao");
   return { ok: true };

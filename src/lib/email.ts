@@ -57,6 +57,10 @@ export async function enviar({
   try {
     const resp = await fetch(RESEND_ENDPOINT, {
       method: "POST",
+      // Resend lenta não pode segurar uma Server Action: cancelarSlot chama
+      // isto em loop (até 500 inscritos). 10 s por envio; estouro vira falha
+      // contada, nunca ação pendurada (pentest de 08/09).
+      signal: AbortSignal.timeout(10_000),
       headers: {
         Authorization: `Bearer ${chave}`,
         "Content-Type": "application/json",

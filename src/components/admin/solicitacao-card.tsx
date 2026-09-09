@@ -9,6 +9,7 @@ import {
   recusarSolicitacao,
   buscarAlunos,
 } from "@/app/admin/actions";
+import { formatarDataHora } from "@/lib/datas";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
@@ -115,7 +116,7 @@ export function SolicitacaoCard({
             </div>
           </div>
           <span className="text-xs text-muted-foreground">
-            {new Date(solicitacao.criado_em).toLocaleString("pt-BR")}
+            {formatarDataHora(solicitacao.criado_em)}
           </span>
         </div>
 

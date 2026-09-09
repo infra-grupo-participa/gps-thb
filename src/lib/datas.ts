@@ -13,7 +13,12 @@
  * `server-only`: os dois lados formatam igual.
  */
 
-const FUSO = "America/Sao_Paulo";
+/**
+ * O fuso do portal, exportado (CD2): havia 17 literais `"America/Sao_Paulo"`
+ * em 12 arquivos. Literal repetido não é constante — é 17 chances de alguém
+ * digitar `America/Sao_paulo` e o `Intl` cair no fuso do processo em silêncio.
+ */
+export const FUSO = "America/Sao_Paulo";
 
 /** "09/09/2026 14:32" */
 export function formatarDataHora(iso: string): string {
@@ -35,4 +40,21 @@ export function formatarData(iso: string): string {
     year: "numeric",
     timeZone: FUSO,
   });
+}
+
+/**
+ * `date` do Postgres ("2026-08-11") → "11/08/2026", **por recorte de string**.
+ *
+ * 🔑 Não use `formatarData` aqui. `date` não tem fuso, e `new Date("2026-08-11")`
+ * é meia-noite **UTC** — formatado em São Paulo volta um dia (10/08). Uma data
+ * de reunião exibida com um dia de erro é o tipo de defeito que ninguém reporta
+ * e todo mundo usa. Sem `Date` no meio, não há o que virar.
+ *
+ * Devolve `null` quando a entrada não é uma data-only reconhecível — chamador
+ * decide o texto de ausência ("—", "sem data"), esta função não inventa.
+ */
+export function formatarDataSoDia(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : null;
 }

@@ -1,27 +1,16 @@
 import { Target } from "lucide-react";
 import { META_HONORARIOS, type ResumoHonorarios } from "@/lib/etapa1";
+import { brl, brlInteiro } from "@/lib/moeda";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 /**
- * Valor cheio (com centavos) — usado nos `title`, onde o número exato importa
- * e não há disputa por espaço.
+ * `brl` (com centavos) fica nos `title`, onde o número exato importa e não há
+ * disputa por espaço; `brlInteiro` na linha de destaque — uma meta de
+ * R$ 150.000 lida com ",00" atrás rouba a atenção do número que interessa, e
+ * o valor exato continua no `title`, então nada se perde. Os dois vêm de
+ * `@/lib/moeda` (CD1).
  */
-const brlExato = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
-
-/**
- * Valor sem centavos para a linha de destaque. Uma meta de R$ 150.000 lida com
- * ",00" atrás rouba a atenção do número que interessa; o valor exato continua
- * no `title`, então nada se perde.
- */
-const brlRedondo = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-  maximumFractionDigits: 0,
-});
 
 /**
  * Barra da meta de faturamento do ambiente (B8): soma de `valor_honorarios`
@@ -53,17 +42,17 @@ export function MetaHonorarios({
           Meta de faturamento
         </span>
         {total !== null ? (
-          <span className="shrink-0 tabular-nums" title={brlExato.format(total)}>
+          <span className="shrink-0 tabular-nums" title={brl(total)}>
             <span className="font-semibold text-accent-foreground">
-              {brlRedondo.format(total)}
+              {brlInteiro(total)}
             </span>{" "}
             <span className="text-muted-foreground">
-              de {brlRedondo.format(META_HONORARIOS)}
+              de {brlInteiro(META_HONORARIOS)}
             </span>
           </span>
         ) : (
           <span className="shrink-0 text-muted-foreground tabular-nums">
-            meta de {brlRedondo.format(META_HONORARIOS)}
+            meta de {brlInteiro(META_HONORARIOS)}
           </span>
         )}
       </div>
@@ -73,7 +62,7 @@ export function MetaHonorarios({
           <Progress
             value={pct}
             className="mt-2"
-            aria-label={`Meta de faturamento: ${brlExato.format(total)} de ${brlExato.format(META_HONORARIOS)}`}
+            aria-label={`Meta de faturamento: ${brl(total)} de ${brl(META_HONORARIOS)}`}
           />
           <p className="mt-1 text-xs text-muted-foreground">
             {pct}% da meta · honorários contratados de {contratados}{" "}
@@ -81,7 +70,7 @@ export function MetaHonorarios({
             {contratadosSemValor > 0 ? (
               <>
                 {" · "}
-                <span className="text-amber-700 dark:text-amber-400">
+                <span className="text-amber-700">
                   {contratadosSemValor} de {contratados} contratados ainda sem
                   valor registrado
                 </span>
@@ -94,7 +83,7 @@ export function MetaHonorarios({
           {contratados === 0 ? (
             <>
               Nenhum cliente contratado ainda. A meta de{" "}
-              {brlRedondo.format(META_HONORARIOS)} começa a contar quando você
+              {brlInteiro(META_HONORARIOS)} começa a contar quando você
               mover um cliente para Contratado.
             </>
           ) : (

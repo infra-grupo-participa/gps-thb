@@ -16,6 +16,7 @@ import {
   calcularMetricasEtapa1,
 } from "@/lib/etapa1";
 import { calcularEnfases } from "@/lib/enfase";
+import { brl } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import {
   definirEnfaseTarefa,
@@ -28,11 +29,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-
-const brl = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
 
 export function Etapa1Guide({
   alunoId,
@@ -145,7 +141,7 @@ export function Etapa1Guide({
         />
         <MetricCard
           titulo="Perda pela inércia (total)"
-          valor={brl.format(perdaTotal)}
+          valor={brl(perdaTotal)}
           detalhe="soma dos seus clientes"
         />
       </div>

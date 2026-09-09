@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { UserPlus, KeyRound, Copy, Check, UserRoundPlus } from "lucide-react";
+import { UserPlus, KeyRound, UserRoundPlus } from "lucide-react";
 import {
   buscarAlunos,
   criarAcessoAluno,
@@ -15,6 +15,10 @@ import {
 } from "@/app/admin/actions";
 import { CadastrarAlunoForm } from "@/components/admin/cadastrar-aluno-form";
 import {
+  CredenciaisView,
+  type Credenciais,
+} from "@/components/admin/credenciais-view";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -25,13 +29,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-
-interface Credenciais {
-  email: string;
-  senha: string;
-  precisaConfirmar?: boolean;
-  emailEnviado?: boolean;
-}
 
 export function CriarAcesso() {
   const router = useRouter();
@@ -103,7 +100,11 @@ export function CriarAcesso() {
         email: res.email!,
         senha: res.senha!,
         precisaConfirmar: res.precisaConfirmar,
-        emailEnviado: res.emailEnviado,
+        emailEnviado: Boolean(res.emailEnviado),
+        // `sel` é o aluno escolhido na busca: é dele o nome e o telefone que
+        // alimentam a mensagem e o link de WhatsApp do `CredenciaisView`.
+        nome: sel.nome,
+        telefone: sel.telefone,
       });
       const outros = (res.programas ?? []).filter((p) => p !== "GPS");
       const base = res.loginAdotado
@@ -177,6 +178,7 @@ export function CriarAcesso() {
           ) : credenciais ? (
             <CredenciaisView
               credenciais={credenciais}
+              titulo="Acesso criado com sucesso"
               onConcluir={() => {
                 setOpen(false);
                 reset();
@@ -202,7 +204,7 @@ export function CriarAcesso() {
 
               {diag && !diag.temDireito && (
                 <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
-                  <div className="font-medium text-amber-700 dark:text-amber-400">
+                  <div className="font-medium text-amber-700">
                     Sem direito ao acesso
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -214,7 +216,7 @@ export function CriarAcesso() {
 
               {diag?.temLogin && (
                 <div className="rounded-md border border-blue-500/50 bg-blue-500/10 p-3 text-sm">
-                  <div className="font-medium text-blue-700 dark:text-blue-400">
+                  <div className="font-medium text-blue-700">
                     Este e-mail já tem login
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -375,70 +377,5 @@ export function CriarAcesso() {
         </DialogContent>
       </Dialog>
     </>
-  );
-}
-
-function CredenciaisView({
-  credenciais,
-  onConcluir,
-}: {
-  credenciais: Credenciais;
-  onConcluir: () => void;
-}) {
-  const texto = `Acesse o Programa de Implementação Assistida:\nLogin: ${credenciais.email}\nSenha: ${credenciais.senha}`;
-  const [copiado, setCopiado] = useState(false);
-
-  function copiar() {
-    navigator.clipboard.writeText(texto).then(() => {
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 1500);
-    });
-  }
-
-  return (
-    <div className="grid gap-4">
-      <div className="rounded-md border border-green-600/30 bg-green-600/10 p-4">
-        <div className="mb-2 text-sm font-medium text-green-700 dark:text-green-400">
-          Acesso criado com sucesso
-        </div>
-        <div className="grid gap-1 text-sm">
-          <div>
-            <span className="text-muted-foreground">Login:</span>{" "}
-            <span className="font-medium">{credenciais.email}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Senha:</span>{" "}
-            <span className="font-mono font-medium">{credenciais.senha}</span>
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {credenciais.emailEnviado
-            ? "As credenciais foram enviadas para o e-mail do aluno."
-            : "Não foi possível enviar o e-mail — repasse as credenciais manualmente."}
-        </p>
-        {credenciais.precisaConfirmar ? (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Obs.: a confirmação de e-mail está ativa — o aluno precisa confirmar
-            o e-mail antes de entrar.
-          </p>
-        ) : null}
-      </div>
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={copiar} className="flex-1">
-          {copiado ? (
-            <>
-              <Check className="size-4" /> Copiado
-            </>
-          ) : (
-            <>
-              <Copy className="size-4" /> Copiar credenciais
-            </>
-          )}
-        </Button>
-        <Button onClick={onConcluir} className="flex-1">
-          Concluir
-        </Button>
-      </div>
-    </div>
   );
 }

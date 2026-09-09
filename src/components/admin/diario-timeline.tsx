@@ -52,7 +52,7 @@ function NotaCard({ nota }: { nota: AlunoNotaComAutor }) {
           {pendenciaAberta ? <DiarioBaixaButton notaId={nota.id} /> : null}
 
           {pendenciaResolvida ? (
-            <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1 text-emerald-700">
               <CheckCircle2 className="size-3.5" />
               Baixa dada por {nota.resolvido_por_nome ?? "equipe"} em{" "}
               {formatarDataHora(nota.resolvido_em as string)}

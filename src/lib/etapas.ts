@@ -31,7 +31,7 @@ export function conteudoEtapa(n: number): ConteudoEtapa | null {
 }
 
 /** Progresso (%) de uma etapa cujas tarefas são todas manuais (etapas >= 2). */
-export function pctEtapaManual(
+function pctEtapaManual(
   tarefas: TarefaDef[],
   progresso: ProgressoTarefa[],
 ): number {

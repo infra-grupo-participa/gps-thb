@@ -76,7 +76,7 @@ export const FASES_CLIENTE: {
     rotulo: "Fechamento",
     coluna: "Fechamento",
     ajuda: "Da reunião preliminar ao croqui estrutural.",
-    cor: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+    cor: "bg-amber-100 text-amber-900",
   },
   {
     id: "contratado",
@@ -204,10 +204,6 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     exigeFavorito: true,
   },
 ];
-
-export function rotuloProblema(id: string): string {
-  return PROBLEMAS_7.find((p) => p.id === id)?.rotulo ?? id;
-}
 
 import type { ClienteEtapa1 } from "@/lib/types";
 

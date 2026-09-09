@@ -1,63 +1,13 @@
-// Estrutura padrão da pasta do aluno no Google Drive (a "PASTA PADRÃO"),
-// espelhando o processo da holding. Conteúdo de referência (sem custo de banco).
-
-export interface SecaoPasta {
-  ordem: string;
-  titulo: string;
-  descricao: string;
-  /** etapa relacionada (para o aluno saber quando usar). */
-  etapa?: number;
-  subpastas?: string[];
-}
-
-export const ESTRUTURA_PASTA: SecaoPasta[] = [
-  {
-    ordem: "0",
-    titulo: "Contrato",
-    descricao: "Contrato de honorários e documentos da contratação.",
-    etapa: 4,
-  },
-  {
-    ordem: "1",
-    titulo: "Documentos",
-    descricao: "Documentos do cliente, organizados por natureza.",
-    etapa: 3,
-    subpastas: ["Documentos pessoais", "Imóveis", "Empresas"],
-  },
-  {
-    ordem: "2",
-    titulo: "Vídeos das reuniões",
-    descricao: "Gravações das reuniões (preliminar e apresentação do croqui).",
-    etapa: 2,
-  },
-  {
-    ordem: "3",
-    titulo: "Croqui",
-    descricao: "Croqui estrutural elaborado e sua versão final.",
-    etapa: 3,
-  },
-  {
-    ordem: "4",
-    titulo: "Minutas",
-    descricao: "Minutas das células e do acordo de sócios.",
-    etapa: 5,
-    subpastas: [
-      "Célula Cofre",
-      "Célula Veículo",
-      "Célula Destino",
-      "Acordo de Sócios",
-    ],
-  },
-  {
-    ordem: "5",
-    titulo: "Pasta de entrega",
-    descricao: "Documentos finais que compõem a entrega ao cliente.",
-    etapa: 6,
-  },
-];
+// Pasta do aluno no Google Drive: só o que a UI usa hoje — a URL de
+// pré-visualização embutida.
+//
+// O catálogo `ESTRUTURA_PASTA` (a "PASTA PADRÃO", 6 seções) saiu em 09/09:
+// o card "Como sua pasta é organizada" foi removido da UI em 07/2026 e o
+// dado ficou dois meses sem nenhum leitor. Catálogo sem tela é documentação
+// disfarçada de código — a estrutura de referência vive no Drive.
 
 /** Extrai o ID de uma URL de pasta do Google Drive. */
-export function idPastaDrive(url: string | null | undefined): string | null {
+function idPastaDrive(url: string | null | undefined): string | null {
   if (!url) return null;
   const m =
     url.match(/\/folders\/([a-zA-Z0-9_-]+)/) ||

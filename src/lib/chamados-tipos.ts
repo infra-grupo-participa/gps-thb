@@ -17,8 +17,9 @@
  * de 180 dias. Contrato, RG e matrícula do cliente continuam só no Drive.
  */
 
-export const STATUS_CHAMADO = ["aberto", "respondido", "fechado"] as const;
-export type StatusChamado = (typeof STATUS_CHAMADO)[number];
+/** Os três estados do CHECK de `gps.chamados.status`. Ninguém itera sobre a
+ * lista — quem valida é o banco —, então é união de literais, não tupla. */
+export type StatusChamado = "aberto" | "respondido" | "fechado";
 
 export interface Chamado {
   id: string;
@@ -82,15 +83,13 @@ export type ResultadoAbrir =
   | { ok: true; chamadoId: string }
   | { ok: false; erro: string };
 
-export const ANEXO_MIMES = [
+const ANEXO_MIMES = [
   "image/png",
   "image/jpeg",
   "image/webp",
   "application/pdf",
 ] as const;
 export type AnexoMime = (typeof ANEXO_MIMES)[number];
-
-export const ANEXO_EXTENSOES = ["png", "jpg", "jpeg", "webp", "pdf"] as const;
 
 /**
  * Extensão derivada do **tipo do arquivo**, nunca do nome que o usuário deu.

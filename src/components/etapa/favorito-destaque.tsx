@@ -3,14 +3,10 @@ import { Star, MessageCircle, ArrowRight } from "lucide-react";
 import type { ClienteEtapa1 } from "@/lib/types";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import { mascaraTelefone } from "@/lib/masks";
+import { brl } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-
-const brl = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
 
 export function FavoritoDestaque({
   cliente,
@@ -66,7 +62,7 @@ export function FavoritoDestaque({
                 ) : null}
                 {cliente.perda_inercia != null ? (
                   <span className="tabular-nums">
-                    Perda: {brl.format(cliente.perda_inercia)}
+                    Perda: {brl(cliente.perda_inercia)}
                   </span>
                 ) : null}
                 {/* Honorários só quando existem. `null` NÃO vira R$ 0,00:
@@ -81,7 +77,7 @@ export function FavoritoDestaque({
                         : "Honorários registrados — não contam na meta fora de Contratado"
                     }
                   >
-                    Honorários: {brl.format(cliente.valor_honorarios)}
+                    Honorários: {brl(cliente.valor_honorarios)}
                     {cliente.fase === "contratado" ? null : " (fora da meta)"}
                   </span>
                 ) : null}

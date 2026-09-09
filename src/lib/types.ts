@@ -110,17 +110,6 @@ export interface Ambiente {
   atualizado_em: string;
 }
 
-/** Um membro do ambiente, como devolvido por `gps.admin_status_acesso`. */
-export interface MembroStatus {
-  membro_id: string;
-  papel: PapelMembro;
-  user_id: string | null;
-  email: string | null;
-  tem_senha: boolean;
-  email_confirmado: boolean;
-  ultimo_acesso: string | null;
-}
-
 export type NivelRelacionamento = "frio" | "morno" | "quente";
 
 /**
@@ -232,13 +221,6 @@ export interface ProgressoTarefa {
 /** Override de destaque de tarefa definido pelo admin para um aluno. */
 export type ModoEnfase = "realce" | "esmaecer";
 
-export interface TarefaEnfase {
-  aluno_id: string;
-  etapa: number;
-  tarefa: number;
-  modo: ModoEnfase;
-}
-
 /**
  * Diário do aluno — linha do tempo da EQUIPE. Visualização EXCLUSIVA do
  * admin (LGPD: dado pessoal de terceiros no texto livre). Ver
@@ -305,6 +287,11 @@ export interface ResumoDiario {
  * migração 20260909000001). Mesma trava LGPD da Fase 1: visualização
  * EXCLUSIVA do admin. UMA tabela de micro-eventos — a MACRO ("Listou 15
  * clientes") é derivada por agregação na leitura, ver `src/lib/log-agregacao.ts`.
+ *
+ * O catálogo abaixo FICA exportado de propósito, embora nada em `src/` itere
+ * sobre ele (quem valida o domínio é o CHECK de `gps.aluno_eventos`): é a
+ * lista legível do que o log captura, e `TipoEvento` — usado em toda a trilha
+ * e nos rótulos — é derivado dele.
  */
 export const TIPOS_EVENTO = [
   "cliente_cadastrado",
@@ -333,14 +320,14 @@ export const TIPOS_EVENTO = [
 ] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 
-export const ENTIDADES_EVENTO = ["cliente", "tarefa", "conta"] as const;
-export type EntidadeEvento = (typeof ENTIDADES_EVENTO)[number];
-
-export const ATORES_EVENTO = ["aluno", "equipe", "sistema"] as const;
-export type AtorEvento = (typeof ATORES_EVENTO)[number];
-
-export const ORIGENS_EVENTO = ["app", "backfill"] as const;
-export type OrigemEvento = (typeof ORIGENS_EVENTO)[number];
+// Os três domínios abaixo eram tuplas `as const` só para derivar o tipo:
+// nada em `src/` iterava sobre elas e quem valida o domínio é o CHECK de
+// `gps.aluno_eventos`. Viraram união de literais — o mesmo tipo, sem a
+// constante em runtime. Só `AtorEvento` é usado fora daqui
+// (`diario-labels.ts`); os outros dois ficam locais.
+type EntidadeEvento = "cliente" | "tarefa" | "conta";
+export type AtorEvento = "aluno" | "equipe" | "sistema";
+type OrigemEvento = "app" | "backfill";
 
 export interface AlunoEvento {
   id: string;

@@ -25,6 +25,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { atualizarCliente, definirClienteEquipe } from "@/app/etapa-1/actions";
+import { brlInteiro } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,11 +42,7 @@ import {
 } from "@/components/ui/select";
 
 /** Só para a copy do campo de honorários — sem centavos, que aqui só ocupam espaço. */
-const brlMeta = META_HONORARIOS.toLocaleString("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-  maximumFractionDigits: 0,
-});
+const brlMeta = brlInteiro(META_HONORARIOS);
 
 export function ClienteFicha({
   cliente,
@@ -174,7 +171,7 @@ export function ClienteFicha({
             href={wpp}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-green-600/30 bg-green-600/10 px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-600/20 dark:text-green-400"
+            className="inline-flex items-center gap-1.5 rounded-md border border-green-600/30 bg-green-600/10 px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-600/20"
           >
             <MessageCircle className="size-4" /> WhatsApp
           </a>

@@ -275,7 +275,7 @@ function ItemNota({ item }: { item: ItemTrilha & { variante: "nota" } }) {
         <span>{nota.autor_nome ?? "Equipe"}</span>
         {pendenciaAberta ? <DiarioBaixaButton notaId={nota.id} /> : null}
         {pendenciaResolvida ? (
-          <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+          <span className="inline-flex items-center gap-1 text-emerald-700">
             <CheckCircle2 className="size-3.5" />
             Baixa dada por {nota.resolvido_por_nome ?? "equipe"} em{" "}
             {formatarDataHora(nota.resolvido_em as string)}
@@ -295,7 +295,7 @@ function ItemAcaoAdministrativa({
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-l-2 border-l-sky-500 py-1.5 pl-3 text-sm">
-      <ShieldAlert className="size-3.5 shrink-0 text-sky-600 dark:text-sky-400" />
+      <ShieldAlert className="size-3.5 shrink-0 text-sky-600" />
       <Badge variant="outline" className="shrink-0 text-[10px]">
         Equipe
       </Badge>

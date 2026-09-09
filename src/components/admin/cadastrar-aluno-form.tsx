@@ -175,7 +175,7 @@ export function CadastrarAlunoForm({
           <div className="flex items-start gap-2">
             <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+              <p className="text-sm font-medium text-amber-800">
                 Este aluno já está na base
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">

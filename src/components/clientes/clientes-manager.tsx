@@ -18,7 +18,9 @@ import {
   META_CLIENTES,
   resumoHonorarios,
 } from "@/lib/etapa1";
+import { formatarDataSoDia } from "@/lib/datas";
 import { mascaraTelefone } from "@/lib/masks";
+import { brl, brlOuTraco } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import {
   criarCliente,
@@ -47,11 +49,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-const brl = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
 
 type Ordenacao = "recentes" | "nome" | "perda" | "reuniao";
 
@@ -408,9 +405,7 @@ export function ClientesManager({
                         </div>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {c.perda_inercia != null
-                          ? brl.format(c.perda_inercia)
-                          : "—"}
+                        {brlOuTraco(c.perda_inercia)}
                       </TableCell>
                       <TableCell>
                         <Select
@@ -436,11 +431,7 @@ export function ClientesManager({
                         </Select>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        {c.data_reuniao_preliminar
-                          ? new Date(
-                              c.data_reuniao_preliminar + "T00:00:00",
-                            ).toLocaleDateString("pt-BR")
-                          : "—"}
+                        {formatarDataSoDia(c.data_reuniao_preliminar) ?? "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -557,12 +548,12 @@ function ConfirmacaoEquipe({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
       <div className="flex items-start gap-3">
-        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
         <div>
-          <div className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+          <div className="text-sm font-semibold text-emerald-800">
             A equipe vai acompanhar {cliente.nome || "este cliente"}
           </div>
-          <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80">
+          <p className="text-xs text-emerald-700/80">
             Cliente confirmado para o apoio da equipe. Os próximos passos da
             Etapa 01 (do passo 4 em diante) estão liberados.
           </p>
@@ -659,7 +650,7 @@ function Kanban({
                       <MarcaRecusou cliente={c} className="mt-1" />
                       {c.perda_inercia != null ? (
                         <div className="mt-1 text-xs tabular-nums text-muted-foreground">
-                          {brl.format(c.perda_inercia)}
+                          {brl(c.perda_inercia)}
                         </div>
                       ) : null}
                       <div className="mt-2 flex items-center gap-2">
@@ -724,7 +715,7 @@ function ClienteCardLista({
         </div>
         {c.perda_inercia != null ? (
           <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-            {brl.format(c.perda_inercia)}
+            {brl(c.perda_inercia)}
           </span>
         ) : null}
       </div>
@@ -734,9 +725,7 @@ function ClienteCardLista({
         {wpp ? <WhatsappLink href={wpp} /> : null}
         {c.data_reuniao_preliminar ? (
           <span className="ml-auto text-xs">
-            {new Date(
-              c.data_reuniao_preliminar + "T00:00:00",
-            ).toLocaleDateString("pt-BR")}
+            {formatarDataSoDia(c.data_reuniao_preliminar)}
           </span>
         ) : null}
       </div>

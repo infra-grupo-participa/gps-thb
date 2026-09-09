@@ -4,11 +4,16 @@ import * as React from "react";
 import { useEffect, useSyncExternalStore } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
-/** Atributo aplicado ao `<html>` enquanto a pré-visualização está ligada. */
-export const PREVIA_ATTR = "data-previa";
-export const PREVIA_VALOR = "aluno";
-/** Classe que marca um elemento como exclusivo do admin (some na prévia). */
-export const PREVIA_CLASSE = "previa-oculta";
+/**
+ * Atributo aplicado ao `<html>` enquanto a pré-visualização está ligada.
+ *
+ * Locais de propósito: a contraparte é a regra `html[data-previa="aluno"]
+ * .previa-oculta` em `globals.css`, e a classe `previa-oculta` é escrita como
+ * literal nos ~10 elementos só-admin. Exportar constante que ninguém importa
+ * dá a impressão de haver uma API aqui — não há.
+ */
+const PREVIA_ATTR = "data-previa";
+const PREVIA_VALOR = "aluno";
 
 const CHAVE = "gps:previa-aluno";
 

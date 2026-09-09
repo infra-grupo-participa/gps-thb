@@ -70,7 +70,7 @@ export const ROTULO_ATOR: Record<AtorEvento, string> = {
 };
 
 /** Os 5 tipos de `gps.acessos_log` (ver `src/app/admin/senha-actions.ts`). */
-export const ROTULO_ACAO_ADMIN: Record<string, string> = {
+const ROTULO_ACAO_ADMIN: Record<string, string> = {
   senha_definida: "Senha definida pela equipe",
   acesso_excluido: "Acesso excluído",
   socio_adicionado: "Sócio adicionado",

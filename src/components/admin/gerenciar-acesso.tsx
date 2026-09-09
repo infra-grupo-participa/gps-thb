@@ -4,11 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Check,
-  Copy,
   KeyRound,
   Mail,
-  MessageCircle,
   ShieldAlert,
   Trash2,
   Users,
@@ -18,6 +15,7 @@ import {
 import {
   adicionarSocioAluno,
   definirSenhaAluno,
+  definirSenhaMembro,
   enviarRedefinicaoSenha,
   excluirAcessoAluno,
   excluirMembroAluno,
@@ -33,42 +31,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
-import { linkWhatsapp } from "@/lib/whatsapp";
+import {
+  CredenciaisView,
+  sugerirSenha,
+  type Credenciais,
+} from "@/components/admin/credenciais-view";
+import { formatarData, formatarDataHora } from "@/lib/datas";
 
-interface Credenciais {
-  email: string;
-  senha: string;
-  emailEnviado: boolean;
-  nome: string | null;
-  telefone: string | null;
-}
-
-/** Senha temporária legível, gerada no navegador (ex.: Thb-7f3a-2b9c). */
-function sugerirSenha(): string {
-  const b = new Uint8Array(4);
-  crypto.getRandomValues(b);
-  const hex = Array.from(b, (n) => n.toString(16).padStart(2, "0")).join("");
-  return `Thb-${hex.slice(0, 4)}-${hex.slice(4)}`;
-}
-
-function mensagemAcesso(c: Credenciais) {
-  return (
-    `Olá${c.nome ? `, ${c.nome.split(" ")[0]}` : ""}! Seu acesso ao Programa de ` +
-    `Implementação Assistida do Time Holding Brasil:\n\n` +
-    `Portal: https://programa.timeholdingbrasil.com.br\n` +
-    `Login: ${c.email}\n` +
-    `Senha: ${c.senha}\n\n` +
-    `Você pode trocar a senha depois, dentro do portal.`
-  );
-}
-
-type Tela = "principal" | "adicionar-socio";
+type Tela = "principal" | "adicionar-socio" | "senha-membro";
 
 export function GerenciarAcesso({
   alunoId,
@@ -88,6 +64,24 @@ export function GerenciarAcesso({
   /** Sócio aguardando confirmação de remoção (PL10). `null` = diálogo fechado. */
   const [removendo, setRemovendo] = useState<MembroAcesso | null>(null);
   const [erroRemocao, setErroRemocao] = useState<string | null>(null);
+  /**
+   * F.3 — o membro cuja senha está sendo definida (`tela === "senha-membro"`).
+   * Antes disto o admin via "sem senha / nunca entrou" ao lado de cada sócio
+   * e o único remédio era **remover e re-adicionar**, o que apaga o login e o
+   * histórico da pessoa. São 13 sócios reais.
+   */
+  const [membroSenha, setMembroSenha] = useState<MembroAcesso | null>(null);
+  const [senhaMembro, setSenhaMembro] = useState("");
+  /**
+   * Pentest de 09/09: a conta do membro pode ser privilegiada em OUTRO portal
+   * do grupo (`auth.users` é compartilhado por 7 sistemas). A action devolve
+   * `precisaConfirmar` **sem ter mudado nada**; só depois do "sim" ela repete
+   * com `confirmarOutrosSistemas`.
+   */
+  const [confirmaOutros, setConfirmaOutros] = useState<{
+    membro: MembroAcesso;
+    programas: string[];
+  } | null>(null);
   const [pending, startTransition] = useTransition();
 
   function carregarStatus() {
@@ -107,8 +101,55 @@ export function GerenciarAcesso({
     setConfirmaExclusao("");
     setRemovendo(null);
     setErroRemocao(null);
+    setMembroSenha(null);
+    setConfirmaOutros(null);
     setSenha(sugerirSenha());
     carregarStatus();
+  }
+
+  /** Abre a tela de senha de UM membro (titular ou sócio) do ambiente. */
+  function abrirSenhaDeMembro(m: MembroAcesso) {
+    setMembroSenha(m);
+    setSenhaMembro(sugerirSenha());
+    setConfirmaOutros(null);
+    setTela("senha-membro");
+  }
+
+  /**
+   * `confirmarOutrosSistemas` só vai `true` depois que o admin leu quais são
+   * os outros portais e confirmou. Enquanto for `false`, a action pode voltar
+   * sem ter tocado em nada.
+   */
+  function definirSenhaDeMembro(m: MembroAcesso, confirmarOutros = false) {
+    startTransition(async () => {
+      const res = await definirSenhaMembro(m.membroId, {
+        senha: senhaMembro,
+        confirmarOutrosSistemas: confirmarOutros || undefined,
+      });
+      if (res.precisaConfirmar) {
+        setConfirmaOutros({ membro: m, programas: res.programas ?? [] });
+        return;
+      }
+      if (res.erro) {
+        toast.error(res.erro);
+        return;
+      }
+      setConfirmaOutros(null);
+      setCredenciais({
+        email: res.email!,
+        senha: res.senha!,
+        emailEnviado: Boolean(res.emailEnviado),
+        nome: res.nome ?? null,
+        telefone: res.telefone ?? null,
+      });
+      toast.success(
+        res.papel === "titular"
+          ? "Senha do titular definida. Ele já pode entrar agora."
+          : "Senha do sócio definida. Ele já pode entrar agora.",
+      );
+      carregarStatus();
+      router.refresh();
+    });
   }
 
   function definirSenha() {
@@ -197,12 +238,18 @@ export function GerenciarAcesso({
             <DialogTitle>
               {tela === "adicionar-socio"
                 ? "Adicionar sócio ao ambiente"
-                : "Acesso do ambiente"}
+                : tela === "senha-membro"
+                  ? "Definir a senha deste membro"
+                  : "Acesso do ambiente"}
             </DialogTitle>
             <DialogDescription>
               {tela === "adicionar-socio"
                 ? "Vincule um aluno já cadastrado como sócio deste ambiente."
-                : `${nomeAluno ?? "Aluno"} — defina a senha na hora, sem depender de e-mail.`}
+                : tela === "senha-membro"
+                  ? `${membroSenha?.email ?? "Membro sem e-mail"} — ${
+                      membroSenha?.papel === "titular" ? "titular" : "sócio"
+                    } deste ambiente.`
+                  : `${nomeAluno ?? "Aluno"} — defina a senha na hora, sem depender de e-mail.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -224,6 +271,48 @@ export function GerenciarAcesso({
               credenciais={credenciais}
               onConcluir={() => setOpen(false)}
             />
+          ) : tela === "senha-membro" && membroSenha ? (
+            <div className="grid gap-4">
+              <button
+                onClick={() => {
+                  setTela("principal");
+                  setMembroSenha(null);
+                }}
+                className="text-left text-xs text-muted-foreground hover:text-foreground"
+              >
+                ← voltar
+              </button>
+              <div className="grid gap-2">
+                <Label htmlFor="senha-membro">Nova senha</Label>
+                <div className="flex gap-2">
+                  <InputSenha
+                    id="senha-membro"
+                    value={senhaMembro}
+                    onChange={(e) => setSenhaMembro(e.target.value)}
+                    className="font-mono"
+                    autoComplete="off"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setSenhaMembro(sugerirSenha())}
+                  >
+                    Gerar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Mínimo de 8 caracteres. As sessões abertas desta pessoa caem
+                  e o e-mail dela fica confirmado. O login vale para todos os
+                  portais do grupo.
+                </p>
+              </div>
+              <Button
+                onClick={() => definirSenhaDeMembro(membroSenha)}
+                disabled={pending || senhaMembro.trim().length < 8}
+              >
+                <KeyRound className="size-4" /> Definir senha agora
+              </Button>
+            </div>
           ) : (
             <div className="grid gap-5">
               <MembrosView
@@ -235,6 +324,7 @@ export function GerenciarAcesso({
                   setErroRemocao(null);
                   setRemovendo(m);
                 }}
+                onDefinirSenhaMembro={abrirSenhaDeMembro}
               />
 
               <div className="grid gap-2">
@@ -338,6 +428,32 @@ export function GerenciarAcesso({
           }}
         />
       ) : null}
+
+      {/* A conta do membro também é usada em outro portal do grupo. A action
+          voltou SEM ter mudado nada; é aqui que o admin decide. */}
+      {confirmaOutros ? (
+        <DialogoConfirmacao
+          aberto
+          destrutivo={false}
+          titulo="Esta conta é usada em outros portais"
+          descricao={confirmaOutros.membro.email ?? "Membro sem e-mail"}
+          consequencia={
+            <>
+              Esta conta também é usada em:{" "}
+              <strong>{confirmaOutros.programas.join(", ")}</strong>. Trocar a
+              senha aqui derruba as sessões dela em todos os portais e a senha
+              antiga deixa de funcionar em qualquer um deles. Avise a pessoa.
+            </>
+          }
+          rotuloConfirmar="Trocar mesmo assim"
+          rotuloConfirmando="Trocando…"
+          confirmando={pending}
+          onConfirmar={() =>
+            definirSenhaDeMembro(confirmaOutros.membro, true)
+          }
+          onCancelar={() => setConfirmaOutros(null)}
+        />
+      ) : null}
     </>
   );
 }
@@ -348,12 +464,15 @@ function MembrosView({
   pending,
   onAdicionarSocio,
   onExcluirMembro,
+  onDefinirSenhaMembro,
 }: {
   status: StatusAcesso | null;
   carregando: boolean;
   pending: boolean;
   onAdicionarSocio: () => void;
   onExcluirMembro: (m: MembroAcesso) => void;
+  /** F.3 — abre a tela de senha do membro (só quem já tem login). */
+  onDefinirSenhaMembro: (m: MembroAcesso) => void;
 }) {
   if (carregando) {
     return (
@@ -385,9 +504,12 @@ function MembrosView({
         {status.membros.map((m) => (
           <li
             key={m.membroId}
-            className="flex items-center justify-between gap-2 rounded border px-2.5 py-2 text-sm"
+            className="flex flex-wrap items-center justify-between gap-2 rounded border px-2.5 py-2 text-sm"
           >
-            <div className="min-w-0">
+            {/* `flex-wrap` + `min-w-0`: com dois botões rotulados na linha
+                (Definir senha · Remover) e um e-mail longo, no diálogo do
+                celular a linha quebra em vez de espremer o e-mail a 3 letras. */}
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="truncate font-medium">
                   {m.email ?? "sem e-mail"}
@@ -403,29 +525,45 @@ function MembrosView({
                 {m.temSenha ? "tem senha" : "sem senha"} ·{" "}
                 {m.emailConfirmado ? "e-mail confirmado" : "e-mail não confirmado"}
                 {m.ultimoAcesso
-                  ? ` · último acesso ${new Date(m.ultimoAcesso).toLocaleDateString("pt-BR")}`
+                  ? ` · último acesso ${formatarData(m.ultimoAcesso)}`
                   : " · nunca entrou"}
               </div>
             </div>
-            {m.papel === "socio" ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="shrink-0 text-destructive hover:text-destructive"
-                disabled={pending}
-                onClick={() => onExcluirMembro(m)}
-              >
-                <UserMinus className="size-4" /> Remover
-              </Button>
-            ) : null}
+            <div className="flex shrink-0 items-center gap-1">
+              {/* Sem `userId` não há conta em `auth.users` para receber senha:
+                  o botão SOME em vez de aparecer desabilitado sem explicação —
+                  o diagnóstico da linha acima já diz "sem senha/nunca entrou". */}
+              {m.userId ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => onDefinirSenhaMembro(m)}
+                >
+                  <KeyRound className="size-4" /> Definir senha
+                </Button>
+              ) : null}
+              {m.papel === "socio" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  disabled={pending}
+                  onClick={() => onExcluirMembro(m)}
+                >
+                  <UserMinus className="size-4" /> Remover
+                </Button>
+              ) : null}
+            </div>
           </li>
         ))}
       </ul>
 
       <p className="mt-2 text-xs text-muted-foreground">
         {status.ultimoAcesso
-          ? `Último acesso do titular: ${new Date(status.ultimoAcesso).toLocaleString("pt-BR")}`
+          ? `Último acesso do titular: ${formatarDataHora(status.ultimoAcesso)}`
           : "O titular nunca entrou no portal."}
         {status.solicitacaoPendente ? " · há solicitação pendente" : ""}
       </p>
@@ -596,76 +734,6 @@ function AdicionarSocio({
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-function CredenciaisView({
-  credenciais,
-  onConcluir,
-}: {
-  credenciais: Credenciais;
-  onConcluir: () => void;
-}) {
-  const [copiado, setCopiado] = useState(false);
-  const texto = mensagemAcesso(credenciais);
-  const whatsapp = linkWhatsapp(credenciais.telefone, texto);
-
-  function copiar() {
-    navigator.clipboard.writeText(texto).then(() => {
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 1500);
-    });
-  }
-
-  return (
-    <div className="grid gap-4">
-      <div className="rounded-md border border-green-600/30 bg-green-600/10 p-4">
-        <div className="mb-2 text-sm font-medium text-green-700 dark:text-green-400">
-          Senha definida — o aluno já pode entrar
-        </div>
-        <div className="grid gap-1 text-sm">
-          <div>
-            <span className="text-muted-foreground">Login:</span>{" "}
-            <span className="font-medium">{credenciais.email}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Senha:</span>{" "}
-            <span className="font-mono font-medium">{credenciais.senha}</span>
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {credenciais.emailEnviado
-            ? "As credenciais também foram enviadas por e-mail."
-            : "O e-mail não saiu — repasse as credenciais por WhatsApp."}
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={copiar} className="flex-1">
-          {copiado ? (
-            <>
-              <Check className="size-4" /> Copiado
-            </>
-          ) : (
-            <>
-              <Copy className="size-4" /> Copiar mensagem
-            </>
-          )}
-        </Button>
-        {whatsapp ? (
-          <a
-            href={whatsapp}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonVariants({ variant: "outline" }) + " flex-1"}
-          >
-            <MessageCircle className="size-4" /> WhatsApp
-          </a>
-        ) : null}
-        <Button onClick={onConcluir} className="flex-1">
-          Concluir
-        </Button>
-      </div>
     </div>
   );
 }

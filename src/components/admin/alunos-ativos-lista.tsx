@@ -6,7 +6,8 @@ import { AlertCircle, LifeBuoy, Search, Users } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import { casaTodosOsTermos, semAcento } from "@/lib/texto";
 import { ROTULO_TIPO } from "@/components/admin/diario-labels";
-import { formatarDataHora, formatarData } from "@/lib/datas";
+import { FUSO, formatarDataHora, formatarData } from "@/lib/datas";
+import { brl, brlCompacto } from "@/lib/moeda";
 import { NotaRapida } from "@/components/admin/nota-rapida";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -61,11 +62,11 @@ const ORDENS: OrdemAlunos[] = [
   "honorarios",
 ];
 
-/** Cliente e servidor formatam no MESMO fuso: sem isto o SSR (UTC) e o
- * navegador (BRT) divergem em toda data depois das 21h e a hidratação quebra. */
-const FUSO = "America/Sao_Paulo";
-
-/** "YYYY-MM-DD" no fuso de Brasília — base para contar dias de CALENDÁRIO. */
+/** "YYYY-MM-DD" no fuso de Brasília — base para contar dias de CALENDÁRIO.
+ *
+ * Cliente e servidor formatam no MESMO fuso (`FUSO`, de `@/lib/datas`): sem
+ * isto o SSR (UTC) e o navegador (BRT) divergem em toda data depois das 21h e
+ * a hidratação quebra. */
 const fmtDiaIso = new Intl.DateTimeFormat("en-CA", {
   timeZone: FUSO,
   year: "numeric",
@@ -101,20 +102,6 @@ function diasSemAcesso(iso: string | null, agora: number): number {
   return iso ? diasDesde(iso, agora) : Number.POSITIVE_INFINITY;
 }
 
-/** Compacto para o card ("R$ 42 mil"): o número aqui é de comparação, não de
- * conferência — o valor exato vai no `title` e no texto do leitor de tela. */
-const fmtHonorarios = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
-
-const fmtHonorariosExato = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
-
 /**
  * O que o card mostra na coluna de honorários — e o que ele DIZ.
  *
@@ -138,9 +125,11 @@ function honorariosDoCard(
       descricao: `${contratados} ${plural}, nenhum com honorários registrados`,
     };
   }
-  const base = `${fmtHonorariosExato.format(total)} em ${contratados} ${plural}`;
+  const base = `${brl(total)} em ${contratados} ${plural}`;
   return {
-    visual: fmtHonorarios.format(total),
+    // Compacto ("R$ 42 mil") é número de COMPARAÇÃO — o exato vai no `title`
+    // e no texto do leitor de tela, logo abaixo.
+    visual: brlCompacto(total),
     descricao:
       semValor > 0
         ? `${base} · ${semValor} ainda sem valor registrado`
@@ -586,6 +575,7 @@ export function AlunosAtivosLista({
             qtdMembros,
             pct,
             clientesPreenchidos,
+            clientesComDados,
             agendados,
             honorariosContratados,
             contratados,
@@ -734,17 +724,25 @@ export function AlunosAtivosLista({
                   </div>
 
                   <div className="flex items-center gap-6">
-                    {/* PL3 — o número é `clientes_preenchidos` (tem nome),
-                        que NÃO é o que a tarefa 1 cobra (nome + telefone +
-                        nível). `AlunoGps` ainda não expõe `clientes_com_dados`,
-                        embora a RPC já o devolva — enquanto isso o rótulo diz
-                        o que o número realmente é, em vez de "clientes". */}
+                    {/* PL3 — o número principal é `clientesComDados` (nome +
+                        telefone + nível), que é o que a tarefa 1 cobra e o que
+                        a home do aluno mostra. Exibir `clientesPreenchidos`
+                        aqui deixava o admin lendo 30/30 enquanto o aluno via
+                        cadeado na mesma etapa. O total apenas listado continua
+                        visível, ao lado, para a diferença não sumir. */}
                     <div className="text-center">
-                      <div className="text-sm font-semibold">
-                        {clientesPreenchidos}/{META_CLIENTES}
+                      <div className="text-sm font-semibold tabular-nums">
+                        {clientesComDados}/{META_CLIENTES}
                       </div>
                       <div className="text-[10px] uppercase text-muted-foreground">
-                        listados
+                        <span aria-hidden>
+                          completos · {clientesPreenchidos} listados
+                        </span>
+                        <span className="sr-only">
+                          {clientesComDados} clientes com nome, telefone e nível
+                          ·{" "}
+                          {clientesPreenchidos} listados no total
+                        </span>
                       </div>
                     </div>
                     <div className="text-center">

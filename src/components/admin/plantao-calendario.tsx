@@ -19,7 +19,9 @@
  * mentora em silêncio e zerar o aviso de véspera).
  *
  * FASE 8 (08/09/2026) — autonomia das operadoras, sem dev no meio:
- * - interruptor "Inscrições abertas/pausadas" (`gps.plantao_config`);
+ * - interruptor "Inscrições abertas/pausadas" (`gps.config`, chave
+ *   `plantao_inscricao_aberta` — a tabela `gps.plantao_config` virou degrau
+ *   de compatibilidade na migração ...130 e sai numa limpeza futura);
  * - trocar quem apresenta direto no card do dia (`trocarMentoraSlot`), que no
  *   servidor zera `aviso_mentora_em` — senão a mentora nova nunca é avisada;
  * - cancelar plantão com inscritos, avisando por e-mail (`cancelarSlot`):
@@ -152,8 +154,9 @@ export function PlantaoCalendario({
   /** Inscritos pré-carregados só dos slots com `inscritosQtd > 0` (ver page.tsx). */
   inscritosPorSlot: Record<string, InscritoAdmin[]>;
   /**
-   * Interruptor geral das escritas do aluno (`gps.plantao_config`), lido no
-   * servidor por `lerInscricoesAbertas()`. Pausado = ninguém se inscreve,
+   * Interruptor geral das escritas do aluno (`gps.config`, chave
+   * `plantao_inscricao_aberta`), lido no servidor por
+   * `lerInscricoesAbertas()`. Pausado = ninguém se inscreve,
    * cancela ou revela o link; os plantões continuam visíveis.
    */
   inscricoesAbertas: boolean;
@@ -401,7 +404,7 @@ export function PlantaoCalendario({
               // entra só no ponto (decorativo); o rótulo usa a cor de texto.
               (inscricoesAbertas
                 ? "border-primary/40 bg-primary/10 text-foreground"
-                : "border-amber-600/40 bg-amber-500/15 text-amber-900 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-200")
+                :"border-amber-600/40 bg-amber-500/15 text-amber-900")
             }
           >
             <span
@@ -644,7 +647,7 @@ export function PlantaoCalendario({
                       ) : null}
 
                       {!cancelado && semEmailDaMentora ? (
-                        <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                        <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-700">
                           <MailXIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                           <span>
                             {slot.mentoraNome} não tem e-mail cadastrado; sem ele

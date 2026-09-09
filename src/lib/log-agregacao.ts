@@ -26,6 +26,7 @@
  * `idx_aluno_eventos_timeline`.
  */
 
+import { FUSO } from "@/lib/datas";
 import type {
   AlunoEventoComAutor,
   AlunoNotaComAutor,
@@ -46,15 +47,15 @@ const TIPOS_NUNCA_AGREGAM: ReadonlySet<TipoEvento> = new Set([
 
 /** "YYYY-MM-DD" de um ISO timestamptz no fuso de São Paulo. Mesmo padrão de `plantao.ts`. */
 function diaLocalSaoPaulo(iso: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date(iso));
+  return new Intl.DateTimeFormat("en-CA", { timeZone: FUSO }).format(
+    new Date(iso),
+  );
 }
 
 /** "2026-09-08T17:02:00Z" → "14h02" em America/Sao_Paulo. */
 export function horaLocalCurta(iso: string): string {
   const partes = new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
+    timeZone: FUSO,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,

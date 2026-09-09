@@ -1,15 +1,11 @@
 import { TrendingUp, Users, CalendarCheck, Coins } from "lucide-react";
 import type { ResumoHonorarios } from "@/lib/etapa1";
+import { brl } from "@/lib/moeda";
 import { MetaHonorarios } from "@/components/etapa1/meta-honorarios";
 import { Card, CardContent } from "@/components/ui/card";
 import { KpiLinha } from "@/components/ui/kpi-card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-
-const brl = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
 
 /**
  * Painel de resumo do aluno — consolida progresso e números-chave num único
@@ -88,7 +84,7 @@ export function HomeResumo({
         <KpiLinha
           icone={<Coins />}
           rotulo="Perda pela inércia"
-          valor={brl.format(perdaTotal)}
+          valor={brl(perdaTotal)}
           hint="soma dos clientes"
         />
       </CardContent>

@@ -1,5 +1,6 @@
 import { History, AlertTriangle } from "lucide-react";
 import type { ItemTrilha } from "@/lib/types";
+import { FUSO, formatarData } from "@/lib/datas";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Separator } from "@/components/ui/separator";
@@ -15,24 +16,15 @@ function tituloDoDia(diaISO: string): string {
     day: "numeric",
     month: "long",
     year: "numeric",
-    timeZone: "America/Sao_Paulo",
+    timeZone: FUSO,
   });
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
 function diaLocalDoItem(item: ItemTrilha): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date(item.ocorrido_em));
-}
-
-function formatarDataCurta(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    timeZone: "America/Sao_Paulo",
-  });
+  return new Intl.DateTimeFormat("en-CA", { timeZone: FUSO }).format(
+    new Date(item.ocorrido_em),
+  );
 }
 
 /**
@@ -116,7 +108,7 @@ export function TrilhaDoAluno({
       <Separator />
 
       {truncado ? (
-        <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+        <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-800">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
           <p>
             Mostrando apenas os {itens.length} registros mais recentes desta
@@ -128,9 +120,7 @@ export function TrilhaDoAluno({
 
       <p className="text-xs text-muted-foreground">
         {dataCorteBackfill
-          ? `Log detalhado a partir de ${formatarDataCurta(
-              dataCorteBackfill,
-            )}${
+          ? `Log detalhado a partir de ${formatarData(dataCorteBackfill)}${
               truncado
                 ? " — parte deste período não está sendo exibida (ver aviso acima)."
                 : "."

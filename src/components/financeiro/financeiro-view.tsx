@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatarData } from "@/lib/datas";
+import { formatarData, formatarDataSoDia } from "@/lib/datas";
+import { brl } from "@/lib/moeda";
 import { hojeSaoPaulo } from "@/lib/plantao";
 import type { ContratoFinanceiro, ResultadoFinanceiro } from "@/lib/financeiro";
 import { cn } from "@/lib/utils";
@@ -44,29 +45,11 @@ import { cn } from "@/lib/utils";
  * O rodapé de cada card diz de onde o número vem e que o portal não edita (C5).
  */
 
-const brl = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
-
 /** `timestamptz` do banco → "dd/mm/aaaa" no fuso de São Paulo (via `@/lib/datas`). */
 function dataHora(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? null : formatarData(iso);
-}
-
-/**
- * `date` do Postgres ("2026-08-11") → "11/08/2026" por recorte de string.
- *
- * Sem `new Date`: `date` não tem fuso, e `new Date("2026-08-11")` é meia-noite
- * UTC — formatado em São Paulo volta um dia (10/08). Um vencimento exibido com
- * um dia de erro é o tipo de defeito que ninguém reporta e todo mundo usa.
- */
-function dataSimples(iso: string | null): string | null {
-  if (!iso) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : null;
 }
 
 /**
@@ -120,7 +103,7 @@ function Numero({
             : "text-sm font-normal text-muted-foreground",
         )}
       >
-        {informado ? brl.format(valor) : "não informado"}
+        {informado ? brl(valor) : "não informado"}
       </dd>
       {nota ? (
         <dd className="mt-1 text-xs text-muted-foreground">{nota}</dd>
@@ -146,7 +129,7 @@ function Detalhe({
     <div
       className={cn(
         "flex flex-wrap items-baseline gap-x-1.5",
-        alerta && "text-amber-700 dark:text-amber-400",
+        alerta &&"text-amber-700",
       )}
     >
       <dt className={cn(!alerta && "text-muted-foreground")}>{rotulo}:</dt>
@@ -171,7 +154,10 @@ function ContratoCard({
   const quitadoEm = dataHora(contrato.quitadoEm);
   const canceladoEm = dataHora(contrato.cancelamentoEm);
   const pagoEm = dataHora(contrato.pagamentoEm);
-  const previstoEm = dataSimples(contrato.pagamentoPrevistoEm);
+  // `formatarDataSoDia` (`@/lib/datas`) é este mesmo recorte de string,
+  // promovido para o lugar único (CD2): `date` não tem fuso, e `new Date` o
+  // leria como meia-noite UTC — um dia a menos em São Paulo.
+  const previstoEm = formatarDataSoDia(contrato.pagamentoPrevistoEm);
   // Vencimento só faz sentido com saldo em aberto: cobrar data de contrato
   // quitado ou cancelado é alarme falso.
   const vencido =
@@ -218,7 +204,7 @@ function ContratoCard({
       className={cn(
         // Tom neutro-alerta do contrato cancelado. A cor não carrega a
         // informação sozinha: a frase e o ícone abaixo dizem o mesmo.
-        cancelado && "bg-amber-500/5 ring-amber-500/30 dark:bg-amber-500/10",
+        cancelado &&"bg-amber-500/5 ring-amber-500/30",
       )}
     >
       <CardHeader>
@@ -237,7 +223,7 @@ function ContratoCard({
           <CardAction>
             <Badge
               variant="outline"
-              className="border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+              className="border-emerald-500/40 bg-emerald-500/10 text-emerald-800"
             >
               <CircleCheck aria-hidden />
               {quitadoEm ? `Quitado em ${quitadoEm}` : "Quitado"}
@@ -248,7 +234,7 @@ function ContratoCard({
 
       <CardContent className="grid gap-4">
         {cancelado ? (
-          <p className="flex items-start gap-2 text-sm font-medium text-amber-800 dark:text-amber-300">
+          <p className="flex items-start gap-2 text-sm font-medium text-amber-800">
             <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
             <span>
               Contrato cancelado{canceladoEm ? ` em ${canceladoEm}` : ""}. Fale
@@ -277,14 +263,27 @@ function ContratoCard({
           )}
         </dl>
 
+        {/* FN1 — `divergenciaQuitacao` passou a vir também NEGATIVA (pagou
+            acima do total, sem `quitado_em`). Chamar isso de "marcado como
+            quitado, mas o saldo é −R$ X" seria errado duas vezes: não há
+            `quitado_em` e não é dívida, é crédito. Dois ramos, duas frases. */}
         {divergencia !== null ? (
-          <p className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+          <p className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-800">
             <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
             <span>
               <span className="font-medium">Só a equipe vê esta linha.</span>{" "}
-              Contrato marcado como quitado, mas o saldo apurado é{" "}
-              {brl.format(divergencia)}. Confira no cadastro financeiro antes de
-              responder ao aluno.
+              {divergencia < 0 ? (
+                <>
+                  Pago acima do total em {brl(-divergencia)}. Confira no
+                  cadastro financeiro antes de responder ao aluno.
+                </>
+              ) : (
+                <>
+                  Contrato marcado como quitado, mas o saldo apurado é{" "}
+                  {brl(divergencia)}. Confira no cadastro financeiro antes de
+                  responder ao aluno.
+                </>
+              )}
             </span>
           </p>
         ) : null}
@@ -310,7 +309,7 @@ function ContratoCard({
             {credito !== null ? (
               <Detalhe
                 rotulo="Crédito aplicado"
-                valor={brl.format(credito)}
+                valor={brl(credito)}
                 ressalva="Informado pelo Grupo Participa; não entra no cálculo do saldo."
               />
             ) : null}
@@ -318,7 +317,7 @@ function ContratoCard({
             {cancelado && contrato.cancelamentoValor !== null ? (
               <Detalhe
                 rotulo="Valor do cancelamento"
-                valor={brl.format(contrato.cancelamentoValor)}
+                valor={brl(contrato.cancelamentoValor)}
                 ressalva="Informado pelo Grupo Participa; não entra no cálculo do saldo."
               />
             ) : null}

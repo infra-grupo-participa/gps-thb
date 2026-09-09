@@ -20,6 +20,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
+import { logErro, logAviso } from "@/lib/log";
 
 /**
  * Abaixo disto, diferença é ruído de arredondamento — não é dívida nem
@@ -189,7 +190,7 @@ export async function getFinanceiroDoAluno(
   alunoId: string,
 ): Promise<ResultadoFinanceiro> {
   if (typeof alunoId !== "string" || !UUID_RE.test(alunoId)) {
-    console.error("[getFinanceiroDoAluno] alunoId invalido", {
+    logErro("getFinanceiroDoAluno", "alunoId invalido", {
       tipo: typeof alunoId,
       tamanho: typeof alunoId === "string" ? alunoId.length : null,
     });
@@ -216,11 +217,8 @@ export async function getFinanceiroDoAluno(
     if (error.code === "42501") return { estado: "sem_permissao" };
     // Sem alunoId no log: identificador de ambiente é dado de pessoa. O código
     // do erro é o que serve para depurar.
-    console.error("[getFinanceiroDoAluno] gps.financeiro_do_aluno() falhou", {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
+    logErro("getFinanceiroDoAluno", error, {
+      rpc: "gps.financeiro_do_aluno",
     });
     return { estado: "erro" };
   }
@@ -228,8 +226,9 @@ export async function getFinanceiroDoAluno(
   const linhas = (data ?? []) as LinhaFinanceiro[];
   if (linhas.length === 0) return { estado: "sem_registro" };
   if (linhas.length > CONTRATOS_ESPERADOS) {
-    console.warn(
-      "[getFinanceiroDoAluno] mais contratos que o esperado; nada foi truncado",
+    logAviso(
+      "getFinanceiroDoAluno",
+      "mais contratos que o esperado; nada foi truncado",
       { qtd: linhas.length, esperado: CONTRATOS_ESPERADOS },
     );
   }

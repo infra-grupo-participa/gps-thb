@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ehAdmin, getContextoSessao } from "@/lib/auth";
 import { emailValido, normalizarEmail } from "@/lib/plantao";
 import { enviarPlantaoCancelamento } from "@/lib/email-plantao";
+import { logErro } from "@/lib/log";
 import type {
   ResultadoAcao,
   ResultadoCancelamento,
@@ -136,7 +137,7 @@ export async function criarSlot(
       continue;
     }
 
-    console.error(`[plantao] criarSlot falhou em ${data}:`, error.message);
+    logErro("plantao/criarSlot", error, { data, criados });
     return {
       ok: false,
       erro:
@@ -512,7 +513,7 @@ export async function cancelarSlot(
     .limit(LIMITE_AVISOS_CANCELAMENTO);
 
   if (erroLeitura) {
-    console.error(`[plantao] cancelarSlot ${slotId}: leitura falhou:`, erroLeitura.message);
+    logErro("plantao/cancelarSlot", erroLeitura, { slotId, passo: "ler inscritos" });
     return { ok: false, erro: "Não foi possível ler os inscritos deste plantão." };
   }
 
@@ -554,7 +555,7 @@ export async function cancelarSlot(
       .select("id");
 
     if (erroSlot) {
-      console.error(`[plantao] cancelarSlot ${slotId}: update do slot falhou:`, erroSlot.message);
+      logErro("plantao/cancelarSlot", erroSlot, { slotId, passo: "carimbar slot" });
       return { ok: false, erro: "Não foi possível cancelar o plantão." };
     }
     if (!carimbado?.length) {
@@ -575,10 +576,10 @@ export async function cancelarSlot(
     // inscreve. O que ficou pendente é a baixa das inscrições, e a pessoa
     // seguiria "com plantão marcado" sem poder marcar outro. Dizer a verdade
     // e mandar repetir: a retomada acima existe exatamente para este caso.
-    console.error(
-      `[plantao] cancelarSlot ${slotId}: inscrições não encerradas:`,
-      erroInscricoes.message,
-    );
+    logErro("plantao/cancelarSlot", erroInscricoes, {
+      slotId,
+      passo: "encerrar inscricoes",
+    });
     return {
       ok: false,
       erro:
@@ -610,7 +611,11 @@ export async function cancelarSlot(
 
     if (!para) {
       falhas++;
-      console.error(`[plantao] cancelarSlot ${slotId}: inscrição ${linha.id} sem e-mail.`);
+      // Sem PII: o id da inscrição basta para achar a pessoa no banco.
+      logErro("plantao/cancelarSlot", "inscricao sem e-mail", {
+        slotId,
+        inscricaoId: linha.id,
+      });
       continue;
     }
 
@@ -627,10 +632,11 @@ export async function cancelarSlot(
       avisados++;
     } else {
       falhas++;
-      console.error(
-        `[plantao] cancelarSlot ${slotId}: aviso não entregue à inscrição ${linha.id}:`,
-        envio.erro ?? "sem detalhe",
-      );
+      logErro("plantao/cancelarSlot", envio.erro ?? "sem detalhe", {
+        slotId,
+        inscricaoId: linha.id,
+        passo: "avisar inscrito",
+      });
     }
   }
 
@@ -647,7 +653,7 @@ export async function cancelarSlot(
     .insert({ acao: "plantao_slot_cancelado", slot_id: slotId });
 
   if (erroEvento) {
-    console.error(`[plantao] cancelarSlot ${slotId}: auditoria falhou:`, erroEvento.message);
+    logErro("plantao/cancelarSlot", erroEvento, { slotId, passo: "auditoria" });
   }
 
   revalidatePath("/admin/plantao");
@@ -693,7 +699,7 @@ export async function definirInscricoesAbertas(
     );
 
   if (error) {
-    console.error("[plantao] definirInscricoesAbertas falhou:", error.message);
+    logErro("plantao/definirInscricoesAbertas", error, { aberta });
     return {
       ok: false,
       erro: aberta

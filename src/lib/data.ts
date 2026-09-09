@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { resumoEtapa1 } from "@/lib/etapa1";
 import { ehAdmin } from "@/lib/auth";
+import { logErro } from "@/lib/log";
 import type {
   Aluno,
   Ambiente,
@@ -290,15 +291,12 @@ export async function getAlunosGps(opts?: {
   if (error) {
     // Falha aqui não pode virar "nenhum aluno no programa" em silêncio: a tela
     // ficaria idêntica à de um banco vazio. Registra e só então devolve [].
-    console.error(
-      "[getAlunosGps] gps.admin_painel_alunos() falhou; painel exibirá lista vazia",
-      {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-      },
-    );
+    logErro("getAlunosGps", error, {
+      rpc: "gps.admin_painel_alunos",
+      efeito: "painel exibe lista vazia",
+      limite,
+      offset,
+    });
     return { alunos: [], total: 0 };
   }
 
@@ -797,15 +795,10 @@ export async function getAtendimentoPorAluno(): Promise<
     // Falha aqui não pode virar "nenhuma pendência em lugar nenhum" em
     // silêncio: a tela ficaria idêntica à de um Diário vazio. Registra e só
     // então devolve o Map vazio.
-    console.error(
-      "[getAtendimentoPorAluno] gps.admin_painel_atendimento() falhou; cards sem resumo do Diário",
-      {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-      },
-    );
+    logErro("getAtendimentoPorAluno", error, {
+      rpc: "gps.admin_painel_atendimento",
+      efeito: "cards do painel sem resumo do Diario",
+    });
     return new Map<string, AtendimentoDoAluno>();
   }
 

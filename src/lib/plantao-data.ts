@@ -12,6 +12,7 @@ import "server-only";
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { logErro } from "@/lib/log";
 import { limitesDoMes } from "@/lib/plantao";
 import type {
   SlotAdmin,
@@ -226,7 +227,9 @@ export async function lerInscricoesAbertas(): Promise<boolean> {
     .maybeSingle();
 
   if (error) {
-    console.error("[plantao] leitura de plantao_config falhou:", error.message);
+    logErro("plantao/lerInscricoesAbertas", error, {
+      efeito: "assume inscricoes ABERTAS (mesmo default da funcao)",
+    });
     return true;
   }
 

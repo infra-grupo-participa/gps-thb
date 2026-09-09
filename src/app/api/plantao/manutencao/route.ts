@@ -36,13 +36,37 @@
  *  (c) expurga eventos com mais de 90 dias (retenção decidida pelo Marcio).
  */
 
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
+import { logErro } from "@/lib/log";
 import {
   enviarPlantaoNps,
   enviarPlantaoAvisoMentora,
   enviarPlantaoSala,
 } from "@/lib/email-plantao";
+
+/**
+ * Comparação do segredo em tempo CONSTANTE.
+ *
+ * `a !== b` sai no primeiro byte diferente: o tempo de resposta cresce com o
+ * tamanho do prefixo acertado, o que permite descobrir o segredo byte a byte
+ * com amostragem suficiente. Esta é a única rota do portal sem sessão — vale
+ * fechar mesmo com risco baixo (segredo longo, chamador é o `pg_cron`).
+ *
+ * Compara os DIGESTS SHA-256, não os textos: `timingSafeEqual` LANÇA quando os
+ * buffers têm tamanhos diferentes, e tratar isso com um `return false` cedo
+ * reintroduziria o vazamento — o tempo passaria a revelar o TAMANHO do
+ * segredo. Digest tem sempre 32 bytes, então a comparação é sempre a mesma
+ * operação, para qualquer entrada. Hash aqui não é para guardar senha; é só
+ * para normalizar o comprimento.
+ */
+function segredoConfere(recebido: string | null, esperado: string): boolean {
+  if (!recebido) return false;
+  const a = createHash("sha256").update(recebido, "utf8").digest();
+  const b = createHash("sha256").update(esperado, "utf8").digest();
+  return timingSafeEqual(a, b);
+}
 
 function clientePublico() {
   return createStatelessClient(
@@ -55,10 +79,12 @@ function clientePublico() {
 export async function POST(request: NextRequest) {
   const segredo = process.env.PLANTAO_MANUTENCAO_SEGREDO;
   if (!segredo) {
-    console.error("[plantao/manutencao] PLANTAO_MANUTENCAO_SEGREDO ausente.");
+    logErro("plantao/manutencao", "PLANTAO_MANUTENCAO_SEGREDO ausente", {
+      efeito: "rota recusa tudo com 500",
+    });
     return NextResponse.json({ erro: "Não configurado." }, { status: 500 });
   }
-  if (request.headers.get("x-plantao-segredo") !== segredo) {
+  if (!segredoConfere(request.headers.get("x-plantao-segredo"), segredo)) {
     return NextResponse.json({ erro: "Não autorizado." }, { status: 401 });
   }
 
@@ -89,7 +115,10 @@ export async function POST(request: NextRequest) {
     // responderia `ok:true` com tudo zerado — reportando sucesso sem ter
     // feito nada, que é o pior modo de falha para uma rotina automática:
     // ninguém investiga o que diz que deu certo.
-    console.error("[plantao/manutencao] RPC recusada:", erroPendentes.message);
+    logErro("plantao/manutencao", erroPendentes, {
+      rpc: "plantao_nps_pendente",
+      efeito: "job aborta com 503",
+    });
     return NextResponse.json(
       {
         ok: false,
@@ -143,7 +172,7 @@ export async function POST(request: NextRequest) {
   );
 
   if (erroAvisos) {
-    console.error("[plantao/manutencao] aviso à mentora recusado:", erroAvisos.message);
+    logErro("plantao/manutencao", erroAvisos, { rpc: "plantao_aviso_mentora_pendente" });
   } else {
     for (const row of (avisos ?? []) as Array<{
       slot_id: string;
@@ -184,10 +213,9 @@ export async function POST(request: NextRequest) {
   );
 
   if (erroReconciliacao) {
-    console.error(
-      "[plantao/manutencao] reconciliação de elegibilidade recusada:",
-      erroReconciliacao.message,
-    );
+    logErro("plantao/manutencao", erroReconciliacao, {
+      rpc: "plantao_reconciliar_elegibilidade",
+    });
   } else {
     const linha = Array.isArray(reconciliacao) ? reconciliacao[0] : reconciliacao;
     resultado.elegibilidadeBloqueadosNovos = linha?.bloqueados_novos ?? 0;
@@ -221,7 +249,7 @@ export async function POST(request: NextRequest) {
   );
 
   if (erroSalas) {
-    console.error("[plantao/manutencao] e-mail da sala recusado:", erroSalas.message);
+    logErro("plantao/manutencao", erroSalas, { rpc: "plantao_email_sala_pendente" });
   } else {
     for (const row of (salas ?? []) as Array<{
       inscricao_id: string;
@@ -260,7 +288,10 @@ export async function POST(request: NextRequest) {
     { p_segredo: segredo },
   );
   if (erroExpurgo) {
-    console.error("[plantao/manutencao] expurgo recusado:", erroExpurgo.message);
+    logErro("plantao/manutencao", erroExpurgo, {
+      rpc: "plantao_expurgar",
+      efeito: "job aborta com 503",
+    });
     return NextResponse.json(
       { ok: false, erro: "O expurgo foi recusado pelo banco.", ...resultado },
       { status: 503 },

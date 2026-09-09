@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Entrypoint CommonJS do Passenger (Hostinger): require() e o formato certo la.
+    "server.js",
+    // Skills instaladas por `npx skills add` e material de trabalho da squad.
+    ".agents/**",
+    "tmp/**",
   ]),
 ]);
 

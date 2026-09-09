@@ -6,6 +6,8 @@ import {
   acharAlunosPorEmails,
   getEtapas,
   getAtendimentoPorAluno,
+  LIMITE_PAINEL_ALUNOS,
+  LIMITE_PAINEL_ALUNOS_MAX,
 } from "@/lib/data";
 import { Users, UserCheck, UserX, Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
@@ -22,24 +24,52 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const metadata = { title: "Admin — Alunos" };
 
-export default async function AdminPage() {
+/**
+ * Quantas vezes o admin já pediu "Mostrar mais". O lote DOBRA a cada rodada
+ * (200 → 400 → 800 → …), preso ao teto que a RPC aplica de qualquer jeito.
+ *
+ * 🔑 O tamanho do lote mora na URL, não em `useState`: o Server Component é
+ * quem consulta o banco, então guardar isso no cliente exigiria uma segunda
+ * fonte de verdade (e um `useEffect` refazendo a busca). Com `?mais=`, voltar
+ * pelo histórico devolve a mesma tela e recarregar não perde o lote.
+ *
+ * `mais` inválido (texto, negativo, `Infinity`) vira 0 — nunca erro de tela.
+ */
+function limiteDoPainel(mais: string | undefined): number {
+  const rodadas = Math.min(Math.max(Math.trunc(Number(mais)) || 0, 0), 10);
+  return Math.min(
+    LIMITE_PAINEL_ALUNOS * 2 ** rodadas,
+    LIMITE_PAINEL_ALUNOS_MAX,
+  );
+}
+
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mais?: string }>;
+}) {
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
+
+  const { mais } = await searchParams;
+  const rodadasPedidas = Math.min(Math.max(Math.trunc(Number(mais)) || 0, 0), 10);
+  const limite = limiteDoPainel(mais);
 
   // A sugestão de vínculo depende da lista de pendentes, então são 2 estágios
   // — mas o segundo dispara assim que `getSolicitacoes` resolve, em paralelo
   // com as outras leituras, em vez de esperar o `Promise.all` inteiro.
   // Antes: um `acharAlunoPorEmail` POR solicitação, em série, depois de tudo.
   const pendentesPromise = getSolicitacoes("pendente");
-  const [alunos, pendentes, etapas, atendimentoDiario, alunosPorEmail] =
+  const [pagina, pendentes, etapas, atendimentoDiario, alunosPorEmail] =
     await Promise.all([
-      getAlunosGps(),
+      getAlunosGps({ limite }),
       pendentesPromise,
       getEtapas(),
       getAtendimentoPorAluno(),
       pendentesPromise.then((ps) => acharAlunosPorEmails(ps.map((s) => s.email))),
     ]);
+  const { alunos, total: totalAlunos } = pagina;
   // Map -> objeto simples porque `Map` não atravessa a fronteira Server ->
   // Client Component. Ambiente sem nota nenhuma não tem chave aqui.
   const atendimentoPorAluno = Object.fromEntries(atendimentoDiario);
@@ -51,6 +81,16 @@ export default async function AdminPage() {
 
   const comLogin = alunos.filter((a) => a.temLogin).length;
   const semLogin = alunos.length - comLogin;
+  // O lote não cobre a base inteira: os KPIs de login contam só o que veio, e
+  // o `hint` tem de dizer isso. Número parcial apresentado como total é a
+  // mesma classe de erro do "R$ 0,00" em campo que nasceu vazio.
+  const parcial = alunos.length < totalAlunos;
+  const proximoLimite = limiteDoPainel(String(rodadasPedidas + 1));
+  // Quantos ambientes o próximo clique acrescenta DE FATO (nunca prometer
+  // mais do que existe, nem mais do que o teto permite).
+  const proximoLote = Math.min(proximoLimite, totalAlunos) - alunos.length;
+  const carregarMaisHref =
+    parcial && proximoLote > 0 ? `/admin?mais=${rodadasPedidas + 1}` : null;
 
   return (
     <>
@@ -73,7 +113,7 @@ export default async function AdminPage() {
           <KpiCard
             icone={<Users className="size-4" />}
             rotulo="Alunos no programa"
-            valor={String(alunos.length)}
+            valor={String(totalAlunos)}
             hint="em implementação assistida"
             destaque
           />
@@ -81,13 +121,21 @@ export default async function AdminPage() {
             icone={<UserCheck className="size-4" />}
             rotulo="Com login"
             valor={String(comLogin)}
-            hint="já podem acessar"
+            hint={
+              parcial
+                ? `entre os ${alunos.length} carregados`
+                : "já podem acessar"
+            }
           />
           <KpiCard
             icone={<UserX className="size-4" />}
             rotulo="Sem login"
             valor={String(semLogin)}
-            hint="ambiente sem acesso"
+            hint={
+              parcial
+                ? `entre os ${alunos.length} carregados`
+                : "ambiente sem acesso"
+            }
           />
           <KpiCard
             icone={<Inbox className="size-4" />}
@@ -102,7 +150,7 @@ export default async function AdminPage() {
             <TabsTrigger value="ativos">
               Alunos ativos
               <Badge variant="secondary" className="ml-1.5 text-[10px]">
-                {alunos.length}
+                {totalAlunos}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="solicitacoes">
@@ -119,6 +167,9 @@ export default async function AdminPage() {
             <AlunosAtivosLista
               alunos={alunos}
               atendimentoPorAluno={atendimentoPorAluno}
+              total={totalAlunos}
+              carregarMaisHref={carregarMaisHref}
+              carregarMaisQtd={proximoLote}
             />
           </TabsContent>
 

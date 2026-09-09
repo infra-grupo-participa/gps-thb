@@ -10,7 +10,7 @@ import {
   formatarDataHora,
 } from "@/components/admin/diario-labels";
 import { NotaRapida } from "@/components/admin/nota-rapida";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -219,10 +219,19 @@ function FiltroCheckbox({
  * 🔴 Esta é uma tela SÓ DE ADMIN. `atendimentoPorAluno` carrega trecho de nota
  * do Diário (`gps.aluno_notas`, exclusiva do admin por LGPD — migração
  * 20260908000001). Não reaproveitar este componente em rota de aluno.
+ *
+ * 🔑 PAGINAÇÃO (migração 20260909000120): `alunos` é um LOTE, não a base. A
+ * busca e os filtros continuam varrendo só o que está em memória — por isso o
+ * rodapé é OBRIGADO a dizer quantos foram carregados de quantos existem, e o
+ * vazio de busca precisa oferecer "Carregar mais". Sem isso, "nenhum aluno
+ * para «Silva»" seria falso para quem está no lote seguinte.
  */
 export function AlunosAtivosLista({
   alunos,
   atendimentoPorAluno,
+  total,
+  carregarMaisHref,
+  carregarMaisQtd,
 }: {
   alunos: AlunoGps[];
   /**
@@ -230,7 +239,16 @@ export function AlunosAtivosLista({
    * sem nenhuma nota simplesmente não aparece no mapa.
    */
   atendimentoPorAluno: Record<string, AtendimentoDoAluno>;
+  /** Total de ambientes no GPS (`total_ambientes` da RPC), não o do lote. */
+  total: number;
+  /** URL do próximo lote, ou `null` quando tudo já está na tela. */
+  carregarMaisHref: string | null;
+  /** Quantos ambientes o próximo lote acrescenta. Só vale com o href acima. */
+  carregarMaisQtd: number;
 }) {
+  // `alunos.length` é o lote carregado; `total`, o universo. Toda frase da
+  // tela tem de deixar claro qual dos dois está falando.
+  const parcial = alunos.length < total;
   const [somentePendencia, setSomentePendencia] = useState(false);
   const [somenteListou30, setSomenteListou30] = useState(false);
   const [somenteInativos, setSomenteInativos] = useState(false);
@@ -482,6 +500,22 @@ export function AlunosAtivosLista({
 
       <p aria-live="polite" className="text-xs text-muted-foreground">
         Mostrando {visiveis.length} de {alunos.length}
+        {parcial ? (
+          <>
+            {" "}
+            carregados · {total} no programa. A busca e os filtros valem só
+            sobre os {alunos.length} carregados.
+            {/* Teto batido e nada mais para carregar: dizer isso é o mínimo.
+                Sem esta frase o admin veria "de 1.250" sem botão e concluiria
+                que a tela quebrou. É também o sinal de que a busca precisa ir
+                para o servidor (Leitura B do bloqueio 2) — hoje são 125
+                ambientes e este caminho não acontece. */}
+            {carregarMaisHref === null ? (
+              <> Este é o teto do painel; para achar quem ficou de fora, a
+              busca precisará passar a rodar no servidor.</>
+            ) : null}
+          </>
+        ) : null}
       </p>
 
       {visiveis.length === 0 ? (
@@ -514,6 +548,19 @@ export function AlunosAtivosLista({
                 <Button variant="outline" size="sm" onClick={limparFiltros}>
                   Limpar filtros
                 </Button>
+              ) : null}
+              {/* Aqui o botão importa mais do que no fim da lista: quem
+                  buscou e não achou precisa saber que ainda há gente fora do
+                  lote carregado. */}
+              {carregarMaisHref ? (
+                <Link
+                  href={carregarMaisHref}
+                  scroll={false}
+                  prefetch={false}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  Carregar mais {carregarMaisQtd}
+                </Link>
               ) : null}
             </>
           }
@@ -704,6 +751,24 @@ export function AlunosAtivosLista({
           },
         )
       )}
+
+      {/* "Mostrar mais" é NAVEGAÇÃO, não estado de cliente: o lote é decidido
+          no servidor (`?mais=`), então voltar pelo histórico ou recarregar
+          devolve a mesma tela. `scroll={false}` mantém o admin onde ele
+          estava; `prefetch={false}` evita que só passar o mouse dispare a
+          consulta agregada do painel. */}
+      {carregarMaisHref ? (
+        <div className="flex justify-center pt-2">
+          <Link
+            href={carregarMaisHref}
+            scroll={false}
+            prefetch={false}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Mostrar mais {carregarMaisQtd}
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

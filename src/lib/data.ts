@@ -20,12 +20,61 @@ import type {
   TipoNota,
 } from "@/lib/types";
 
+// ─────────────────────────────────────────────────────────────────────────
+// COLUNAS EXPLÍCITAS POR TABELA (P6 do polimento)
+//
+// Substituem os `select("*")` que este arquivo usava. Motivo: o egress do
+// Supabase tem teto DA ORGANIZAÇÃO, dividido com o sip — e `etapa1_clientes`
+// é a tabela larga (879 linhas), lida na home, na Etapa 01 e na aba Clientes.
+//
+// ⚠️ CONTRATO: cada constante tem de listar TUDO que o tipo consumidor
+// declara em src/lib/types.ts. Um `select` explícito NÃO falha quando falta
+// coluna — o campo chega `undefined` e a tela mostra vazio em silêncio. Ao
+// acrescentar coluna no banco E no tipo, acrescente aqui na MESMA mudança.
+// (`COLUNAS_NOTA` e `COLUNAS_EVENTO`, do Diário, ficam junto das suas seções
+// mais abaixo — este bloco não as move para não desencontrar comentário e uso.)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** `gps.etapas` → `Etapa`. */
+const COLUNAS_ETAPA = "id, nome, descricao, ordem, liberada";
+
+/**
+ * `gps.etapa1_clientes` → `ClienteEtapa1`. As 20 colunas do tipo.
+ *
+ * 🔑 `status` entra de propósito, mesmo CONGELADO desde a migração ...060:
+ * o marcador "Recusou" da UI ainda o lê (1 linha na base). Sai daqui quando
+ * a coluna sair do banco, não antes.
+ * 🔑 `fase`, `valor_honorarios` e `contrato_url` nasceram hoje (migrações
+ * ...060/...090) — sem elas na lista, o quadro de fases e a coluna de
+ * honorários ficariam vazios sem erro nenhum.
+ * `criado_em`/`atualizado_em` NÃO entram: ninguém os lê. `criado_em` continua
+ * servindo de critério de `.order()`, e o PostgREST ordena por coluna que não
+ * está no `select`.
+ */
+const COLUNAS_CLIENTE =
+  "id, aluno_id, nome, telefone, nivel_relacionamento, problemas, perda_inercia, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, acompanhado_equipe, ordem, valor_honorarios, contrato_url";
+
+/** `gps.solicitacoes_acesso` → `Solicitacao`. */
+const COLUNAS_SOLICITACAO =
+  "id, user_id, nome, email, telefone, status, aluno_id, observacao, criado_em, decidido_em";
+
+/** `gps.etapa3_agendamentos` → `Etapa3Agendamento`. */
+const COLUNAS_ETAPA3_AGENDAMENTO =
+  "id, aluno_id, cliente_id, descricao, data, horario, equipe_participa, criado_em";
+
+/** `gps.etapa3_revisao` → `Etapa3Revisao`. */
+const COLUNAS_ETAPA3_REVISAO = "aluno_id, duvidas, correcoes, atualizado_em";
+
+/** `gps.progresso` → `ProgressoTarefa`. */
+const COLUNAS_PROGRESSO =
+  "id, aluno_id, etapa, tarefa, concluida, concluida_em";
+
 export async function getEtapas(): Promise<Etapa[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .schema("gps")
     .from("etapas")
-    .select("*")
+    .select(COLUNAS_ETAPA)
     .order("ordem");
   return (data ?? []) as Etapa[];
 }
@@ -107,7 +156,7 @@ export async function getClientesEtapa1(
   const { data } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
-    .select("*")
+    .select(COLUNAS_CLIENTE)
     .eq("aluno_id", alunoId)
     .order("ordem")
     .order("criado_em");
@@ -140,7 +189,8 @@ export interface AlunoGps {
 
 /**
  * Linha crua de `gps.admin_painel_alunos()` (migração 20260909000050; as três
- * colunas de honorários entraram na 20260909000091).
+ * colunas de honorários entraram na 20260909000091 e `total_ambientes` na
+ * 20260909000120).
  */
 interface LinhaPainelAlunos {
   aluno_id: string;
@@ -157,6 +207,39 @@ interface LinhaPainelAlunos {
   honorarios_contratados: number | null;
   contratados: number;
   contratados_sem_valor: number;
+  /**
+   * TOTAL de ambientes do GPS — repetido em TODA linha (`count(*) over ()`
+   * calculado antes do `limit`). Não é o tamanho do lote: é o universo.
+   * Opcional no tipo porque um banco ainda sem a migração ...120 devolveria
+   * `undefined` aqui, e o fallback (ver `getAlunosGps`) tem de existir.
+   */
+  total_ambientes?: number;
+}
+
+/**
+ * Quantos ambientes o painel carrega por lote. Espelha o default de
+ * `p_limite` em `gps.admin_painel_alunos()` — se um dia divergirem, quem
+ * manda é o banco (a função prende `p_limite` em [1, 1000]).
+ *
+ * 200 e não 100: hoje são 125 ambientes, e um teto abaixo do total faria
+ * TODA sessão de admin começar com "Mostrar mais" na tela por nada.
+ */
+export const LIMITE_PAINEL_ALUNOS = 200;
+
+/** Teto duro do lote — o mesmo que a RPC aplica, replicado aqui para que um
+ *  `?mais=` absurdo na URL não vire uma consulta que o banco vai cortar de
+ *  qualquer jeito. */
+export const LIMITE_PAINEL_ALUNOS_MAX = 1000;
+
+/** O que `getAlunosGps` devolve: o LOTE + o tamanho do universo. */
+export interface PaginaAlunosGps {
+  /** Os ambientes deste lote, já na ordem do banco. */
+  alunos: AlunoGps[];
+  /**
+   * Total de ambientes no GPS, independente do lote. É o que permite à tela
+   * dizer "Mostrando 200 de 1.250" em vez de fingir que 200 é tudo.
+   */
+  total: number;
 }
 
 /**
@@ -173,13 +256,36 @@ interface LinhaPainelAlunos {
  * A RPC é SECURITY DEFINER e já barra não-admin com 42501 — por isso não há
  * `ehAdmin()` aqui. `pct` continua saindo de `resumoEtapa1`, a MESMA regra que
  * a tela do aluno usa (o catálogo de tarefas é código, nunca duplicado em SQL).
+ *
+ * 🔑 PAGINADA desde a migração 20260909000120 (P5): devolve um LOTE
+ * (`limite`, 200 por padrão) e o TOTAL do universo. A busca e os filtros do
+ * painel continuam em memória, sobre o lote — por isso quem consome é
+ * OBRIGADO a exibir o total (ver `AlunosAtivosLista`): paginar em silêncio
+ * transformaria "nenhum aluno para «Silva»" numa meia-verdade.
+ *
+ * O segundo `select` em `thb_alunos` usa `.in("id", alunoIds)` sobre os ids
+ * do lote — ou seja, ele encolhe junto. Sem o teto na RPC, era ele que
+ * crescia sem limite.
  */
-export async function getAlunosGps(): Promise<AlunoGps[]> {
+export async function getAlunosGps(opts?: {
+  limite?: number;
+  offset?: number;
+}): Promise<PaginaAlunosGps> {
   const supabase = await createClient();
+
+  // Saneamento na fronteira: `limite`/`offset` vêm de searchParam. A RPC
+  // prende de novo (defesa em profundidade), mas mandar `-1` daqui já seria
+  // um round-trip jogado fora — e `NaN` viraria `null` no JSON, o que faz a
+  // RPC cair no `coalesce` e devolver o lote padrão sem ninguém entender.
+  const limite = Math.min(
+    Math.max(Math.trunc(opts?.limite ?? LIMITE_PAINEL_ALUNOS) || LIMITE_PAINEL_ALUNOS, 1),
+    LIMITE_PAINEL_ALUNOS_MAX,
+  );
+  const offset = Math.max(Math.trunc(opts?.offset ?? 0) || 0, 0);
 
   const { data, error } = await supabase
     .schema("gps")
-    .rpc("admin_painel_alunos");
+    .rpc("admin_painel_alunos", { p_limite: limite, p_offset: offset });
 
   if (error) {
     // Falha aqui não pode virar "nenhum aluno no programa" em silêncio: a tela
@@ -193,11 +299,20 @@ export async function getAlunosGps(): Promise<AlunoGps[]> {
         hint: error.hint,
       },
     );
-    return [];
+    return { alunos: [], total: 0 };
   }
 
   const linhas = (data ?? []) as LinhaPainelAlunos[];
-  if (linhas.length === 0) return [];
+  if (linhas.length === 0) return { alunos: [], total: 0 };
+
+  // O total vem repetido em toda linha; a primeira basta. O fallback para
+  // `linhas.length` cobre o banco que ainda não recebeu a migração ...120:
+  // coluna ausente é `undefined` em JS, não erro, e sem o fallback o rodapé
+  // diria "de 0" para sempre sem ninguém notar.
+  const total =
+    typeof linhas[0].total_ambientes === "number"
+      ? linhas[0].total_ambientes
+      : linhas.length;
 
   const alunoIds = linhas.map((l) => l.aluno_id);
   const { data: alunos } = await supabase
@@ -209,7 +324,7 @@ export async function getAlunosGps(): Promise<AlunoGps[]> {
 
   const alunosMap = new Map(((alunos ?? []) as Aluno[]).map((a) => [a.id, a]));
 
-  return linhas.map((l) => {
+  const alunosGps = linhas.map((l) => {
     const manual: Record<number, boolean> = Object.fromEntries(
       (l.tarefas_concluidas ?? []).map((t) => [t, true]),
     );
@@ -244,6 +359,8 @@ export async function getAlunosGps(): Promise<AlunoGps[]> {
       contratadosSemValor: l.contratados_sem_valor ?? 0,
     };
   });
+
+  return { alunos: alunosGps, total };
 }
 
 /** Solicitação de acesso do usuário logado (ou null). */
@@ -254,7 +371,7 @@ export async function getMinhaSolicitacao(
   const { data } = await supabase
     .schema("gps")
     .from("solicitacoes_acesso")
-    .select("*")
+    .select(COLUNAS_SOLICITACAO)
     .eq("user_id", userId)
     .maybeSingle();
   return (data as Solicitacao) ?? null;
@@ -268,7 +385,7 @@ export async function getSolicitacoes(
   let query = supabase
     .schema("gps")
     .from("solicitacoes_acesso")
-    .select("*")
+    .select(COLUNAS_SOLICITACAO)
     .order("criado_em", { ascending: false });
   if (status) query = query.eq("status", status);
   const { data } = await query;
@@ -343,7 +460,7 @@ export async function getClienteById(
   const { data } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
-    .select("*")
+    .select(COLUNAS_CLIENTE)
     .eq("id", clienteId)
     .maybeSingle();
   return (data as ClienteEtapa1) ?? null;
@@ -354,7 +471,7 @@ export async function getAgendamentosEtapa3(alunoId: string) {
   const { data } = await supabase
     .schema("gps")
     .from("etapa3_agendamentos")
-    .select("*")
+    .select(COLUNAS_ETAPA3_AGENDAMENTO)
     .eq("aluno_id", alunoId)
     .order("data", { ascending: true, nullsFirst: false })
     .order("criado_em");
@@ -366,7 +483,7 @@ export async function getRevisaoEtapa3(alunoId: string) {
   const { data } = await supabase
     .schema("gps")
     .from("etapa3_revisao")
-    .select("*")
+    .select(COLUNAS_ETAPA3_REVISAO)
     .eq("aluno_id", alunoId)
     .maybeSingle();
   return data ?? null;
@@ -380,7 +497,7 @@ export async function getProgressoAluno(
   const { data } = await supabase
     .schema("gps")
     .from("progresso")
-    .select("*")
+    .select(COLUNAS_PROGRESSO)
     .eq("aluno_id", alunoId);
   return (data ?? []) as ProgressoTarefa[];
 }
@@ -393,7 +510,7 @@ export async function getClienteEquipe(
   const { data } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
-    .select("*")
+    .select(COLUNAS_CLIENTE)
     .eq("aluno_id", alunoId)
     .eq("acompanhado_equipe", true)
     .maybeSingle();
@@ -408,7 +525,7 @@ export async function getProgressoEtapa(
   const { data } = await supabase
     .schema("gps")
     .from("progresso")
-    .select("*")
+    .select(COLUNAS_PROGRESSO)
     .eq("aluno_id", alunoId)
     .eq("etapa", etapa);
   return (data ?? []) as ProgressoTarefa[];

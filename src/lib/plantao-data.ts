@@ -185,7 +185,7 @@ export async function getAlunosPlantao(): Promise<AlunoPlantaoAdmin[]> {
     .schema("gps")
     .from("plantao_alunos")
     .select(
-      "id, nome, email, lote, ativo, bloqueado_por_programa, bloqueio_excecao, plantao_inscricoes(id)",
+      "id, nome, email, lote, ativo, bloqueado_por_programa, bloqueio_excecao, situacao_compra, situacao_detalhe, situacao_em, plantao_inscricoes(id)",
     )
     .order("nome")
     .limit(LIMITE_ALUNOS);
@@ -201,6 +201,9 @@ export async function getAlunosPlantao(): Promise<AlunoPlantaoAdmin[]> {
       inscricoesQtd: inscricoes.length,
       bloqueadoPorPrograma: Boolean(a.bloqueado_por_programa),
       bloqueioExcecao: Boolean(a.bloqueio_excecao),
+      situacaoCompra: (a.situacao_compra as "pago" | "nao_pago" | "devolvido" | null) ?? null,
+      situacaoDetalhe: (a.situacao_detalhe as string | null) ?? null,
+      situacaoEm: (a.situacao_em as string | null) ?? null,
     };
   });
 }

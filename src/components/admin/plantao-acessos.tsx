@@ -12,6 +12,11 @@
  * `bloqueioExcecao`: hoje 20 pessoas perderam o acesso ao Plantão por terem
  * migrado para o Programa de Implementação Assistida, e isso não aparecia em
  * NENHUMA tela — só dava para ver rodando SQL direto no banco.
+ *
+ * `situacaoCompra` (decisão do Marcio, 09/09/2026) é o mapa do histórico de
+ * vendas da Hotmart — pago/não pago/devolvido — com filtro por chips e busca.
+ * NÃO controla acesso (quem controla é `ativo`/`bloqueadoPorPrograma`); só
+ * explica o porquê, e isso é dito em texto no topo da aba.
  */
 
 import { useMemo, useState, useTransition } from "react";
@@ -45,6 +50,40 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { LiberarAlunoPlantao } from "@/components/admin/liberar-aluno-plantao";
 import { semAcento } from "@/lib/texto";
+import { formatarDataHora } from "@/lib/datas";
+
+/** Rótulo + variante do `Badge` para cada `situacaoCompra`. */
+const SITUACAO_COMPRA_INFO: Record<
+  "pago" | "nao_pago" | "devolvido",
+  { rotulo: string; variant: "success" | "warning" | "danger" }
+> = {
+  pago: { rotulo: "Pagou", variant: "success" },
+  nao_pago: { rotulo: "Não pagou", variant: "warning" },
+  devolvido: { rotulo: "Reembolsado", variant: "danger" },
+};
+
+/** Termo de busca por situação — casa "pagou"/"pago", "não pagou", "reembolsado"/"devolvido". */
+function termosDeSituacao(s: AlunoPlantaoAdmin["situacaoCompra"]): string {
+  switch (s) {
+    case "pago":
+      return "pago pagou";
+    case "nao_pago":
+      return "nao pago nao pagou";
+    case "devolvido":
+      return "devolvido reembolsado reembolso";
+    default:
+      return "";
+  }
+}
+
+const FILTROS_SITUACAO = [
+  { valor: "pago", rotulo: "Pagou" },
+  { valor: "nao_pago", rotulo: "Não pagou" },
+  { valor: "devolvido", rotulo: "Reembolsado" },
+  { valor: "sem_situacao", rotulo: "Sem situação" },
+] as const;
+
+type FiltroSituacao = (typeof FILTROS_SITUACAO)[number]["valor"];
 
 export function PlantaoAcessos({
   alunos,
@@ -54,19 +93,39 @@ export function PlantaoAcessos({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [busca, setBusca] = useState("");
+  const [filtroSituacao, setFiltroSituacao] = useState<FiltroSituacao | null>(null);
   const [carregandoLote, setCarregandoLote] = useState(false);
   const [alunoEmAcao, setAlunoEmAcao] = useState<string | null>(null);
 
+  // Maior `situacaoEm` da base — "importado em" do topo. `null` só se
+  // NINGUÉM ainda tem situação registrada (ex.: ambiente novo, sem CSV).
+  const situacaoImportadaEm = useMemo(() => {
+    let maior: string | null = null;
+    for (const a of alunos) {
+      if (a.situacaoEm && (!maior || a.situacaoEm > maior)) maior = a.situacaoEm;
+    }
+    return maior;
+  }, [alunos]);
+
   const filtrados = useMemo(() => {
     const termo = semAcento(busca.trim());
-    if (!termo) return alunos;
-    return alunos.filter(
-      (a) =>
+    return alunos.filter((a) => {
+      if (filtroSituacao) {
+        if (filtroSituacao === "sem_situacao") {
+          if (a.situacaoCompra !== null) return false;
+        } else if (a.situacaoCompra !== filtroSituacao) {
+          return false;
+        }
+      }
+      if (!termo) return true;
+      return (
         semAcento(a.nome).includes(termo) ||
         semAcento(a.email).includes(termo) ||
-        semAcento(a.lote).includes(termo),
-    );
-  }, [alunos, busca]);
+        semAcento(a.lote).includes(termo) ||
+        semAcento(termosDeSituacao(a.situacaoCompra)).includes(termo)
+      );
+    });
+  }, [alunos, busca, filtroSituacao]);
 
   function executar(id: string, acao: () => Promise<{ ok: boolean; erro?: string }>) {
     setAlunoEmAcao(id);
@@ -116,6 +175,22 @@ export function PlantaoAcessos({
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="rounded-lg border border-borda-fina bg-superficie-afundada px-3 py-2 text-xs text-muted-foreground">
+        <p>
+          <strong className="font-medium text-foreground">Situação comercial</strong> não é a
+          mesma coisa que acesso. Quem controla se a pessoa entra no Plantão é a coluna{" "}
+          <strong className="font-medium text-foreground">Status</strong> (Ativo/Revogado) e o
+          bloqueio por programa — a situação só explica o porquê. Uma pessoa pode estar
+          &ldquo;Pagou&rdquo; e revogada (a equipe tirou o acesso), ou &ldquo;Não pagou&rdquo; e
+          ativa (liberação manual).
+        </p>
+        <p className="mt-1">
+          {situacaoImportadaEm
+            ? `Situação comercial importada em ${formatarDataHora(situacaoImportadaEm)}.`
+            : "Nenhuma situação comercial importada ainda — carregue um lote para começar."}
+        </p>
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-xs">
           <SearchIcon
@@ -125,7 +200,7 @@ export function PlantaoAcessos({
           <Input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar por nome, e-mail ou lote"
+            placeholder="Buscar por nome, e-mail, lote ou situação"
             className="pl-8"
             aria-label="Buscar aluno do plantão"
           />
@@ -139,6 +214,28 @@ export function PlantaoAcessos({
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por situação de compra">
+        {FILTROS_SITUACAO.map((f) => {
+          const ativo = filtroSituacao === f.valor;
+          return (
+            <button
+              key={f.valor}
+              type="button"
+              aria-pressed={ativo}
+              onClick={() => setFiltroSituacao(ativo ? null : f.valor)}
+              className={
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring " +
+                (ativo
+                  ? "border-accent-foreground bg-accent-foreground text-white"
+                  : "border-borda-forte text-foreground hover:bg-muted")
+              }
+            >
+              {f.rotulo}
+            </button>
+          );
+        })}
+      </div>
+
       {filtrados.length === 0 ? (
         <EmptyState
           titulo="Nenhum aluno encontrado."
@@ -150,6 +247,7 @@ export function PlantaoAcessos({
             <TableRow>
               <TableHead>Aluno</TableHead>
               <TableHead>Lote</TableHead>
+              <TableHead>Situação</TableHead>
               <TableHead>Bloqueio por programa</TableHead>
               <TableHead>Inscrições</TableHead>
               <TableHead>Status</TableHead>
@@ -171,6 +269,27 @@ export function PlantaoAcessos({
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{a.lote}</TableCell>
+                  <TableCell>
+                    {a.situacaoCompra ? (
+                      <Badge
+                        variant={SITUACAO_COMPRA_INFO[a.situacaoCompra].variant}
+                        title={
+                          a.situacaoDetalhe
+                            ? `Status na Hotmart: ${a.situacaoDetalhe}`
+                            : undefined
+                        }
+                      >
+                        {SITUACAO_COMPRA_INFO[a.situacaoCompra].rotulo}
+                      </Badge>
+                    ) : (
+                      <span
+                        className="text-xs text-muted-foreground"
+                        title="Não apareceu no último histórico de vendas importado"
+                      >
+                        —
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {!a.bloqueadoPorPrograma ? (
                       <span className="text-xs text-muted-foreground">—</span>

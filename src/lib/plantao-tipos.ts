@@ -183,6 +183,30 @@ export interface AlunoPlantaoAdmin {
    * a toca — sem esta flag, o desbloqueio duraria ate a proxima madrugada.
    */
   bloqueioExcecao: boolean;
+  /**
+   * Situação comercial do histórico de vendas da Hotmart (decisão do Marcio,
+   * 09/09/2026). `null` = pessoa que nunca apareceu num export (ex.:
+   * liberação manual, ou typo de e-mail no CSV).
+   *
+   * 🔑 NÃO controla acesso — quem controla é `ativo` (+ `bloqueadoPorPrograma`).
+   * Esta coluna só EXPLICA o porquê: dá para estar `pago` e inativo (a equipe
+   * revogou) ou `nao_pago` e ativo (liberação manual justificada). São eixos
+   * independentes de propósito — misturar os dois faria uma reimportação de
+   * CSV mudar acesso sozinha.
+   */
+  situacaoCompra: "pago" | "nao_pago" | "devolvido" | null;
+  /**
+   * Status crus da Hotmart que geraram `situacaoCompra`, separados por
+   * vírgula (ex.: "Cancelado, Completo") — é o que permite responder ao
+   * aluno com precisão, sem abrir o CSV.
+   */
+  situacaoDetalhe: string | null;
+  /**
+   * Quando o export que gerou a situação foi importado. Mapa sem data
+   * envelhece sem ninguém perceber — foi o que aconteceu com o CSV de 01/09,
+   * que só encolhia e nunca crescia.
+   */
+  situacaoEm: string | null;
 }
 
 /** Retorno padrão das Server Actions de mutação do plantão. */

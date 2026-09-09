@@ -18,6 +18,7 @@ import {
   getAlunosPlantao,
   getInscritosDoSlot,
   getMentoras,
+  lerInscricoesAbertas,
 } from "@/lib/plantao-data";
 import { mesAtualSaoPaulo } from "@/lib/plantao";
 import type { InscritoAdmin } from "@/lib/plantao-tipos";
@@ -50,10 +51,11 @@ export default async function AdminPlantaoPage({
   const { m } = await searchParams;
   const { ano, mes } = parseMes(m);
 
-  const [slots, alunos, mentoras] = await Promise.all([
+  const [slots, alunos, mentoras, inscricoesAbertas] = await Promise.all([
     getSlotsDoMesAdmin(ano, mes),
     getAlunosPlantao(),
     getMentoras(),
+    lerInscricoesAbertas(),
   ]);
 
   // Inscritos só dos slots que TÊM inscrito (evita leitura à toa nos vazios).
@@ -100,6 +102,7 @@ export default async function AdminPlantaoPage({
               slots={slots}
               mentoras={mentoras}
               inscritosPorSlot={inscritosPorSlot}
+              inscricoesAbertas={inscricoesAbertas}
             />
           </TabsContent>
 

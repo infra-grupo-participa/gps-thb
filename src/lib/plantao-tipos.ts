@@ -75,6 +75,31 @@ export interface SlotAdmin extends SlotPublico {
   publicado: boolean;
   gravacaoUrl: string | null;
   observacao: string | null;
+  /**
+   * `mentora_id` cru. Existe porque o painel precisa DECIDIR sobre a mentora
+   * (pré-selecionar no editor, trocar quem apresenta), e nome não é chave: o
+   * código anterior resolvia o id por `mentoras.find(m => m.nome === slot.mentoraNome)`,
+   * que erra silenciosamente com duas mentoras homônimas e devolve `""` se
+   * alguém corrigir a grafia do nome no cadastro.
+   */
+  mentoraId: string;
+  /**
+   * E-mail da mentora DESTE slot — `null` é estado válido e perigoso.
+   * `gps.plantao_aviso_mentora_pendente` filtra mentora sem e-mail, então
+   * publicar um plantão de mentora sem endereço significa que ela nunca é
+   * avisada na véspera. A tela precisa alertar ANTES do clique;
+   * `publicarSlot(id, true)` recusa de qualquer forma (a Server Action é o
+   * endpoint real, o botão desabilitado não é fronteira).
+   */
+  mentoraEmail: string | null;
+  /**
+   * Cancelado = despublicado + inscrições canceladas + inscritos avisados por
+   * e-mail. O slot NUNCA é apagado: some do calendário do aluno porque
+   * `publicado` virou false, e fica aqui para o histórico continuar legível.
+   */
+  canceladoEm: string | null;
+  /** Motivo opcional (≤300) digitado ao cancelar; vai no e-mail aos inscritos. */
+  canceladoMotivo: string | null;
 }
 
 /**
@@ -124,6 +149,40 @@ export interface AlunoPlantaoAdmin {
 
 /** Retorno padrão das Server Actions de mutação do plantão. */
 export type ResultadoAcao = { ok: true } | { ok: false; erro: string };
+
+/**
+ * Retorno de `criarSlot` — que pode criar UM plantão ou uma série semanal.
+ *
+ * União discriminada, não um objeto com tudo opcional: depois de `if
+ * (res.ok)` a tela lê `criados`/`pulados` como números/listas de verdade, sem
+ * `?? 0` que disfarçaria um contrato quebrado de sucesso vazio.
+ *
+ * `pulados` são as datas ISO que já tinham plantão desta mentora neste
+ * horário (colisão de `unique`). Numa série isso é esperado e NÃO é erro —
+ * mas precisa aparecer na tela, senão a equipe conta 12 e recebe 9 sem saber.
+ */
+export type ResultadoCriacaoSlots =
+  | { ok: true; criados: number; pulados: string[] }
+  | { ok: false; erro: string; criados?: number; pulados?: string[] };
+
+/**
+ * Retorno de `cancelarSlot`.
+ *
+ * `avisados + falhas === inscritos`, sempre. É o que permite a tela dizer
+ * "12 de 14 avisados; 2 e-mails não saíram" em vez de sugerir que todo mundo
+ * ficou sabendo. Falha de e-mail nunca desfaz o cancelamento — some do
+ * calendário de qualquer forma, e quem não recebeu precisa ser avisado por
+ * fora.
+ */
+export type ResultadoCancelamento =
+  | { ok: true; avisados: number; inscritos: number; falhas: number }
+  | {
+      ok: false;
+      erro: string;
+      avisados?: number;
+      inscritos?: number;
+      falhas?: number;
+    };
 
 /** Janela do Zoom: abre 1h antes do início, fecha 1h depois. */
 export const JANELA_ANTES_MIN = 60;

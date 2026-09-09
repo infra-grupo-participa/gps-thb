@@ -13,11 +13,20 @@
  *
  * A lista de mentoras chega por prop (`getMentoras()` em
  * `src/lib/plantao-data.ts`), porque `criarSlot`/`editarSlot` exigem o uuid
- * da mentora e `SlotAdmin` só carrega o nome. Ao editar, a mentora atual é
- * pré-selecionada casando pelo nome contra essa lista.
+ * da mentora e `SlotAdmin` só carrega o nome. Ao editar — e no seletor inline
+ * "Quem apresenta" — a mentora atual é pré-selecionada casando pelo nome
+ * contra essa lista.
+ *
+ * FASE 8 (08/09/2026) — autonomia das operadoras, sem dev no meio:
+ * - interruptor "Inscrições abertas/pausadas" (`gps.plantao_config`);
+ * - trocar quem apresenta direto no card do dia (`trocarMentoraSlot`), que no
+ *   servidor zera `aviso_mentora_em` — senão a mentora nova nunca é avisada;
+ * - cancelar plantão com inscritos, avisando por e-mail (`cancelarSlot`):
+ *   cancelado NÃO é apagado, vira estado com motivo;
+ * - criar a série semanal de uma vez (`criarSlot` + `repetirSemanas`).
  */
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -25,6 +34,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CalendarDaysIcon,
+  CalendarOffIcon,
   PlusIcon,
   PencilIcon,
   Trash2Icon,
@@ -32,6 +42,9 @@ import {
   VideoOffIcon,
   UsersIcon,
   ExternalLinkIcon,
+  MailXIcon,
+  PauseIcon,
+  PlayIcon,
 } from "lucide-react";
 import type {
   SlotAdmin,
@@ -45,17 +58,22 @@ import {
   publicarSlot,
   removerSlot,
   salvarGravacao,
+  cancelarSlot,
+  trocarMentoraSlot,
+  definirInscricoesAbertas,
 } from "@/app/admin/plantao/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { PlantaoInscritos } from "@/components/admin/plantao-inscritos";
 
@@ -63,6 +81,13 @@ const MESES = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
+
+/** Teto do "repetir semanalmente" — mesmo clamp que `criarSlot` aplica no servidor. */
+const MAX_REPETICOES = 12;
+
+/** `<select>` nativo com o visual do `Input` do shadcn (não há Select nativo aqui). */
+const CLASSE_SELECT =
+  "border-input bg-background focus-visible:ring-ring/50 h-9 rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50";
 
 function mesAnterior(ano: number, mes: number) {
   return mes === 1 ? { ano: ano - 1, mes: 12 } : { ano, mes: mes - 1 };
@@ -86,6 +111,32 @@ function diasDaGrade(ano: number, mes: number): (string | null)[] {
   return dias;
 }
 
+/** "2026-09-15" → "15/09". Data-only tratada como texto: sem drift de fuso. */
+function dataCurta(iso: string): string {
+  const [, m, d] = iso.split("-");
+  return d && m ? `${d}/${m}` : iso;
+}
+
+/** A série semanal a partir de uma data-only: a própria + `repeticoes` semanas. */
+function datasDaSerie(inicio: string, repeticoes: number): string[] {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(inicio)) return [];
+  const [y, m, d] = inicio.split("-").map(Number);
+  const datas: string[] = [];
+  for (let i = 0; i <= repeticoes; i++) {
+    // Aritmética em UTC: `Date.UTC` normaliza a virada de mês/ano sozinho.
+    datas.push(new Date(Date.UTC(y, m - 1, d + 7 * i)).toISOString().slice(0, 10));
+  }
+  return datas;
+}
+
+/** Devolve o foco ao gatilho quando o diálogo fecha, se ele ainda existe. */
+function devolverFoco(ref: { current: HTMLButtonElement | null }) {
+  requestAnimationFrame(() => {
+    const el = ref.current;
+    if (el && document.contains(el)) el.focus();
+  });
+}
+
 type ModoDialog = "lista" | "novo" | { editando: SlotAdmin };
 
 export function PlantaoCalendario({
@@ -94,6 +145,7 @@ export function PlantaoCalendario({
   slots,
   mentoras,
   inscritosPorSlot,
+  inscricoesAbertas,
 }: {
   ano: number;
   mes: number;
@@ -102,12 +154,34 @@ export function PlantaoCalendario({
   mentoras: MentoraAdmin[];
   /** Inscritos pré-carregados só dos slots com `inscritosQtd > 0` (ver page.tsx). */
   inscritosPorSlot: Record<string, InscritoAdmin[]>;
+  /**
+   * Interruptor geral das escritas do aluno (`gps.plantao_config`), lido no
+   * servidor por `lerInscricoesAbertas()`. Pausado = ninguém se inscreve,
+   * cancela ou revela o link; os plantões continuam visíveis.
+   */
+  inscricoesAbertas: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [diaAberto, setDiaAberto] = useState<string | null>(null);
   const [modo, setModo] = useState<ModoDialog>("lista");
   const [inscritosAbertos, setInscritosAbertos] = useState<SlotAdmin | null>(null);
+  const [cancelando, setCancelando] = useState<SlotAdmin | null>(null);
+  const [confirmandoPausa, setConfirmandoPausa] = useState(false);
+  /** Texto do `aria-live` do diálogo do dia (troca de mentora, criação, cancelamento). */
+  const [aviso, setAviso] = useState("");
+  /** Texto do `aria-live` da barra do interruptor. */
+  const [avisoInterruptor, setAvisoInterruptor] = useState("");
+  /** Slot com ação em voo — o rótulo de carregamento sai só no card certo. */
+  const [slotEmAcao, setSlotEmAcao] = useState<string | null>(null);
+  const [alternandoInscricoes, setAlternandoInscricoes] = useState(false);
+
+  // Foco de volta ao gatilho quando um diálogo fecha. O card é o alvo de
+  // reserva: depois de cancelar, o próprio botão "Cancelar plantão" some da
+  // tela e o foco iria parar no <body>.
+  const gatilhoInterruptorRef = useRef<HTMLButtonElement | null>(null);
+  const gatilhoCancelarRef = useRef<HTMLButtonElement | null>(null);
+  const cardsRef = useRef(new Map<string, HTMLDivElement | null>());
 
   const porDia = useMemo(() => {
     const mapa = new Map<string, SlotAdmin[]>();
@@ -127,21 +201,28 @@ export function PlantaoCalendario({
   function fecharDialog() {
     setDiaAberto(null);
     setModo("lista");
+    setAviso("");
   }
 
   function abrirDia(iso: string) {
     setDiaAberto(iso);
     setModo("lista");
+    setAviso("");
   }
 
   function togglePublicar(slot: SlotAdmin) {
+    setSlotEmAcao(slot.slotId);
     startTransition(async () => {
       const res = await publicarSlot(slot.slotId, !slot.publicado);
+      setSlotEmAcao(null);
       if (!res.ok) {
         toast.error(res.erro);
+        setAviso(res.erro);
         return;
       }
-      toast.success(slot.publicado ? "Plantão despublicado." : "Plantão publicado.");
+      const msg = slot.publicado ? "Plantão despublicado." : "Plantão publicado.";
+      toast.success(msg);
+      setAviso(msg);
       router.refresh();
     });
   }
@@ -154,15 +235,86 @@ export function PlantaoCalendario({
     ) {
       return;
     }
+    setSlotEmAcao(slot.slotId);
     startTransition(async () => {
       const res = await removerSlot(slot.slotId);
+      setSlotEmAcao(null);
       if (!res.ok) {
         toast.error(res.erro);
+        setAviso(res.erro);
         return;
       }
       toast.success("Plantão removido.");
+      setAviso("Plantão removido.");
       router.refresh();
     });
+  }
+
+  /**
+   * Troca quem apresenta sem abrir o formulário inteiro. O servidor zera
+   * `aviso_mentora_em` junto — senão a mentora nova nunca receberia o aviso de
+   * véspera (o envio daquele plantão já constaria como feito para a antiga).
+   */
+  function trocarMentora(slot: SlotAdmin, mentoraId: string) {
+    setSlotEmAcao(slot.slotId);
+    startTransition(async () => {
+      const res = await trocarMentoraSlot(slot.slotId, mentoraId);
+      setSlotEmAcao(null);
+      if (!res.ok) {
+        toast.error(res.erro);
+        setAviso(res.erro);
+        return;
+      }
+      const nome = mentoras.find((m) => m.id === mentoraId)?.nome ?? "a mentora escolhida";
+      // O botão "Trocar" some quando a troca dá certo (não há mais o que
+      // trocar) — sem isto o foco cairia no <body> no meio do diálogo.
+      requestAnimationFrame(() =>
+        document.getElementById(`mentora-slot-${slot.slotId}`)?.focus(),
+      );
+      toast.success(`Agora quem apresenta é ${nome}.`);
+      setAviso(
+        `Agora quem apresenta é ${nome}. O aviso de véspera será enviado para a mentora nova.`,
+      );
+      router.refresh();
+    });
+  }
+
+  function fecharConfirmacaoPausa() {
+    setConfirmandoPausa(false);
+    devolverFoco(gatilhoInterruptorRef);
+  }
+
+  function alternarInscricoes(aberta: boolean) {
+    setAlternandoInscricoes(true);
+    startTransition(async () => {
+      const res = await definirInscricoesAbertas(aberta);
+      setAlternandoInscricoes(false);
+      if (!res.ok) {
+        toast.error(res.erro);
+        setAvisoInterruptor(res.erro);
+        return;
+      }
+      toast.success(aberta ? "Inscrições reabertas." : "Inscrições pausadas.");
+      setAvisoInterruptor(
+        aberta
+          ? "Inscrições reabertas. Os alunos voltam a se inscrever e cancelar."
+          : "Inscrições pausadas. Ninguém consegue se inscrever, cancelar ou revelar o link.",
+      );
+      if (!aberta) fecharConfirmacaoPausa();
+      router.refresh();
+    });
+  }
+
+  function fecharCancelamento(cancelou: boolean) {
+    const slotId = cancelando?.slotId;
+    setCancelando(null);
+    // Cancelou: o gatilho deixa de existir (o card cancelado não mostra mais o
+    // botão), então o foco vai para o card.
+    if (cancelou && slotId) {
+      requestAnimationFrame(() => cardsRef.current.get(slotId)?.focus());
+      return;
+    }
+    devolverFoco(gatilhoCancelarRef);
   }
 
   function salvarSlot(form: {
@@ -173,39 +325,69 @@ export function PlantaoCalendario({
     duracaoMin: number;
     zoomUrl?: string;
     observacao?: string;
+    repetirSemanas: number;
   }) {
     // Guarda de integridade: sem o uuid da mentora, gravar mandaria
     // `mentora_id` vazio para o banco. O seletor é `required`, então isto só
     // dispara se alguém contornar o formulário.
     if (!form.mentoraId) {
       toast.error("Escolha a mentora do plantão.");
+      setAviso("Escolha a mentora do plantão.");
       return;
     }
+    const mentoraId = form.mentoraId;
 
     startTransition(async () => {
-      const res = form.slotId
-        ? await editarSlot({
-            slotId: form.slotId,
-            mentoraId: form.mentoraId as string,
-            data: form.data,
-            horaInicio: form.horaInicio,
-            duracaoMin: form.duracaoMin,
-            zoomUrl: form.zoomUrl,
-            observacao: form.observacao,
-          })
-        : await criarSlot({
-            mentoraId: form.mentoraId as string,
-            data: form.data,
-            horaInicio: form.horaInicio,
-            duracaoMin: form.duracaoMin,
-            observacao: form.observacao,
-          });
-
-      if (!res.ok) {
-        toast.error(res.erro);
+      if (form.slotId) {
+        const res = await editarSlot({
+          slotId: form.slotId,
+          mentoraId,
+          data: form.data,
+          horaInicio: form.horaInicio,
+          duracaoMin: form.duracaoMin,
+          zoomUrl: form.zoomUrl,
+          observacao: form.observacao,
+        });
+        if (!res.ok) {
+          toast.error(res.erro);
+          setAviso(res.erro);
+          return;
+        }
+        toast.success("Plantão atualizado.");
+        setAviso("Plantão atualizado.");
+        router.refresh();
+        setModo("lista");
         return;
       }
-      toast.success(form.slotId ? "Plantão atualizado." : "Plantão criado.");
+
+      const res = await criarSlot({
+        mentoraId,
+        data: form.data,
+        horaInicio: form.horaInicio,
+        duracaoMin: form.duracaoMin,
+        observacao: form.observacao,
+        repetirSemanas: form.repetirSemanas,
+      });
+      if (!res.ok) {
+        toast.error(res.erro);
+        setAviso(res.erro);
+        return;
+      }
+
+      // `criados`/`pulados` são opcionais no contrato do servidor (ver
+      // `criarSlot`): trata a ausência como "1 criado, nada pulado", que é o
+      // caso de sempre — nunca imprime "undefined" na tela.
+      const qtd = res.criados ?? 1;
+      const datasPuladas = res.pulados ?? [];
+      const criados = qtd === 1 ? "1 plantão criado." : `${qtd} plantões criados.`;
+      const pulados =
+        datasPuladas.length > 0
+          ? ` ${datasPuladas.length} pulado(s) por já existir plantão desta mentora no mesmo horário: ${datasPuladas
+              .map(dataCurta)
+              .join(", ")}.`
+          : "";
+      toast.success(criados);
+      setAviso(`${criados}${pulados} Nascem como rascunho — publique quando quiser.`);
       router.refresh();
       setModo("lista");
     });
@@ -213,6 +395,61 @@ export function PlantaoCalendario({
 
   return (
     <div className="grid gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3 shadow-sm">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span
+            className={
+              "mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium " +
+              // O laranja da marca (#ff6300) não passa 4.5:1 como texto —
+              // entra só no ponto (decorativo); o rótulo usa a cor de texto.
+              (inscricoesAbertas
+                ? "border-primary/40 bg-primary/10 text-foreground"
+                : "border-amber-600/40 bg-amber-500/15 text-amber-900 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-200")
+            }
+          >
+            <span
+              className={
+                "size-1.5 rounded-full " + (inscricoesAbertas ? "bg-primary" : "bg-amber-500")
+              }
+              aria-hidden
+            />
+            {inscricoesAbertas ? "Inscrições abertas" : "Inscrições pausadas"}
+          </span>
+          <p className="text-xs text-muted-foreground">
+            {inscricoesAbertas
+              ? "Os alunos conseguem se inscrever, cancelar e revelar o link da sala."
+              : "Ninguém consegue se inscrever, cancelar ou revelar o link. Os plantões continuam visíveis."}
+          </p>
+        </div>
+        <Button
+          ref={gatilhoInterruptorRef}
+          variant="outline"
+          size="sm"
+          disabled={pending || alternandoInscricoes}
+          onClick={() => {
+            if (inscricoesAbertas) {
+              setConfirmandoPausa(true);
+              return;
+            }
+            alternarInscricoes(true);
+          }}
+        >
+          {inscricoesAbertas ? (
+            <PauseIcon className="size-4" />
+          ) : (
+            <PlayIcon className="size-4" />
+          )}
+          {alternandoInscricoes
+            ? "Salvando..."
+            : inscricoesAbertas
+              ? "Pausar inscrições"
+              : "Reabrir inscrições"}
+        </Button>
+        <p aria-live="polite" className="sr-only">
+          {avisoInterruptor}
+        </p>
+      </div>
+
       <div className="flex items-center justify-between gap-2 rounded-xl border bg-card p-3 shadow-sm">
         <Link
           href={`/admin/plantao?m=${paramMes(anterior.ano, anterior.mes)}`}
@@ -247,6 +484,7 @@ export function PlantaoCalendario({
             if (!iso) return <div key={`vazio-${i}`} className="aspect-square sm:aspect-auto sm:h-20" />;
             const doDia = porDia.get(iso) ?? [];
             const publicados = doDia.filter((s) => s.publicado).length;
+            const cancelados = doDia.filter((s) => s.canceladoEm !== null).length;
             const numeroDia = Number(iso.slice(-2));
             return (
               <button
@@ -266,8 +504,16 @@ export function PlantaoCalendario({
                       aria-hidden
                     />
                     {doDia.length}
+                    {cancelados > 0 ? (
+                      <CalendarOffIcon className="size-3 text-destructive" aria-hidden />
+                    ) : null}
                   </span>
                 ) : null}
+                <span className="sr-only">
+                  {doDia.length === 0
+                    ? "sem plantão"
+                    : `${doDia.length} plantão(ões)${cancelados > 0 ? `, ${cancelados} cancelado(s)` : ""}`}
+                </span>
               </button>
             );
           })}
@@ -280,7 +526,7 @@ export function PlantaoCalendario({
           if (!v) fecharDialog();
         }}
       >
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{diaAberto ? rotuloData(diaAberto) : ""}</DialogTitle>
             <DialogDescription>
@@ -296,74 +542,154 @@ export function PlantaoCalendario({
                   Nenhum plantão cadastrado neste dia.
                 </p>
               ) : (
-                slotsDoDia.map((slot) => (
-                  <div key={slot.slotId} className="rounded-lg border p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="font-medium">
-                          {faixaHorario(slot.horaInicio, slot.duracaoMin)} ·{" "}
-                          {slot.mentoraNome}
+                slotsDoDia.map((slot) => {
+                  const cancelado = slot.canceladoEm !== null;
+                  const emAcao = slotEmAcao === slot.slotId;
+                  const semEmailDaMentora = !slot.mentoraEmail;
+                  const faixa = faixaHorario(slot.horaInicio, slot.duracaoMin);
+                  return (
+                    <div
+                      key={slot.slotId}
+                      ref={(el) => {
+                        cardsRef.current.set(slot.slotId, el);
+                      }}
+                      tabIndex={-1}
+                      className={
+                        "rounded-lg border p-3 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 " +
+                        (cancelado ? "border-destructive/30 bg-destructive/5" : "")
+                      }
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className={"font-medium " + (cancelado ? "line-through" : "")}>
+                            {faixa} · {slot.mentoraNome}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            {cancelado ? (
+                              <Badge variant="destructive" className="gap-1">
+                                <CalendarOffIcon className="size-3" /> Cancelado
+                              </Badge>
+                            ) : (
+                              <Badge variant={slot.publicado ? "default" : "secondary"}>
+                                {slot.publicado ? "Publicado" : "Rascunho"}
+                              </Badge>
+                            )}
+                            {!slot.zoomUrl && !cancelado ? (
+                              <Badge variant="destructive" className="gap-1">
+                                <VideoOffIcon className="size-3" /> Sem link do Zoom
+                              </Badge>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => setInscritosAbertos(slot)}
+                              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground transition hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                            >
+                              <UsersIcon className="size-3" /> {slot.inscritosQtd} inscrito(s)
+                            </button>
+                          </div>
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <Badge variant={slot.publicado ? "default" : "secondary"}>
-                            {slot.publicado ? "Publicado" : "Rascunho"}
-                          </Badge>
-                          {!slot.zoomUrl ? (
-                            <Badge variant="destructive" className="gap-1">
-                              <VideoOffIcon className="size-3" /> Sem link do Zoom
-                            </Badge>
+                        <div className="flex shrink-0 gap-1">
+                          {!cancelado ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                disabled={pending}
+                                onClick={() => setModo({ editando: slot })}
+                                title="Editar"
+                                aria-label={`Editar o plantão das ${faixa}`}
+                              >
+                                <PencilIcon className="size-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                disabled={pending || (!slot.publicado && semEmailDaMentora)}
+                                onClick={() => togglePublicar(slot)}
+                                title={slot.publicado ? "Despublicar" : "Publicar"}
+                                aria-label={`${slot.publicado ? "Despublicar" : "Publicar"} o plantão das ${faixa}`}
+                              >
+                                {slot.publicado ? (
+                                  <VideoOffIcon className="size-4" />
+                                ) : (
+                                  <VideoIcon className="size-4" />
+                                )}
+                              </Button>
+                            </>
                           ) : null}
-                          <button
-                            type="button"
-                            onClick={() => setInscritosAbertos(slot)}
-                            className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground transition hover:bg-muted/70 hover:text-foreground"
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            disabled={pending}
+                            onClick={() => remover(slot)}
+                            className="text-muted-foreground hover:text-destructive"
+                            title="Remover"
+                            aria-label={`Remover o plantão das ${faixa}`}
                           >
-                            <UsersIcon className="size-3" /> {slot.inscritosQtd} inscrito(s)
-                          </button>
+                            <Trash2Icon className="size-4" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex shrink-0 gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          disabled={pending}
-                          onClick={() => setModo({ editando: slot })}
-                          title="Editar"
-                        >
-                          <PencilIcon className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          disabled={pending}
-                          onClick={() => togglePublicar(slot)}
-                          title={slot.publicado ? "Despublicar" : "Publicar"}
-                        >
-                          {slot.publicado ? (
-                            <VideoOffIcon className="size-4" />
-                          ) : (
-                            <VideoIcon className="size-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          disabled={pending}
-                          onClick={() => remover(slot)}
-                          className="text-muted-foreground hover:text-destructive"
-                          title="Remover"
-                        >
-                          <Trash2Icon className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
 
-                    {slot.encerrado ? (
-                      <FormularioGravacao slot={slot} pending={pending} />
-                    ) : null}
-                  </div>
-                ))
+                      {cancelado ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {slot.canceladoMotivo
+                            ? `Motivo: ${slot.canceladoMotivo}. `
+                            : "Cancelado sem motivo registrado. "}
+                          Os inscritos foram avisados por e-mail e o plantão saiu do
+                          ar. Fica aqui como histórico; use remover para tirar da
+                          agenda.
+                        </p>
+                      ) : null}
+
+                      {!cancelado && semEmailDaMentora ? (
+                        <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                          <MailXIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                          <span>
+                            {slot.mentoraNome} não tem e-mail cadastrado; sem ele
+                            ela não recebe o aviso de véspera. Cadastre na aba
+                            Mentoras para poder publicar.
+                          </span>
+                        </p>
+                      ) : null}
+
+                      {!cancelado && !slot.encerrado ? (
+                        <div className="mt-3 flex flex-wrap items-end justify-between gap-2 border-t pt-3">
+                          <TrocaDeMentora
+                            key={slot.mentoraNome}
+                            slot={slot}
+                            mentoras={mentoras}
+                            pending={pending}
+                            emAcao={emAcao}
+                            onTrocar={(mentoraId) => trocarMentora(slot, mentoraId)}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={pending}
+                            className="text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              gatilhoCancelarRef.current = e.currentTarget;
+                              setCancelando(slot);
+                            }}
+                          >
+                            <CalendarOffIcon className="size-4" />
+                            Cancelar plantão
+                          </Button>
+                        </div>
+                      ) : null}
+
+                      {slot.encerrado && !cancelado ? (
+                        <FormularioGravacao slot={slot} pending={pending} />
+                      ) : null}
+                    </div>
+                  );
+                })
               )}
+
+              <p aria-live="polite" className="text-xs text-muted-foreground empty:hidden">
+                {aviso}
+              </p>
 
               <Button
                 variant="outline"
@@ -380,6 +706,7 @@ export function PlantaoCalendario({
               slot={typeof modo === "object" ? modo.editando : undefined}
               mentoras={mentoras}
               pending={pending}
+              aviso={aviso}
               onCancelar={() => setModo("lista")}
               onSalvar={salvarSlot}
             />
@@ -407,7 +734,216 @@ export function PlantaoCalendario({
           />
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={confirmandoPausa}
+        onOpenChange={(v) => {
+          if (!v && !alternandoInscricoes) fecharConfirmacaoPausa();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pausar as inscrições?</DialogTitle>
+            <DialogDescription>
+              Ninguém consegue se inscrever, cancelar ou revelar o link até você
+              reabrir. Os plantões continuam visíveis.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={fecharConfirmacaoPausa}
+              disabled={alternandoInscricoes}
+            >
+              Voltar
+            </Button>
+            <Button onClick={() => alternarInscricoes(false)} disabled={alternandoInscricoes}>
+              {alternandoInscricoes ? "Pausando..." : "Pausar inscrições"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {cancelando ? (
+        <DialogoCancelamento
+          slot={cancelando}
+          onFechar={fecharCancelamento}
+          onResultado={setAviso}
+        />
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * "Quem apresenta" — troca a mentora de UM dia sem abrir o formulário inteiro.
+ *
+ * O `<select>` NÃO dispara a troca sozinho no `onChange`: no Windows, navegar
+ * pelas opções com as setas emite um `change` por opção, e cada um viraria uma
+ * escrita no banco (e um `aviso_mentora_em` zerado). A confirmação fica num
+ * botão, que só aparece quando a escolha muda de verdade.
+ *
+ * A mentora atual é casada pelo NOME contra a lista (`SlotAdmin` não carrega o
+ * uuid). Mentora inativa continua listada enquanto for a do plantão — senão o
+ * seletor mostraria outra pessoa como se fosse ela.
+ */
+function TrocaDeMentora({
+  slot,
+  mentoras,
+  pending,
+  emAcao,
+  onTrocar,
+}: {
+  slot: SlotAdmin;
+  mentoras: MentoraAdmin[];
+  pending: boolean;
+  emAcao: boolean;
+  onTrocar: (mentoraId: string) => void;
+}) {
+  const atualId = mentoras.find((m) => m.nome === slot.mentoraNome)?.id ?? "";
+  const [escolhida, setEscolhida] = useState(atualId);
+  const mudou = escolhida !== "" && escolhida !== atualId;
+
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`mentora-slot-${slot.slotId}`} className="text-xs">
+          Quem apresenta
+        </Label>
+        <select
+          id={`mentora-slot-${slot.slotId}`}
+          className={CLASSE_SELECT}
+          value={escolhida}
+          disabled={pending}
+          onChange={(e) => setEscolhida(e.target.value)}
+        >
+          {atualId ? null : (
+            <option value="">{slot.mentoraNome || "Escolha a mentora…"}</option>
+          )}
+          {mentoras
+            .filter((m) => m.ativa || m.nome === slot.mentoraNome)
+            .map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nome}
+              </option>
+            ))}
+        </select>
+      </div>
+      {mudou ? (
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={pending}
+          onClick={() => onTrocar(escolhida)}
+        >
+          {emAcao ? "Trocando..." : "Trocar"}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Cancelar é diferente de remover: o plantão fica na agenda com o motivo, as
+ * inscrições ativas caem e cada inscrito recebe um e-mail. Por isso o diálogo
+ * diz quantas pessoas serão avisadas ANTES do clique e quantas foram avisadas
+ * DEPOIS — e-mail que falha não desfaz o cancelamento, e alguém precisa avisar
+ * essa pessoa por fora.
+ */
+function DialogoCancelamento({
+  slot,
+  onFechar,
+  onResultado,
+}: {
+  slot: SlotAdmin;
+  onFechar: (cancelou: boolean) => void;
+  onResultado: (msg: string) => void;
+}) {
+  const router = useRouter();
+  const [motivo, setMotivo] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function confirmar() {
+    setSalvando(true);
+    setErro("");
+    const res = await cancelarSlot(slot.slotId, motivo.trim());
+    setSalvando(false);
+    if (!res.ok) {
+      setErro(res.erro);
+      toast.error(res.erro);
+      return;
+    }
+    // Contadores opcionais no contrato do servidor: sem eles, cai no que a
+    // tela já sabe (`inscritosQtd`) em vez de escrever "undefined".
+    const inscritos = res.inscritos ?? slot.inscritosQtd;
+    const avisados = res.avisados ?? 0;
+    const falhas = res.falhas ?? 0;
+    onResultado(
+      `Plantão cancelado. ${avisados} de ${inscritos} inscrito(s) avisados por e-mail.` +
+        (falhas > 0
+          ? ` ${falhas} e-mail(s) não saíram — avise essas pessoas por fora.`
+          : ""),
+    );
+    toast.success("Plantão cancelado.");
+    router.refresh();
+    onFechar(true);
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(v) => {
+        if (!v && !salvando) onFechar(false);
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Cancelar este plantão?</DialogTitle>
+          <DialogDescription>
+            {rotuloData(slot.data)} · {faixaHorario(slot.horaInicio, slot.duracaoMin)} ·{" "}
+            {slot.mentoraNome}
+          </DialogDescription>
+        </DialogHeader>
+
+        <p className="text-sm">
+          {slot.inscritosQtd === 0
+            ? "Ninguém está inscrito neste plantão."
+            : `${slot.inscritosQtd} inscrito(s) serão avisados por e-mail e a inscrição deles será cancelada.`}{" "}
+          O plantão sai do ar para os alunos, mas continua aqui no histórico.
+        </p>
+
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="cancelar-motivo">Motivo (opcional)</Label>
+          <Textarea
+            id="cancelar-motivo"
+            value={motivo}
+            maxLength={300}
+            rows={3}
+            disabled={salvando}
+            aria-describedby="cancelar-motivo-ajuda"
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Ex.: a mentora precisou remarcar; volta na semana que vem."
+          />
+          <p id="cancelar-motivo-ajuda" className="text-xs text-muted-foreground">
+            Vai no e-mail dos inscritos. Até 300 caracteres ({motivo.length}/300).
+          </p>
+        </div>
+
+        <p aria-live="assertive" className="text-xs text-destructive empty:hidden">
+          {erro}
+        </p>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onFechar(false)} disabled={salvando}>
+            Voltar
+          </Button>
+          <Button onClick={confirmar} disabled={salvando}>
+            {salvando ? "Cancelando..." : "Cancelar plantão"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -416,6 +952,7 @@ function FormularioSlot({
   slot,
   mentoras,
   pending,
+  aviso,
   onCancelar,
   onSalvar,
 }: {
@@ -423,6 +960,8 @@ function FormularioSlot({
   slot?: SlotAdmin;
   mentoras: MentoraAdmin[];
   pending: boolean;
+  /** Mesma mensagem do `aria-live` da lista — o erro da action cai aqui. */
+  aviso: string;
   onCancelar: () => void;
   onSalvar: (form: {
     slotId?: string;
@@ -432,6 +971,7 @@ function FormularioSlot({
     duracaoMin: number;
     zoomUrl?: string;
     observacao?: string;
+    repetirSemanas: number;
   }) => void;
 }) {
   const [data, setData] = useState(slot?.data ?? dataInicial);
@@ -439,10 +979,17 @@ function FormularioSlot({
   const [duracaoMin, setDuracaoMin] = useState(String(slot?.duracaoMin ?? 60));
   const [zoomUrl, setZoomUrl] = useState(slot?.zoomUrl ?? "");
   const [observacao, setObservacao] = useState(slot?.observacao ?? "");
+  /** Só na criação: repete a mesma configuração nas próximas N semanas. */
+  const [repetirSemanas, setRepetirSemanas] = useState(0);
   // Ao editar, a mentora atual chega só pelo nome (SlotAdmin não carrega id);
   // casa pelo nome contra a lista para pré-selecionar o valor certo.
   const [mentoraId, setMentoraId] = useState(
     () => mentoras.find((m) => m.nome === slot?.mentoraNome)?.id ?? "",
+  );
+
+  const serie = useMemo(
+    () => (repetirSemanas > 0 ? datasDaSerie(data, repetirSemanas) : []),
+    [data, repetirSemanas],
   );
 
   return (
@@ -457,6 +1004,7 @@ function FormularioSlot({
           duracaoMin: Number(duracaoMin) || 60,
           zoomUrl,
           observacao,
+          repetirSemanas,
         });
       }}
       className="flex flex-col gap-4"
@@ -468,7 +1016,8 @@ function FormularioSlot({
           value={mentoraId}
           onChange={(e) => setMentoraId(e.target.value)}
           required
-          className="border-input bg-background focus-visible:ring-ring/50 h-9 rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+          disabled={pending}
+          className={CLASSE_SELECT}
         >
           <option value="">Escolha a mentora…</option>
           {mentoras
@@ -520,6 +1069,32 @@ function FormularioSlot({
         />
       </div>
 
+      {!slot ? (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="slot-repetir">Repetir semanalmente por</Label>
+          <select
+            id="slot-repetir"
+            value={repetirSemanas}
+            onChange={(e) => setRepetirSemanas(Number(e.target.value))}
+            disabled={pending}
+            aria-describedby="slot-repetir-previa"
+            className={CLASSE_SELECT}
+          >
+            <option value={0}>Não repetir (só esta data)</option>
+            {Array.from({ length: MAX_REPETICOES }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>
+                mais {n} semana{n > 1 ? "s" : ""}
+              </option>
+            ))}
+          </select>
+          <p id="slot-repetir-previa" className="text-xs text-muted-foreground">
+            {serie.length > 0
+              ? `Cria ${serie.length} plantões: ${serie.map(dataCurta).join(", ")}. Data que já tiver plantão desta mentora no mesmo horário é pulada.`
+              : "Cria só o plantão desta data."}
+          </p>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="slot-zoom">Link do Zoom</Label>
         <Input
@@ -546,12 +1121,22 @@ function FormularioSlot({
         />
       </div>
 
+      <p aria-live="polite" className="text-xs text-destructive empty:hidden">
+        {aviso}
+      </p>
+
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancelar} disabled={pending}>
-          Cancelar
+          Voltar
         </Button>
         <Button type="submit" disabled={pending}>
-          {slot ? "Salvar alterações" : "Criar plantão"}
+          {pending
+            ? "Salvando..."
+            : slot
+              ? "Salvar alterações"
+              : serie.length > 0
+                ? `Criar ${serie.length} plantões`
+                : "Criar plantão"}
         </Button>
       </div>
     </form>
@@ -601,7 +1186,7 @@ function FormularioGravacao({ slot, pending }: { slot: SlotAdmin; pending: boole
           href={slot.gravacaoUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           title="Abrir gravação"
         >
           <ExternalLinkIcon className="size-4" />

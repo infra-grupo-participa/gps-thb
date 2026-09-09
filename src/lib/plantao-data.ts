@@ -39,7 +39,7 @@ export async function getSlotsDoMesAdmin(
     .schema("gps")
     .from("plantao_slots")
     .select(
-      "id, data, hora_inicio, duracao_min, zoom_url, publicado, gravacao_url, observacao, inicio_em, plantao_mentoras(nome)",
+      "id, data, hora_inicio, duracao_min, zoom_url, publicado, gravacao_url, observacao, inicio_em, cancelado_em, cancelado_motivo, mentora_id, plantao_mentoras(nome, email)",
     )
     .gte("inicio_em", inicio)
     .lt("inicio_em", fim)
@@ -54,7 +54,15 @@ export async function getSlotsDoMesAdmin(
   const contagens = await contarInscritosPorSlot(slotIds);
 
   return data.map((s) => {
-    const mentora = s.plantao_mentoras as unknown as { nome: string } | null;
+    // O join traz `email` junto do nome de propósito: sem ele a tela não tem
+    // como avisar que publicar aquele slot deixa a mentora sem o aviso de
+    // véspera (`plantao_aviso_mentora_pendente` filtra mentora sem e-mail).
+    // Vem no MESMO select — cruzar com a lista de mentoras no cliente por
+    // nome é a associação frágil que este campo veio eliminar.
+    const mentora = s.plantao_mentoras as unknown as {
+      nome: string;
+      email: string | null;
+    } | null;
     return {
       slotId: s.id as string,
       data: s.data as string,
@@ -81,6 +89,10 @@ export async function getSlotsDoMesAdmin(
       publicado: s.publicado as boolean,
       gravacaoUrl: (s.gravacao_url as string) ?? null,
       observacao: (s.observacao as string) ?? null,
+      mentoraId: s.mentora_id as string,
+      mentoraEmail: mentora?.email ?? null,
+      canceladoEm: (s.cancelado_em as string) ?? null,
+      canceladoMotivo: (s.cancelado_motivo as string) ?? null,
     };
   });
 }
@@ -184,4 +196,39 @@ export async function getMentoras(): Promise<MentoraAdmin[]> {
     email: m.email as string | null,
     ativa: m.ativa as boolean,
   }));
+}
+
+/**
+ * Estado do interruptor de inscrições, para a pílula do topo do calendário.
+ *
+ * 🔑 Espelha `gps.plantao_escrita_liberada()` — o mesmo `coalesce` de três
+ * degraus, na mesma ordem — mas lendo a TABELA direto (é admin, tem policy).
+ * O que ela NÃO consegue ver é o segundo degrau, `app.plantao_inscricao_aberta`:
+ * um GUC de sessão do `authenticator` não chega ao PostgREST desta consulta.
+ *
+ * Consequência assumida: com a linha ausente E o setting em 'false', a tela
+ * diria "abertas" enquanto o banco recusa. É o cenário que a migração
+ * ...070 fecha ao inserir a linha na aplicação — e o erro cai para o lado
+ * seguro (mostrar "abertas" nunca autoriza escrita nenhuma; quem decide é a
+ * função no banco, sempre). Ler o setting exigiria uma RPC nova só para
+ * exibir um rótulo.
+ *
+ * Ausente = ABERTO, mesmo default da função: o produto não pode aparecer
+ * pausado porque uma linha de config sumiu.
+ */
+export async function lerInscricoesAbertas(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .from("plantao_config")
+    .select("valor")
+    .eq("chave", "inscricao_aberta")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[plantao] leitura de plantao_config falhou:", error.message);
+    return true;
+  }
+
+  return (data?.valor as string | undefined) !== "false";
 }

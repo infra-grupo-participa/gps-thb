@@ -14,9 +14,57 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { ehAdmin } from "@/lib/auth";
+import { ehAdmin, getContextoSessao } from "@/lib/auth";
 import { emailValido, normalizarEmail } from "@/lib/plantao";
-import type { ResultadoAcao } from "@/lib/plantao-tipos";
+import { enviarPlantaoCancelamento } from "@/lib/email-plantao";
+import type {
+  ResultadoAcao,
+  ResultadoCancelamento,
+  ResultadoCriacaoSlots,
+} from "@/lib/plantao-tipos";
+
+/** Teto da série semanal de `criarSlot`. Ver o comentário do clamp. */
+const REPETIR_SEMANAS_MAX = 12;
+
+/** Teto de e-mails de cancelamento por chamada. Ver `cancelarSlot`. */
+const LIMITE_AVISOS_CANCELAMENTO = 500;
+
+/** Motivo do cancelamento — mesmo teto do CHECK em `plantao_slots`. */
+const MOTIVO_MAX = 300;
+
+/**
+ * Soma dias a uma data "YYYY-MM-DD" e devolve "YYYY-MM-DD".
+ *
+ * ⚠️ Aritmética em UTC de propósito. `new Date("2026-09-15")` seguido de
+ * `setDate` no fuso local escorrega um dia em servidor a oeste de Greenwich —
+ * e a Hostinger não é São Paulo. Aqui a data é um RÓTULO de calendário (a
+ * coluna `data` é `date`); o INSTANTE quem deriva é `plantao_slots.inicio_em`,
+ * no banco, com `at time zone 'America/Sao_Paulo'`.
+ *
+ * Devolve `null` quando a entrada não é um dia real: "2026-02-31" e
+ * "2026-13-01" passam no regex e o `Date` os normaliza em silêncio para
+ * outro dia — a série inteira sairia deslocada.
+ */
+function somarDias(iso: string, dias: number): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+
+  const ano = Number(m[1]);
+  const mes = Number(m[2]);
+  const dia = Number(m[3]);
+  const base = new Date(Date.UTC(ano, mes - 1, dia));
+
+  if (
+    base.getUTCFullYear() !== ano ||
+    base.getUTCMonth() !== mes - 1 ||
+    base.getUTCDate() !== dia
+  ) {
+    return null;
+  }
+
+  base.setUTCDate(base.getUTCDate() + dias);
+  return base.toISOString().slice(0, 10);
+}
 
 export interface CriarSlotInput {
   mentoraId: string;
@@ -24,30 +72,98 @@ export interface CriarSlotInput {
   horaInicio: string; // "HH:MM"
   duracaoMin: number;
   observacao?: string;
+  /**
+   * Repete o MESMO plantão (mentora/hora/duração/observação) nas N semanas
+   * seguintes. 0 ou ausente = só a data informada, comportamento de sempre.
+   */
+  repetirSemanas?: number;
 }
 
-export async function criarSlot(input: CriarSlotInput): Promise<ResultadoAcao> {
+/**
+ * Cria um plantão — ou uma SÉRIE semanal a partir dele.
+ *
+ * Tudo nasce **não publicado** (default da coluna), como antes: montar a
+ * agenda e abrir a agenda continuam sendo dois atos.
+ *
+ * 🔑 Colisão de `unique (mentora_id, data, hora_inicio)` numa série NÃO é
+ * erro: a equipe repete por cima de um dia já montado o tempo todo. A data
+ * vira "pulada" e as outras semanas seguem. Abortar no primeiro 23505 faria
+ * a operadora perder as 11 semanas seguintes por causa de uma.
+ */
+export async function criarSlot(
+  input: CriarSlotInput,
+): Promise<ResultadoCriacaoSlots> {
   if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.schema("gps").from("plantao_slots").insert({
-    mentora_id: input.mentoraId,
-    data: input.data,
-    hora_inicio: input.horaInicio,
-    duracao_min: input.duracaoMin,
-    observacao: input.observacao?.trim() || null,
-  });
+  if (!somarDias(input.data, 0)) {
+    return { ok: false, erro: "Data inválida." };
+  }
 
-  if (error) {
+  // Clamp no SERVIDOR. A Server Action é um endpoint HTTP e `repetirSemanas`
+  // vira um laço de INSERTs: sem teto, um POST com 10000 criaria 10001
+  // plantões. `Math.floor` mata fracionário; NaN/undefined/negativo caem em 0.
+  const repetir = Math.min(
+    Math.max(Math.floor(Number(input.repetirSemanas) || 0), 0),
+    REPETIR_SEMANAS_MAX,
+  );
+
+  const supabase = await createClient();
+  const observacao = input.observacao?.trim() || null;
+
+  let criados = 0;
+  const pulados: string[] = [];
+
+  for (let i = 0; i <= repetir; i++) {
+    const data = somarDias(input.data, i * 7);
+    if (!data) return { ok: false, erro: "Data inválida.", criados, pulados };
+
+    const { error } = await supabase.schema("gps").from("plantao_slots").insert({
+      mentora_id: input.mentoraId,
+      data,
+      hora_inicio: input.horaInicio,
+      duracao_min: input.duracaoMin,
+      observacao,
+    });
+
+    if (!error) {
+      criados++;
+      continue;
+    }
+
     // unique(mentora_id, data, hora_inicio)
     if (error.code === "23505") {
-      return { ok: false, erro: "Já existe um plantão desta mentora nesta data e horário." };
+      pulados.push(data);
+      continue;
     }
-    return { ok: false, erro: "Não foi possível criar o plantão." };
+
+    console.error(`[plantao] criarSlot falhou em ${data}:`, error.message);
+    return {
+      ok: false,
+      erro:
+        criados > 0
+          ? `Criei ${criados} plantão(ões) e parei em ${data}. Confira o calendário antes de tentar de novo.`
+          : "Não foi possível criar o plantão.",
+      criados,
+      pulados,
+    };
+  }
+
+  // Série inteira colidiu. `ok: true` com `criados: 0` leria como sucesso
+  // silencioso — a equipe fecharia o diálogo achando que montou a agenda.
+  if (criados === 0) {
+    return {
+      ok: false,
+      erro:
+        pulados.length === 1
+          ? "Já existe um plantão desta mentora nesta data e horário."
+          : `Todas as ${pulados.length} datas já têm plantão desta mentora neste horário.`,
+      criados,
+      pulados,
+    };
   }
 
   revalidatePath("/admin/plantao");
-  return { ok: true };
+  return { ok: true, criados, pulados };
 }
 
 /**
@@ -99,6 +215,33 @@ export async function editarSlot(input: EditarSlotInput): Promise<ResultadoAcao>
   if ("erro" in zoom) return { ok: false, erro: zoom.erro };
 
   const supabase = await createClient();
+
+  // Lê antes de escrever por duas razões que um UPDATE cego não cobre:
+  //  1. slot CANCELADO não se edita (a tela esconde os botões, mas a Server
+  //     Action é o endpoint real — `<button disabled>` não é fronteira);
+  //  2. TROCA DE MENTORA precisa zerar `aviso_mentora_em`. Sem isso o slot
+  //     segue marcado como "mentora já avisada" e a mentora NOVA nunca recebe
+  //     o e-mail de véspera — `gps.plantao_aviso_mentora_pendente` filtra
+  //     `aviso_mentora_em is null`. Era a lacuna L1 da Fase 8: a troca
+  //     funcionava na tela e o aviso ia para o endereço errado, ou para
+  //     ninguém.
+  const { data: atual } = await supabase
+    .schema("gps")
+    .from("plantao_slots")
+    .select("id, mentora_id, cancelado_em")
+    .eq("id", input.slotId)
+    .maybeSingle();
+
+  if (!atual) return { ok: false, erro: "Plantão não encontrado." };
+  if (atual.cancelado_em) {
+    return {
+      ok: false,
+      erro: "Este plantão foi cancelado e não pode mais ser editado.",
+    };
+  }
+
+  const trocouMentora = atual.mentora_id !== input.mentoraId;
+
   const { error } = await supabase
     .schema("gps")
     .from("plantao_slots")
@@ -109,6 +252,9 @@ export async function editarSlot(input: EditarSlotInput): Promise<ResultadoAcao>
       duracao_min: input.duracaoMin,
       zoom_url: zoom.url,
       observacao: input.observacao?.trim() || null,
+      // Só quando a mentora MUDA. Zerar sempre reenviaria o aviso de véspera
+      // a cada correção de observação ou de link da sala.
+      ...(trocouMentora ? { aviso_mentora_em: null } : {}),
     })
     .eq("id", input.slotId);
 
@@ -117,6 +263,90 @@ export async function editarSlot(input: EditarSlotInput): Promise<ResultadoAcao>
       return { ok: false, erro: "Já existe um plantão desta mentora nesta data e horário." };
     }
     return { ok: false, erro: "Não foi possível salvar as alterações." };
+  }
+
+  revalidatePath("/admin/plantao");
+  return { ok: true };
+}
+
+/**
+ * Fluxo dedicado "trocar quem apresenta": só a mentora muda, sem passar pelo
+ * formulário inteiro (lacuna L6 da Fase 8).
+ *
+ * 🔑 Zera `aviso_mentora_em` junto — é o mesmo par indissociável de
+ * `editarSlot`, e a razão de esta ação existir em vez de a tela mandar um
+ * `editarSlot` com os outros campos repetidos: reenviar data/hora/zoom só
+ * para trocar o nome é convite a sobrescrever com estado velho de tela.
+ *
+ * Recusa slot cancelado (não há o que apresentar) e slot já iniciado (trocar
+ * quem apresentou um plantão que já aconteceu reescreve o histórico — a
+ * presença registrada é daquela mentora).
+ */
+export async function trocarMentoraSlot(
+  slotId: string,
+  mentoraId: string,
+): Promise<ResultadoAcao> {
+  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!mentoraId) return { ok: false, erro: "Escolha a mentora do plantão." };
+
+  const supabase = await createClient();
+
+  const { data: slot } = await supabase
+    .schema("gps")
+    .from("plantao_slots")
+    .select("id, mentora_id, cancelado_em, inicio_em")
+    .eq("id", slotId)
+    .maybeSingle();
+
+  if (!slot) return { ok: false, erro: "Plantão não encontrado." };
+  if (slot.cancelado_em) {
+    return { ok: false, erro: "Este plantão foi cancelado." };
+  }
+  // Comparação SEMPRE por `inicio_em` (timestamptz gerado no fuso de São
+  // Paulo), nunca por `data` isolada — que mentiria o prazo das 21h à
+  // meia-noite.
+  if (new Date(slot.inicio_em as string) <= new Date()) {
+    return {
+      ok: false,
+      erro: "Este plantão já começou ou já passou; não dá para trocar quem apresenta.",
+    };
+  }
+
+  // No-op explícito: sem isto, "salvar" a mesma mentora zeraria
+  // `aviso_mentora_em` e a véspera seria reenviada à mesma pessoa.
+  if (slot.mentora_id === mentoraId) return { ok: true };
+
+  const { data: mentora } = await supabase
+    .schema("gps")
+    .from("plantao_mentoras")
+    .select("id, nome, ativa")
+    .eq("id", mentoraId)
+    .maybeSingle();
+
+  if (!mentora) return { ok: false, erro: "Mentora não encontrada." };
+  if (!mentora.ativa) {
+    return {
+      ok: false,
+      erro: `${mentora.nome} está inativa. Reative na aba Mentoras antes de escalá-la.`,
+    };
+  }
+
+  const { error } = await supabase
+    .schema("gps")
+    .from("plantao_slots")
+    .update({ mentora_id: mentoraId, aviso_mentora_em: null })
+    .eq("id", slotId);
+
+  if (error) {
+    // unique(mentora_id, data, hora_inicio): a mentora nova já tem plantão
+    // neste mesmo dia e horário — seriam duas salas dela ao mesmo tempo.
+    if (error.code === "23505") {
+      return {
+        ok: false,
+        erro: `${mentora.nome} já tem um plantão nesta data e horário.`,
+      };
+    }
+    return { ok: false, erro: "Não foi possível trocar a mentora." };
   }
 
   revalidatePath("/admin/plantao");
@@ -137,6 +367,13 @@ export async function editarSlot(input: EditarSlotInput): Promise<ResultadoAcao>
  * (`MinhaInscricaoCard`). Sem link, o aluno vê o plantão e se inscreve; a
  * sala aparece quando a equipe cadastrar. O que ele nunca vê é um botão que
  * leva a lugar nenhum.
+ *
+ * 🔑 Publicar EXIGE, sim, e-mail da mentora (lacuna L2 da Fase 8).
+ * `gps.plantao_aviso_mentora_pendente` filtra mentora sem e-mail de
+ * propósito — publicar um plantão de mentora sem endereço abre inscrição
+ * para uma sessão que a própria mentora nunca fica sabendo que tem. Falhava
+ * em silêncio: nenhum erro, nenhum alerta, ninguém avisado. Diferente do
+ * `zoom_url`, aqui não há segunda chance depois (a véspera passa uma vez).
  */
 export async function publicarSlot(
   slotId: string,
@@ -145,6 +382,33 @@ export async function publicarSlot(
   if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
 
   const supabase = await createClient();
+
+  const { data: slot } = await supabase
+    .schema("gps")
+    .from("plantao_slots")
+    .select("id, cancelado_em, plantao_mentoras(nome, email)")
+    .eq("id", slotId)
+    .maybeSingle();
+
+  if (!slot) return { ok: false, erro: "Plantão não encontrado." };
+  if (slot.cancelado_em) {
+    return {
+      ok: false,
+      erro: "Este plantão foi cancelado. Crie um novo horário no lugar dele.",
+    };
+  }
+
+  const mentora = slot.plantao_mentoras as unknown as {
+    nome: string;
+    email: string | null;
+  } | null;
+
+  if (publicado && !mentora?.email?.trim()) {
+    return {
+      ok: false,
+      erro: `A mentora ${mentora?.nome ?? "deste plantão"} não tem e-mail cadastrado; sem ele ela não recebe o aviso de véspera. Cadastre na aba Mentoras e publique de novo.`,
+    };
+  }
 
   const { error } = await supabase
     .schema("gps")
@@ -159,9 +423,282 @@ export async function publicarSlot(
 }
 
 /**
+ * Cancela um plantão PUBLICADO, com inscritos, avisando quem estava inscrito
+ * (lacuna L3 da Fase 8).
+ *
+ * 🔑 Cancelar não é remover. `removerSlot` apaga a linha e o `on delete
+ * cascade` leva presença e NPS junto — por isso ele é bloqueado por inscrito
+ * ativo. Aqui o slot FICA, carimbado: é o que dá de onde escrever o e-mail e
+ * o que mantém o histórico legível depois.
+ *
+ * Ordem, e por que ela é essa:
+ *   1. lê e recusa (já cancelado / já iniciado) — nada de e-mail de
+ *      cancelamento para um plantão que já aconteceu;
+ *   2. despublica + carimba o slot. `publicado = false` é o que de fato tira
+ *      o slot do calendário e faz `plantao_inscrever` recusar: nenhuma RPC
+ *      pública lê `cancelado_em`, e é deliberado (uma regra só para o mesmo
+ *      fato);
+ *   3. encerra as inscrições ativas;
+ *   4. só ENTÃO manda e-mail. Envio é I/O de terceiro: se a Resend estiver
+ *      fora, o cancelamento já está gravado e o mundo já é consistente. O
+ *      contrário — e-mail primeiro — avisaria gente de um cancelamento que
+ *      pode não acontecer.
+ *
+ * Falha de e-mail NÃO desfaz nada: conta em `falhas` e vai para o log com
+ * contexto. `avisados + falhas === inscritos`, sempre — é o que permite a
+ * tela dizer a verdade em vez de sugerir que todos foram avisados.
+ */
+export async function cancelarSlot(
+  slotId: string,
+  motivo?: string,
+): Promise<ResultadoCancelamento> {
+  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+
+  // Valida aqui em vez de deixar o CHECK do banco estourar: um 23514 volta
+  // como "Não foi possível cancelar", que não diz o que corrigir.
+  const motivoLimpo = motivo?.trim() || null;
+  if (motivoLimpo && motivoLimpo.length > MOTIVO_MAX) {
+    return {
+      ok: false,
+      erro: `O motivo precisa ter no máximo ${MOTIVO_MAX} caracteres.`,
+    };
+  }
+
+  const supabase = await createClient();
+
+  // ── 1. Lê o slot e os inscritos ativos ────────────────────────────────
+  const { data: slot } = await supabase
+    .schema("gps")
+    .from("plantao_slots")
+    .select("id, data, hora_inicio, cancelado_em, inicio_em, plantao_mentoras(nome)")
+    .eq("id", slotId)
+    .maybeSingle();
+
+  if (!slot) return { ok: false, erro: "Plantão não encontrado." };
+
+  // `count: "exact"` junto do recorte: `inscritos` passa a ser o total REAL,
+  // não o tamanho da página. Sem isso, um slot com mais inscritos do que o
+  // teto reportaria "todos avisados" tendo avisado só os primeiros 500.
+  const {
+    data: inscricoes,
+    count: totalInscritos,
+    error: erroLeitura,
+  } = await supabase
+    .schema("gps")
+    .from("plantao_inscricoes")
+    .select("id, nome_informado, plantao_alunos(nome, email)", { count: "exact" })
+    .eq("slot_id", slotId)
+    .is("cancelado_em", null)
+    .order("inscrito_em")
+    .limit(LIMITE_AVISOS_CANCELAMENTO);
+
+  if (erroLeitura) {
+    console.error(`[plantao] cancelarSlot ${slotId}: leitura falhou:`, erroLeitura.message);
+    return { ok: false, erro: "Não foi possível ler os inscritos deste plantão." };
+  }
+
+  const lista = inscricoes ?? [];
+  const inscritos = totalInscritos ?? lista.length;
+
+  // Retomada de uma execução interrompida: já carimbado MAS ainda com
+  // inscrição ativa significa que o passo 3 não chegou a rodar. Deixar isso
+  // sem saída obrigaria SQL na mão — exatamente o que a Fase 8 veio tirar.
+  const jaCancelado = Boolean(slot.cancelado_em);
+  if (jaCancelado && inscritos === 0) {
+    return { ok: false, erro: "Este plantão já foi cancelado." };
+  }
+
+  // Guarda de prazo só no cancelamento NOVO: a retomada precisa terminar a
+  // limpeza mesmo depois de o horário passar.
+  if (!jaCancelado && new Date(slot.inicio_em as string) <= new Date()) {
+    return {
+      ok: false,
+      erro: "Este plantão já começou ou já passou; não dá para cancelar.",
+    };
+  }
+
+  // ── 2. Despublica + carimba ───────────────────────────────────────────
+  if (!jaCancelado) {
+    // `.is("cancelado_em", null)` + `.select()` fecham a corrida de dois
+    // admins clicando junto: o segundo update casa 0 linhas e não reenvia
+    // e-mail de cancelamento para as mesmas pessoas.
+    const { data: carimbado, error: erroSlot } = await supabase
+      .schema("gps")
+      .from("plantao_slots")
+      .update({
+        cancelado_em: new Date().toISOString(),
+        cancelado_motivo: motivoLimpo,
+        publicado: false,
+      })
+      .eq("id", slotId)
+      .is("cancelado_em", null)
+      .select("id");
+
+    if (erroSlot) {
+      console.error(`[plantao] cancelarSlot ${slotId}: update do slot falhou:`, erroSlot.message);
+      return { ok: false, erro: "Não foi possível cancelar o plantão." };
+    }
+    if (!carimbado?.length) {
+      return { ok: false, erro: "Este plantão já foi cancelado." };
+    }
+  }
+
+  // ── 3. Encerra as inscrições ativas ───────────────────────────────────
+  const { error: erroInscricoes } = await supabase
+    .schema("gps")
+    .from("plantao_inscricoes")
+    .update({ cancelado_em: new Date().toISOString() })
+    .eq("slot_id", slotId)
+    .is("cancelado_em", null);
+
+  if (erroInscricoes) {
+    // O slot JÁ está cancelado e despublicado — ninguém entra e ninguém se
+    // inscreve. O que ficou pendente é a baixa das inscrições, e a pessoa
+    // seguiria "com plantão marcado" sem poder marcar outro. Dizer a verdade
+    // e mandar repetir: a retomada acima existe exatamente para este caso.
+    console.error(
+      `[plantao] cancelarSlot ${slotId}: inscrições não encerradas:`,
+      erroInscricoes.message,
+    );
+    return {
+      ok: false,
+      erro:
+        "O plantão foi cancelado, mas as inscrições não foram encerradas e ninguém foi avisado. Clique em cancelar de novo.",
+      inscritos,
+      avisados: 0,
+      falhas: inscritos,
+    };
+  }
+
+  // ── 4. Avisa cada inscrito ────────────────────────────────────────────
+  const mentoraNome =
+    (slot.plantao_mentoras as unknown as { nome: string } | null)?.nome ?? "a mentora";
+
+  let avisados = 0;
+  // Quem ficou fora da página já entra como falha: `avisados + falhas` tem de
+  // fechar com `inscritos`, senão a tela mente por omissão.
+  let falhas = Math.max(inscritos - lista.length, 0);
+
+  // Sequencial de propósito: dezenas de e-mails contra o limite de taxa da
+  // Resend. Disparar tudo em paralelo trocaria "demora 3s" por "metade
+  // rejeitada por rate limit".
+  for (const linha of lista) {
+    const aluno = linha.plantao_alunos as unknown as {
+      nome: string;
+      email: string;
+    } | null;
+    const para = aluno?.email?.trim();
+
+    if (!para) {
+      falhas++;
+      console.error(`[plantao] cancelarSlot ${slotId}: inscrição ${linha.id} sem e-mail.`);
+      continue;
+    }
+
+    const envio = await enviarPlantaoCancelamento({
+      para,
+      nome: (linha.nome_informado as string | null) ?? aluno?.nome ?? null,
+      data: slot.data as string,
+      horaInicio: slot.hora_inicio as string,
+      mentoraNome,
+      motivo: motivoLimpo,
+    }).catch(() => ({ ok: false as const, erro: "exceção no envio" }));
+
+    if (envio.ok) {
+      avisados++;
+    } else {
+      falhas++;
+      console.error(
+        `[plantao] cancelarSlot ${slotId}: aviso não entregue à inscrição ${linha.id}:`,
+        envio.erro ?? "sem detalhe",
+      );
+    }
+  }
+
+  // ── 5. Auditoria ──────────────────────────────────────────────────────
+  // `plantao_eventos.acao` é texto livre (sem CHECK) e a retenção de 90 dias
+  // do job já cobre esta linha. `aluno_plantao_id` fica nulo: cancelar é ato
+  // da EQUIPE sobre o slot, não de um aluno — a coluna aceita nulo desde a
+  // estrutura original (tentativa de login sem aluno para referenciar).
+  // Falhar aqui não desfaz o cancelamento: perder a linha de auditoria é
+  // ruim, deixar o plantão meio cancelado é pior.
+  const { error: erroEvento } = await supabase
+    .schema("gps")
+    .from("plantao_eventos")
+    .insert({ acao: "plantao_slot_cancelado", slot_id: slotId });
+
+  if (erroEvento) {
+    console.error(`[plantao] cancelarSlot ${slotId}: auditoria falhou:`, erroEvento.message);
+  }
+
+  revalidatePath("/admin/plantao");
+  return { ok: true, avisados, inscritos, falhas };
+}
+
+/**
+ * Estado do interruptor de inscrições — o que era
+ * `alter role authenticator set app.plantao_inscricao_aberta = 'false'`
+ * (lacuna L4 da Fase 8: só um dev com acesso ao banco conseguia pausar).
+ *
+ * Grava em `gps.plantao_config`, lida por `gps.plantao_escrita_liberada()`,
+ * que guarda TODAS as escritas públicas: inscrever, cancelar, revelar link
+ * (grava presença) e registrar NPS. A LEITURA continua liberada — pausado, o
+ * calendário segue visível e só os botões param de funcionar.
+ *
+ * `atualizado_por` sai do `ctx.user.id` do SERVIDOR, nunca de parâmetro: id
+ * de autor vindo do cliente é assinatura falsificável.
+ */
+export async function definirInscricoesAbertas(
+  aberta: boolean,
+): Promise<ResultadoAcao> {
+  const ctx = await getContextoSessao();
+  if (!ctx || ctx.papel !== "admin") {
+    return { ok: false, erro: "Sem permissão." };
+  }
+
+  const supabase = await createClient();
+
+  // `atualizado_em` NÃO vai no payload: quem carimba é o trigger
+  // `trg_plantao_config_atualizado_em`. Relógio de servidor de aplicação não
+  // decide "quando" num registro de auditoria.
+  const { error } = await supabase
+    .schema("gps")
+    .from("plantao_config")
+    .upsert(
+      {
+        chave: "inscricao_aberta",
+        valor: aberta ? "true" : "false",
+        atualizado_por: ctx.user.id,
+      },
+      { onConflict: "chave" },
+    );
+
+  if (error) {
+    console.error("[plantao] definirInscricoesAbertas falhou:", error.message);
+    return {
+      ok: false,
+      erro: aberta
+        ? "Não foi possível reabrir as inscrições."
+        : "Não foi possível pausar as inscrições.",
+    };
+  }
+
+  revalidatePath("/admin/plantao");
+  revalidatePath("/p/plantao");
+  return { ok: true };
+}
+
+/**
  * Remove um slot. `on delete cascade` em `plantao_inscricoes` apaga as
  * inscrições junto — por isso só permite remover slots ainda sem inscrito
  * ativo, para não apagar histórico de presença/NPS silenciosamente.
+ *
+ * ✅ Slot CANCELADO passa por aqui sem mudança nenhuma no código: cancelar
+ * carimba `cancelado_em` em todas as inscrições, então a contagem abaixo
+ * (que já filtra `cancelado_em is null`) dá zero. Conferido na Fase 8 — a
+ * regra pedida ("permitir remover slot cancelado") já era consequência do
+ * critério certo. O que se apaga aí é histórico de um plantão que não
+ * aconteceu: presença e NPS de inscrição cancelada são nulos por definição.
  */
 export async function removerSlot(slotId: string): Promise<ResultadoAcao> {
   if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };

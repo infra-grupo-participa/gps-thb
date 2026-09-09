@@ -70,6 +70,83 @@ export async function enviarPlantaoNps(params: {
 }
 
 /**
+ * Avisa o INSCRITO de que o plantão dele foi cancelado pela equipe.
+ *
+ * 🔑 É o e-mail que justifica `cancelado_em` existir como coluna em vez de o
+ * slot simplesmente ser apagado: sem os dados do plantão preservados não há
+ * de onde tirar data, hora e mentora para escrever esta mensagem.
+ *
+ * ⚠️ `motivo` é TEXTO LIVRE digitado no painel e vai para dezenas de caixas
+ * de entrada. Passa por `esc()` na versão HTML como todo o resto — sem isso,
+ * um motivo com `<a href>` viraria link clicável em nome do Time Holding
+ * Brasil. O teto de 300 caracteres é do CHECK no banco.
+ *
+ * A inscrição JÁ foi cancelada quando este e-mail sai, então o CTA leva ao
+ * calendário público para a pessoa escolher outro dia — nunca para uma tela
+ * que ainda mostraria a inscrição morta.
+ *
+ * Não lança: falha de envio nunca desfaz o cancelamento (ver `cancelarSlot`).
+ */
+export async function enviarPlantaoCancelamento(params: {
+  para: string;
+  nome?: string | null;
+  data: string;
+  horaInicio: string;
+  mentoraNome: string;
+  motivo?: string | null;
+}): Promise<ResultadoEmail> {
+  const { para, nome, data, horaInicio, mentoraNome, motivo } = params;
+  const primeiroNome = (nome?.trim().split(/\s+/)[0] || "").trim();
+  const ola = primeiroNome ? `Olá, ${primeiroNome}!` : "Olá!";
+  const dataLonga = dataLongaBrasilia(data);
+  const hora = horaCurta(horaInicio);
+  const motivoLimpo = motivo?.trim() || null;
+  const portalUrl = `${APP_URL}/p/plantao`;
+
+  const corpo = `
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${esc(ola)}</p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      O plantão de dúvidas de <strong>${esc(dataLonga)}</strong>, às
+      <strong>${esc(hora)}</strong>, com <strong>${esc(mentoraNome)}</strong>,
+      <strong>foi cancelado</strong>. Sua inscrição foi encerrada e você não
+      precisa fazer nada.
+    </p>
+    ${
+      motivoLimpo
+        ? `<p style="margin:0 0 16px;padding:12px 16px;background:#faf9f8;border-left:3px solid #F97316;font-size:15px;line-height:1.6;">
+      ${esc(motivoLimpo)}
+    </p>`
+        : ""
+    }
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      Você já pode escolher outro dia no calendário — as demais datas seguem
+      abertas.
+    </p>
+    ${botao(portalUrl, "Escolher outro dia")}`;
+
+  const texto = [
+    ola,
+    "",
+    `O plantão de dúvidas de ${dataLonga}, às ${hora}, com ${mentoraNome}, foi cancelado. Sua inscrição foi encerrada e você não precisa fazer nada.`,
+    ...(motivoLimpo ? ["", motivoLimpo] : []),
+    "",
+    "Você já pode escolher outro dia no calendário — as demais datas seguem abertas.",
+    `Calendário: ${portalUrl}`,
+  ].join("\n");
+
+  return enviar({
+    para,
+    assunto: `Plantão cancelado — ${hora} com ${mentoraNome}`,
+    html: layout({
+      preheader: `O plantão de ${hora} com ${mentoraNome} foi cancelado. Escolha outro dia.`,
+      titulo: "Seu plantão foi cancelado",
+      corpo,
+    }),
+    texto,
+  });
+}
+
+/**
  * Aviso à MENTORA na véspera do plantão: quem vai participar, que horas,
  * quantas pessoas.
  *

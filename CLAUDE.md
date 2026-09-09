@@ -679,11 +679,10 @@ Rotas `/chamados` e `/chamados/[id]` (aluno), `/admin/chamados` e `/admin/chamad
 
 #### (i) Pendências para o João / Marcio
 
-1. 🔴 **`gps.senhas_bkp_20260810`** — cópia de **hashes bcrypt de `auth.users`** feita em
-   10/08/2026 (época da remoção do agendamento): `id`, `email`, `encrypted_password`,
-   `last_sign_in_at`, `copiado_em`. **RLS desligada e grants só para `postgres`** (não exposta
-   pela API), mas é dado sensível parado há um mês **sem finalidade**. Recomendação:
-   `drop table gps.senhas_bkp_20260810`. **Irreversível — decisão do João.**
+1. ✅ **`gps.senhas_bkp_20260810` — RESOLVIDA em 09/09.** Era a cópia de **hashes bcrypt de
+   `auth.users`** feita em 10/08/2026, parada há um mês sem finalidade (RLS desligada, sem grant
+   à API). O João autorizou e a migração `…119` **apagou a tabela**: 83 linhas, 71 delas ainda
+   idênticas às senhas atuais. **Não é mais pendência** — ver "Rodada final de qualidade".
 2. **B10** — a copy sequencial fecha a Etapa 01 para **58 de 63 ambientes**. É o pedido literal
    do Marcio; falta levar o número a ele.
 3. **Ilan sem conta** — não existe em `auth.users`, logo não dá para promover a admin (Isabela e
@@ -706,6 +705,195 @@ Rotas `/chamados` e `/chamados/[id]` (aluno), `/admin/chamados` e `/admin/chamad
    "Mostrando X de Y" e "Mostrar mais" trazendo o resto.
 
 **Pentest desta madrugada:** dois relatórios, ambos **APROVADOS** (0 crítico, 0 alto). Fases 5–7: 1 MÉDIO documentado (MIME de anexo vem do que o cliente declarou no PUT, não de inspeção de bytes — a trava real é `download=` em todo link; nunca servir anexo inline) e 1 BAIXO corrigido (equipe não anexa, agora imposto em `gps.chamado_gravar_mensagem`, migração ...116). Polimento: 1 MÉDIO corrigido (`gps.agenda`/`gps.reuniao_agendamentos` aceitavam escrita do dono pela REST — policies derrubadas e grants revogados, ...117, histórico preservado) e 1 BAIXO corrigido (`emailParaIlike` escapa `%`/`_`; `acharAlunoPorEmail` morta removida). Correções em `cd87aa5`.
+
+### 🧭 Rodada final de qualidade (2026-09-09)
+
+Depois das Fases 5–7 o arquiteto **caminhou pelo produto na ordem do usuário** (aluno → sócio →
+admin) sobre `75b7138`, lendo página, componente e action de cada fluxo, e o orquestrador mediu o
+repo (tamanho de arquivo, `knip`, duplicação, bundle). Saiu um plano em 4 ondas, executado em
+`2c03325..f257f24` (8 commits). Material: `tmp/squad/rodada-final.md` (veredito, achados, o que
+NÃO mudar, roteiro de validação) e `tmp/squad/inventario-qualidade.md` (as medições).
+
+Diagnóstico em uma frase: o sistema já era honesto com o dado (`null` não vira zero, prévia não
+vira sandbox), e o que restava eram **três famílias** — *a tela sabe mais do que mostra*, *ação
+que apaga sem atrito* e *repetição que já cobrava preço*.
+
+#### (a) Veredito por feature — e o que mudou nesta rodada
+
+| # | Feature / fluxo | O que mudou nesta rodada |
+|---|---|---|
+| 1 | Login / cadastro / esqueci / redefinir | Nenhuma mudança de lógica. O "Esqueci minha senha" continua saindo pelo **SMTP embutido do Supabase** (pendência do João, F.5). Bundle: ver Onda 4 |
+| 2 | Home do aluno | `proximoPasso` **não pode mais devolver tarefa travada**: recebe `temFavorito` (obrigatório), pula `exigeFavorito`/`exigeTarefa` não satisfeitos e, quando tudo está travado, devolve `bloqueio` legível — o card vira CTA de destravamento. O KPI passou a mostrar `comDados` (`2c03325`, `9aa9f06`) |
+| 3 | Etapa 01 | Tarefa travada passa a dizer o estado **por forma**, não por opacidade. **B10 continua aberto** (a copy sequencial fecha a etapa para 58 de 63 ambientes) |
+| 4 | Clientes | Excluir cliente e desfavoritar passam a pedir **confirmação nomeada com a consequência escrita**; "Abrir contrato no Drive" virou "Abrir contrato"; `error.message` cru saiu das actions (`9aa9f06`, `2c03325`) |
+| 5 | Financeiro | `divergenciaQuitacao` passa a sair **nos dois sentidos** (FN1): saldo negativo acima da tolerância sem `quitado_em` deixou de virar "Quitado, R$ 0,00" invisível para o admin. O aluno continua vendo "Quitado" (`2c03325`) |
+| 6 | Suporte por chamados | Chamado aberto vira **badge no card + filtro em `/admin` + contador na aba**, a partir do Map já carregado (**zero consulta nova**). `getChamadosConfig` devolve `fallbackEnv` (só o booleano de `EMAIL_SUPORTE`, nunca o endereço), então o aviso vermelho parou de mentir (`2c03325`, `9aa9f06`) |
+| 7 | Materiais | Decisão F.1: material de etapa **não liberada vai para o cliente SEM `url`** — o corte é no servidor (`listarMateriais({ etapasLiberadas })`), não só no link. Admin e prévia passam `incluirBloqueados` (`2b250b0`) |
+| 8 | Pasta (Drive) | Sem mudança de fluxo. `ESTRUTURA_PASTA` (código morto) foi removida |
+| 9 | Perfil / trocar senha | Sem mudança de lógica |
+| 10 | Etapas 2–6 bloqueadas | O vazamento pelo acervo foi fechado (item 7) |
+| 11 | Sócio | Cada membro do ambiente ganhou **"Definir senha"** (`gps.admin_definir_senha_membro` + action `definirSenhaMembro`). Antes a única saída era remover e re-adicionar, o que **apagava o login do sócio** (`2d313a3`, `b9e55f2`) |
+| 12 | Painel `/admin` | Badge/filtro de chamado aberto; "Recusar" solicitação ganhou o campo **"Motivo (o aluno vê)"**, que a action já aceitava e a tela do aluno já renderizava (`9aa9f06`) |
+| 13 | Modo assistência | `assistenciaNavItems(alunoId, { ambienteCompartilhado })` esconde o Financeiro na prévia quando o ambiente tem sócio; o texto "GPS" saiu do toast (`2d313a3`, `9aa9f06`) |
+| 14 | Diário (Fases 1+2) | **Nada.** É o fluxo mais bem construído do repo; está na lista do que não se mexe |
+| 15 | `/admin/chamados` | "Fechar entrada do suporte" — o interruptor que fecha o canal para todos — passou a pedir confirmação (`9aa9f06`) |
+| 16 | `/admin/plantao` | Duração padrão do slot **120** (formulário + `default` da coluna, migração `…121`); `gps.config` absorveu `plantao_config`; as actions foram cortadas por responsabilidade (`2d313a3`, `4228944`) |
+| 17 | E-mails | Nenhuma mudança. O aviso de chamado novo continua **sem destinatário** enquanto `chamados_email_equipe` e `EMAIL_SUPORTE` estiverem vazios |
+
+#### (b) Regras que passaram a valer (para todo código novo)
+
+- 🔴 **Toda ação que apaga ou tranca pede confirmação nomeada, com a consequência escrita e botão
+  com nome próprio.** O padrão do `DialogoCancelamento` do Plantão virou
+  `src/components/ui/dialogo-confirmacao.tsx` — um lugar só para excluir cliente, remover sócio,
+  desfavoritar, excluir ambiente e fechar a entrada do suporte.
+- **`src/lib/moeda.ts` é o único formatador de dinheiro**: `brl`, `brlInteiro`, `brlCompacto`,
+  `brlOuTraco`. Nove cópias de `Intl.NumberFormat` BRL foram substituídas, conferidas valor a
+  valor. Não escrever `Intl.NumberFormat` novo.
+- **`src/lib/datas.ts` é o único formatador de data**: `formatarData`, `formatarDataHora`,
+  `formatarDataSoDia` e a constante `FUSO` (exportada; 17 literais `America/Sao_Paulo` saíram do
+  código). `formatarDataSoDia` trata `date` sem fuso — `new Date` lia como meia-noite UTC e
+  devolvia **um dia a menos**.
+- **`src/lib/texto.ts` tem a única regex de e-mail do repo**: `emailValido` (a estrita, que barra
+  injeção de cabeçalho) e `listaDeEmails`; `emailParaIlike` (que escapa `%`/`_`) mora ali também.
+  Não criar `EMAIL_REGEX` local.
+- **`src/lib/masks.ts:soDigitos`** é o único `.replace(/\D/g, "")`.
+- **Erro de banco passa por `traduzirErroBanco` (`src/lib/erros.ts`)** — frase em português na
+  tela, detalhe no `logErro`. **Nunca devolver `error.message` cru ao navegador.**
+- **`gps.config` é a única tabela de configuração.** Absorveu a chave `plantao_inscricao_aberta`
+  (valor vigente copiado); `plantao_escrita_liberada()` lê `config` → `plantao_config` (compat) →
+  setting → ABERTO. **`gps.plantao_config` fica uma semana e sai numa migration futura.**
+- **`src/lib/data.ts` é fachada fina.** As consultas vivem em
+  `src/lib/data/{alunos,clientes,progresso,diario,solicitacoes}.ts` — **consulta nova nasce em
+  `src/lib/data/<assunto>.ts`**, não no `data.ts`.
+- **Actions do Plantão** estão em `slots-actions.ts`, `mentoras-actions.ts`, `alunos-actions.ts` e
+  `config-actions.ts`. ⚠️ O `actions.ts` que sobrou é **barril, e NÃO leva `"use server"`**: com a
+  diretiva o módulo sai do build com zero exports (`The export trocarMentoraSlot was not found`).
+  Sem ela o import segue até o arquivo de origem, que é `"use server"`. O motivo está escrito no
+  arquivo — não "consertar".
+- **Componente grande vive em pasta com `index.tsx`**, e os importadores não mudam:
+  `plantao-calendario/`, `clientes-manager/`, `alunos-ativos-lista/`, `gerenciar-acesso/`.
+  **Nenhum arquivo novo passa de 400 linhas.** As **funções puras saem do JSX** para `ordenacao.ts`
+  (ordem e filtro de clientes e de alunos) e para `datas-da-serie.ts` — sem React, testáveis.
+- **`navDoAluno(ctx)` (`src/lib/nav.ts`) é o único lugar da regra do sócio** (B7-b). Estava copiada
+  em 9 `page.tsx`; hoje `rg 'papelMembro === "titular"' src/app` dá **0**.
+- **`assistenciaNavItems(alunoId, { ambienteCompartilhado })`** — a prévia "como o aluno vê" tem de
+  esconder o Financeiro quando o ambiente tem sócio.
+- **`proximoPasso` nunca devolve tarefa travada** — devolve `bloqueio` para a UI virar CTA.
+- **O KPI de clientes mostra `comDados`** (nome + telefone + nível), que é o que a tarefa 1 cobra;
+  `preenchidos` vai como detalhe. Um número, uma verdade.
+- **Material de etapa bloqueada vai para o cliente SEM `url`** — `MateriaisView` é client component
+  e tudo que ela recebe está no payload inicial; o corte é no servidor.
+- **`gps.admin_definir_senha_membro(membro_id, senha)` + `definirSenhaMembro`** é o caminho de senha
+  por membro. Se a conta também tiver papel em **outro portal do grupo**, a action devolve
+  `precisaConfirmar` + a lista de programas **sem alterar nada**, e a UI repete com
+  `confirmarOutrosSistemas`.
+- **Default de duração do slot do Plantão: 120 minutos** (formulário, fallback e `default` da coluna).
+- ✅ **`gps.senhas_bkp_20260810` foi APAGADA** (migração `…119`, autorizada pelo João): 83 linhas de
+  hash bcrypt, 71 ainda idênticas às senhas atuais. **Deixou de ser pendência.**
+- As 4 RPCs que só existiam no banco entraram no repo em retrato (`admin_direito_ao_acesso`,
+  `admin_excluir_membro`, `admin_programas_do_email`, `aluno_por_documento`);
+  `aluno_por_documento` perdeu o `execute` de `PUBLIC`.
+
+#### (c) Decisões do orquestrador sobre os bloqueios (F.1–F.6; o João autorizou seguir)
+
+1. **F.1 — acervo × etapa bloqueada: leitura (a), o programa é sequencial.** O material de etapa
+   bloqueada continua **listado**, com o badge "bloqueada" e **sem link ativo** ("libera com a
+   etapa"). Reversível em uma linha.
+2. **F.2 — UX7 (canal para quem não tem acesso): fica ABERTO.** Não existe e-mail nem WhatsApp no
+   código (`rg "mailto|suporte@"` → 0) e não se inventa endereço. A copy segue "fale com a equipe";
+   virou pendência do João.
+3. **F.3 — senha do sócio: ENTROU.** `gps.admin_definir_senha_membro` espelhando
+   `admin_definir_senha` (guardas `gp_is_admin()` + `admin_alvo_e_equipe`, o membro precisa ter
+   `user_id`, log em `acessos_log`). Pentest obrigatório — feito.
+4. **F.4 — excluir cliente: confirmação nomeada agora.** **Arquivar em vez de apagar**
+   (`arquivado_em`) fica registrado como **evolução futura** — mexe em `etapa1_clientes`, a tabela
+   mais quente do sistema.
+5. **F.5 — SMTP do Supabase Auth: copy honesta agora; a configuração é do João.**
+6. **F.6 — B10 segue com o Marcio** (a copy sequencial fecha a Etapa 01 para 58 de 63 ambientes).
+
+#### (d) Pentest da rodada — **APROVADO**
+
+0 crítico, 0 alto. Tudo corrigido em `f96c3cb` e `2b250b0`:
+
+- 🟡 **MÉDIO — guarda cross-sistema.** `gps.admin_alvo_e_equipe` só enxerga `public.perfis`, mas
+  `auth.users` é **compartilhado por 7 sistemas**: um sócio do GPS pode ser admin do Workbook.
+  `definirSenhaMembro` passou a consultar `admin_programas_do_email` antes de trocar a senha e, se a
+  conta tiver papel fora do GPS, devolve `precisaConfirmar` + programas **sem alterar nada**; a UI
+  confirma com o nome dos sistemas na tela.
+- 🔵 **BAIXO — teto do motivo.** O motivo da recusa de solicitação passou a ser cortado em 500
+  caracteres **no servidor**.
+- 🔵 **BAIXO — URL de material no payload.** A URL da aula de etapa trancada ia no HTML inicial
+  mesmo sem virar link (dava para ler no view-source). Corte movido para o servidor.
+- ⚪ **INFO — regex.** `adicionarSocioAluno` passou a usar `emailValido`, a regex única.
+
+#### (e) Onda 4 — bundle (fechada em `ea39d6b`)
+
+**Depois** (mesmo método): `/login` **236 KB**, `/cadastro` **236**, `/esqueci-senha` **235** (−69,
+aceite ≤ 245 cumprido), `/p/plantao` 284 (+4, custo do `ToasterLazy`). Rotas autenticadas, pelo
+`page_client-reference-manifest.js`: `/` 143→74, `/admin` 223→158, `/admin/aluno/[id]` 181→75,
+`/perfil` 157→97, `/pasta` 152→72, `/chamados` 174→114, `/clientes` 209→149, `/etapa/[n]` 162→102.
+O chunk do SDK do Supabase (64 KB gzip) estava em 27 manifests; hoje em 0 — `await import()`
+dentro do handler em `logout-button`, `auto-logout`, `esqueci-form`, `redefinir-form`,
+`trocar-senha`, `anexo-campo` (mecanismo de logout intocado). `next/dynamic` só nos diálogos de
+admin (`CriarAcesso`, `GerenciarAcesso`); `pasta-view` virou Server Component com o form de admin
+em `pasta-config-form.tsx`; `<Toaster>` lazy. Revertidos com número: `optimizePackageImports`
+(0 KB) e `dynamic` no `AnexoCampo` (≤ 1 KB e piscava). **`/login` não chega a 190**: 38,6 KB são
+polyfill `noModule` que browser moderno não baixa (197 KB reais); o resto é `react-dom` (71 KB),
+runtime do Next (~59 KB) e Base UI (~34 KB) — piso de framework, não sobra de código.
+
+Medido **antes** (commit `75b7138`, gzip somando os `<script>` que o HTML pede): `/login`
+**248 KB**, `/cadastro` **249 KB**, `/esqueci-senha` **312 KB**, `/p/plantao` **288 KB**. O
+`/esqueci-senha` pesa ~64 KB gzip a mais porque `esqueci-form.tsx` importa o SDK do Supabase no
+browser para **uma** chamada (`resetPasswordForEmail`), enquanto o `login-form.tsx` usa Server
+Action. A Onda 4 tira o SDK do carregamento inicial e move `src/app/etapa-1/actions.ts` para
+`src/app/clientes/actions.ts`. **Meta: `/login` ≤ 190 KB gzip, ou justificativa escrita.** Números
+**depois** e o caminho novo das actions: preencher quando a onda fechar. O mecanismo do logout
+**não** muda (o comentário de `logout-button.tsx` registra que route handler / Server Action
+quebrava atrás do proxy LiteSpeed da Hostinger).
+
+#### (f) Pendências que sobraram para o João / Marcio
+
+1. **`chamados_email_equipe` vazio** — preencher em `/admin/chamados` ou definir `EMAIL_SUPORTE` no
+   painel da Hostinger (é **fallback**, aceita vários e-mails separados por vírgula). Com as duas
+   vazias, chamado novo não avisa ninguém.
+2. **SMTP customizado no Supabase Auth** (Resend) — sem isso, "Esqueci minha senha" sai pelo SMTP
+   embutido, de baixa entrega e com limite por hora. Acesso e decisão do João (F.5).
+3. **UX7 — qual canal a pessoa sem acesso usa?** Um e-mail ou WhatsApp para colocar na tela de
+   solicitação recusada (pode ser o mesmo de `chamados_email_equipe`).
+4. **B10** — a copy sequencial fecha a Etapa 01 para **58 de 63 ambientes**. É o pedido literal do
+   Marcio; falta levar o número a ele.
+5. **Ilan sem conta** — não existe em `auth.users`, logo não dá para promover a admin.
+6. **`frame-ancestors https://*.hotmart.com`** — depende do ensaio do iframe (abrir o Plantão dentro
+   da Hotmart e ler o `document.referrer`). Fechar às cegas tira 421 pessoas do ar.
+7. **`pg_cron` do `primeiro_acesso`** — 1 comando, ver `ATIVAR-DIARIO-EVENTOS.md`.
+8. **C7 — onde "recusou" mora** antes de remover `status` de `etapa1_clientes`.
+9. **Dropar `gps.plantao_config`** numa migration futura, depois de **1 semana** de `gps.config` no
+   ar (o caminho de leitura já é o novo; some o código, não o histórico).
+10. **Arquivar cliente em vez de apagar** (`arquivado_em`) — evolução registrada em F.4.
+
+#### (g) Roteiro de validação logado (resumo; completo na seção E do `tmp/squad/rodada-final.md`)
+
+**Antes:** `npm run build && npx next start -p 3991`, e guardar o número do bundle.
+
+*Como aluno titular* — (1) "Continue de onde parou" leva a uma tarefa que **dá para marcar**, ou diz
+o que destravar; nunca a um passo cinza. (2) "Clientes X/30" bate com o que a Etapa 01 cobra: com o
+passo 2 travado, o número **não** pode ser 30/30. (3) "Excluir" cliente pede confirmação com o nome
+dele — cancele. (4) Desmarcar a estrela avisa que isso volta a travar os passos 4–8 — cancele.
+(5) Na fase Contratado o botão diz **"Abrir contrato"**. (6) Material de etapa "bloqueada" fica
+listado **sem link ativo**. (7) Nenhum "R$ 0,00" onde deveria estar "não informado". (8) Abrir um
+chamado de teste e conferir se alguém recebeu e-mail.
+
+*Como sócio* (um dos 13 ambientes compartilhados) — (9) o header não mostra Financeiro, e digitar
+`/financeiro` dá **aviso**, não redirect mudo. (10) `/chamados` abre e o chamado do titular aparece
+(é do ambiente, não da pessoa). (11) `/perfil` mostra **o seu** nome.
+
+*Como admin* — (12) a aba "Chamados" tem contador e o card do aluno com chamado aberto mostra o
+badge. (13) "Recusar" pede motivo, e o motivo aparece na tela do aluno recusado. (14) "Gerenciar
+acesso" → "Remover" sócio pede confirmação nomeada (**cancele**) e nenhum texto diz "GPS";
+"Definir senha" num membro com conta em outro portal do grupo **lista os sistemas antes de trocar**.
+(15) Criar slot no Plantão já vem com **120**; e em `/admin/chamados`, "Fechar entrada" pede
+confirmação e — com a lista vazia mas `EMAIL_SUPORTE` definido — o aviso vermelho **não** afirma que
+ninguém recebe.
 
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 
@@ -796,6 +984,11 @@ O que foi **removido** (código):
 - ⚠️ **`/agenda` não existe** — a pasta `src/app/agenda/` foi apagada em 09/09; era só um
   `actions.ts` órfão (sem `page.tsx`) do agendamento removido em 08/2026, com Server Actions
   compiladas e expostas. **Não recriar.**
+- ⚠️ **`/etapa-1` NÃO é rota** — `src/app/etapa-1/` só tem `actions.ts` (as Server Actions dos
+  clientes da Etapa 01), sem `page.tsx`. A tela é `/etapa/[n]`. Em 09/09 os `revalidatePath` que
+  apontavam para `/etapa-1` e para `/admin/solicitacoes` (as duas inexistentes) foram trocados
+  pelas rotas reais. Na Onda 4 (`ea39d6b`) as actions foram para **`src/app/clientes/actions.ts`**
+  e a pasta `src/app/etapa-1/` deixou de existir.
 - `/captacao` — bloqueado (placeholder "em breve").
 - `src/proxy.ts` — proteção de sessão (Next 16 usa `proxy`, não `middleware`). Públicas: `/login`, `/cadastro`, `/auth/*`.
 
@@ -809,7 +1002,8 @@ Admin define/edita o link (`salvarPastaDriveUrl`). Item "Pasta" no nav.
 ⚠️ O `embeddedfolderview` **só renderiza se a pasta estiver compartilhada por link** ("qualquer
 pessoa com o link"); em pasta restrita a contas específicas o iframe vem vazio, mesmo para quem
 tem acesso. (O antigo card "Como sua pasta é organizada" / mapa da estrutura padrão segue
-**removido** da UI; `ESTRUTURA_PASTA` em `pasta.ts` continua sem uso.)
+**removido** da UI; a constante `ESTRUTURA_PASTA` de `pasta.ts` **não existe mais** — saiu com o
+código morto na rodada final de 09/09.)
 
 ## Onboarding do aluno (modelo definido)
 
@@ -990,9 +1184,38 @@ limita à própria linha. Já estava resolvido; o documento é que não tinha si
 - [x] **Fase 6 — Suporte por chamados (2026-09-09):** `/chamados` e `/admin/chamados`,
       tabelas append-only, bucket `gps-chamados` (só o aluno anexa), `gps.config` com
       interruptor, retenção de 180 dias com expurgo por clique do admin.
-- [ ] 🔴 **Decidir sobre `gps.senhas_bkp_20260810`** (hashes bcrypt de `auth.users`, RLS
-      desligada, sem grant à API, parada desde 10/08 sem finalidade). `drop table` é
-      irreversível — decisão do João. Ver "Polimento geral + Fases 5, 6 e 7".
+- [x] **Rodada final de qualidade (2026-09-09, `2c03325..f257f24`):** confirmação nomeada em tudo
+      que apaga ou tranca (`DialogoConfirmacao`); `proximoPasso` sem beco sem saída (devolve
+      `bloqueio`); KPI de clientes em `comDados`; divergência de saldo nos dois sentidos; motivo na
+      recusa de solicitação; chamado aberto com badge, filtro e contador (zero consulta nova);
+      material de etapa bloqueada sem `url` **cortado no servidor**; `fallbackEnv` do
+      `EMAIL_SUPORTE`. Ver "Rodada final de qualidade".
+- [x] **Um lugar só para cada regra (2026-09-09):** `moeda.ts` e `datas.ts` como únicos
+      formatadores, `texto.ts` com a única regex de e-mail, `masks.ts:soDigitos`,
+      `traduzirErroBanco` em `src/lib/erros.ts`, `navDoAluno(ctx)` com a regra do sócio,
+      `gps.config` como única tabela de configuração (`plantao_config` em compatibilidade) e as
+      4 RPCs que só existiam no banco versionadas.
+- [x] **Arquivos gigantes cortados (2026-09-09):** `data.ts` virou fachada
+      (`src/lib/data/<assunto>.ts`), as actions do Plantão viraram
+      `slots-/mentoras-/alunos-/config-actions.ts` e 4 componentes de 739–1212 linhas viraram pasta
+      com `index.tsx` (nenhum arquivo novo passa de 400 linhas). Movimento puro: 26 capturas
+      Playwright com md5 idêntico antes/depois.
+- [x] **`gps.admin_definir_senha_membro` (2026-09-09)** — "Definir senha" por membro do ambiente,
+      o remédio que faltava para os 13 sócios. Pede confirmação nomeando os sistemas quando a conta
+      tem papel em outro portal do grupo. Duração padrão do slot do Plantão passou a **120**.
+- [x] **Onda 4 — bundle** (`ea39d6b`): SDK do Supabase fora do carregamento inicial (−60 a −106 KB
+      gzip por rota autenticada; `/esqueci-senha` 312→235); `src/app/etapa-1/actions.ts` →
+      `src/app/clientes/actions.ts`. `/login` ficou em 236 (197 sem o polyfill `noModule`) — o
+      piso é framework, ver seção (e) da rodada final.
+- [ ] **Definir o canal de contato de quem não tem acesso (UX7)** — não existe e-mail nem WhatsApp
+      no código; a tela de solicitação recusada só diz "fale com a equipe".
+- [ ] **Configurar SMTP customizado (Resend) no Supabase Auth** — hoje "Esqueci minha senha" sai
+      pelo SMTP embutido, de baixa entrega e com limite por hora.
+- [ ] **Dropar `gps.plantao_config`** numa migration futura, depois de 1 semana de `gps.config`
+      no ar.
+- [x] ✅ **`gps.senhas_bkp_20260810` APAGADA (2026-09-09)** — 83 linhas de hash bcrypt paradas
+      desde 10/08 sem finalidade (71 ainda idênticas às senhas atuais). Migração `…119`,
+      autorizada pelo João. Ver "Rodada final de qualidade".
 - [ ] **Preencher `chamados_email_equipe`** em `/admin/chamados` (ou `EMAIL_SUPORTE` no
       painel da Hostinger). Hoje as duas estão vazias: chamado novo não avisa ninguém.
 - [ ] **Agendar o `pg_cron` do `primeiro_acesso`** — 1 comando, ver `ATIVAR-DIARIO-EVENTOS.md`.
@@ -1043,7 +1266,16 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-09-09 (madrugada) — **polimento geral + Fases 5, 6 e 7 das 9
+_Última atualização: 2026-09-09 (rodada final) — **rodada final de qualidade**
+(`2c03325..f257f24`, 8 commits). Nada que apaga ou tranca acontece sem confirmação nomeada
+(`DialogoConfirmacao`); `proximoPasso` não aponta mais para porta trancada; KPI de clientes em
+`comDados`; material de etapa bloqueada vai sem `url` (corte no servidor); "Definir senha" por
+membro (`gps.admin_definir_senha_membro`), com aviso quando a conta é de outro portal. Um lugar só
+para cada regra (`moeda.ts`, `datas.ts`, `texto.ts`, `erros.ts`, `navDoAluno`, `gps.config`);
+`data.ts` virou fachada e 4 componentes gigantes viraram pasta com `index.tsx`. Pentest APROVADO
+(1 MÉDIO, 2 BAIXOS, 1 INFO, corrigidos). **Onda 4 (bundle) em execução.**_
+
+_Anterior: 2026-09-09 (madrugada) — **polimento geral + Fases 5, 6 e 7 das 9
 features** (`f9a763a..cb8fbdd`, 13 commits). Design system em `src/components/ui/`
 (`PageHeader` + `<main id="conteudo">`), `loading.tsx`/`global-error.tsx`, texto em laranja
 escuro (AA) e fim do `.dark`; sessão memoizada com `cache()` (1 `getUser` no lugar de 7),

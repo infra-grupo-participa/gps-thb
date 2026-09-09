@@ -26,7 +26,7 @@ produção escutando na porta definida por `process.env.PORT`.
    | `EMAIL_FROM` | sim | remetente; o domínio precisa estar **verificado** na Resend |
    | `PLANTAO_MANUTENCAO_SEGREDO` | sim (Plantão) | ≥ 16 caracteres, **igual** ao setting `app.plantao_manutencao_segredo` no banco; a guarda falha FECHADO |
    | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | recomendada | sem ela cada build gera chave nova e Server Actions em voo falham no deploy |
-   | `EMAIL_SUPORTE` | **opcional (nova em 09/2026)** | destinatário de aviso de chamado novo. É apenas **fallback**: a fonte primária é `gps.config.chamados_email_equipe`, editável em `/admin/chamados` **sem deploy**. Aceita vários e-mails separados por vírgula. ⚠️ **Com as duas vazias, chamado novo não avisa ninguém** (a action grava `console.error` e a tela do admin mostra o aviso). |
+   | `EMAIL_SUPORTE` | **opcional (nova em 09/2026)** | destinatário de aviso de chamado novo. É **apenas fallback**, nunca a fonte primária: a lista que vale é `gps.config.chamados_email_equipe`, editável em `/admin/chamados` **sem deploy**, e o fallback só entra quando ela está vazia. Aceita vários e-mails separados por vírgula. ⚠️ **Com as duas vazias, chamado novo não avisa ninguém** (a action grava `console.error` e a tela do admin mostra o aviso). Desde 09/09 a tela sabe que a env existe (`fallbackEnv`, só o booleano — o endereço nunca vai ao navegador) e para de afirmar que ninguém recebe. |
 
    `EMAIL_EQUIPE` **não volta** — era do fluxo de reunião, removido em 08/2026.
    > Nunca coloque a `service_role` do Supabase no repositório nem no client.
@@ -82,6 +82,12 @@ Há ainda um passo que **não é migration** e por isso não acontece sozinho:
       incompleta.
 
 ## Notas
+- ⚠️ **`gps.plantao_config` sai numa migration futura.** Desde 09/09/2026 a configuração do
+  sistema vive toda em **`gps.config`**, que absorveu a chave `plantao_inscricao_aberta` com o
+  valor vigente. A função `gps.plantao_escrita_liberada()` lê `config` → `plantao_config`
+  (compatibilidade) → setting → ABERTO, então nada quebra na virada. A tabela antiga fica **cerca
+  de uma semana** no ar e depois é dropada por migration própria — até lá, **não escrever nela** e
+  **não criar tabela nova de configuração**: chave nova vai em `gps.config`.
 - `next.config.ts` envia `Cache-Control: no-store` para os documentos HTML e cache
   imutável para `/_next/static`, evitando o ChunkLoadError de HTML velho em CDN
   (lição do sistema legado `sip`).

@@ -256,10 +256,14 @@ existe para 24% dos alunos.
 
 - [x] **1 — Planejamento** (este documento)
 - [x] **2 — Sequência de tarefas em fases de implementação** (`tmp/squad/9-features.md` → resumo abaixo)
-- [x] **3 — Codificação por fases + observações** (Fases 1, 2, 2-bis, 3, 4, 8)
-- [x] **4 — Auditoria geral + validação** (pentest ×2 + fable-orchestrator)
+- [x] **3 — Codificação por fases + observações** — **todas as 7 fases**, concluídas em 08 e
+      09/09/2026 (1, 2, 2-bis, 3, 4 e 8 em 08/09; 5, 6, 7-A e 7-B em 09/09)
+- [x] **4 — Auditoria geral + validação** — **concluída em 09/09**: pentest ×2 nas Fases 5–7 e no
+      polimento, `fable-orchestrator` e a **rodada final de qualidade** (arquiteto + pentest da
+      rodada, `2c03325..f257f24`). Ver a seção "Rodada final (09/09)" no fim.
 
-**A Fase 1 não depende de nenhum bloqueio** — pode começar a qualquer momento.
+**As 4 etapas do pedido do Marcio estão fechadas.** O que sobrou é decisão dele ou do João —
+lista no fim do documento.
 
 ---
 
@@ -284,9 +288,66 @@ existe para 24% dos alunos.
 **B1** (qual caso de sócio o Marcio viu); **B10** (a copy sequencial fecha a Etapa 01 para 58
 de 63 ambientes); conta para **Ilan** (não existe em `auth.users`, logo não dá para promover a
 admin — Isabela e Cristiane já são admin, Elaine é dev); **C7** (onde "recusou" mora antes de
-remover `status`); 🔴 **`gps.senhas_bkp_20260810`** (hashes bcrypt parados desde 10/08 sem
-finalidade — `drop table` é irreversível); **`chamados_email_equipe` vazio** (preencher em
+remover `status`); ~~`gps.senhas_bkp_20260810`~~ (**resolvida em 09/09** — tabela apagada pela
+migração `…119`, com autorização do João); **`chamados_email_equipe` vazio** (preencher em
 `/admin/chamados` ou definir `EMAIL_SUPORTE` na Hostinger, senão chamado novo não avisa
 ninguém); e o ensaio do iframe da Hotmart para fechar `frame-ancestors *.hotmart.com`.
+
+---
+
+## Rodada final (09/09) — `2c03325..f257f24`
+
+Depois de as 7 fases fecharem, o arquiteto caminhou pelo produto na ordem do usuário (aluno →
+sócio → admin) sobre `75b7138` e o orquestrador mediu o repo. Saiu um plano em 4 ondas, executado
+em 8 commits. Contexto em `tmp/squad/rodada-final.md` e `tmp/squad/inventario-qualidade.md`; as
+regras que passaram a valer estão no `CLAUDE.md`, seção "🧭 Rodada final de qualidade".
+
+| # | Feature / fluxo | Veredito antes | O que mudou na rodada | Commit(s) |
+|---|---|---|---|---|
+| 1 | Login / cadastro / esqueci / redefinir | Parcial | nada de lógica; o SMTP do Supabase vira pendência do João (F.5); bundle na Onda 4 | — |
+| 2 | Home do aluno | Parcial | `proximoPasso` com `temFavorito` e `bloqueio` (nunca mais tarefa travada); KPI em `comDados` | `2c03325`, `9aa9f06` |
+| 3 | Etapa 01 | Sim | estado da tarefa travada por **forma**, não por opacidade; B10 segue aberto | `9aa9f06` |
+| 4 | Clientes | Sim | confirmação nomeada em excluir e desfavoritar; "Abrir contrato"; sem `error.message` cru | `9aa9f06`, `2c03325` |
+| 5 | Financeiro | Quase | `divergenciaQuitacao` nos dois sentidos (FN1) | `2c03325` |
+| 6 | Suporte por chamados | Parcial | badge + filtro + contador (zero consulta nova); `fallbackEnv` do `EMAIL_SUPORTE` | `2c03325`, `9aa9f06` |
+| 7 | Materiais | Contradizia a liberação | F.1 leitura (a): material de etapa bloqueada vai **sem `url`**, cortado no servidor | `9aa9f06`, `2b250b0` |
+| 8 | Pasta (Drive) | Sim | só limpeza (`ESTRUTURA_PASTA` morta removida) | `b9e55f2` |
+| 9 | Perfil / trocar senha | Sim | sem mudança de lógica | — |
+| 10 | Etapas 2–6 bloqueadas | Sim | vazamento pelo acervo fechado | `2b250b0` |
+| 11 | Sócio | Parcial | **"Definir senha" por membro** (`gps.admin_definir_senha_membro`) — antes a única saída apagava o login | `2d313a3`, `b9e55f2` |
+| 12 | Painel `/admin` | Quase | badge/filtro de chamado aberto; "Motivo (o aluno vê)" na recusa | `9aa9f06` |
+| 13 | Modo assistência | Sim | `assistenciaNavItems` esconde o Financeiro em ambiente com sócio; "GPS" fora do toast | `2d313a3`, `9aa9f06` |
+| 14 | Diário (Fases 1+2) | Sim | **nada** — está na lista do que não se mexe | — |
+| 15 | `/admin/chamados` | Sim | "Fechar entrada" pede confirmação | `9aa9f06` |
+| 16 | `/admin/plantao` | Quase | duração padrão **120**; `gps.config` absorve `plantao_config`; actions cortadas | `2d313a3`, `4228944` |
+| 17 | E-mails | Parcial | nada; o destinatário do aviso de chamado continua pendência | — |
+
+**Estrutura (zero mudança de comportamento).** `data.ts` virou fachada
+(`src/lib/data/<assunto>.ts`), as actions do Plantão viraram
+`slots-/mentoras-/alunos-/config-actions.ts` (o `actions.ts` ficou como **barril sem
+`"use server"`** — com a diretiva o build perde os exports) e 4 componentes de 739–1212 linhas
+viraram pasta com `index.tsx`, nenhum arquivo novo passando de 400 linhas. Prova visual: 26
+capturas Playwright com md5 idêntico antes e depois (`4228944`, `f257f24`).
+
+**Decisões do orquestrador (F.1–F.6).** Acervo gateado; UX7 fica aberto (não há endereço no
+código, e não se inventa); senha do sócio entrou, com pentest; excluir cliente **confirma**
+(arquivar fica como evolução); SMTP é do João; B10 segue com o Marcio.
+
+**Pentest da rodada: APROVADO** — 1 MÉDIO (guarda cross-sistema: `auth.users` é compartilhado por
+7 sistemas, então trocar a senha de um membro pede confirmação listando os outros portais),
+2 BAIXOS (teto de 500 caracteres no motivo da recusa; URL de material no payload inicial) e
+1 INFO (regex única). Corrigidos em `f96c3cb` e `2b250b0`.
+
+**Onda 4 (bundle), fechada em `ea39d6b`:** SDK do Supabase fora do carregamento inicial
+(`await import()` nos 6 handlers), `next/dynamic` nos diálogos de admin, `pasta-view` server.
+Antes → depois (KB gzip): `/login` 248→236, `/esqueci-senha` 312→235, `/` 143→74, `/admin` 223→158,
+`/admin/aluno/[id]` 181→75. `src/app/etapa-1/actions.ts` → `src/app/clientes/actions.ts`.
+
+**Pendências desta rodada** (somam-se às de baixo): canal de contato para quem não tem acesso
+(UX7); SMTP customizado no Supabase Auth; dropar `gps.plantao_config` depois de 1 semana no ar;
+arquivar cliente em vez de apagar. ✅ **`gps.senhas_bkp_20260810` deixou de ser pendência** —
+apagada pela migração `…119`, com autorização do João.
+
+---
 
 **Pentest de 09/09:** dois relatórios, ambos **APROVADOS** (0 crítico, 0 alto). Fases 5–7: 1 MÉDIO documentado (MIME de anexo vem do que o cliente declarou no PUT, não de inspeção de bytes — a trava real é `download=` em todo link; nunca servir anexo inline) e 1 BAIXO corrigido (equipe não anexa, agora imposto em `gps.chamado_gravar_mensagem`, migração ...116). Polimento: 1 MÉDIO corrigido (`gps.agenda`/`gps.reuniao_agendamentos` aceitavam escrita do dono pela REST — policies derrubadas e grants revogados, ...117, histórico preservado) e 1 BAIXO corrigido (`emailParaIlike` escapa `%`/`_`; `acharAlunoPorEmail` morta removida). Correções em `cd87aa5`.

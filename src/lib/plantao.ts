@@ -5,23 +5,25 @@
  * (commit b457005) e PROIBIDO de reconstruir. As tabelas `gps.reuniao_*`
  * ficam órfãs e intocadas.
  *
- * `hojeSaoPaulo`, `horaCurta`, `faixaHorario` e `rotuloData` são PORTE de
+ * `horaCurta`, `faixaHorario` e `rotuloData` são PORTE de
  * `git show b457005^:src/lib/reuniao.ts` — mesmo comportamento, adaptado ao
  * plantão (duração variável em vez de fixa em 2h).
  */
+
+import { hojeSaoPaulo } from "@/lib/datas";
+
+/**
+ * Reexport: `hojeSaoPaulo` mudou para `@/lib/datas` (o único formatador de
+ * data da casa) porque quem só precisa saber o dia de hoje não deveria
+ * importar o módulo do Plantão — era assim que o card do Financeiro puxava
+ * daqui. Os chamadores antigos (`calendario-mes`) continuam válidos.
+ */
+export { hojeSaoPaulo };
 
 /** Data-only "YYYY-MM-DD" → Date em UTC meia-noite (sem drift de fuso). */
 function dataUTC(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d));
-}
-
-/** "YYYY-MM-DD" de hoje no fuso de São Paulo (o servidor pode estar em UTC). */
-export function hojeSaoPaulo(): string {
-  // en-CA formata como YYYY-MM-DD; timeZone garante o dia certo no Brasil.
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date());
 }
 
 /** Normaliza um horário do banco (ex.: "09:00:00") para "HH:MM". */

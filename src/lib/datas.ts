@@ -58,3 +58,20 @@ export function formatarDataSoDia(iso: string | null | undefined): string | null
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   return m ? `${m[3]}/${m[2]}/${m[1]}` : null;
 }
+
+/**
+ * "YYYY-MM-DD" de hoje no fuso de São Paulo (o servidor pode estar em UTC).
+ *
+ * Morava em `src/lib/plantao.ts`, que é o módulo do **Plantão de Dúvidas** —
+ * e o card do Financeiro importava de lá só para saber que dia é hoje. Data é
+ * assunto deste arquivo (CD2); `plantao.ts` reexporta para os chamadores dele
+ * não mudarem.
+ *
+ * Devolve string, não `Date`: quem compara "YYYY-MM-DD" com "YYYY-MM-DD" tem
+ * ordem lexicográfica = ordem cronológica e nenhum `Date` no meio do caminho
+ * para trocar o dia de fuso.
+ */
+export function hojeSaoPaulo(): string {
+  // en-CA formata como YYYY-MM-DD; timeZone garante o dia certo no Brasil.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: FUSO }).format(new Date());
+}

@@ -4,6 +4,7 @@ import { HeroFaturamento } from "@/components/financeiro/hero-faturamento";
 import { ContratosFechados } from "@/components/financeiro/contratos-fechados";
 import { ProgramaCard } from "@/components/financeiro/programa-card";
 import { Extrato } from "@/components/financeiro/extrato";
+import { Secao } from "@/components/ui/secao";
 import type {
   LinhaExtrato,
   ProgressoFaturamento,
@@ -73,11 +74,14 @@ export function FinanceiroView({
         basePath={basePath}
       />
 
-      <section className="grid gap-3">
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          Seu programa
-        </h2>
-
+      {/* `Secao` (marcador + título + régua) no lugar do `uppercase
+          tracking-wide`: é o cabeçalho de seção do portal desde a Onda A, e
+          esta aba era a última tela com a etiqueta em caixa alta. */}
+      <Secao
+        icone={<WalletMinimal />}
+        titulo="Seu programa"
+        classeConteudo="grid gap-4"
+      >
         {resultado.estado === "erro" ? (
           <EmptyState
             icone={<TriangleAlert />}
@@ -107,21 +111,19 @@ export function FinanceiroView({
             }
           />
         ) : (
-          <div className="grid gap-4">
-            {contratos.map((contrato, i) => (
-              <ProgramaCard
-                // A ordem vem do `order by` da RPC e a lista é estática
-                // (Server Component, sem reordenação e sem estado de
-                // cliente): índice como chave aqui não tem o defeito que
-                // teria numa lista editável.
-                key={contrato.contatoHmId ?? `${contrato.produto ?? "programa"}-${i}`}
-                contrato={contrato}
-                ehAdmin={ehAdmin}
-              />
-            ))}
-          </div>
+          contratos.map((contrato, i) => (
+            <ProgramaCard
+              // A ordem vem do `order by` da RPC e a lista é estática
+              // (Server Component, sem reordenação e sem estado de
+              // cliente): índice como chave aqui não tem o defeito que
+              // teria numa lista editável.
+              key={contrato.contatoHmId ?? `${contrato.produto ?? "programa"}-${i}`}
+              contrato={contrato}
+              ehAdmin={ehAdmin}
+            />
+          ))
         )}
-      </section>
+      </Secao>
 
       <Extrato
         linhas={linhasExtrato}

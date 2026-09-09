@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, Flag, Trophy, TriangleAlert } from "lucide-react";
+import { ArrowRight, Flag, Trophy } from "lucide-react";
+import { AvisoInline } from "@/components/ui/aviso-inline";
 import { Badge } from "@/components/ui/badge";
 import { BarraMarcos } from "@/components/ui/barra-marcos";
 import { Card, CardContent } from "@/components/ui/card";
 import { IconeChip } from "@/components/ui/kpi-card";
+import { Secao } from "@/components/ui/secao";
 import { brl, brlInteiro } from "@/lib/moeda";
 import type { ProgressoFaturamento } from "@/lib/financeiro";
 
@@ -64,19 +66,19 @@ export function HeroFaturamento({
   return (
     <Card className="ring-primary/20">
       <CardContent className="grid gap-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              Seu faturamento na mentoria
-            </h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Honorários dos clientes que você já fechou.
-            </p>
-          </div>
-          <IconeChip destaque={chegouNoAureo}>
-            <Trophy />
-          </IconeChip>
-        </div>
+        {/* `Secao`, não o `uppercase tracking-wide` que a Onda A tirou de 15
+            telas: rótulo tracked-out acima de tudo é o tell mais conhecido de
+            UI gerada. O troféu continua à direita (`acao`), e continua sendo
+            o `IconeChip` — é ele que acende em `marca-solida` no Áureo. */}
+        <Secao
+          titulo="Seu faturamento na mentoria"
+          descricao="Honorários dos clientes que você já fechou."
+          acao={
+            <IconeChip destaque={chegouNoAureo}>
+              <Trophy />
+            </IconeChip>
+          }
+        />
 
         {faturado === null ? (
           /* ── SEM DADO ────────────────────────────────────────────────────
@@ -213,22 +215,19 @@ export function HeroFaturamento({
         )}
 
         {contratadosSemValor > 0 ? (
-          <p className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-800">
-            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-            <span>
-              {contratadosSemValor}{" "}
-              {contratadosSemValor === 1
-                ? "cliente contratado ainda sem honorários informados"
-                : "clientes contratados ainda sem honorários informados"}
-              . Sem o valor, esse faturamento não entra na conta.{" "}
-              <Link
-                href={hrefClientes}
-                className="font-medium underline underline-offset-4"
-              >
-                Informar agora
-              </Link>
-            </span>
-          </p>
+          <AvisoInline>
+            {contratadosSemValor}{" "}
+            {contratadosSemValor === 1
+              ? "cliente contratado ainda sem honorários informados"
+              : "clientes contratados ainda sem honorários informados"}
+            . Sem o valor, esse faturamento não entra na conta.{" "}
+            <Link
+              href={hrefClientes}
+              className="foco-visivel rounded-xs font-medium underline underline-offset-4"
+            >
+              Informar agora
+            </Link>
+          </AvisoInline>
         ) : null}
       </CardContent>
     </Card>

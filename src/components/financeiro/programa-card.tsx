@@ -5,6 +5,7 @@ import {
   CircleHelp,
   Info,
   TriangleAlert,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Card,
@@ -14,10 +15,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AvisoInline } from "@/components/ui/aviso-inline";
 import { Badge } from "@/components/ui/badge";
-import { formatarData, formatarDataSoDia } from "@/lib/datas";
+import { Progress } from "@/components/ui/progress";
+import { formatarData, formatarDataSoDia, hojeSaoPaulo } from "@/lib/datas";
 import { brl, brlInteiro } from "@/lib/moeda";
-import { hojeSaoPaulo } from "@/lib/plantao";
 import type { ContratoFinanceiro, SituacaoContrato } from "@/lib/financeiro";
 import { cn } from "@/lib/utils";
 
@@ -46,35 +48,38 @@ import { cn } from "@/lib/utils";
  * ♿ Situação NUNCA é só cor: cada estado tem ícone + palavra + cor.
  */
 
-/** Aparência da situação — cor, ícone e palavra, sempre os três juntos. */
+/**
+ * Aparência da situação — cor, ícone e palavra, sempre os três juntos.
+ *
+ * 🎨 Os quatro pares semânticos da Onda A (`sucesso · atencao · risco ·
+ * neutro`, contraste medido em `globals.css`) são a ESCADA DE SEVERIDADE do
+ * portal, e o `Badge` já os desenha. O mapa antigo era Tailwind crua
+ * (`emerald/sky/red/amber-*`): cinco cores que não existem em lugar nenhum do
+ * sistema, e um "Em dia" azul que não dizia se era bom ou ruim.
+ *
+ * 🔑 `Quitado` e `Em dia` caem os dois em `success` de propósito: são os dois
+ * estados em que **não há nada a fazer**, e a escada tem um degrau só para
+ * isso. O que os separa é o ícone (`CircleCheck` × `CalendarCheck`) e a
+ * palavra — nunca a cor sozinha (WCAG 1.4.1). Pintar "Em dia" de cinza seria
+ * repetir o defeito que a Onda A corrigiu: estado BOM com o mesmo cinza de
+ * "não temos essa informação", que é justamente o `neutral` do `indefinido`.
+ */
 const SITUACOES: Record<
   SituacaoContrato,
-  { texto: string; classe: string; icone: React.ReactNode }
+  {
+    texto: string;
+    variante: "success" | "warning" | "danger" | "neutral";
+    icone: LucideIcon;
+  }
 > = {
-  quitado: {
-    texto: "Quitado",
-    classe: "border-emerald-500/40 bg-emerald-500/10 text-emerald-800",
-    icone: <CircleCheck aria-hidden />,
-  },
-  em_dia: {
-    texto: "Em dia",
-    classe: "border-sky-500/40 bg-sky-500/10 text-sky-800",
-    icone: <CalendarCheck aria-hidden />,
-  },
-  atrasado: {
-    texto: "Atrasado",
-    classe: "border-red-500/40 bg-red-500/10 text-red-800",
-    icone: <TriangleAlert aria-hidden />,
-  },
-  cancelado: {
-    texto: "Cancelado",
-    classe: "border-amber-500/40 bg-amber-500/10 text-amber-800",
-    icone: <Ban aria-hidden />,
-  },
+  quitado: { texto: "Quitado", variante: "success", icone: CircleCheck },
+  em_dia: { texto: "Em dia", variante: "success", icone: CalendarCheck },
+  atrasado: { texto: "Atrasado", variante: "danger", icone: TriangleAlert },
+  cancelado: { texto: "Cancelado", variante: "warning", icone: Ban },
   indefinido: {
     texto: "Não informado",
-    classe: "border-border bg-muted text-muted-foreground",
-    icone: <CircleHelp aria-hidden />,
+    variante: "neutral",
+    icone: CircleHelp,
   },
 };
 
@@ -96,30 +101,6 @@ function dataHora(iso: string | null): string | null {
 function jaVenceu(diaIso: string | null): boolean {
   if (!diaIso) return false;
   return diaIso.slice(0, 10) < hojeSaoPaulo();
-}
-
-/**
- * Barra do pagamento do programa. Só é chamada com `pct` conhecido — quem
- * tem `null` mostra frase, não barra de 0%.
- */
-function BarraPagamento({ pct, rotulo }: { pct: number; rotulo: string }) {
-  const largura = Math.max(0, Math.min(100, pct));
-  return (
-    <div
-      role="progressbar"
-      aria-label={rotulo}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(largura)}
-      aria-valuetext={`${Math.round(largura)}% pago`}
-      className="relative h-2 w-full overflow-hidden rounded-full bg-muted ring-1 ring-foreground/5 ring-inset"
-    >
-      <div
-        className="h-full rounded-full bg-primary"
-        style={{ width: `${largura}%` }}
-      />
-    </div>
-  );
 }
 
 /**
@@ -157,7 +138,7 @@ function Detalhe({
   valor: string;
   /** Explicação VISÍVEL — não `title`: tooltip não chega por teclado. */
   ressalva?: string;
-  /** Vermelho, o MESMO tom do badge "Atrasado" — não amber, que é o do
+  /** `risco`, o MESMO par do badge "Atrasado" — não `atencao`, que é o do
       contrato cancelado. Duas severidades, duas cores. */
   alerta?: boolean;
 }) {
@@ -165,7 +146,7 @@ function Detalhe({
     <div
       className={cn(
         "flex flex-wrap items-baseline gap-x-1.5",
-        alerta && "text-red-800",
+        alerta && "text-risco-foreground",
       )}
     >
       <dt className={cn(!alerta && "text-muted-foreground")}>{rotulo}:</dt>
@@ -242,7 +223,11 @@ export function ProgramaCard({
     ehAurum;
 
   return (
-    <Card className={cn(cancelado && "bg-amber-500/5 ring-amber-500/30")}>
+    <Card
+      className={cn(
+        cancelado && "border-atencao-foreground/25 bg-atencao",
+      )}
+    >
       <CardHeader>
         <CardTitle>{contrato.produto ?? "Programa"}</CardTitle>
         {contrato.plano || contrato.turma ? (
@@ -256,8 +241,7 @@ export function ProgramaCard({
           </div>
         ) : null}
         <CardAction>
-          <Badge variant="outline" className={aparencia.classe}>
-            {aparencia.icone}
+          <Badge variant={aparencia.variante} icone={aparencia.icone}>
             {aparencia.texto}
           </Badge>
         </CardAction>
@@ -265,13 +249,12 @@ export function ProgramaCard({
 
       <CardContent className="grid gap-4">
         {cancelado ? (
-          <p className="flex items-start gap-2 text-sm font-medium text-amber-800">
-            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-            <span>
-              Contrato cancelado{canceladoEm ? ` em ${canceladoEm}` : ""}. Fale
-              com a equipe.
-            </span>
-          </p>
+          /* `moldura={false}`: o card inteiro já está na superfície de
+             atenção — outra caixa âmbar dentro dela não separaria nada. */
+          <AvisoInline moldura={false}>
+            Contrato cancelado{canceladoEm ? ` em ${canceladoEm}` : ""}. Fale
+            com a equipe.
+          </AvisoInline>
         ) : null}
 
         {temValores ? (
@@ -295,15 +278,25 @@ export function ProgramaCard({
               )}
             </div>
 
+            {/* `Progress` do sistema (trilho afundado + inset ring, h-2), no
+                lugar da barra desenhada à mão que este card tinha. O `pct` já
+                chega limitado a 0–100 por `derivarPct` (`@/lib/financeiro`);
+                a UI não refaz a conta, só arredonda para falar. Só renderiza
+                com `pct` conhecido — `null` mostra frase, não barra de 0%. */}
             {contrato.pagoPct === null ? null : (
-              <BarraPagamento
-                pct={contrato.pagoPct}
-                rotulo={`Pagamento do ${contrato.produto ?? "programa"}`}
+              <Progress
+                // Arredondado no `value`, não só no `aria-valuetext`: o
+                // `Progress` deriva `aria-valuenow` do mesmo número, e 41,6
+                // anunciado ao lado de "42% pago" seria a barra discordando
+                // de si mesma. 0,4 ponto de largura ninguém vê.
+                value={Math.round(contrato.pagoPct)}
+                aria-label={`Pagamento do ${contrato.produto ?? "programa"}`}
+                aria-valuetext={`${Math.round(contrato.pagoPct)}% pago`}
               />
             )}
 
             {quitado ? (
-              <p className="text-sm font-medium text-emerald-800">
+              <p className="text-sm font-medium text-sucesso-foreground">
                 Nada em aberto no cadastro.
               </p>
             ) : faltaPagar !== null ? (
@@ -410,24 +403,21 @@ export function ProgramaCard({
           /* FN1 — a divergência vem também NEGATIVA (pagou acima do total).
              Chamar isso de "quitado, mas o saldo é −R$ X" seria errado duas
              vezes: não é dívida, é crédito. Dois ramos, duas frases. */
-          <p className="previa-oculta flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-800">
-            <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-            <span>
-              <span className="font-medium">Só a equipe vê esta linha.</span>{" "}
-              {divergencia < 0 ? (
-                <>
-                  Pago acima do total em {brl(-divergencia)}. Confira no
-                  cadastro financeiro antes de responder ao aluno.
-                </>
-              ) : (
-                <>
-                  Contrato apresentado como quitado, mas o saldo apurado é{" "}
-                  {brl(divergencia)}. Confira no cadastro financeiro antes de
-                  responder ao aluno.
-                </>
-              )}
-            </span>
-          </p>
+          <AvisoInline icone={Info} className="previa-oculta">
+            <span className="font-medium">Só a equipe vê esta linha.</span>{" "}
+            {divergencia < 0 ? (
+              <>
+                Pago acima do total em {brl(-divergencia)}. Confira no cadastro
+                financeiro antes de responder ao aluno.
+              </>
+            ) : (
+              <>
+                Contrato apresentado como quitado, mas o saldo apurado é{" "}
+                {brl(divergencia)}. Confira no cadastro financeiro antes de
+                responder ao aluno.
+              </>
+            )}
+          </AvisoInline>
         ) : null}
       </CardContent>
 

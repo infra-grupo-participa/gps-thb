@@ -132,7 +132,7 @@ export function MetaHonorarios({
             {contratadosSemValor > 0 ? (
               <>
                 {" · "}
-                <span className="text-amber-800">
+                <span className="text-atencao-foreground">
                   {contratadosSemValor} de {contratados} contratados ainda sem
                   valor registrado
                 </span>

@@ -162,14 +162,14 @@ export function PerfilHero({
                   </p>
                 </>
               ) : (
-                <>
-                  <div className="numero-lg mt-0.5 text-muted-foreground">
-                    {brlInteiro(META_HONORARIOS)}
-                  </div>
-                  <p className="corpo-sm text-muted-foreground">
-                    meta de {brlInteiro(META_HONORARIOS)}
-                  </p>
-                </>
+                /* 🔴 Sem contratado, o hero mostrava R$ 150.000 em `numero-lg`
+                   cinza com "meta de R$ 150.000" embaixo — na posição do
+                   número faturado, o valor lê como FATURAMENTO, e o rótulo
+                   pequeno não desfaz o que o número grande já afirmou. Sem
+                   dado não há número grande: fica a régua, em uma linha. */
+                <p className="corpo-sm mt-0.5 text-muted-foreground">
+                  meta de {brlInteiro(META_HONORARIOS)}
+                </p>
               )}
             </div>
           </div>

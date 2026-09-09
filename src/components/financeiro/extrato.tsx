@@ -120,14 +120,20 @@ export function Extrato({
                 Participa.
               </caption>
               <thead>
-                <tr className="border-b text-xs tracking-wide text-muted-foreground uppercase">
-                  <th scope="col" className="py-2 pr-3 text-left font-medium">
+                {/* `rotulo` (12 px, sentence case, 600) no lugar de
+                    `uppercase tracking-wide`: a Onda A tirou a caixa alta de
+                    15 telas e esta era a última linha dela na aba.
+                    🔑 No `th`, não no `tr`: o preflight tem `th{font-weight:
+                    bold}`, e uma regra de elemento vence peso HERDADO — no
+                    `tr` a coluna saía em 700, mais pesada que o dado. */}
+                <tr className="border-b text-muted-foreground">
+                  <th scope="col" className="rotulo py-2 pr-3 text-left">
                     Data
                   </th>
-                  <th scope="col" className="py-2 pr-3 text-left font-medium">
+                  <th scope="col" className="rotulo py-2 pr-3 text-left">
                     Pagamento
                   </th>
-                  <th scope="col" className="py-2 text-right font-medium">
+                  <th scope="col" className="rotulo py-2 text-right">
                     Valor
                   </th>
                 </tr>

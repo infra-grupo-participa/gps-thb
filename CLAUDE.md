@@ -165,6 +165,13 @@ aqui serve para auditoria amanhã, com o SQL de conferência de cada uma.
    where criado_em::date = '2026-09-09';
   ```
 - **4 liberações + 11 revogações em `gps.plantao_alunos`** (campo `ativo`).
+  ⚠️ **Esse lote entrou só em `gps.membros`**: 27 deles sem a linha de `gps.ambientes` e 32
+  titulares sem `pessoa_aluno_id` — por isso o Modo Assistência respondia **404** ("erro de rota")
+  e a Central dizia "Cadastro não identificado" (10/09). Corrigido pela migração **`…187`**:
+  backfill + **triggers em `gps.membros`** (`trg_membros_garante_ambiente` cria o ambiente em
+  todo insert; `trg_membros_titular_e_pessoa` dá `pessoa_aluno_id = aluno_id` ao titular). Insert
+  à mão em `membros` passa a ser seguro; a regra deixou de viver só no TypeScript.
+
   As **liberações** (`gps.admin_liberar_aluno_plantao`, migration `…175`) têm
   trilha própria em `gps.plantao_eventos` (`acao='plantao_liberado_manualmente'`):
   ```sql

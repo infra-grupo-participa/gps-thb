@@ -10,6 +10,7 @@ import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { PastaView } from "@/components/pasta/pasta-view";
+import { PastaConfigForm } from "@/components/pasta/pasta-config-form";
 
 export default async function AdminAlunoPastaPage({
   params,
@@ -48,11 +49,14 @@ export default async function AdminAlunoPastaPage({
           descricao="Configure e acompanhe a pasta do Drive do aluno."
         />
 
-        <PastaView
-          alunoId={alunoId}
-          pastaUrl={ambiente.pasta_drive_url}
-          isAdmin
-        />
+        <div className="grid gap-6">
+          {/* PF4 — o campo de configuração é do admin e só existe aqui. */}
+          <PastaConfigForm
+            alunoId={alunoId}
+            pastaUrl={ambiente.pasta_drive_url}
+          />
+          <PastaView pastaUrl={ambiente.pasta_drive_url} isAdmin />
+        </div>
       </main>
     </>
   );

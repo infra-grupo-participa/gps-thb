@@ -1,13 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/**
+ * PF1 — por que `import()` no submit e NÃO Server Action.
+ *
+ * As duas tiram os 62 KB gzip do SDK do carregamento inicial (medido: o chunk
+ * some da lista de `<script>` que o HTML de `/esqueci-senha` pede). A Server
+ * Action, porém, mudaria o mecanismo: o `redirectTo` do link de redefinição
+ * passaria a ser montado no servidor, a partir de env ou de header de origem —
+ * exatamente a classe de coisa que já quebrou atrás do proxy LiteSpeed da
+ * Hostinger (ver o comentário do `logout-button.tsx`). Aqui o
+ * `window.location.origin` é a fonte da verdade e funciona igual em local,
+ * preview e produção. Mesmo número de KB, menos risco: fica o `import()`.
+ */
 export function EsqueciForm() {
-  const supabase = createClient();
   const [email, setEmail] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
@@ -18,7 +28,8 @@ export function EsqueciForm() {
     setErro(null);
     setEnviando(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(
+      const { createClient } = await import("@/lib/supabase/client");
+      const { error } = await createClient().auth.resetPasswordForEmail(
         email.trim().toLowerCase(),
         {
           redirectTo: `${window.location.origin}/auth/confirm?next=/auth/redefinir`,
@@ -29,6 +40,11 @@ export function EsqueciForm() {
         return;
       }
       setEnviado(true);
+    } catch {
+      // O `import()` acontece na hora do clique: se a rede cair entre abrir a
+      // página e enviar, o chunk não baixa e a promessa rejeita. Sem este
+      // `catch` o botão voltaria ao normal sem dizer nada.
+      setErro("Não foi possível enviar. Tente novamente em instantes.");
     } finally {
       setEnviando(false);
     }

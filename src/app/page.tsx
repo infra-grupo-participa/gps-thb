@@ -113,8 +113,12 @@ export default async function HomePage() {
   ]);
   const aluno = souSocio ? alunoSocio : alunoAmbiente;
   const nomeExibicao = souSocio ? (aluno?.nome ?? ctx.membroNome) : aluno?.nome;
-  // Único estágio 2 que sobrou: depende de `aluno.turma_id`, que só existe
-  // depois do lote acima.
+  // PF3 — único estágio 2 que sobrou, e ele FICA. Depende de `aluno.turma_id`,
+  // que só existe depois do lote acima, e o aluno é `alunoAmbiente` OU
+  // `alunoSocio` conforme o papel: não há como saber a turma antes de saber de
+  // quem é a ficha. Resolver isto exige um join `thb_alunos → thb_turmas` em
+  // `getAlunoById`, que é consulta de outra camada (`src/lib/data/alunos.ts`) e
+  // muda o contrato de quem mais a chama — feature, não ajuste de onda.
   const turma = await getTurmaCodigo(aluno?.turma_id);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);

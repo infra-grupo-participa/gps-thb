@@ -35,7 +35,7 @@ import {
   definirClienteEquipe,
   mudarFaseCliente,
   removerCliente,
-} from "@/app/etapa-1/actions";
+} from "@/app/clientes/actions";
 import { MetaHonorarios } from "@/components/etapa1/meta-honorarios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

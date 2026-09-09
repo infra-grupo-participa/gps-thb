@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 /**
  * Encerra a sessão depois de um tempo sem ninguém encostar na tela.
@@ -43,11 +42,14 @@ export function AutoLogout() {
         if (saindoRef.current) return;
         saindoRef.current = true;
         clearInterval(tick);
-        const supabase = createClient();
         try {
+          // PF1 — o SDK só é buscado agora, no tick que de fato encerra a
+          // sessão. Enquanto o contador roda, nenhum byte dele foi baixado;
+          // este componente está em toda página autenticada.
+          const { createClient } = await import("@/lib/supabase/client");
           // Escopo local: encerra só esta aba/aparelho, não derruba a mesma
           // conta em outro lugar (mesmo critério do botão Sair).
-          await supabase.auth.signOut({ scope: "local" });
+          await createClient().auth.signOut({ scope: "local" });
         } finally {
           window.location.assign("/login?motivo=inatividade");
         }

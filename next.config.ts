@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
   // Server Actions atrás do proxy reverso (LiteSpeed/Hostinger): confia na
   // origem do domínio público para não bloquear login/logout/mutações por
   // divergência de Origin × Host.
+  // ⚠️ `experimental.optimizePackageImports: ["lucide-react"]` foi MEDIDO em
+  // 09/09/2026 (Onda 4) e REVERTIDO: build completo com e sem a opção deu o
+  // MESMO byte em 12 rotas (`/login` 243 KB gzip, `/admin` 157, home 81…).
+  // O `lucide-react` 1.x já publica um módulo ESM por ícone e o Turbopack já
+  // os isola — não há barril a otimizar aqui. Não reintroduzir sem medir.
   experimental: {
     serverActions: {
       allowedOrigins: [

@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 
+// PF1 — o SDK do Supabase (62 KB gzip) só é buscado no submit. A validação de
+// tamanho e de confirmação da senha roda ANTES do `import()`, então quem errar
+// a digitação recebe o erro sem baixar byte nenhum.
 export function RedefinirForm() {
   const router = useRouter();
-  const supabase = createClient();
   const [senha, setSenha] = useState("");
   const [confirma, setConfirma] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -27,9 +28,20 @@ export function RedefinirForm() {
       return;
     }
     setSalvando(true);
-    const { error } = await supabase.auth.updateUser({ password: senha });
-    setSalvando(false);
-    if (error) {
+    let falhou = true;
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const { error } = await createClient().auth.updateUser({
+        password: senha,
+      });
+      falhou = Boolean(error);
+    } catch {
+      // Rede caída entre abrir a página e enviar: o chunk do SDK não baixa.
+      falhou = true;
+    } finally {
+      setSalvando(false);
+    }
+    if (falhou) {
       setErro(
         "Não foi possível redefinir. Abra o link de redefinição novamente pelo e-mail.",
       );

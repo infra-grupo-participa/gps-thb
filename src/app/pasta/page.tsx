@@ -40,11 +40,10 @@ export default async function PastaPage() {
           }
         />
 
-        <PastaView
-          alunoId={ctx.alunoId}
-          pastaUrl={ambiente?.pasta_drive_url ?? null}
-          isAdmin={false}
-        />
+        {/* PF4 — o formulário de admin NÃO é importado aqui: se estivesse,
+            o código dele e a referência da Server Action de admin entrariam
+            no bundle do aluno mesmo sem nunca renderizar. */}
+        <PastaView pastaUrl={ambiente?.pasta_drive_url ?? null} isAdmin={false} />
       </main>
     </>
   );

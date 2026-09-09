@@ -24,7 +24,7 @@ import {
   User,
   ExternalLink,
 } from "lucide-react";
-import { atualizarCliente, definirClienteEquipe } from "@/app/etapa-1/actions";
+import { atualizarCliente, definirClienteEquipe } from "@/app/clientes/actions";
 import { brlInteiro } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

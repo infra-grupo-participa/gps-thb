@@ -149,7 +149,7 @@ export interface ClienteEtapa1 {
   ligacao_realizada: boolean;
   /**
    * @deprecated Congelado desde a migração 20260909000060. Não escrever —
-   * `PatchCliente` (src/app/etapa-1/actions.ts) já não aceita este campo.
+   * `PatchCliente` (src/app/clientes/actions.ts) já não aceita este campo.
    * Continua sendo LIDO só pelo marcador "Recusou" da UI.
    */
   status: StatusCliente;

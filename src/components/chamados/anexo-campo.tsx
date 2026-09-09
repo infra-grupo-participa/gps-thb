@@ -2,7 +2,6 @@
 
 import { useId, useRef, useState } from "react";
 import { Paperclip, X } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { criarUploadAssinadoDeAnexo } from "@/app/chamados/actions";
 import {
   ANEXO_TAMANHO_MAXIMO,
@@ -37,6 +36,13 @@ import { Label } from "@/components/ui/label";
  * componente — e, se montasse, `criarUploadAssinadoDeAnexo` recusaria (o
  * `alunoId` do admin é nulo) e a policy `gps.pode_anexar_chamado` recusaria
  * de novo.
+ *
+ * ⚠️ ONDA 4 — `next/dynamic` neste componente foi TESTADO e DESCARTADO.
+ * Depois que o SDK saiu daqui (PF1), sobrou JSX: build completo com os dois
+ * consumidores em `dynamic(ssr:false)` moveu `/chamados` **0 KB** e
+ * `/chamados/[chamadoId]` **1 KB** gzip — abaixo do corte de 5 KB da onda, e
+ * em troca de um campo que aparece piscando depois da hidratação na tela de
+ * responder (onde ele é conteúdo fixo, não diálogo). Não refazer sem medir.
  */
 
 /** `accept` do input: extensão E mime, porque o Windows manda os dois casos. */
@@ -122,15 +128,31 @@ export function AnexoCampo({
     // 3) os bytes vão direto do navegador para o Storage, com a sessão do
     //    aluno. `uploadToSignedUrl` não expõe progresso byte a byte — por
     //    isso a barra abaixo é indeterminada, e não um número inventado.
-    const supabase = createClient();
-    const { error } = await supabase.storage
-      .from(BUCKET_CHAMADOS)
-      .uploadToSignedUrl(permissao.path, permissao.token, arquivo, {
-        contentType: arquivo.type,
+    //
+    // PF1 — o SDK entra por `import()` AQUI, depois de o servidor já ter
+    // emitido o token. Enquanto o campo está só na tela (a maioria dos
+    // chamados não tem anexo), nenhum byte dele foi baixado.
+    let erroUpload: { message?: string } | null = null;
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const { error } = await createClient()
+        .storage.from(BUCKET_CHAMADOS)
+        .uploadToSignedUrl(permissao.path, permissao.token, arquivo, {
+          contentType: arquivo.type,
+        });
+      erroUpload = error;
+    } catch {
+      // O chunk do SDK não baixou. O token continua válido; tentar de novo
+      // com a rede de volta funciona.
+      setEstado({
+        fase: "erro",
+        mensagem: "Não foi possível enviar o arquivo. Tente de novo.",
       });
+      return;
+    }
 
-    if (error) {
-      setEstado({ fase: "erro", mensagem: fraseDoErroDeUpload(error) });
+    if (erroUpload) {
+      setEstado({ fase: "erro", mensagem: fraseDoErroDeUpload(erroUpload) });
       return;
     }
 

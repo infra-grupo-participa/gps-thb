@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { KeyRound } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { InputSenha } from "@/components/ui/input-senha";
@@ -20,9 +19,12 @@ import { Label } from "@/components/ui/label";
  * `updateUser` age sobre a sessão ativa; não depende de token de recuperação.
  * A senha nova vale para TODOS os sistemas do grupo que compartilham o mesmo
  * `auth.users` — por isso o aviso no rodapé do card.
+ *
+ * PF1 — o SDK entra por `import()` no submit. O `/perfil` é uma página que
+ * quase ninguém abre para trocar senha; carregar 62 KB gzip de GoTrue só para
+ * exibir dois campos era o preço padrão de toda visita.
  */
 export function TrocarSenha() {
-  const supabase = createClient();
   const [senha, setSenha] = useState("");
   const [confirma, setConfirma] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -44,10 +46,20 @@ export function TrocarSenha() {
     }
 
     setSalvando(true);
-    const { error } = await supabase.auth.updateUser({ password: senha });
-    setSalvando(false);
+    let falhou = true;
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const { error } = await createClient().auth.updateUser({
+        password: senha,
+      });
+      falhou = Boolean(error);
+    } catch {
+      falhou = true;
+    } finally {
+      setSalvando(false);
+    }
 
-    if (error) {
+    if (falhou) {
       setErro(
         "Não foi possível trocar a senha. Entre novamente e tente de novo.",
       );

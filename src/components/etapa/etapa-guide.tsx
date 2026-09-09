@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import type { ModoEnfase, ProgressoTarefa } from "@/lib/types";
 import type { TarefaDef } from "@/lib/etapa1";
 import { calcularEnfases } from "@/lib/enfase";
-import { definirEnfaseTarefa, marcarTarefa } from "@/app/etapa-1/actions";
+import { definirEnfaseTarefa, marcarTarefa } from "@/app/clientes/actions";
 import { TarefaItem } from "@/components/etapa/tarefa-item";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";

@@ -13,7 +13,7 @@ import { Users, UserCheck, UserX, Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { adminNavItems } from "@/lib/nav";
-import { CriarAcesso } from "@/components/admin/criar-acesso";
+import { CriarAcesso } from "@/components/admin/criar-acesso-botao";
 import { SolicitacaoCard } from "@/components/admin/solicitacao-card";
 import { EtapasControle } from "@/components/admin/etapas-controle";
 import { AlunosAtivosLista } from "@/components/admin/alunos-ativos-lista";

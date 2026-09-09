@@ -22,7 +22,7 @@ import {
   definirEnfaseTarefa,
   marcarTarefa,
   salvarDataAgendamento,
-} from "@/app/etapa-1/actions";
+} from "@/app/clientes/actions";
 import { TarefaItem } from "@/components/etapa/tarefa-item";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";

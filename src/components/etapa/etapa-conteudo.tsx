@@ -39,15 +39,22 @@ export async function EtapaConteudo({
   // ⚠️ Se um dia `Etapa3Guide` passar a destacar tarefa, é aqui que a
   // condição precisa cair junto — senão o destaque some sem erro nenhum.
   const usaEnfases = n !== 3;
-  const [progresso, enfases] = await Promise.all([
-    getProgressoEtapa(alunoId, n),
-    usaEnfases
-      ? getEnfasesEtapa(alunoId, n)
-      : Promise.resolve({} as Record<number, ModoEnfase>),
-  ]);
+
+  // PF3 — eram DOIS `Promise.all` em série: o segundo lote (clientes/ambiente,
+  // ou o cliente da equipe) só começava depois que progresso e ênfases
+  // voltavam, embora não dependa nem de um nem de outro. Duas idas em série a
+  // sa-east-1 custavam ~44 ms de espera pura. As promessas continuam criadas
+  // aqui e são TODAS aguardadas no mesmo `Promise.all` do ramo — nenhuma fica
+  // solta (rejeição não tratada).
+  const pProgresso = getProgressoEtapa(alunoId, n);
+  const pEnfases = usaEnfases
+    ? getEnfasesEtapa(alunoId, n)
+    : Promise.resolve({} as Record<number, ModoEnfase>);
 
   if (n === 1) {
-    const [clientes, ambiente] = await Promise.all([
+    const [progresso, enfases, clientes, ambiente] = await Promise.all([
+      pProgresso,
+      pEnfases,
       getClientesEtapa1(alunoId),
       getAmbiente(alunoId),
     ]);
@@ -68,14 +75,24 @@ export async function EtapaConteudo({
   }
 
   // Etapas 2–6 giram em torno do cliente acompanhado pela equipe.
-  const clienteEquipe = await getClienteEquipe(alunoId);
+  //
+  // PF3 — aqui eram TRÊS estágios em série (progresso/ênfases → cliente da
+  // equipe → agendamentos/revisão da Etapa 03). Nenhum depende do anterior,
+  // então viram um lote só. As duas consultas exclusivas da Etapa 03 continuam
+  // só acontecendo na Etapa 03 — nas outras a promessa já nasce resolvida,
+  // exatamente como o `usaEnfases` acima.
+  const ehEtapa3 = n === 3;
+  const [progresso, enfases, clienteEquipe, agendamentos, revisao] =
+    await Promise.all([
+      pProgresso,
+      pEnfases,
+      getClienteEquipe(alunoId),
+      ehEtapa3 ? getAgendamentosEtapa3(alunoId) : Promise.resolve([]),
+      ehEtapa3 ? getRevisaoEtapa3(alunoId) : Promise.resolve(null),
+    ]);
 
   let guia;
-  if (n === 3) {
-    const [agendamentos, revisao] = await Promise.all([
-      getAgendamentosEtapa3(alunoId),
-      getRevisaoEtapa3(alunoId),
-    ]);
+  if (ehEtapa3) {
     guia = (
       <Etapa3Guide
         alunoId={alunoId}

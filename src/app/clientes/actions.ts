@@ -5,6 +5,18 @@ import { createClient } from "@/lib/supabase/server";
 import { traduzirErroBanco } from "@/lib/erros";
 import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
 
+/*
+ * CD3 (09/09/2026) — este arquivo morava em `src/app/etapa-1/`, uma pasta com
+ * `actions.ts` e NENHUM `page.tsx`. `/etapa-1` não é rota (a tela é
+ * `/etapa/[n]`), então o caminho do módulo mentia — a mesma forma de
+ * `src/app/agenda/`, apagada em 09/09 por ter Server Actions órfãs expostas.
+ * Aqui as actions ESTÃO em uso: são as dos clientes da Etapa 01, cuja tela é
+ * `/clientes`. Mudou o endereço, não o comportamento.
+ *
+ * O redirect `/etapa-1 → /etapa/1` do `next.config.ts` continua: ele serve a
+ * link e bookmark antigos, e nunca teve relação com este módulo.
+ */
+
 /**
  * Campos do cliente que a UI pode atualizar.
  *

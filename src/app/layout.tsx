@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/sonner";
+import { ToasterLazy } from "@/components/ui/toaster-lazy";
 
 // Fonte padrão dos sistemas do Grupo Participa: Inter (corpo) + Space Grotesk (títulos).
 const inter = Inter({
@@ -51,7 +51,7 @@ export default function RootLayout({
           Pular para o conteúdo
         </a>
         {children}
-        <Toaster richColors position="top-center" />
+        <ToasterLazy />
       </body>
     </html>
   );

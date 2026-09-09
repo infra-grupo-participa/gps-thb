@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { UserPlus, KeyRound, UserRoundPlus } from "lucide-react";
+import { KeyRound, UserRoundPlus } from "lucide-react";
 import {
   buscarAlunos,
   criarAcessoAluno,
@@ -30,9 +30,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
-export function CriarAcesso() {
+/**
+ * O CORPO do diálogo "Criar acesso" — busca do aluno, cadastro na base,
+ * diagnóstico de login e as credenciais geradas.
+ *
+ * O botão que abre isto mora em `criar-acesso-botao.tsx` e carrega este
+ * módulo por `next/dynamic`: são ~840 linhas (com `CadastrarAlunoForm`) que a
+ * maioria das visitas ao `/admin` nunca abre. Por isso o componente é
+ * CONTROLADO — quem manda no `open` é o botão.
+ */
+export function CriarAcessoPainel({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [termo, setTermo] = useState("");
   const [resultados, setResultados] = useState<AlunoBusca[]>([]);
   const [buscando, setBuscando] = useState(false);
@@ -128,7 +142,7 @@ export function CriarAcesso() {
         return;
       }
       toast.success("Ambiente criado. O aluno pode se cadastrar com o CPF.");
-      setOpen(false);
+      onOpenChange(false);
       reset();
       router.refresh();
     });
@@ -136,22 +150,10 @@ export function CriarAcesso() {
 
   return (
     <>
-      <Button
-        onClick={() => {
-          reset();
-          setOpen(true);
-        }}
-      >
-        <UserPlus className="size-4" /> Criar acesso
-      </Button>
-
-      <Dialog
-        open={open}
-        onOpenChange={(v) => {
-          setOpen(v);
-          if (!v) reset();
-        }}
-      >
+      {/* Reabrir começa do zero pela `key` do botão (o painel remonta), não por
+          um `reset()` no fechamento — que faria o conteúdo piscar durante a
+          animação de saída. */}
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
@@ -180,7 +182,7 @@ export function CriarAcesso() {
               credenciais={credenciais}
               titulo="Acesso criado com sucesso"
               onConcluir={() => {
-                setOpen(false);
+                onOpenChange(false);
                 reset();
               }}
             />

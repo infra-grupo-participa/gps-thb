@@ -436,20 +436,6 @@ export async function acharAlunosPorEmails(
   return mapa;
 }
 
-/** Procura um thb_aluno pelo e-mail (para sugerir vínculo na aprovação). */
-export async function acharAlunoPorEmail(
-  email: string | null,
-): Promise<Aluno | null> {
-  if (!email) return null;
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("thb_alunos")
-    .select(COLUNAS_ALUNO_SUGESTAO)
-    .ilike("email", email)
-    .limit(1)
-    .maybeSingle();
-  return (data as Aluno) ?? null;
-}
 
 export async function getClienteById(
   clienteId: string,

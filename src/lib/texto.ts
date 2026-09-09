@@ -25,3 +25,12 @@ export function casaTodosOsTermos(alvo: string, termo: string): boolean {
   const base = semAcento(alvo);
   return palavras.every((p) => base.includes(p));
 }
+
+/**
+ * Prepara um e-mail para `.ilike()` (busca sem distinção de maiúsculas, que é
+ * como `thb_alunos` indexa: `lower(trim(email))`). Escapa `%`, `_` e `\` para
+ * o valor virar comparação EXATA, não padrão — achado do pentest de 09/09/2026.
+ */
+export function emailParaIlike(email: string): string {
+  return email.trim().replace(/[\\%_]/g, (m) => "\\" + m);
+}

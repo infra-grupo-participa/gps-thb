@@ -1,3 +1,4 @@
+import { emailParaIlike } from "@/lib/texto";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { PapelMembro, Papel, Perfil } from "@/lib/types";
@@ -95,7 +96,7 @@ export const getContextoSessao = cache(async function getContextoSessao(): Promi
       const { data: pessoa } = await supabase
         .from("thb_alunos")
         .select("id, nome")
-        .ilike("email", user.email)
+        .ilike("email", emailParaIlike(user.email))
         .limit(1)
         .maybeSingle();
       if (pessoa) {

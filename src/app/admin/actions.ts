@@ -1,5 +1,7 @@
 "use server";
 
+import { emailParaIlike } from "@/lib/texto";
+
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
@@ -187,7 +189,7 @@ export async function cadastrarAluno(
   const { data: mesmoEmail } = await supabase
     .from("thb_alunos")
     .select("id, nome, email, documento")
-    .ilike("email", email)
+    .ilike("email", emailParaIlike(email))
     .limit(1)
     .maybeSingle();
   if (mesmoEmail) {

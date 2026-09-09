@@ -20,11 +20,14 @@ import { PlantaoInscritos } from "@/components/admin/plantao-inscritos";
 export function DialogoInscritos({
   inscritosAbertos,
   inscritosPorSlot,
+  totalInscritosPorSlot,
   setInscritosAbertos,
 }: {
   /** Slot cujos inscritos estão à mostra; `null` = diálogo fechado. */
   inscritosAbertos: SlotAdmin | null;
   inscritosPorSlot: Record<string, InscritoAdmin[]>;
+  /** Total REAL no banco por slot — pode ser maior que a lista (teto de 500). */
+  totalInscritosPorSlot: Record<string, number>;
   setInscritosAbertos: (slot: SlotAdmin | null) => void;
 }) {
   return (
@@ -51,9 +54,16 @@ export function DialogoInscritos({
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <PlantaoInscritos
-            inscritos={inscritosAbertos ? (inscritosPorSlot[inscritosAbertos.slotId] ?? []) : []}
-          />
+          {inscritosAbertos ? (
+            <PlantaoInscritos
+              slotId={inscritosAbertos.slotId}
+              inscritos={inscritosPorSlot[inscritosAbertos.slotId] ?? []}
+              totalInscritos={
+                totalInscritosPorSlot[inscritosAbertos.slotId] ??
+                (inscritosPorSlot[inscritosAbertos.slotId] ?? []).length
+              }
+            />
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>

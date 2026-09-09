@@ -124,6 +124,7 @@ export default async function AdminPlantaoPage({
               slots={slots}
               mentoras={mentoras}
               inscritosPorSlot={inscritosPorSlot}
+              totalInscritosPorSlot={totalInscritosPorSlot}
               inscricoesAbertas={inscricoesAbertas}
             />
           </TabsContent>

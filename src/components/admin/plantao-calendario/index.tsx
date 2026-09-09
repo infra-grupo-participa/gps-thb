@@ -87,6 +87,7 @@ export function PlantaoCalendario({
   slots,
   mentoras,
   inscritosPorSlot,
+  totalInscritosPorSlot,
   inscricoesAbertas,
 }: {
   ano: number;
@@ -96,6 +97,8 @@ export function PlantaoCalendario({
   mentoras: MentoraAdmin[];
   /** Inscritos pré-carregados só dos slots com `inscritosQtd > 0` (ver page.tsx). */
   inscritosPorSlot: Record<string, InscritoAdmin[]>;
+  /** Total REAL no banco por slot — pode ser maior que a lista (teto de 500). */
+  totalInscritosPorSlot: Record<string, number>;
   /**
    * Interruptor geral das escritas do aluno (`gps.config`, chave
    * `plantao_inscricao_aberta`), lido no servidor por
@@ -385,6 +388,7 @@ export function PlantaoCalendario({
       <DialogoInscritos
         inscritosAbertos={inscritosAbertos}
         inscritosPorSlot={inscritosPorSlot}
+        totalInscritosPorSlot={totalInscritosPorSlot}
         setInscritosAbertos={setInscritosAbertos}
       />
 

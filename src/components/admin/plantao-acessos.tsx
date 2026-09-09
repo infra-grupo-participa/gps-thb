@@ -44,13 +44,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LiberarAlunoPlantao } from "@/components/admin/liberar-aluno-plantao";
-
-function normalizar(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
-}
+import { semAcento } from "@/lib/texto";
 
 export function PlantaoAcessos({
   alunos,
@@ -64,13 +58,13 @@ export function PlantaoAcessos({
   const [alunoEmAcao, setAlunoEmAcao] = useState<string | null>(null);
 
   const filtrados = useMemo(() => {
-    const termo = normalizar(busca.trim());
+    const termo = semAcento(busca.trim());
     if (!termo) return alunos;
     return alunos.filter(
       (a) =>
-        normalizar(a.nome).includes(termo) ||
-        normalizar(a.email).includes(termo) ||
-        normalizar(a.lote).includes(termo),
+        semAcento(a.nome).includes(termo) ||
+        semAcento(a.email).includes(termo) ||
+        semAcento(a.lote).includes(termo),
     );
   }, [alunos, busca]);
 

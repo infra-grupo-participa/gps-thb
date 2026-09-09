@@ -338,27 +338,61 @@ export async function fecharChamado(chamadoId: string): Promise<ResultadoAcao> {
 /**
  * Manda o aviso de chamado novo/reaberto para a equipe.
  *
- * Destinatário: `gps.config.chamados_email_equipe` (a RPC devolve junto) e, se
- * ela estiver vazia, a variável de ambiente `EMAIL_SUPORTE`.
+ * Destinatário, nesta ordem: `gps.config.chamados_email_equipe` (a RPC
+ * devolve junto) → env `EMAIL_SUPORTE` → `gps.config.chamados_email_fallback`.
  *
- * 🔴 Se as duas estiverem vazias, NINGUÉM é avisado — e isso vira um
- * `logErro` explícito, não um silêncio. `EMAIL_EQUIPE` não existe mais
- * (removida em 08/2026) e a lista de `public.perfis` com cargo dev/admin não
- * serve: são 16 pessoas, e avisar 16 por chamado treina o time a ignorar.
+ * 🔴 O fallback existe porque em 09/09/2026 as DUAS primeiras estavam vazias.
+ * O código tratava bem — registrava o chamado, logava o erro e mostrava o
+ * aviso vermelho em `/admin/chamados` —, mas esse aviso só aparece para quem
+ * ABRE aquela tela. Na prática, o aluno abriria um chamado e a equipe só
+ * descobriria se alguém lembrasse de olhar a fila. Ninguém olhou: a config
+ * estava vazia desde que a feature entrou.
+ *
+ * O fallback NÃO substitui a configuração certa (a equipe preenche em
+ * `/admin/chamados`, sem deploy) — ele existe para o chamado nunca ficar
+ * SILENCIOSO. Quando as três estiverem vazias, aí sim é `logErro`.
+ *
+ * `EMAIL_EQUIPE` não existe mais (removida em 08/2026) e a lista de
+ * `public.perfis` com cargo dev/admin não serve: são 16 pessoas, e avisar 16
+ * por chamado treina o time a ignorar.
  */
 async function avisarEquipe(
   avisarDoBanco: string | null,
   assunto: string,
   chamadoId: string,
 ): Promise<void> {
-  const destinatarios = listaDeEmails(
+  let destinatarios = listaDeEmails(
     avisarDoBanco || process.env.EMAIL_SUPORTE || "",
   );
+
+  // Último recurso: `gps.config.chamados_email_fallback`, por RPC.
+  //
+  // 🔑 NÃO dá para ler `gps.config` direto daqui: a policy é `gp_is_admin()`
+  // e quem abre um chamado é o ALUNO — a leitura voltaria vazia em silêncio,
+  // que é exatamente a falha que este fallback existe para eliminar. A RPC é
+  // SECURITY DEFINER e expõe SÓ esta chave (a tabela guarda a chave da
+  // Resend). Uma chamada a mais só quando as duas fontes normais falharam.
+  if (destinatarios.length === 0) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .schema("gps")
+      .rpc("chamados_email_fallback");
+    destinatarios = listaDeEmails(
+      typeof data === "string" ? data : "",
+    );
+    if (destinatarios.length > 0) {
+      logErro(
+        "chamados.avisarEquipe",
+        "avisando pelo FALLBACK: configure os destinatarios em /admin/chamados",
+        { chamadoId },
+      );
+    }
+  }
 
   if (destinatarios.length === 0) {
     logErro(
       "chamados.avisarEquipe",
-      "chamado registrado e NINGUEM foi avisado: gps.config.chamados_email_equipe vazia e EMAIL_SUPORTE ausente",
+      "chamado registrado e NINGUEM foi avisado: chamados_email_equipe, EMAIL_SUPORTE e chamados_email_fallback vazios",
       { chamadoId },
     );
     return;

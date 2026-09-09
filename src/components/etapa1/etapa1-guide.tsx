@@ -277,7 +277,7 @@ function MetricCard({
 }) {
   return (
     <Card>
-      <CardContent className="pt-6">
+      <CardContent>
         <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {titulo}
         </div>

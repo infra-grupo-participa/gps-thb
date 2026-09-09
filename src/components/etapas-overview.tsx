@@ -46,7 +46,7 @@ export function EtapasOverview({
                 : "opacity-70")
             }
           >
-            <CardContent className="flex h-full flex-col gap-3 pt-6">
+            <CardContent className="flex h-full flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
                 <div
                   className={

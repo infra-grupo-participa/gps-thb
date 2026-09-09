@@ -24,7 +24,7 @@ export function FavoritoDestaque({
 
   return (
     <Card className="border-primary/40 bg-primary/5 shadow-sm">
-      <CardContent className="pt-6">
+      <CardContent>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">

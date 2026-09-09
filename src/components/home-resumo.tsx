@@ -1,5 +1,6 @@
 import { TrendingUp, Users, CalendarCheck, Coins } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { KpiLinha } from "@/components/ui/kpi-card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 
@@ -11,6 +12,10 @@ const brl = new Intl.NumberFormat("pt-BR", {
 /**
  * Painel de resumo do aluno — consolida progresso e números-chave num único
  * container (em vez de vários cards soltos), para servir de coluna de apoio.
+ *
+ * As linhas vêm de `KpiLinha` (`ui/kpi-card`): o "chip de ícone" que existia
+ * aqui era a 4ª cópia do mesmo bloco no projeto (VIS2). O `pt-6` que estava no
+ * `CardContent` somava ao padding do `Card` e saiu (VIS1).
  */
 export function HomeResumo({
   progressoGeral,
@@ -25,11 +30,11 @@ export function HomeResumo({
 }) {
   return (
     <Card>
-      <CardContent className="grid gap-4 pt-6">
+      <CardContent className="grid gap-4">
         <div>
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-1.5 font-medium">
-              <TrendingUp className="size-4 text-primary" />
+              <TrendingUp className="size-4 text-primary" aria-hidden />
               Progresso geral
             </span>
             <span className="font-semibold text-primary">{progressoGeral}%</span>
@@ -40,50 +45,25 @@ export function HomeResumo({
 
         <Separator />
 
-        <Linha
-          icon={<Users className="size-4" />}
-          label="Clientes"
+        <KpiLinha
+          icone={<Users />}
+          rotulo="Clientes"
           valor={`${clientes}/30`}
           hint="da sua lista"
         />
-        <Linha
-          icon={<CalendarCheck className="size-4" />}
-          label="Reuniões agendadas"
+        <KpiLinha
+          icone={<CalendarCheck />}
+          rotulo="Reuniões agendadas"
           valor={`${agendados}/15`}
           hint="meta de 15"
         />
-        <Linha
-          icon={<Coins className="size-4" />}
-          label="Perda pela inércia"
+        <KpiLinha
+          icone={<Coins />}
+          rotulo="Perda pela inércia"
           valor={brl.format(perdaTotal)}
           hint="soma dos clientes"
         />
       </CardContent>
     </Card>
-  );
-}
-
-function Linha({
-  icon,
-  label,
-  valor,
-  hint,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  valor: string;
-  hint: string;
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium">{label}</div>
-        <div className="text-xs text-muted-foreground">{hint}</div>
-      </div>
-      <div className="shrink-0 text-lg font-semibold tabular-nums">{valor}</div>
-    </div>
   );
 }

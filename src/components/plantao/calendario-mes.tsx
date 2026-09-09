@@ -34,6 +34,19 @@ const MESES = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
+/**
+ * "Setembro de 2026" — só a primeira letra em maiúscula.
+ *
+ * Era `className="capitalize"`, e o `text-transform: capitalize` do CSS
+ * maiúsculiza TODA palavra: a tela mostrava "Setembro De 2026". `::first-letter`
+ * também não serve aqui — o ícone antes do texto impede a pseudo-classe de
+ * aplicar. Então é em JS mesmo.
+ */
+function rotuloMes(mes: number, ano: number): string {
+  const nome = MESES[mes - 1];
+  return `${nome.charAt(0).toUpperCase()}${nome.slice(1)} de ${ano}`;
+}
+
 function mesAnterior(ano: number, mes: number): { ano: number; mes: number } {
   return mes === 1 ? { ano: ano - 1, mes: 12 } : { ano, mes: mes - 1 };
 }
@@ -129,9 +142,9 @@ export function CalendarioMes({
         >
           <ChevronLeftIcon className="size-4" />
         </Link>
-        <div className="flex items-center gap-1.5 font-medium capitalize">
+        <div className="flex items-center gap-1.5 font-medium">
           <CalendarDaysIcon className="size-4 text-primary" aria-hidden />
-          {MESES[mes - 1]} de {ano}
+          {rotuloMes(mes, ano)}
         </div>
         <Link
           href={hrefMes(proximo.ano, proximo.mes, email, nome)}

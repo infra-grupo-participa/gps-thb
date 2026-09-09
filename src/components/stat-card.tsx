@@ -1,4 +1,13 @@
-import { Card, CardContent } from "@/components/ui/card";
+/**
+ * `StatCard` é a assinatura antiga (icon/label/value) de `KpiCard`.
+ * Reexport fino para `src/app/admin/page.tsx` seguir compilando enquanto a
+ * página não migra para `KpiCard` (Onda 2).
+ *
+ * O `pt-5` que existia colado no `CardContent` somava ao `py-(--card-spacing)`
+ * que o `Card` já paga — era a origem de cards com topos de 16, 36 e 40 px na
+ * mesma tela (VIS1). Não existe mais: o padding é só o do `Card`.
+ */
+import { KpiCard } from "@/components/ui/kpi-card";
 
 export function StatCard({
   icon,
@@ -14,34 +23,12 @@ export function StatCard({
   destaque?: boolean;
 }) {
   return (
-    <Card className="transition hover:shadow-sm">
-      <CardContent className="pt-5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {label}
-          </span>
-          <span
-            className={
-              "flex size-8 shrink-0 items-center justify-center rounded-lg " +
-              (destaque
-                ? "bg-primary text-primary-foreground"
-                : "bg-primary/10 text-primary")
-            }
-          >
-            {icon}
-          </span>
-        </div>
-        <div
-          className={
-            "mt-2 text-2xl font-semibold " + (destaque ? "text-primary" : "")
-          }
-        >
-          {value}
-        </div>
-        {hint ? (
-          <div className="text-xs text-muted-foreground">{hint}</div>
-        ) : null}
-      </CardContent>
-    </Card>
+    <KpiCard
+      icone={icon}
+      rotulo={label}
+      valor={value}
+      hint={hint}
+      destaque={destaque}
+    />
   );
 }

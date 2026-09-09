@@ -136,8 +136,11 @@ export function CadastroForm() {
         </div>
       </details>
 
+      {/* Anunciado pelo leitor de tela (WCAG 3.3.1 / 4.1.3). */}
       {state.erro ? (
-        <p className="text-sm text-destructive">{state.erro}</p>
+        <p role="alert" className="text-sm text-destructive">
+          {state.erro}
+        </p>
       ) : null}
 
       <Button type="submit" disabled={pending} className="mt-2">

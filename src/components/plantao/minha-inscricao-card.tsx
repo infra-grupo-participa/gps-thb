@@ -79,7 +79,7 @@ export function MinhaInscricaoCard({
   if (inscricao.encerrado) {
     return (
       <Card>
-        <CardContent className="flex items-center gap-3 pt-5">
+        <CardContent className="flex items-center gap-3">
           <XCircleIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
           <div className="min-w-0 text-sm">
             <p className="font-medium">Esta sala já encerrou.</p>

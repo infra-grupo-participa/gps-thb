@@ -42,7 +42,7 @@ export function NpsForm({
   if (enviado) {
     return (
       <Card>
-        <CardContent className="flex items-center gap-2.5 pt-5 text-sm">
+        <CardContent className="flex items-center gap-2.5 text-sm">
           <CheckCircle2Icon className="size-5 shrink-0 text-primary" aria-hidden />
           Obrigado pela avaliação!
         </CardContent>

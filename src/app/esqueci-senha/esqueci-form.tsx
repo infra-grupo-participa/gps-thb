@@ -60,7 +60,12 @@ export function EsqueciForm() {
           autoFocus
         />
       </div>
-      {erro ? <p className="text-sm text-destructive">{erro}</p> : null}
+      {/* Anunciado pelo leitor de tela (WCAG 3.3.1 / 4.1.3). */}
+      {erro ? (
+        <p role="alert" className="text-sm text-destructive">
+          {erro}
+        </p>
+      ) : null}
       <Button type="submit" disabled={enviando} className="mt-2">
         {enviando ? "Enviando..." : "Enviar link de redefinição"}
       </Button>

@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Search } from "lucide-react";
+import { AlertCircle, Search, Users } from "lucide-react";
 import type { AlunoGps } from "@/lib/data";
 import { casaTodosOsTermos, semAcento } from "@/lib/texto";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -234,12 +235,11 @@ export function AlunosAtivosLista({
 
   if (alunos.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-10 text-center text-sm text-muted-foreground">
-          Nenhum aluno ativo ainda. Use{" "}
-          <span className="font-medium">Criar acesso</span> para começar.
-        </CardContent>
-      </Card>
+      <EmptyState
+        icone={<Users />}
+        titulo="Nenhum aluno no programa ainda"
+        descricao="Use “Criar acesso”, no topo da página, para colocar o primeiro aluno em implementação assistida."
+      />
     );
   }
 
@@ -308,27 +308,26 @@ export function AlunosAtivosLista({
       </p>
 
       {visiveis.length === 0 ? (
-        <Card>
-          <CardContent className="grid justify-items-center gap-3 p-10 text-center text-sm text-muted-foreground">
-            {buscando ? (
-              <p>
-                Nenhum aluno para{" "}
-                <span className="font-medium text-foreground">
-                  «{termo.trim()}»
-                </span>
-                {filtrosAtivos.length > 0
-                  ? ` entre os filtrados por ${filtrosAtivos.join(" e ")}`
-                  : null}
-                .
-              </p>
-            ) : (
-              <p>
-                {filtrosAtivos.length > 0
-                  ? `Nenhum aluno ${filtrosAtivos.join(" e ")}.`
-                  : "Nenhum aluno para exibir."}
-              </p>
-            )}
-            <div className="flex flex-wrap justify-center gap-2">
+        <EmptyState
+          icone={<Search />}
+          titulo={
+            buscando
+              ? `Nenhum aluno para «${termo.trim()}»`
+              : filtrosAtivos.length > 0
+                ? `Nenhum aluno ${filtrosAtivos.join(" e ")}.`
+                : "Nenhum aluno para exibir."
+          }
+          descricao={
+            buscando && filtrosAtivos.length > 0
+              ? `A busca foi feita só entre os alunos filtrados por ${filtrosAtivos.join(
+                  " e ",
+                )}. Limpe os filtros para procurar na lista inteira.`
+              : buscando
+                ? "Confira a grafia ou procure por parte do e-mail — a busca ignora acentos e a ordem das palavras."
+                : undefined
+          }
+          acao={
+            <>
               {buscando ? (
                 <Button variant="outline" size="sm" onClick={() => setTermo("")}>
                   Limpar busca
@@ -339,9 +338,9 @@ export function AlunosAtivosLista({
                   Limpar filtros
                 </Button>
               ) : null}
-            </div>
-          </CardContent>
-        </Card>
+            </>
+          }
+        />
       ) : (
         visiveis.map(
           ({

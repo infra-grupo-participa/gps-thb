@@ -76,7 +76,7 @@ export function EtapaGuide({
   return (
     <div className="grid gap-6">
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="mb-1 flex items-center justify-between text-sm">
             <span className="font-medium">Progresso da etapa</span>
             <span className="text-muted-foreground">

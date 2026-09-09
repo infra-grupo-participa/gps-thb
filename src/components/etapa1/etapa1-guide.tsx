@@ -67,6 +67,7 @@ export function Etapa1Guide({
 
   const {
     preenchidos,
+    comDados,
     agendados,
     perdaTotal,
     totalConcluidas,
@@ -195,21 +196,39 @@ export function Etapa1Guide({
               </Link>
             </div>
           ) : null}
-          {TAREFAS_ETAPA1.map((t) => (
-            <TarefaItem
-              key={t.num}
-              tarefa={t}
-              concluida={tarefaConcluida(t.num)}
-              pending={pending}
-              onToggle={(v) => toggleTarefa(t.num, v)}
-              enfase={enfases[t.num]}
-              clientesHref={clientesHref}
-              isAdmin={isAdmin}
-              overrideAtual={overrides[t.num] ?? null}
-              onEnfase={(modo) => setEnfase(t.num, modo)}
-              bloqueada={Boolean(t.exigeFavorito) && !temFavorito}
-            />
-          ))}
+          {TAREFAS_ETAPA1.map((t) => {
+            const travadoPorFavorito = Boolean(t.exigeFavorito) && !temFavorito;
+            const travadoPorTarefa =
+              t.exigeTarefa != null && !tarefaConcluida(t.exigeTarefa);
+            const bloqueada = travadoPorFavorito || travadoPorTarefa;
+            const faltam = META_CLIENTES - Math.min(comDados, META_CLIENTES);
+
+            return (
+              <TarefaItem
+                key={t.num}
+                tarefa={t}
+                concluida={tarefaConcluida(t.num)}
+                pending={pending}
+                onToggle={(v) => toggleTarefa(t.num, v)}
+                enfase={enfases[t.num]}
+                clientesHref={clientesHref}
+                isAdmin={isAdmin}
+                overrideAtual={overrides[t.num] ?? null}
+                onEnfase={(modo) => setEnfase(t.num, modo)}
+                bloqueada={bloqueada}
+                // Quando as duas travas valem, a de tarefa vem primeiro: é a
+                // que o aluno resolve antes. O favorito segue no default.
+                motivoBloqueio={
+                  travadoPorTarefa ? "Após listar os 30 clientes" : undefined
+                }
+                detalheBloqueio={
+                  travadoPorTarefa
+                    ? `Faltam ${faltam} cliente(s) com nome, telefone e nível de relacionamento preenchidos.`
+                    : undefined
+                }
+              />
+            );
+          })}
         </CardContent>
       </Card>
 

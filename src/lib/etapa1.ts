@@ -91,6 +91,8 @@ export interface TarefaDef {
   apontaClientes?: boolean;
   /** Passo que só libera depois que o aluno escolhe o cliente da equipe (favorito). */
   exigeFavorito?: boolean;
+  /** Passo que só libera quando a tarefa de `num` indicado estiver concluída. */
+  exigeTarefa?: number;
   /** Link da aula/tutorial (coluna "Aula" da planilha), quando houver. */
   tutorialUrl?: string;
   /** Modelo/arquivo de apoio (coluna "Modelo" da planilha), quando houver. */
@@ -132,6 +134,7 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     titulo: "Enviar mensagem padrão",
     descricao:
       "Envie a mensagem padrão falando da sua formação técnica e da perda pela inércia.",
+    exigeTarefa: 1,
   },
   {
     num: 4,
@@ -139,6 +142,7 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     titulo: "Enviar mensagem de estudo de caso",
     descricao:
       "No dia seguinte, envie outra mensagem com um estudo de caso sobre a dor específica do cliente. Mostre o custo da inércia, faça uma pergunta que estimule a conversa e não ofereça nada — só agende reunião se o cliente pedir.",
+    exigeTarefa: 1,
   },
   {
     num: 5,

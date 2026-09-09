@@ -19,6 +19,8 @@ export function TarefaItem({
   overrideAtual = null,
   onEnfase,
   bloqueada = false,
+  motivoBloqueio,
+  detalheBloqueio,
 }: {
   tarefa: TarefaDef;
   concluida: boolean;
@@ -32,6 +34,10 @@ export function TarefaItem({
   onEnfase?: (modo: ModoEnfase | null) => void;
   /** Passo travado (aguardando o aluno escolher o cliente da equipe). */
   bloqueada?: boolean;
+  /** Texto do badge de bloqueio. Default: "Após escolher o cliente da equipe". */
+  motivoBloqueio?: string;
+  /** Linha explicativa sob o título, só quando bloqueada. */
+  detalheBloqueio?: string;
 }) {
   const codigo = t.codigo ?? String(t.num);
 
@@ -64,7 +70,8 @@ export function TarefaItem({
           </span>
           {bloqueada ? (
             <Badge variant="outline" className="gap-1 text-[10px]">
-              <Lock className="size-3" /> Após escolher o cliente da equipe
+              <Lock className="size-3" />{" "}
+              {motivoBloqueio ?? "Após escolher o cliente da equipe"}
             </Badge>
           ) : null}
           {t.automatica ? (
@@ -79,6 +86,9 @@ export function TarefaItem({
           ) : null}
         </div>
         <p className="text-xs text-muted-foreground">{t.descricao}</p>
+        {bloqueada && detalheBloqueio ? (
+          <p className="text-xs text-muted-foreground">{detalheBloqueio}</p>
+        ) : null}
 
         {t.apontaClientes && clientesHref ? (
           <Link

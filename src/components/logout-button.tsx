@@ -38,11 +38,26 @@ export function LogoutButton({
       // Escopo LOCAL: encerra só esta sessão. Assim, se mais de uma pessoa
       // está na mesma conta, sair aqui NÃO desloga as outras.
       await createClient().auth.signOut({ scope: "local" });
-    } finally {
-      // Mesmo se o chunk do SDK não baixar (rede caiu no meio), a navegação
-      // acontece: o `finally` é o que garante que ninguém fica preso na tela.
-      window.location.assign("/login");
+    } catch {
+      // Pentest 09/09 (BAIXO): se o chunk do SDK não baixar, navegar para
+      // /login com a sessão ainda viva seria "sair" só na aparência. O
+      // fallback é a rota server-side, que limpa os cookies sem depender do
+      // SDK no navegador. Só se ELA também falhar é que o usuário fica na
+      // tela, avisado — nunca com a impressão falsa de que saiu.
+      const ok = await fetch("/auth/signout", {
+        method: "POST",
+        redirect: "manual",
+        credentials: "same-origin",
+      })
+        .then((r) => r.ok || r.type === "opaqueredirect" || r.status === 0)
+        .catch(() => false);
+      if (!ok) {
+        setSaindo(false);
+        window.alert("Não foi possível sair agora. Verifique a conexão e tente de novo.");
+        return;
+      }
     }
+    window.location.assign("/login");
   }
 
   if (linkStyle) {

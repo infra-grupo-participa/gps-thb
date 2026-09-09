@@ -50,6 +50,15 @@ export function AutoLogout() {
           // Escopo local: encerra só esta aba/aparelho, não derruba a mesma
           // conta em outro lugar (mesmo critério do botão Sair).
           await createClient().auth.signOut({ scope: "local" });
+        } catch {
+          // Pentest 09/09 (BAIXO): sem o SDK, a rota server-side limpa os
+          // cookies — a sessão não pode sobreviver a um "desconectado por
+          // inatividade" só porque um chunk não baixou.
+          await fetch("/auth/signout", {
+            method: "POST",
+            redirect: "manual",
+            credentials: "same-origin",
+          }).catch(() => undefined);
         } finally {
           window.location.assign("/login?motivo=inatividade");
         }

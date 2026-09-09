@@ -67,9 +67,14 @@ export default async function AdminPlantaoPage({
   const listasDeInscritos = await Promise.all(
     slotsComInscrito.map((s) => getInscritosDoSlot(s.slotId)),
   );
+  // `getInscritosDoSlot` devolve `{ inscritos, total }`: o total é o número
+  // REAL no banco, e `inscritos` vem cortado no teto de 500. A tela precisa
+  // dos dois para dizer "mostrando 500 de N" em vez de mentir por omissão.
   const inscritosPorSlot: Record<string, InscritoAdmin[]> = {};
+  const totalInscritosPorSlot: Record<string, number> = {};
   slotsComInscrito.forEach((s, i) => {
-    inscritosPorSlot[s.slotId] = listasDeInscritos[i];
+    inscritosPorSlot[s.slotId] = listasDeInscritos[i].inscritos;
+    totalInscritosPorSlot[s.slotId] = listasDeInscritos[i].total;
   });
 
   return (

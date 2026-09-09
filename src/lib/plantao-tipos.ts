@@ -126,12 +126,42 @@ export interface MentoraAdmin {
   ativa: boolean;
 }
 
-/** Uma linha da lista de inscritos de um slot, para o admin. */
+/**
+ * Uma linha da lista de inscritos de um slot, para o admin — e agora a
+ * unidade de EDIÇÃO da lista (Fase 0/1 do painel de inscritos, 09/09/2026).
+ *
+ * 🔑 `nome` é o que a tela mostra, e resolve uma divergência que existia
+ * desde a inscrição sem login (migração `…043`): `nome_informado` (o que a
+ * pessoa digitou no formulário público) é gravado por inscrição e NUNCA foi
+ * lido aqui — a lista mostrava `plantao_alunos.nome` (o cadastro), enquanto
+ * o e-mail de cancelamento (`cancelarSlot`) já usava `nome_informado` na
+ * saudação. Resultado: o nome na tela do admin podia ser um, e o nome no
+ * e-mail que o aluno recebia, outro. `nome` = `nome_informado ?? nomeCadastro`
+ * fecha essa divergência; `nomeCadastro` fica exposto à parte para a tela
+ * poder mostrar os dois quando divergem (e para `editarNomeInscricao`, que
+ * SÓ toca `nome_informado`, nunca `plantao_alunos.nome`).
+ */
 export interface InscritoAdmin {
+  /** PK de `gps.plantao_inscricoes` — é o que as 3 novas actions recebem. */
+  inscricaoId: string;
+  /** FK para `gps.plantao_alunos` — identidade da pessoa, não da inscrição. */
+  alunoPlantaoId: string;
+  /** `nome_informado ?? nomeCadastro` — o que a tela e os e-mails mostram. */
   nome: string;
+  /** `plantao_alunos.nome` cru, para a tela sinalizar quando os dois divergem. */
+  nomeCadastro: string;
   email: string;
   presencaEm: string | null;
+  /**
+   * Quem marcou a presença — `null` é ESTADO VÁLIDO, não "não sei": cobre
+   * tanto quem nunca teve presença marcada quanto todo registro ANTERIOR a
+   * esta coluna (`…179`, sem backfill de propósito — a UI não pode afirmar
+   * uma origem que o dado não prova).
+   */
+  presencaOrigem: "portal" | "equipe" | null;
   npsNota: number | null;
+  /** Quando a pessoa se inscreveu — usado para ordenar/exibir na lista. */
+  inscritoEm: string;
 }
 
 /** Um aluno do plantão, como listado no painel do admin. */

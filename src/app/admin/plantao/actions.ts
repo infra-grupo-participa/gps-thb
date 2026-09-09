@@ -8,11 +8,13 @@
  * `src/components/admin/plantao-*.tsx` continuem escrevendo
  * `from "@/app/admin/plantao/actions"`.
  *
- *   ./slots-actions.ts     criar, editar, publicar, trocar mentora, cancelar,
- *                          remover e gravação dos slots
- *   ./mentoras-actions.ts  `gps.plantao_mentoras`
- *   ./alunos-actions.ts    carga do lote do Acelera, revogar e reativar acesso
- *   ./config-actions.ts    o interruptor de inscrições (`gps.config`)
+ *   ./slots-actions.ts      criar, editar, publicar, trocar mentora, cancelar,
+ *                           remover e gravação dos slots
+ *   ./mentoras-actions.ts   `gps.plantao_mentoras`
+ *   ./alunos-actions.ts     carga do lote do Acelera, revogar e reativar acesso
+ *   ./config-actions.ts     o interruptor de inscrições (`gps.config`)
+ *   ./inscritos-actions.ts  marcar presença, editar nome, cancelar e
+ *                           inscrever pelo painel (lista de inscritos)
  *
  * 🔑 Cada arquivo de destino tem o seu próprio `"use server"` — é lá que a
  * action é DEFINIDA e é de lá que sai o id que o cliente invoca.
@@ -55,3 +57,10 @@ export {
 } from "./alunos-actions";
 
 export { definirInscricoesAbertas } from "./config-actions";
+
+export {
+  marcarPresencaInscrito,
+  editarNomeInscricao,
+  cancelarInscricaoPeloAdmin,
+  inscreverAlunoNoSlot,
+} from "./inscritos-actions";

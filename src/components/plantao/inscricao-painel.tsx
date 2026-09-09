@@ -59,6 +59,7 @@ export function InscricaoPainel({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
+  const identificado = Boolean(email && nome);
   const temInscricaoAtiva = minhaInscricaoAtiva !== null;
   const minha = slots.find((s) => s.minhaInscricao);
 
@@ -103,10 +104,26 @@ export function InscricaoPainel({
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="rounded-lg border border-dashed bg-muted/40 p-2.5 text-xs text-muted-foreground">
-        Você pode cancelar a qualquer momento até 1 hora antes do início — a
-        partir daí a sala é liberada e o cancelamento não é mais possível.
-      </p>
+      {!identificado ? (
+        <p
+          id="inscricao-precisa-identificar"
+          className="rounded-lg border border-dashed bg-muted/40 p-2.5 text-xs text-muted-foreground"
+        >
+          Para se inscrever, primeiro{" "}
+          <a
+            href="#identificacao"
+            className="font-medium text-accent-foreground underline underline-offset-4 hover:no-underline"
+          >
+            informe seu nome e e-mail
+          </a>
+          .
+        </p>
+      ) : (
+        <p className="rounded-lg border border-dashed bg-muted/40 p-2.5 text-xs text-muted-foreground">
+          Você pode cancelar a qualquer momento até 1 hora antes do início — a
+          partir daí a sala é liberada e o cancelamento não é mais possível.
+        </p>
+      )}
       {slots.map((slot) => {
         const ehMinha = slot.minhaInscricao;
         return (
@@ -165,7 +182,16 @@ export function InscricaoPainel({
             ) : (
               <Button
                 size="sm"
-                disabled={pending || temInscricaoAtiva}
+                disabled={pending || temInscricaoAtiva || !identificado}
+                aria-disabled={pending || temInscricaoAtiva || !identificado}
+                aria-describedby={
+                  !identificado ? "inscricao-precisa-identificar" : undefined
+                }
+                title={
+                  !identificado
+                    ? "Informe seu nome e e-mail para se inscrever"
+                    : undefined
+                }
                 onClick={() => inscreverNoSlot(slot)}
               >
                 Inscrever

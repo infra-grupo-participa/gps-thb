@@ -64,27 +64,40 @@ export default async function PlantaoPage({
     <div className="flex flex-col gap-4">
       <p className="rounded-lg border border-dashed bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
         Este plantão é exclusivo de quem comprou o Acelera Holding.
+        {!email ? (
+          <>
+            {" "}
+            <span className="font-medium text-accent-foreground">
+              Passo 1:
+            </span>{" "}
+            informe seu nome e e-mail abaixo para poder se inscrever.
+          </>
+        ) : null}
       </p>
 
-      {!email ? (
-        <IdentificacaoForm />
-      ) : !nome ? (
-        // Chegou com `?e=` mas sem `?n=` (ex.: link salvo antes de se
-        // identificar) — pede o nome de novo para poder se inscrever
-        // (InscricaoPainel exige os dois), mas isso NÃO impede ver a
-        // inscrição/card/NPS que já existir, abaixo.
-        <IdentificacaoForm emailInicial={email} />
-      ) : (
-        <p className="text-sm">
-          Inscrevendo como <span className="font-medium">{nome}</span>.{" "}
-          <Link
-            href={hrefTrocarEmail}
-            className="font-medium text-accent-foreground underline underline-offset-4 hover:no-underline"
-          >
-            Não é você? Trocar e-mail
-          </Link>
-        </p>
-      )}
+      {/* Âncora usada pelo aviso do topo do calendário e pelo painel do dia
+          para trazer a pessoa de volta ao formulário sem perder o lugar. */}
+      <div id="identificacao">
+        {!email ? (
+          <IdentificacaoForm />
+        ) : !nome ? (
+          // Chegou com `?e=` mas sem `?n=` (ex.: link salvo antes de se
+          // identificar) — pede o nome de novo para poder se inscrever
+          // (InscricaoPainel exige os dois), mas isso NÃO impede ver a
+          // inscrição/card/NPS que já existir, abaixo.
+          <IdentificacaoForm emailInicial={email} />
+        ) : (
+          <p className="text-sm">
+            Inscrevendo como <span className="font-medium">{nome}</span>.{" "}
+            <Link
+              href={hrefTrocarEmail}
+              className="font-medium text-accent-foreground underline underline-offset-4 hover:no-underline"
+            >
+              Não é você? Trocar e-mail
+            </Link>
+          </p>
+        )}
+      </div>
 
       {email && minhaInscricao ? (
         <MinhaInscricaoCard inscricao={minhaInscricao} email={email} />

@@ -123,27 +123,55 @@ async function contarInscritosPorSlot(
   return mapa;
 }
 
-/** Inscritos de um slot específico, com nome/e-mail — só para o admin. */
-export async function getInscritosDoSlot(slotId: string): Promise<InscritoAdmin[]> {
+/**
+ * Inscritos de um slot específico, com nome/e-mail — só para o admin.
+ *
+ * `count: "exact"` junto do recorte: `total` é o total REAL de inscritos
+ * ativos do slot, não o tamanho da página. Sem isso um slot com mais de
+ * `LIMITE_INSCRITOS` reportaria a lista truncada como se fosse a lista
+ * inteira — a UI precisa poder dizer "mostrando 500 de N" (mesmo raciocínio
+ * de `cancelarSlot`, que já faz essa conta para o e-mail de cancelamento).
+ */
+export async function getInscritosDoSlot(
+  slotId: string,
+): Promise<{ inscritos: InscritoAdmin[]; total: number }> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const {
+    data,
+    count,
+  } = await supabase
     .schema("gps")
     .from("plantao_inscricoes")
-    .select("presenca_em, nps_nota, plantao_alunos(nome, email)")
+    .select(
+      "id, aluno_plantao_id, nome_informado, presenca_em, presenca_origem, nps_nota, inscrito_em, plantao_alunos(nome, email)",
+      { count: "exact" },
+    )
     .eq("slot_id", slotId)
     .is("cancelado_em", null)
     .order("inscrito_em")
     .limit(LIMITE_INSCRITOS);
 
-  return (data ?? []).map((row) => {
+  const inscritos = (data ?? []).map((row) => {
     const aluno = row.plantao_alunos as unknown as { nome: string; email: string } | null;
+    const nomeCadastro = aluno?.nome ?? "";
+    const nomeInformado = (row.nome_informado as string | null) ?? null;
     return {
-      nome: aluno?.nome ?? "",
+      inscricaoId: row.id as string,
+      alunoPlantaoId: row.aluno_plantao_id as string,
+      // Resolve a divergência entre o que a pessoa digitou no formulário
+      // público e o cadastro em `plantao_alunos` — ver o comentário de
+      // `InscritoAdmin.nome` em plantao-tipos.ts.
+      nome: nomeInformado ?? nomeCadastro,
+      nomeCadastro,
       email: aluno?.email ?? "",
       presencaEm: (row.presenca_em as string) ?? null,
+      presencaOrigem: (row.presenca_origem as "portal" | "equipe" | null) ?? null,
       npsNota: (row.nps_nota as number) ?? null,
+      inscritoEm: row.inscrito_em as string,
     };
   });
+
+  return { inscritos, total: count ?? inscritos.length };
 }
 
 /** Lista de alunos do plantão para o painel de gestão de acesso. */

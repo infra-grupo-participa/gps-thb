@@ -134,9 +134,25 @@ export function CalendarioMes({
   const hojeIso = hojeSaoPaulo();
 
   const slotsDoDiaAberto = diaAberto ? (porDia.get(diaAberto) ?? []) : [];
+  const identificado = Boolean(email && nome);
 
   return (
     <div className="grid gap-3">
+      {/* Sinal discreto: dá para navegar o calendário sem se identificar,
+          mas a ação de inscrever exige — avisa antes, não só no clique. */}
+      {!identificado ? (
+        <p className="text-xs text-muted-foreground">
+          Você já pode ver os dias e horários. Para se inscrever,{" "}
+          <a
+            href="#identificacao"
+            className="font-medium text-accent-foreground underline underline-offset-4 hover:no-underline"
+          >
+            informe seu nome e e-mail
+          </a>{" "}
+          (passo 1).
+        </p>
+      ) : null}
+
       {/* Cabeçalho: navegação do mês */}
       <div className="flex items-center justify-between gap-2 rounded-xl border bg-card p-3 shadow-sm">
         <Link

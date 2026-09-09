@@ -31,7 +31,7 @@ export function FavoritoDestaque({
               <Star className="size-5 fill-primary" />
             </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-primary">
+              <div className="text-xs font-semibold uppercase tracking-wide text-accent-foreground">
                 Cliente acompanhado pela equipe
               </div>
               <div className="text-lg font-semibold">

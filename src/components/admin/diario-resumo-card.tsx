@@ -46,7 +46,7 @@ export function DiarioResumoCard({
             Nenhuma nota registrada — registre a primeira.
           </div>
         </div>
-        <span className="text-sm font-medium text-primary">Registrar</span>
+        <span className="text-sm font-medium text-accent-foreground">Registrar</span>
       </Link>
     );
   }

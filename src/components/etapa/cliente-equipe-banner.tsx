@@ -22,7 +22,7 @@ export function ClienteEquipeBanner({
         </span>
         <Link
           href={`${basePath}/clientes`}
-          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+          className="inline-flex items-center gap-1 font-medium text-accent-foreground underline-offset-4 hover:underline"
         >
           Marcar em Clientes <ArrowRight className="size-3" />
         </Link>
@@ -40,7 +40,7 @@ export function ClienteEquipeBanner({
         <span className="text-muted-foreground">Cliente acompanhado:</span>
         <span className="font-medium">{cliente.nome || "Sem nome"}</span>
       </span>
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-accent-foreground">
         Abrir ficha <ArrowRight className="size-3" />
       </span>
     </Link>

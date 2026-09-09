@@ -93,7 +93,7 @@ export function TarefaItem({
         {t.apontaClientes && clientesHref ? (
           <Link
             href={clientesHref}
-            className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary transition hover:bg-primary/20"
+            className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-accent-foreground transition hover:bg-primary/20"
           >
             Registre seus clientes na aba Clientes
             <ArrowUpRight className="size-3.5" />
@@ -101,7 +101,7 @@ export function TarefaItem({
         ) : null}
 
         {t.info ? (
-          <p className="mt-1 text-xs font-medium text-primary">{t.info}</p>
+          <p className="mt-1 text-xs font-medium text-accent-foreground">{t.info}</p>
         ) : null}
 
         {t.tutorialUrl || t.modelo ? (
@@ -111,7 +111,7 @@ export function TarefaItem({
                 href={t.tutorialUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-medium text-accent-foreground underline-offset-4 hover:underline"
               >
                 ▶ Ver tutorial
               </a>
@@ -122,7 +122,7 @@ export function TarefaItem({
                   href={t.modelo.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-accent-foreground underline-offset-4 hover:underline"
                 >
                   ⬇ Modelo: {t.modelo.nome}
                 </a>

@@ -152,7 +152,7 @@ export function Etapa1Guide({
           <div>
             <div className="font-medium">
               A lista e a gestão dos clientes ficam na aba{" "}
-              <span className="text-primary">Clientes</span>.
+              <span className="text-accent-foreground">Clientes</span>.
             </div>
             <p className="text-sm text-muted-foreground">
               Aqui você acompanha o passo a passo; lá você cadastra, controla o
@@ -186,7 +186,7 @@ export function Etapa1Guide({
                   <span className="font-medium">Do passo 4 em diante</span>, os
                   passos abrem quando você escolher, na aba Clientes, o cliente
                   que a equipe vai acompanhar (a{" "}
-                  <span className="text-primary">estrela</span>).
+                  <span className="text-accent-foreground">estrela</span>).
                 </p>
               </div>
               <Link

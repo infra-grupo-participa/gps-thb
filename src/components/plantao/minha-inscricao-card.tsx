@@ -174,7 +174,7 @@ export function MinhaInscricaoCard({
         {inscricao.janelaAberta ? (
           presencaJaConfirmada ? (
             <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/[0.04] p-3">
-              <div className="flex items-center gap-1.5 text-sm font-medium text-primary">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-accent-foreground">
                 <CheckCircle2Icon className="size-4" aria-hidden />
                 Presença confirmada
               </div>

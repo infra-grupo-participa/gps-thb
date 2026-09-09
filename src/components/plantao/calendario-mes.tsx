@@ -207,7 +207,7 @@ export function CalendarioMes({
                   <span
                     className={
                       ehHoje
-                        ? "flex size-6 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary"
+                        ? "flex size-6 items-center justify-center rounded-full bg-primary/10 font-semibold text-accent-foreground"
                         : ""
                     }
                   >

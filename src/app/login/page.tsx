@@ -41,7 +41,7 @@ export default async function LoginPage({
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Ainda não tem conta?{" "}
-        <Link href="/cadastro" className="font-medium text-primary hover:underline">
+        <Link href="/cadastro" className="font-medium text-accent-foreground underline-offset-4 hover:underline">
           Criar conta
         </Link>
       </p>

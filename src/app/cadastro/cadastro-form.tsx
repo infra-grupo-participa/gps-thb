@@ -66,7 +66,7 @@ export function CadastroForm() {
             <span
               className={
                 "absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium " +
-                (docValido ? "text-primary" : "text-muted-foreground")
+                (docValido ? "text-accent-foreground" : "text-muted-foreground")
               }
             >
               {tipo}

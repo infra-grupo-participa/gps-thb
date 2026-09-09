@@ -54,7 +54,7 @@ export function MetaHonorarios({
         </span>
         {total !== null ? (
           <span className="shrink-0 tabular-nums" title={brlExato.format(total)}>
-            <span className="font-semibold text-primary">
+            <span className="font-semibold text-accent-foreground">
               {brlRedondo.format(total)}
             </span>{" "}
             <span className="text-muted-foreground">

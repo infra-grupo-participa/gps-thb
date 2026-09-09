@@ -345,7 +345,7 @@ export function ClientesManager({
                       <TableCell className="font-medium">
                         <Link
                           href={fichaHref(c.id)}
-                          className="hover:text-primary hover:underline"
+                          className="hover:text-accent-foreground hover:underline"
                         >
                           {c.nome || "Sem nome"}
                         </Link>
@@ -533,7 +533,7 @@ function Kanban({
                       <div className="flex items-start justify-between gap-1">
                         <Link
                           href={fichaHref(c.id)}
-                          className="line-clamp-2 text-sm font-medium hover:text-primary hover:underline"
+                          className="line-clamp-2 text-sm font-medium hover:text-accent-foreground hover:underline"
                         >
                           {c.nome || "Sem nome"}
                         </Link>
@@ -602,7 +602,7 @@ function ClienteCardLista({
           <StarButton ativo={c.acompanhado_equipe} onClick={() => onEquipe(c)} />
           <Link
             href={fichaHref(c.id)}
-            className="truncate font-medium hover:text-primary hover:underline"
+            className="truncate font-medium hover:text-accent-foreground hover:underline"
           >
             {c.nome || "Sem nome"}
           </Link>
@@ -727,11 +727,11 @@ function StarButton({
       className={
         "shrink-0 transition " +
         (ativo
-          ? "text-primary"
+          ? "text-accent-foreground"
           : "text-muted-foreground/40 hover:text-muted-foreground")
       }
     >
-      <Star className={"size-4 " + (ativo ? "fill-primary" : "")} />
+      <Star className={"size-4 " + (ativo ? "fill-accent-foreground" : "")} />
     </button>
   );
 }

@@ -42,7 +42,7 @@ export function HomeResumo({
               <TrendingUp className="size-4 text-primary" aria-hidden />
               Progresso geral
             </span>
-            <span className="font-semibold text-primary">{progressoGeral}%</span>
+            <span className="font-semibold text-accent-foreground">{progressoGeral}%</span>
           </div>
           <Progress value={progressoGeral} className="mt-2" />
           <p className="mt-1 text-xs text-muted-foreground">média das 6 etapas</p>

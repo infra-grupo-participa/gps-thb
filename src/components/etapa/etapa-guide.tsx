@@ -85,7 +85,7 @@ export function EtapaGuide({
           </div>
           <Progress value={pct} />
           {meta ? (
-            <p className="mt-3 text-sm font-medium text-primary">{meta}</p>
+            <p className="mt-3 text-sm font-medium text-accent-foreground">{meta}</p>
           ) : null}
         </CardContent>
       </Card>

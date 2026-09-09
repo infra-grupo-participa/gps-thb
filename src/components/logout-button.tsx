@@ -40,7 +40,7 @@ export function LogoutButton({
         type="button"
         onClick={sair}
         disabled={saindo}
-        className={className ?? "text-sm text-primary underline"}
+        className={className ?? "text-sm text-accent-foreground underline underline-offset-4"}
       >
         {saindo ? "Saindo..." : children}
       </button>

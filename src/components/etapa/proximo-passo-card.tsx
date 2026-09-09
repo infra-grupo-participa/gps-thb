@@ -19,7 +19,7 @@ export function ProximoPassoCard({
         <PlayCircle className="size-6" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-xs font-semibold uppercase tracking-wide text-primary">
+        <div className="text-xs font-semibold uppercase tracking-wide text-accent-foreground">
           Continue de onde parou
         </div>
         <div className="truncate font-medium">
@@ -29,7 +29,7 @@ export function ProximoPassoCard({
           Etapa {String(passo.etapa).padStart(2, "0")} — {passo.etapaNome}
         </div>
       </div>
-      <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+      <span className="inline-flex items-center gap-1 text-sm font-medium text-accent-foreground">
         Continuar
         <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
       </span>

@@ -34,7 +34,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
           <Label htmlFor="senha">Senha</Label>
           <Link
             href="/esqueci-senha"
-            className="text-xs text-muted-foreground hover:text-primary hover:underline"
+            className="text-xs text-muted-foreground underline-offset-4 hover:text-accent-foreground hover:underline"
           >
             Esqueci minha senha
           </Link>

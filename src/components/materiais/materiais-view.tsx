@@ -149,7 +149,7 @@ function MaterialCard({
             {etapaHref ? (
               <Link
                 href={etapaHref}
-                className="text-[11px] text-muted-foreground hover:text-primary hover:underline"
+                className="text-[11px] text-muted-foreground underline-offset-4 hover:text-accent-foreground hover:underline"
               >
                 Tarefa {m.tarefaNum}
               </Link>
@@ -168,7 +168,7 @@ function MaterialCard({
                 href={m.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-medium text-accent-foreground underline-offset-4 hover:underline"
               >
                 {m.tipo === "aula" ? "Assistir" : "Abrir modelo"}
                 <ExternalLink className="size-3" />

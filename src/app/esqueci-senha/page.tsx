@@ -27,7 +27,7 @@ export default function EsqueciSenhaPage() {
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Lembrou a senha?{" "}
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link href="/login" className="font-medium text-accent-foreground underline-offset-4 hover:underline">
           Entrar
         </Link>
       </p>

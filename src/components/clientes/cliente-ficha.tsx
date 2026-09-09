@@ -400,7 +400,7 @@ export function ClienteFicha({
                       href={contratoLimpo}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex w-fit items-center gap-1.5 rounded-sm text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      className="inline-flex w-fit items-center gap-1.5 rounded-sm text-xs font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       Abrir contrato no Drive
                       <ExternalLink className="size-3.5" aria-hidden />
@@ -426,7 +426,7 @@ export function ClienteFicha({
                   href={contratoLimpo}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center gap-1.5 rounded-sm text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  className="inline-flex w-fit items-center gap-1.5 rounded-sm text-xs font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   Abrir contrato no Drive
                   <ExternalLink className="size-3.5" aria-hidden />

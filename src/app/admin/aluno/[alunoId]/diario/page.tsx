@@ -206,7 +206,7 @@ export default async function AdminAlunoDiarioPage({
                 className={cn(
                   "rounded-full border px-3 py-1 text-xs font-medium transition",
                   foco === op.valor
-                    ? "border-primary bg-primary/10 text-primary"
+                    ? "border-primary bg-primary/10 text-accent-foreground"
                     : "border-border text-muted-foreground hover:bg-muted",
                 )}
                 aria-current={foco === op.valor ? "true" : undefined}
@@ -224,7 +224,7 @@ export default async function AdminAlunoDiarioPage({
                 className={cn(
                   "rounded-full border px-3 py-1 text-xs font-medium transition",
                   janela === op.valor
-                    ? "border-primary bg-primary/10 text-primary"
+                    ? "border-primary bg-primary/10 text-accent-foreground"
                     : "border-border text-muted-foreground hover:bg-muted",
                 )}
                 aria-current={janela === op.valor ? "true" : undefined}

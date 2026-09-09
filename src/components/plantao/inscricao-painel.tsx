@@ -138,7 +138,7 @@ export function InscricaoPainel({
             </div>
 
             {ehMinha ? (
-              <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+              <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-accent-foreground">
                 Você está aqui
               </span>
             ) : slot.encerrado ? (

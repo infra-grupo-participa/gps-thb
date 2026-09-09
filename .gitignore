@@ -49,3 +49,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 supabase/.temp/
+
+# Skills instaladas por `npx skills add` (reinstalaveis; ver CLAUDE.md)
+.agents/
+.claude/skills/

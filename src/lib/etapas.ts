@@ -49,20 +49,58 @@ export interface ProximoPasso {
   tarefaNum: number;
   codigo: string;
   titulo: string;
+  /**
+   * Preenchido só quando **todas** as tarefas pendentes estão travadas: diz, em
+   * uma frase, o que o aluno tem de fazer para destravar. O card da home usa
+   * isso para virar CTA de destravamento em vez de link para uma porta
+   * trancada. `undefined` = a tarefa está liberada, pode marcar.
+   */
+  bloqueio?: string;
 }
 
 /**
- * A próxima tarefa pendente do aluno: primeira não concluída na etapa liberada
- * mais avançada em que ainda há pendência. Retorna null quando está tudo em dia.
+ * Frases de destravamento. Ficam aqui (e não no componente) para o card do
+ * aluno e o do modo assistência dizerem a MESMA coisa.
+ *
+ * A trava de tarefa vem antes da de favorito quando as duas valem: é a que o
+ * aluno resolve primeiro. Mesma precedência do `Etapa1Guide`.
+ */
+const BLOQUEIO_TAREFA = "Liste os 30 clientes";
+const BLOQUEIO_FAVORITO = "Escolha o cliente que a equipe vai acompanhar";
+
+export interface OpcoesProximoPasso {
+  /** O ambiente já tem um cliente marcado como acompanhado pela equipe. */
+  temFavorito: boolean;
+}
+
+/**
+ * A próxima tarefa pendente do aluno: primeira **que ele consegue fazer** na
+ * etapa liberada mais avançada em que ainda há pendência. Retorna null quando
+ * está tudo em dia.
+ *
+ * 🔑 Tarefa travada não é "próximo passo" (PL2, 09/09/2026). Até 09/09 esta
+ * função escolhia a primeira não concluída sem olhar `exigeFavorito` nem
+ * `exigeTarefa` — o card mais proeminente da home mandava o aluno para um
+ * checkbox desabilitado. Agora:
+ *   1. procura, nas etapas liberadas em ordem, a primeira pendente LIVRE;
+ *   2. se não houver nenhuma livre em etapa alguma, devolve a primeira pendente
+ *      com `bloqueio` preenchido — a tela diz o que destravar, em vez de mentir.
+ *
+ * `opts` é obrigatório de propósito: uma página nova que esqueça o favorito
+ * não compila, em vez de reintroduzir o beco sem saída em silêncio.
  */
 export function proximoPasso(
   etapas: Etapa[],
   clientes: ClienteEtapa1[],
   progressoTodas: ProgressoTarefa[],
+  opts: OpcoesProximoPasso,
 ): ProximoPasso | null {
   const liberadas = [...etapas]
     .filter((e) => e.liberada)
     .sort((a, b) => a.ordem - b.ordem);
+
+  /** Primeira pendente travada encontrada — só usada se nada estiver livre. */
+  let travadaMaisProxima: ProximoPasso | null = null;
 
   for (const et of liberadas) {
     const conteudo = CONTEUDO_ETAPAS[et.id];
@@ -81,19 +119,34 @@ export function proximoPasso(
       estaConcluida = (num) => feitas.has(num);
     }
 
-    const pend = conteudo.tarefas.find((t) => !estaConcluida(t.num));
-    if (pend) {
-      return {
-        etapa: et.id,
-        etapaNome: et.nome,
-        tarefaNum: pend.num,
-        codigo: pend.codigo ?? String(pend.num),
-        titulo: pend.titulo,
-      };
+    // Mesma regra do `Etapa1Guide` — se divergir, o card promete o que o
+    // checkbox recusa.
+    const motivoBloqueio = (t: TarefaDef): string | null => {
+      if (t.exigeTarefa != null && !estaConcluida(t.exigeTarefa)) {
+        return BLOQUEIO_TAREFA;
+      }
+      if (t.exigeFavorito && !opts.temFavorito) return BLOQUEIO_FAVORITO;
+      return null;
+    };
+
+    const monta = (t: TarefaDef, bloqueio: string | null): ProximoPasso => ({
+      etapa: et.id,
+      etapaNome: et.nome,
+      tarefaNum: t.num,
+      codigo: t.codigo ?? String(t.num),
+      titulo: t.titulo,
+      ...(bloqueio ? { bloqueio } : {}),
+    });
+
+    for (const t of conteudo.tarefas) {
+      if (estaConcluida(t.num)) continue;
+      const bloqueio = motivoBloqueio(t);
+      if (!bloqueio) return monta(t, null);
+      if (!travadaMaisProxima) travadaMaisProxima = monta(t, bloqueio);
     }
   }
 
-  return null;
+  return travadaMaisProxima;
 }
 
 /** Progresso (%) de todas as etapas cadastradas, para o mapa do Início. */

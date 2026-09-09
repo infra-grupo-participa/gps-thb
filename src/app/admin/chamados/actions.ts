@@ -21,6 +21,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin, getContextoSessao } from "@/lib/auth";
 import { logErro } from "@/lib/log";
+import { emailValido } from "@/lib/texto";
 import {
   ANEXO_PATH_REGEX,
   BUCKET_CHAMADOS,
@@ -30,8 +31,6 @@ import {
 /** Teto de endereços na lista da equipe. Avisar 16 pessoas por chamado treina
  *  o time a ignorar o aviso — alerta é fila, não informação. */
 const MAX_EMAILS_EQUIPE = 10;
-
-const EMAIL_REGEX = /^[^\s@<>"']+@[^\s@<>"']+\.[a-z]{2,}$/i;
 
 async function gravarConfig(
   chave: string,
@@ -88,7 +87,8 @@ export async function definirChamadosAbertos(
  * equipe salva "fulano@" e descobre semanas depois que ninguém era avisado.
  *
  * CR/LF nunca chega ao banco (o CHECK de `gps.config.valor` recusa) nem ao
- * cabeçalho do e-mail (o `EMAIL_REGEX` não deixa passar espaço em branco).
+ * cabeçalho do e-mail (`emailValido` não deixa passar espaço em branco nem
+ * `<`, `>`, `"` ou `'`).
  */
 export async function definirEmailEquipeChamados(
   lista: string,
@@ -101,7 +101,7 @@ export async function definirEmailEquipeChamados(
     .map((e) => e.trim())
     .filter(Boolean);
 
-  const invalidos = partes.filter((e) => !EMAIL_REGEX.test(e));
+  const invalidos = partes.filter((e) => !emailValido(e));
   if (invalidos.length > 0) {
     return {
       ok: false,

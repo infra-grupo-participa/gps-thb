@@ -46,7 +46,11 @@ export default async function AdminAlunoInicioPage({
     ]);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
-  const passo = proximoPasso(etapas, clientes, progressoTodas);
+  // Mesma regra do ambiente do aluno (PL2): tarefa travada não é próximo
+  // passo. O admin vê o mesmo card que o aluno vê.
+  const passo = proximoPasso(etapas, clientes, progressoTodas, {
+    temFavorito: favorito !== null,
+  });
 
   return (
     <>

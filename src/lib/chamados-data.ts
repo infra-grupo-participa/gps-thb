@@ -279,13 +279,26 @@ export const contarChamadosAbertosPorAluno = cache(
  * `emailEquipe` vazio é o estado INICIAL e significa que ninguém recebe aviso
  * de chamado novo — a tela avisa isso em destaque. Falha silenciosa é o modo de
  * falha proibido nesta feature.
+ *
+ * `fallbackEnv` existe porque a lista vazia NÃO implica ninguém avisado:
+ * `avisarEquipe` (`src/app/chamados/actions.ts`) cai na env `EMAIL_SUPORTE`.
+ * Sem este campo a tela crava em vermelho "ninguém recebe e-mail" mesmo com a
+ * env definida na Hostinger — aviso que mente treina o time a ignorar aviso
+ * (PL6). **Só o booleano sai daqui**: o endereço de suporte não vira prop de
+ * componente nem HTML.
  */
 export async function getChamadosConfig(): Promise<{
   aberto: boolean;
   emailEquipe: string[];
+  /** `true` = a env `EMAIL_SUPORTE` está definida no servidor. */
+  fallbackEnv: boolean;
 }> {
-  const padrao = { aberto: true, emailEquipe: [] as string[] };
-  if (!(await ehAdmin())) return padrao;
+  // Mesmo teste do `avisarEquipe`: string só com espaço não é destinatário.
+  const fallbackEnv = Boolean(process.env.EMAIL_SUPORTE?.trim());
+  if (!(await ehAdmin())) {
+    return { aberto: true, emailEquipe: [], fallbackEnv: false };
+  }
+  const padrao = { aberto: true, emailEquipe: [] as string[], fallbackEnv };
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -307,6 +320,7 @@ export async function getChamadosConfig(): Promise<{
   );
 
   return {
+    fallbackEnv,
     // Ausente = ABERTO, igual ao banco: o default tem de ser funcionar.
     aberto: (porChave.get("chamados_aberto") ?? "true") !== "false",
     emailEquipe: (porChave.get("chamados_email_equipe") ?? "")

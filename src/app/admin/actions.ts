@@ -7,6 +7,8 @@ import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
+import { traduzirErroBanco } from "@/lib/erros";
+import { logErro } from "@/lib/log";
 import { enviarCredenciaisAcesso, enviarAcessoLiberado } from "@/lib/email";
 import {
   documentoValido,
@@ -53,7 +55,7 @@ export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
 
   // Palavras do texto + o bloco de dígitos (CPF/CNPJ/telefone).
   const palavras = q.split(/\s+/).filter((t) => t.length >= 2);
-  const digitos = q.replace(/\D/g, "");
+  const digitos = soDigitos(q);
 
   // OR amplo: qualquer palavra em qualquer campo (redundante de propósito).
   const filtros: string[] = [];
@@ -88,8 +90,8 @@ export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
         if (email.includes(t)) score += 1;
       }
       if (digitos.length >= 3) {
-        if (doc.replace(/\D/g, "").includes(digitos)) score += 3;
-        if (tel.replace(/\D/g, "").includes(digitos)) score += 2;
+        if (soDigitos(doc).includes(digitos)) score += 3;
+        if (soDigitos(tel).includes(digitos)) score += 2;
       }
       return { a, score };
     })
@@ -247,7 +249,7 @@ export async function cadastrarAluno(
     if (error.code === "42501") {
       return { erro: "Sem permissão para cadastrar alunos na base." };
     }
-    return { erro: "Não foi possível cadastrar: " + error.message };
+    return { erro: traduzirErroBanco("cadastrarAluno", error) };
   }
 
   revalidatePath("/admin");
@@ -270,7 +272,7 @@ export async function adicionarAlunoGps(alunoId: string) {
     .from("membros")
     .insert({ aluno_id: alunoId, papel: "titular" });
 
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("adicionarAlunoGps", error) };
   revalidatePath("/admin");
   return {};
 }
@@ -288,6 +290,41 @@ export async function aprovarSolicitacao(
     data: { user },
   } = await supabase.auth.getUser();
 
+  // PL14 — o upsert abaixo tem `onConflict: "user_id"`: se este login JÁ for
+  // membro de OUTRO ambiente, aprovar aqui o MOVERIA para cá, como titular, em
+  // silêncio — apagando o vínculo (e o histórico) que ele tinha lá. São 13
+  // sócios reais no sistema; o caso é improvável, não impossível. Ler antes e
+  // recusar é mais barato que desfazer depois.
+  const { data: vinculo, error: erroVinculo } = await supabase
+    .schema("gps")
+    .from("membros")
+    .select("aluno_id, papel")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (erroVinculo) {
+    return {
+      erro: traduzirErroBanco("aprovarSolicitacao.vinculo", erroVinculo),
+    };
+  }
+  const jaVinculado = vinculo as { aluno_id: string; papel: string } | null;
+  if (jaVinculado && jaVinculado.aluno_id !== alunoId) {
+    // Sem dizer de QUEM é o outro ambiente: quem aprova não precisa do dado, e
+    // a fila de solicitações não é lugar de expor vínculo de terceiro.
+    return {
+      erro:
+        "Este login já participa de outro ambiente do programa" +
+        (jaVinculado.papel === "socio" ? " (como sócio)" : "") +
+        ". Remova o vínculo atual em “Gerenciar acesso” antes de aprovar esta solicitação.",
+    };
+  }
+  if (jaVinculado && jaVinculado.papel !== "titular") {
+    return {
+      erro:
+        "Este login já é sócio deste ambiente. Aprovar aqui o tornaria titular — " +
+        "ajuste o papel em “Gerenciar acesso” se for essa a intenção.",
+    };
+  }
+
   const { error: erroMembro } = await supabase
     .schema("gps")
     .from("membros")
@@ -295,7 +332,9 @@ export async function aprovarSolicitacao(
       { aluno_id: alunoId, user_id: userId, papel: "titular" },
       { onConflict: "user_id" },
     );
-  if (erroMembro) return { erro: erroMembro.message };
+  if (erroMembro) {
+    return { erro: traduzirErroBanco("aprovarSolicitacao.membro", erroMembro) };
+  }
 
   const { error } = await supabase
     .schema("gps")
@@ -307,7 +346,7 @@ export async function aprovarSolicitacao(
       decidido_por: user?.id ?? null,
     })
     .eq("id", solicitacaoId);
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("aprovarSolicitacao", error) };
 
   // Avisa o aluno que o acesso foi liberado (ele já tem senha própria).
   const { data: aluno } = await supabase
@@ -320,7 +359,6 @@ export async function aprovarSolicitacao(
   }
 
   revalidatePath("/admin");
-  revalidatePath("/admin/solicitacoes");
   return {};
 }
 
@@ -346,10 +384,9 @@ export async function recusarSolicitacao(
       decidido_por: user?.id ?? null,
     })
     .eq("id", solicitacaoId);
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("recusarSolicitacao", error) };
 
   revalidatePath("/admin");
-  revalidatePath("/admin/solicitacoes");
   return {};
 }
 
@@ -364,7 +401,7 @@ export async function atualizarEmailAluno(alunoId: string, email: string) {
     .from("thb_alunos")
     .update({ email: novo })
     .eq("id", alunoId);
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("atualizarEmailAluno", error) };
   revalidatePath("/admin");
   return { email: novo };
 }
@@ -461,7 +498,9 @@ export async function criarAcessoAluno(
       .from("thb_alunos")
       .update({ email })
       .eq("id", alunoId);
-    if (eMail) return { erro: "Erro ao atualizar o e-mail: " + eMail.message };
+    if (eMail) {
+      return { erro: traduzirErroBanco("criarAcessoAluno.email", eMail) };
+    }
   }
   if (!email) return { erro: "Este aluno não tem e-mail. Informe um e-mail." };
 
@@ -514,7 +553,15 @@ export async function criarAcessoAluno(
           p_forcar: false,
         });
 
-      if (eAdocao) return { erro: eAdocao.message, programas };
+      if (eAdocao) {
+        // As mensagens de `gps.admin_adotar_login_existente` são texto NOSSO,
+        // em português (ver `FRASES_DO_BANCO`); o resto vira frase genérica e o
+        // detalhe fica no log.
+        return {
+          erro: traduzirErroBanco("criarAcessoAluno.adotar", eAdocao),
+          programas,
+        };
+      }
 
       const envioAdocao = await enviarCredenciaisAcesso({
         para: email,
@@ -524,7 +571,6 @@ export async function criarAcessoAluno(
       });
 
       revalidatePath("/admin");
-      revalidatePath("/admin/solicitacoes");
       return {
         email: (adotado as { email?: string })?.email ?? email,
         senha,
@@ -534,7 +580,20 @@ export async function criarAcessoAluno(
         programas,
       };
     }
-    return { erro: "Não foi possível criar o acesso: " + error.message };
+    // GoTrue, não Postgres: `traduzirErroBanco` não serve aqui. As duas causas
+    // reais (senha fraca e limite de envio) precisam chegar ao admin com o que
+    // fazer; o resto vira frase genérica, com o detalhe no log.
+    logErro("criarAcessoAluno.signUp", error, { code: error.code ?? null });
+    if (error.code === "weak_password" || /password/i.test(error.message)) {
+      return { erro: "Senha fraca: use ao menos 6 caracteres." };
+    }
+    if (error.status === 429 || /rate limit/i.test(error.message)) {
+      return {
+        erro:
+          "Limite de envios atingido. Tente de novo em alguns minutos.",
+      };
+    }
+    return { erro: "Não foi possível criar o acesso agora. Tente de novo." };
   }
 
   // Garante o vínculo com ESTE aluno, como TITULAR (o gatilho já tenta por
@@ -559,7 +618,6 @@ export async function criarAcessoAluno(
   });
 
   revalidatePath("/admin");
-  revalidatePath("/admin/solicitacoes");
   return {
     email,
     senha,
@@ -585,7 +643,7 @@ export async function salvarPastaDriveUrl(alunoId: string, url: string) {
     .from("ambientes")
     .update({ pasta_drive_url: valor || null })
     .eq("aluno_id", alunoId);
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("salvarPastaDriveUrl", error) };
   revalidatePath("/admin", "layout");
   return {};
 }
@@ -604,7 +662,7 @@ export async function removerAlunoGps(alunoId: string) {
     .schema("gps")
     .rpc("admin_excluir_acesso", { p_aluno_id: alunoId });
 
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("removerAlunoGps", error) };
   revalidatePath("/admin");
   return {};
 }

@@ -81,9 +81,15 @@ export interface ContratoFinanceiro {
    */
   saldoExibido: number | null;
   /**
-   * Só para o **admin**: contrato marcado como quitado cuja aritmética
-   * discorda (`valor_total − valor_pago` fora da tolerância). `null` quando
-   * não há divergência. O aluno não é o público de uma divergência interna.
+   * Só para o **admin**: contrato apresentado como quitado cuja aritmética
+   * discorda (`saldo` fora da tolerância), **nos dois sentidos**:
+   * - positivo → marcado `quitado_em` mas a conta ainda aponta dívida;
+   * - negativo → pagou ACIMA do total (crédito) e a tela mostra R$ 0,00.
+   *
+   * `null` quando não há divergência. O aluno não é o público de uma
+   * divergência interna — para ele o contrato continua "Quitado" e o dinheiro
+   * dele não some; quem precisa do número é quem vai conferir com o
+   * financeiro.
    */
   divergenciaQuitacao: number | null;
 }
@@ -156,12 +162,14 @@ function derivar(
   }
 
   if (quitadoEm !== null || zerado) {
-    // Marcado como quitado mas a conta ainda aponta dívida (ou crédito) acima
-    // do ruído de centavos: o admin precisa ver o número; o aluno, não.
+    // A divergência NÃO depende de `quitado_em` (FN1, 09/09/2026). O ramo que
+    // faltava é o do saldo NEGATIVO acima da tolerância sem `quitado_em`:
+    // `zerado` é true, a tela escreve "Quitado, R$ 0,00" e o crédito real —
+    // dinheiro de gente — não aparecia em lugar nenhum, nem para o admin.
+    // Agora todo contrato apresentado como quitado com |saldo| fora do ruído
+    // de centavos carrega o número; a tela do aluno continua igual.
     const divergencia =
-      quitadoEm !== null && saldo !== null && Math.abs(saldo) > TOLERANCIA_CENTAVOS
-        ? saldo
-        : null;
+      saldo !== null && Math.abs(saldo) > TOLERANCIA_CENTAVOS ? saldo : null;
     return { situacao: "quitado", saldoExibido: 0, divergenciaQuitacao: divergencia };
   }
 

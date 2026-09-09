@@ -85,12 +85,12 @@ export function normalizarEmail(email: string): string {
 }
 
 /**
- * Validação de formato de e-mail — regex simples (não RFC completa, de
- * propósito: o objetivo é pegar erro de digitação óbvio, não recusar e-mail
- * real com sintaxe incomum). Usada no cliente (feedback imediato) E no
- * servidor (`editarMentora`/`criarMentora`) — o formulário não é fronteira,
- * a Server Action precisa validar de novo.
+ * Validação de formato de e-mail. Usada no cliente (feedback imediato) E no
+ * servidor (`editarMentora`/`criarMentora`) — o formulário não é fronteira, a
+ * Server Action precisa validar de novo.
+ *
+ * A regra mora em `@/lib/texto` desde 09/09/2026 (CD14): era a terceira cópia
+ * de regex de e-mail do projeto, e a mais frouxa. Este re-export existe para
+ * os 5 importadores do Plantão não mudarem de caminho.
  */
-export function emailValido(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
+export { emailValido } from "@/lib/texto";

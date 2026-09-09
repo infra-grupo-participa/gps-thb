@@ -25,6 +25,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
 import { logErro } from "@/lib/log";
+import { listaDeEmails } from "@/lib/texto";
 import {
   enviarChamadoAbertoParaEquipe,
   enviarChamadoRespondidoParaAluno,
@@ -392,15 +393,4 @@ async function avisarEquipe(
   }
 }
 
-/**
- * Quebra a lista em endereços e descarta o que não parece e-mail. Vale para o
- * valor do banco e para a env var: CR/LF e vírgula são o vetor de injeção de
- * cabeçalho, e o filtro abaixo não deixa passar nenhum dos dois.
- */
-function listaDeEmails(bruto: string): string[] {
-  return (bruto ?? "")
-    .split(/[;,\s]+/)
-    .map((e) => e.trim())
-    .filter((e) => /^[^\s@<>"']+@[^\s@<>"']+\.[a-z]{2,}$/i.test(e))
-    .slice(0, 10);
-}
+

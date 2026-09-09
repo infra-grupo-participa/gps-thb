@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { traduzirErroBanco } from "@/lib/erros";
 import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
 
 /**
@@ -129,7 +130,11 @@ function validarPatch(patch: PatchCliente): {
 }
 
 function revalidar(alunoId: string) {
-  revalidatePath("/etapa-1");
+  // `/etapa/1` é a rota de verdade do guia da Etapa 01. Até 09/09 esta linha
+  // revalidava o nome DESTA PASTA, que nunca teve `page.tsx`: rota
+  // inexistente, e o cache do guia só caía pelo `revalidatePath("/etapa",
+  // "layout")` abaixo (CD3).
+  revalidatePath("/etapa/1");
   revalidatePath("/clientes");
   revalidatePath("/clientes", "layout");
   revalidatePath("/etapa", "layout");
@@ -157,7 +162,7 @@ export async function criarCliente(alunoId: string) {
     .select("id")
     .single();
 
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("criarCliente", error) };
   revalidar(alunoId);
   return { id: data.id as string };
 }
@@ -178,7 +183,7 @@ export async function atualizarCliente(
     .update(validado)
     .eq("id", clienteId);
 
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("atualizarCliente", error) };
   revalidar(alunoId);
   return {};
 }
@@ -220,14 +225,14 @@ export async function definirClienteEquipe(
     .update({ acompanhado_equipe: false })
     .eq("aluno_id", alunoId)
     .eq("acompanhado_equipe", true);
-  if (e1) return { erro: e1.message };
+  if (e1) return { erro: traduzirErroBanco("definirClienteEquipe", e1) };
 
   if (ativar) {
     const { error: e2 } = await gps
       .from("etapa1_clientes")
       .update({ acompanhado_equipe: true })
       .eq("id", clienteId);
-    if (e2) return { erro: e2.message };
+    if (e2) return { erro: traduzirErroBanco("definirClienteEquipe", e2) };
   }
 
   revalidar(alunoId);
@@ -242,7 +247,7 @@ export async function removerCliente(clienteId: string, alunoId: string) {
     .delete()
     .eq("id", clienteId);
 
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("removerCliente", error) };
   revalidar(alunoId);
   return {};
 }
@@ -268,7 +273,7 @@ export async function marcarTarefa(
       { onConflict: "aluno_id,etapa,tarefa" },
     );
 
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("marcarTarefa", error) };
   revalidar(alunoId);
   return {};
 }
@@ -293,7 +298,7 @@ export async function definirEnfaseTarefa(
       .eq("aluno_id", alunoId)
       .eq("etapa", etapa)
       .eq("tarefa", tarefa);
-    if (error) return { erro: error.message };
+    if (error) return { erro: traduzirErroBanco("definirEnfaseTarefa", error) };
   } else {
     const { error } = await gps
       .from("tarefa_enfase")
@@ -301,7 +306,7 @@ export async function definirEnfaseTarefa(
         { aluno_id: alunoId, etapa, tarefa, modo },
         { onConflict: "aluno_id,etapa,tarefa" },
       );
-    if (error) return { erro: error.message };
+    if (error) return { erro: traduzirErroBanco("definirEnfaseTarefa", error) };
   }
 
   revalidar(alunoId);
@@ -320,7 +325,7 @@ export async function salvarDataAgendamento(
     .update({ data_agendamento_disponivel: data })
     .eq("aluno_id", alunoId);
 
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("salvarDataAgendamento", error) };
   revalidar(alunoId);
   return {};
 }

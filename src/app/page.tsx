@@ -118,7 +118,12 @@ export default async function HomePage() {
   const turma = await getTurmaCodigo(aluno?.turma_id);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
-  const passo = proximoPasso(etapas, clientes, progressoTodas);
+  // `temFavorito` decide se os passos 4-8 da Etapa 01 contam como próximo
+  // passo: sem o cliente da equipe eles ficam travados, e o card não pode
+  // apontar para um checkbox desabilitado (PL2).
+  const passo = proximoPasso(etapas, clientes, progressoTodas, {
+    temFavorito: favorito !== null,
+  });
 
   const manual1: Record<number, boolean> = {};
   for (const p of progressoTodas.filter((p) => p.etapa === 1))

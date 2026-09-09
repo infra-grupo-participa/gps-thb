@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { soDigitos } from "@/lib/masks";
 
 export interface CadastroState {
   erro?: string;
@@ -19,7 +20,7 @@ export async function cadastrar(
   const telefone = String(formData.get("telefone") ?? "").trim();
   const senha = String(formData.get("senha") ?? "");
   const documentoRaw = String(formData.get("documento") ?? "");
-  const documento = documentoRaw.replace(/\D/g, "");
+  const documento = soDigitos(documentoRaw);
 
   if (!email || !senha || !documento) {
     return { erro: "Preencha e-mail, CPF/CNPJ e senha." };

@@ -994,12 +994,85 @@ rollback — bloco B0–B9 da spec):**
   `definirLiberacaoEtapa`, `reabrirEtapa`, `vincularPessoaMembro`, `trocarTitular`, `moverMembro`,
   `vincularFinanceiro`, `desvincularFinanceiro`.
 
-**Frontend**: aba **"Resolver"** (`adminOnly`) em `assistenciaNavItems`, rota
-`/admin/aluno/[alunoId]/resolver` — checklist na ordem das 20 chaves, três estados por forma e
-texto, **botão só em linha vermelha/âmbar**, toda escrita em `DialogoConfirmacao` com
-consequência escrita e motivo quando a RPC exige; as escritas que já existiam em
-`GerenciarAcesso` (senha, adotar login, e-mail, sócio, remover) **não foram duplicadas**.
-Ver a seção de fechamento desta sessão para o que a tela entregou.
+**Frontend (`83b992f`)**: aba **"Resolver"** (`adminOnly` — some na prévia "como o aluno vê")
+em `assistenciaNavItems`, rota `/admin/aluno/[alunoId]/resolver` (+ `loading.tsx` com o esqueleto
+do checklist e `error.tsx` sobre `ErroPainel`). Componentes em `src/components/admin/central/`
+(`index.tsx` ≤ 400 linhas; `catalogo.ts` agrupa as 20 chaves em ACESSO · PESSOAS · FINANCEIRO ·
+TRILHA · ATENDIMENTO preservando a ordem do servidor; `estadoDaLinha` só lê `ok`; `dialogos/
+confirmacoes.tsx` tem as 10 confirmações com a copy de C.4; `executar-acao.ts` monta a frase de
+sucesso a partir do RETORNO da action, nunca de suposição).
+- Cabeçalho "N problemas · N avisos · N informações · N ok · às HH:MM" (as quatro somam 20) e
+  **Reconferir** (`useTransition` + `router.refresh()`, `aria-busy`/`aria-live`); toda ação
+  bem-sucedida reconfere sozinha.
+- **Botão de escrita só em linha vermelha/âmbar.** As escritas raras sobre linha verde (tornar
+  titular, mover sócio, voltar à regra geral, desvincular contrato) ficam num `<details>` que
+  **nasce fechado** (`bloco-de-correcao.tsx`). Senha, adotar login, e-mail, sócio e remover
+  membro são **links para Gerenciar acesso** — nenhuma segunda porta para escrita que já existia.
+- Motivo (3..300) validado no cliente (contador, `aria-invalid`) e no servidor e no banco.
+- Desvincular contrato precisa do `contatoHmId`, que o diagnóstico não traz: a página chama
+  `getFinanceiroDoAluno` **só quando `financeiro_contrato.ok === true`** (a única RPC a mais, e
+  só no caso em que a ação existe).
+- **Override de etapa vale nas 6 páginas do aluno** (home, `/etapa/[n]`, materiais e os 3
+  espelhos do admin): `etapasComLiberacaoDoAluno(await getEtapas(), await
+  getEtapasLiberadasPara(ctx.alunoId))` — na tela da etapa, aviso "Liberada/Travada para você
+  pela equipe" + motivo. **`alunoId` vem do contexto de sessão, nunca de parâmetro.**
+- ⚠️ **Não validada logada** (não há credencial de admin de teste na máquina): tsc, eslint e
+  build limpos; falta o passe do roteiro abaixo.
+
+### 🎨 Redesign "Trilha" — Ondas A e B (2026-09-09, `4dcce9f` e `8af8230`)
+
+Pedido do João: "o visual está cru, sem nexo". Diagnóstico com fotos e direção em
+`docs/audits/2026-09-09-central/design-diagnostico.md` (A.0–A.9 os defeitos por tela, B.1–B.11 a
+linguagem, "(D) O que NÃO fazer" as proibições). **Nenhum texto de produto mudou** (as 3 strings
+novas permitidas: legenda do calendário, "parado há N dias", "N de N passos").
+
+**Onda A — tokens e componentes base** (`src/app/globals.css` + `src/components/ui/*`):
+- Fundo **branco quente `#FAF8F6`**, neutros na família da marca, 3 superfícies
+  (`superficie-afundada`, `borda-fina/forte`), 2 sombras quentes, `--radius` 0,75rem, **4 pares
+  semânticos** (sucesso/atenção/risco/neutro, contraste medido no comentário do token),
+  `--color-marca-solida` (#B04300, superfície de marca: login/hero) e `--color-marca-acao`
+  (#C74600, **preenchimento do botão primário: 4,88:1**; era #FF6300 = 2,98:1 — reprovava AA no
+  controle principal do produto. `#FF6300` segue **decorativo**: ícone, chip, régua da aba).
+- 🔑 **Escala tipográfica como `@utility`** (`numero`, `numero-lg`, `titulo-xl/h1/h2`, `corpo`,
+  `corpo-sm`, `rotulo`) — **não `text-*`**: `tailwind-merge` trata `text-<nome>` desconhecido
+  como COR e descarta a classe (`cn("text-display-lg","text-accent-foreground")` devolvia só a
+  cor). Não criar `text-*` custom.
+- 🔑 **`focus-visible:outline-solid` no `Button` é obrigatório**: o `outline-none` da base do
+  shadcn zera `--tw-outline-style` e `outline-2` só define largura — sem o `-solid` o foco de
+  TODO botão fica invisível. Comentário no arquivo; não remover.
+- `Card` (`elevacao="flat|raised"`, `interativo`, `size="lg"`), `Badge` (`success|warning|danger|
+  neutral` com ícone; `default` passou de 2,98 para 5,75:1), `Secao` (eyebrow + título + régua —
+  substituiu os 15 `uppercase tracking-wide`), `KpiCard` (absorveu o `MetricCard` da Etapa 01;
+  `KpiLinha empilhado`), `PageHeader` (28 px Space Grotesk + `eyebrow`), `Progress` h-2,
+  `BarraMarcos`, `EmptyState` `raised`, `PadraoTrilha` (SVG inline ~700 B, `currentColor`).
+- Header em **2 linhas sempre** (medido 99 px em 1366 com 8 abas; era 4 linhas), aba ativa com
+  régua de 2 px, fade no scroller; `AuthLayout` laranja sólido + padrão de trilha (saíram o
+  gradiente e os 2 blobs).
+
+**Onda B — as 17 telas** (tabela completa no diagnóstico): hero de programa no perfil
+(identidade · etapa · meta, sem gradiente), `HomeResumo` sobe no celular com `order-*` (home
+mobile **5.350 → 2.897 px**, um DOM só), `ProximoPassoCard` como peça mais forte (botão sólido;
+é `<span>` com `buttonVariants` — botão dentro de `<a>` é HTML inválido), etapas com
+"Disponível" verde / bloqueada afundada + cadeado / barra sempre com "N de N passos", trilho
+vertical numerado na Etapa 01 (código da tarefa continua no nome acessível), ficha com 4
+`Secao` e barra de salvar `sticky` com "alterações não salvas", card de aluno em ~590 px por 6,
+filtros em chips `aria-pressed`, fila de chamados com **"parado há N dias"** (âmbar ≥ 1, risco
+≥ 3), calendário do Plantão com hora + mentora + inscritos e legenda, `AssistBanner` como faixa
+com `body:has([data-assistindo]) main{padding-bottom}`. `/p/plantao` só herdou tokens.
+- **Progresso geral = média das etapas LIBERADAS** ("Progresso nas etapas liberadas · 1 de 6
+  etapas"): dividir por 6 mostrava 17% para a Etapa 01 completa. `pctPorEtapa` intocado.
+- `FASES_CLIENTE.cor` em tokens semânticos (fechamento 3,65 → 5,81:1; contratado 3,77 → 5,91:1).
+- **Contraste medido no DOM** (`tmp/squad/contraste-B.mjs`, fundo composto): **0 falhas em 1.081
+  nós de texto**, 8 telas × 2 viewports (eram 16 na Onda A). 36 capturas em
+  `tmp/squad/shots-design-B/`; 0 erro de console e 0 overflow horizontal em 16 combinações.
+- **`brlCompacto` sem `notation:"compact"`** (`src/lib/moeda.ts`): o ICU do Node renderizava
+  "R$ 68 mil" e o do navegador "R$ 68,0 mil" — erro de hidratação em todo `/admin`. A conta é
+  feita à mão; só a parte numérica passa pelo Intl.
+- A rota pública de prévia `src/app/p/previa-design/` **foi apagada** no fim da Onda B.
+- **Ficou para decisão do Marcio**: anel de foco `--ring` (#FF6300) dá 2,82:1 contra a página
+  (abaixo dos 3:1 de 1.4.11 para indicador de foco, não é texto); checkbox marcado `bg-primary`
+  com ✓ branco (mesmo caso); e a escolha #C74600 × #B04300 para o botão primário.
+
 
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 
@@ -1077,7 +1150,8 @@ O que foi **removido** (código):
   de `CONTEUDO_ETAPAS` por `src/lib/materiais.ts` (`listarMateriais`). Navegação por abas com ícones
   (Início/Clientes/Materiais) em `NavTabs`.
 - Admin espelha em `/admin/aluno/[id]`, `.../etapa/[n]`, `.../clientes`, `.../clientes/[id]`,
-  `.../materiais`, `.../diario`, `.../financeiro` e `.../chamados`.
+  `.../materiais`, `.../diario`, `.../financeiro`, `.../chamados` e **`.../resolver`** (Central de
+  resolução, só admin).
 - `/admin` — lista de alunos no GPS + "Adicionar aluno" (busca em `thb_alunos`). Header do admin
   tem só a aba **Alunos** (`adminNavItems` em `src/lib/nav.ts`) desde a remoção do agendamento.
 - `/admin/aluno/[alunoId]` — admin dentro do ambiente do aluno (modo assistência, editável).
@@ -1315,6 +1389,26 @@ limita à própria linha. Já estava resolvido; o documento é que não tinha si
       gzip por rota autenticada; `/esqueci-senha` 312→235); `src/app/etapa-1/actions.ts` →
       `src/app/clientes/actions.ts`. `/login` ficou em 236 (197 sem o polyfill `noModule`) — o
       piso é framework, ver seção (e) da rodada final.
+- [x] **Financeiro v2 (2026-09-09, `fab0c9f`)** — a aba virou o painel de progresso da mentoria:
+      meta de R$ 150 mil (Áureo), bônus em R$ 250 mil, pagamento do programa por
+      `cs.vw_hm_financeiro` + extrato. Ver "💰 Financeiro v2".
+- [x] **Central de resolução (2026-09-09, `674e1e6` + `83b992f`, migrações `…150`–`…160`)** —
+      diagnóstico de 20 verificações + 7 ações guardadas (liberar/travar etapa por aluno, reabrir
+      etapa, vincular pessoa, trocar titular, mover sócio, vincular/desvincular contrato) na aba
+      "Resolver". `admin_direito_ao_acesso` ganhou a guarda que faltava. Ver "🩺 Central".
+- [x] **Redesign "Trilha" (2026-09-09, `4dcce9f` + `8af8230`)** — tokens quentes, tipografia com
+      salto, 4 pares semânticos, botão primário AA, 17 telas; 0 falhas de contraste medidas.
+      Ver "🎨 Redesign".
+- [ ] **Validar logado** o roteiro de 15 passos da rodada final **+** a Central: abrir
+      `/admin/aluno/<id>/resolver` num ambiente com problema e num 100% verde; teclado (Tab pelo
+      `<details>`, Esc no diálogo, foco de volta ao gatilho); um erro real de action no diálogo;
+      "Reconferir"; na home de um aluno com override, a etapa travada aparece travada.
+- [ ] **Decisões visuais do Marcio**: laranja do botão primário (#C74600 × #B04300), anel de foco
+      (#FF6300 = 2,82:1) e checkbox marcado.
+- [ ] **B-T1 (troca de titular → o novo titular vê o Financeiro do anterior)** — confirmar com o
+      João/Marcio; o remédio é uma linha em `gps.financeiro_pode_ler` (dado já pronto).
+- [ ] **Corrida `aprovarSolicitacao` × `admin_mover_membro`** (pentest, BAIXO, código
+      pré-existente): mover a lógica de `aprovarSolicitacao` para RPC ou `select … for update`.
 - [ ] **Definir o canal de contato de quem não tem acesso (UX7)** — não existe e-mail nem WhatsApp
       no código; a tela de solicitação recusada só diz "fale com a equipe".
 - [ ] **Configurar SMTP customizado (Resend) no Supabase Auth** — hoje "Esqueci minha senha" sai
@@ -1374,7 +1468,18 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-09-09 (rodada final) — **rodada final de qualidade**
+_Última atualização: 2026-09-09 (noite) — **Financeiro v2 + Central de resolução + redesign
+"Trilha"** (`fab0c9f`, `4dcce9f`, `674e1e6`, `83b992f`, `8af8230`; migrações `…140` e
+`…150`–`…160` aplicadas e conferidas em rollback). A aba Financeiro virou painel de progresso
+(meta 150k = Áureo, bônus 250k, pagamento do programa pelas views do sip); a Central dá ao admin
+diagnóstico de 20 verificações + 7 ações guardadas e reversíveis (a única escrita fora do `gps` é
+`cs.contatos_hm.aluno_id`, medida contra as 10 triggers); o redesign trocou a temperatura do
+sistema inteiro com 0 falhas de contraste medidas. Dois furos pegos só pela conferência no banco:
+`admin_direito_ao_acesso` sem guarda (pré-existente) e `etapa_liberada_para` falhando aberto sem
+JWT. Pentest APROVADO nas duas passadas. **Falta o passe logado** (sem credencial de admin de
+teste na máquina)._
+
+_Anterior: 2026-09-09 (rodada final) — **rodada final de qualidade**
 (`2c03325..f257f24`, 8 commits). Nada que apaga ou tranca acontece sem confirmação nomeada
 (`DialogoConfirmacao`); `proximoPasso` não aponta mais para porta trancada; KPI de clientes em
 `comDados`; material de etapa bloqueada vai sem `url` (corte no servidor); "Definir senha" por

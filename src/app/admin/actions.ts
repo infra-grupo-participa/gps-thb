@@ -1,6 +1,6 @@
 "use server";
 
-import { emailParaIlike } from "@/lib/texto";
+import { emailParaIlike, emailValido } from "@/lib/texto";
 
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
@@ -395,7 +395,9 @@ export async function recusarSolicitacao(
 export async function atualizarEmailAluno(alunoId: string, email: string) {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
   const novo = email.trim().toLowerCase();
-  if (!/^\S+@\S+\.\S+$/.test(novo)) return { erro: "E-mail inválido." };
+  // `emailValido` é a regex única do repo (texto.ts): barra `<>"'`, que a
+  // frouxa aceitava (achado BAIXO do pentest da UI, 09/09).
+  if (!emailValido(novo)) return { erro: "E-mail inválido." };
 
   const supabase = await createClient();
   const { error } = await supabase

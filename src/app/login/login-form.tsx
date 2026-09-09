@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { login, type LoginState } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
@@ -38,10 +39,9 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
             Esqueci minha senha
           </Link>
         </div>
-        <Input
+        <InputSenha
           id="senha"
           name="senha"
-          type="password"
           autoComplete="current-password"
           required
         />

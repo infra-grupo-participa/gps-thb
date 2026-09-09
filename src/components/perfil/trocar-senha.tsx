@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, KeyRound } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 
 /**
@@ -25,7 +25,6 @@ export function TrocarSenha() {
   const supabase = createClient();
   const [senha, setSenha] = useState("");
   const [confirma, setConfirma] = useState("");
-  const [ver, setVer] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -76,31 +75,18 @@ export function TrocarSenha() {
         <form onSubmit={salvar} className="grid gap-4 sm:max-w-sm">
           <div className="grid gap-2">
             <Label htmlFor="senha-nova">Nova senha</Label>
-            <div className="relative">
-              <Input
-                id="senha-nova"
-                type={ver ? "text" : "password"}
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                autoComplete="new-password"
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setVer((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={ver ? "Ocultar senha" : "Mostrar senha"}
-              >
-                {ver ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </button>
-            </div>
+            <InputSenha
+              id="senha-nova"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              autoComplete="new-password"
+            />
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="senha-confirma">Repita a nova senha</Label>
-            <Input
+            <InputSenha
               id="senha-confirma"
-              type={ver ? "text" : "password"}
               value={confirma}
               onChange={(e) => setConfirma(e.target.value)}
               autoComplete="new-password"

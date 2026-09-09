@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { linkWhatsapp } from "@/lib/whatsapp";
@@ -217,7 +218,7 @@ export function GerenciarAcesso({
               <div className="grid gap-2">
                 <Label htmlFor="senha-aluno">Nova senha do titular</Label>
                 <div className="flex gap-2">
-                  <Input
+                  <InputSenha
                     id="senha-aluno"
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}

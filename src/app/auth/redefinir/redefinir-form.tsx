@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 
 export function RedefinirForm() {
@@ -42,9 +42,8 @@ export function RedefinirForm() {
     <form onSubmit={salvar} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <Label htmlFor="senha">Nova senha</Label>
-        <Input
+        <InputSenha
           id="senha"
-          type="password"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
           placeholder="Mínimo de 6 caracteres"
@@ -55,9 +54,8 @@ export function RedefinirForm() {
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="confirma">Confirmar nova senha</Label>
-        <Input
+        <InputSenha
           id="confirma"
-          type="password"
           value={confirma}
           onChange={(e) => setConfirma(e.target.value)}
           required

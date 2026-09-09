@@ -30,6 +30,62 @@ export function conteudoEtapa(n: number): ConteudoEtapa | null {
   return CONTEUDO_ETAPAS[n] ?? null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Liberação de etapa POR ALUNO — a regra `coalesce(override, global)`.
+//
+// `gps.etapas.liberada` é o interruptor GLOBAL; `gps.etapa_liberacao_aluno`
+// (migração ...152) é o override de UM ambiente. O override manda nos DOIS
+// sentidos: libera quem está adiantado e trava quem precisa refazer.
+//
+// 🔑 As funções abaixo recebem o MAPA já carregado — não vão ao banco. A
+// leitura acontece uma vez por página (`getEtapasLiberadasPara`, em
+// `src/lib/data/central.ts`) e o resultado atravessa a árvore como dado.
+// A regra também existe em SQL (`gps.etapa_liberada_para`), para o que roda
+// dentro do banco; as duas dizem `coalesce(override, global)` e é isso que
+// precisa continuar verdade se uma delas mudar.
+//
+// Tipo estrutural de propósito: `etapas.ts` é importado por Client Components
+// e não pode arrastar `src/lib/data/*` (server-only) junto.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** O que o override diz para uma etapa. `motivo` é opcional aqui: a regra de
+ *  liberação não depende dele — quem exibe o motivo é a UI. */
+export interface OverrideLiberacao {
+  liberada: boolean;
+  motivo?: string;
+}
+
+/** Overrides do ambiente, indexados pelo número da etapa. */
+export type OverridesLiberacao = Record<number, OverrideLiberacao>;
+
+/** Esta etapa está liberada PARA ESTE ALUNO? `coalesce(override, global)`. */
+export function etapaLiberadaPara(
+  etapa: Pick<Etapa, "id" | "liberada">,
+  overrides: OverridesLiberacao,
+): boolean {
+  const o = overrides[etapa.id];
+  return o ? o.liberada : etapa.liberada;
+}
+
+/**
+ * As etapas com `liberada` JÁ RESOLVIDA para este aluno — a forma que os
+ * consumidores existentes esperam (`proximoPasso`, `EtapasOverview`,
+ * `/etapa/[n]`, materiais, progresso geral). Trocar `getEtapas()` por
+ * `etapasComLiberacaoDoAluno(await getEtapas(), overrides)` é uma linha por
+ * página, e nada abaixo precisa saber que existe override.
+ *
+ * Devolve um array novo (não muta o de entrada) e preserva a ordem.
+ */
+export function etapasComLiberacaoDoAluno(
+  etapas: Etapa[],
+  overrides: OverridesLiberacao,
+): Etapa[] {
+  return etapas.map((e) => {
+    const liberada = etapaLiberadaPara(e, overrides);
+    return liberada === e.liberada ? e : { ...e, liberada };
+  });
+}
+
 /** Progresso (%) de uma etapa cujas tarefas são todas manuais (etapas >= 2). */
 function pctEtapaManual(
   tarefas: TarefaDef[],

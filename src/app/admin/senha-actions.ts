@@ -9,6 +9,7 @@ import { ehAdmin } from "@/lib/auth";
 import { enviarCredenciaisAcesso } from "@/lib/email";
 import { traduzirErroBanco } from "@/lib/erros";
 import { logErro } from "@/lib/log";
+import { mapearStatusAcesso } from "@/lib/data/central";
 import type { PapelMembro } from "@/lib/types";
 
 /**
@@ -69,34 +70,11 @@ export async function statusAcessoAluno(
     return { erro: traduzirErroBanco("admin/statusAcessoAluno", error) };
   }
 
-  const d = data as Record<string, unknown>;
-  const membrosRaw = (d.membros as Record<string, unknown>[]) ?? [];
-  const membros: MembroAcesso[] = membrosRaw.map((m) => ({
-    membroId: String(m.membro_id),
-    papel: (m.papel as PapelMembro) ?? "socio",
-    userId: (m.user_id as string) ?? null,
-    email: (m.email as string) ?? null,
-    temSenha: Boolean(m.tem_senha),
-    emailConfirmado: Boolean(m.email_confirmado),
-    ultimoAcesso: (m.ultimo_acesso as string) ?? null,
-  }));
-
-  return {
-    status: {
-      temLogin: Boolean(d.tem_login),
-      emailCadastro: (d.email_cadastro as string) ?? null,
-      emailLogin: (d.email_login as string) ?? null,
-      emailBate: Boolean(d.email_bate),
-      emailConfirmado: Boolean(d.email_confirmado),
-      temSenha: Boolean(d.tem_senha),
-      ultimoAcesso: (d.ultimo_acesso as string) ?? null,
-      noGps: Boolean(d.no_gps),
-      vinculoCompleto: Boolean(d.vinculo_completo),
-      solicitacaoPendente: Boolean(d.solicitacao_pendente),
-      qtdMembros: Number(d.qtd_membros ?? membros.length),
-      membros,
-    },
-  };
+  // O mapeamento vive em `src/lib/data/central.ts` (a Central de resolução lê a
+  // MESMA RPC): um módulo `"use server"` só pode exportar função async, então o
+  // mapeador puro não cabe aqui. Duas cópias do mapeamento seriam duas
+  // verdades sobre o mesmo jsonb.
+  return { status: mapearStatusAcesso(data) };
 }
 
 /**

@@ -317,6 +317,11 @@ export const TIPOS_EVENTO = [
   "email_confirmado",
   "primeiro_acesso",
   "entrou_no_programa",
+  // Central de resolução (migração ...151): a equipe abriu ou fechou UMA etapa
+  // para ESTE aluno. Dois tipos e não um com {de,para} porque o que a trilha
+  // precisa contar é a DIREÇÃO — é ela que muda o produto para a pessoa.
+  "etapa_liberada_pela_equipe",
+  "etapa_travada_pela_equipe",
 ] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 
@@ -325,7 +330,7 @@ export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 // `gps.aluno_eventos`. Viraram união de literais — o mesmo tipo, sem a
 // constante em runtime. Só `AtorEvento` é usado fora daqui
 // (`diario-labels.ts`); os outros dois ficam locais.
-type EntidadeEvento = "cliente" | "tarefa" | "conta";
+type EntidadeEvento = "cliente" | "tarefa" | "conta" | "etapa";
 export type AtorEvento = "aluno" | "equipe" | "sistema";
 type OrigemEvento = "app" | "backfill";
 

@@ -12,6 +12,7 @@
 //   src/lib/data/progresso.ts     etapas, progresso de tarefa e ênfase
 //   src/lib/data/diario.ts        notas, eventos, trilha e atendimento (só-admin)
 //   src/lib/data/solicitacoes.ts  fila de acesso
+//   src/lib/data/central.ts       diagnostico do ambiente e override de etapa
 //
 // 🔑 Ao escrever consulta NOVA, escreva no arquivo do assunto e acrescente o
 // reexporte aqui — não volte a engordar este. E a regra do P6 continua de pé:
@@ -48,6 +49,20 @@ export {
   getProgressoEtapa,
   getEnfasesEtapa,
 } from "@/lib/data/progresso";
+
+export {
+  getDiagnosticoAmbiente,
+  getEtapasLiberadasPara,
+  mapearStatusAcesso,
+} from "@/lib/data/central";
+export type {
+  DiagnosticoAmbiente,
+  VerificacaoDiagnostico,
+  MembroDiagnostico,
+  EtapaDiagnostico,
+  CandidatoFinanceiro,
+  SolicitacaoPendenteDiagnostico,
+} from "@/lib/data/central";
 
 export {
   getDiarioDoAluno,

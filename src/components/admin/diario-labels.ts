@@ -61,6 +61,8 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   email_confirmado: "E-mail confirmado",
   primeiro_acesso: "Primeiro acesso ao portal",
   entrou_no_programa: "Entrou no programa",
+  etapa_liberada_pela_equipe: "Etapa liberada pela equipe",
+  etapa_travada_pela_equipe: "Etapa travada pela equipe",
 };
 
 export const ROTULO_ATOR: Record<AtorEvento, string> = {
@@ -69,13 +71,26 @@ export const ROTULO_ATOR: Record<AtorEvento, string> = {
   sistema: "Sistema",
 };
 
-/** Os 5 tipos de `gps.acessos_log` (ver `src/app/admin/senha-actions.ts`). */
+/**
+ * As ações de `gps.acessos_log` (o CHECK `acessos_log_acao_check` é o catálogo
+ * fechado — ver migrações do baseline e `...150`). `rotuloAcaoAdmin` tem
+ * fallback para o código cru, então esquecer uma aqui NÃO quebra o build: só
+ * mostra `financeiro_vinculado` na trilha do admin.
+ */
 const ROTULO_ACAO_ADMIN: Record<string, string> = {
   senha_definida: "Senha definida pela equipe",
   acesso_excluido: "Acesso excluído",
   socio_adicionado: "Sócio adicionado",
   membro_excluido: "Membro excluído",
   ambiente_ambiguo: "Ambiente ambíguo identificado",
+  // Central de resolução (migrações ...150 a ...157)
+  etapa_liberacao_alterada: "Liberação de etapa alterada para este aluno",
+  progresso_reaberto: "Etapa reaberta pela equipe",
+  membro_pessoa_vinculada: "Membro vinculado ao cadastro",
+  titular_trocado: "Titular do ambiente trocado",
+  membro_movido: "Membro movido de ambiente",
+  financeiro_vinculado: "Contrato financeiro vinculado",
+  financeiro_desvinculado: "Contrato financeiro desvinculado",
 };
 
 /** Rótulo legível de uma ação administrativa, com fallback para o código cru. */

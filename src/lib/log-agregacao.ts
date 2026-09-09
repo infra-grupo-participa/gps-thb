@@ -191,6 +191,8 @@ const ROTULO_MACRO_POR_TIPO: Partial<
     `Registrou honorários de ${n} clientes`,
   tarefa_concluida: (n) => `Concluiu ${n} tarefas`,
   tarefa_reaberta: (n) => `Reabriu ${n} tarefas`,
+  etapa_liberada_pela_equipe: (n) => `Liberou ${n} etapas para este aluno`,
+  etapa_travada_pela_equipe: (n) => `Travou ${n} etapas para este aluno`,
 };
 
 // Nota sobre achado menor do `fable-orchestrator`: o `rotulo` de

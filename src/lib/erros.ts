@@ -92,6 +92,68 @@ const FRASES_DO_BANCO: Record<string, string> = {
   // frase genérica faria o admin repetir a exclusão de um ambiente já vazio.
   "O login não pôde ser apagado: esta conta tem registros em outros sistemas do grupo. O ambiente do GPS foi limpo.":
     "O login não pôde ser apagado: esta conta tem registros em outros sistemas do grupo. O ambiente do programa foi limpo.",
+
+  // ── Central de resolução (migrações ...152 a ...157) ──
+  // Todas estas frases são `raise exception` NOSSO, escrito em português para
+  // a equipe. Sem entrada aqui, elas cairiam no mapa por SQLSTATE e o admin
+  // leria "Algum dado enviado está fora do formato aceito" no lugar da única
+  // informação acionável da recusa.
+
+  // gps.admin_definir_liberacao_etapa / gps.admin_reabrir_etapa
+  "Escreva o motivo — ele fica no histórico deste aluno.":
+    "Escreva o motivo — ele fica no histórico deste aluno.",
+  "Escreva o motivo — a trilha deste aluno vai registrar.":
+    "Escreva o motivo — a trilha deste aluno vai registrar.",
+  "O motivo passa de 300 caracteres.": "O motivo passa de 300 caracteres.",
+  "Etapa não encontrada.": "Etapa não encontrada.",
+  "Este cadastro não tem ambiente no programa.":
+    "Este cadastro não tem ambiente no programa.",
+  "Esta etapa já segue a regra geral para este aluno.":
+    "Esta etapa já segue a regra geral para este aluno.",
+  "Não há tarefa concluída nesta etapa para reabrir.":
+    "Não há tarefa concluída nesta etapa para reabrir.",
+
+  // gps.admin_vincular_pessoa_membro
+  "Cadastro não encontrado.": "Cadastro não encontrado.",
+  "O titular não pode ficar sem cadastro — o ambiente é dele.":
+    "O titular não pode ficar sem cadastro — o ambiente é dele.",
+  "Este membro já está sem cadastro vinculado.":
+    "Este membro já está sem cadastro vinculado.",
+  'Para o titular, o cadastro é o dono do ambiente. Use "Trocar titular".':
+    'Para o titular, o cadastro é o dono do ambiente. Use "Trocar titular".',
+  "Este cadastro já está vinculado a outra pessoa do programa.":
+    "Este cadastro já está vinculado a outra pessoa do programa.",
+  "Este membro já está vinculado a este cadastro.":
+    "Este membro já está vinculado a este cadastro.",
+
+  // gps.admin_trocar_titular
+  "Este membro não pertence a este ambiente.":
+    "Este membro não pertence a este ambiente.",
+  "Este membro já é o titular.": "Este membro já é o titular.",
+  "O novo titular precisa ter login. Defina o acesso dele primeiro.":
+    "O novo titular precisa ter login. Defina o acesso dele primeiro.",
+  "Esta conta é da equipe — não pode ser titular de um ambiente.":
+    "Esta conta é da equipe — não pode ser titular de um ambiente.",
+  "Este ambiente não tem titular.": "Este ambiente não tem titular.",
+
+  // gps.admin_mover_membro
+  "O titular não pode ser movido — o ambiente é dele. Troque o titular primeiro.":
+    "O titular não pode ser movido — o ambiente é dele. Troque o titular primeiro.",
+  "Este membro já está neste ambiente.": "Este membro já está neste ambiente.",
+  "O ambiente de destino não tem titular.":
+    "O ambiente de destino não tem titular.",
+  "Este login já participa do ambiente de destino.":
+    "Este login já participa do ambiente de destino.",
+  "O ambiente de destino já tem um membro sem login.":
+    "O ambiente de destino já tem um membro sem login.",
+
+  // gps.admin_financeiro_vincular / _desvincular
+  "Este contrato não é candidato deste aluno (e-mail e CPF/CNPJ não coincidem, ou ele já pertence a outro cadastro).":
+    "Este contrato não é candidato deste aluno (e-mail e CPF/CNPJ não coincidem, ou ele já pertence a outro cadastro).",
+  "O contrato deixou de estar livre. Recarregue o diagnóstico.":
+    "O contrato deixou de estar livre. Recarregue o diagnóstico.",
+  "O contrato não está vinculado a este aluno.":
+    "O contrato não está vinculado a este aluno.",
 };
 
 /**

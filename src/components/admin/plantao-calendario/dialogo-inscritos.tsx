@@ -34,8 +34,15 @@ export function DialogoInscritos({
         if (!v) setInscritosAbertos(null);
       }}
     >
-      <DialogContent>
-        <DialogHeader>
+      {/*
+        🔑 `max-h` + `flex-col` no container e `overflow-y-auto` na lista: o
+        `DialogContent` não limita altura por conta própria, então com 23
+        inscritos (o número real do primeiro plantão, 09/09/2026) a tabela
+        crescia para fora da tela e não havia como chegar ao fim da lista.
+        O cabeçalho fica fixo (`shrink-0`) e só a lista rola.
+      */}
+      <DialogContent className="flex max-h-[85vh] flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Inscritos</DialogTitle>
           <DialogDescription>
             {inscritosAbertos
@@ -43,9 +50,11 @@ export function DialogoInscritos({
               : ""}
           </DialogDescription>
         </DialogHeader>
-        <PlantaoInscritos
-          inscritos={inscritosAbertos ? (inscritosPorSlot[inscritosAbertos.slotId] ?? []) : []}
-        />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <PlantaoInscritos
+            inscritos={inscritosAbertos ? (inscritosPorSlot[inscritosAbertos.slotId] ?? []) : []}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );

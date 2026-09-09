@@ -226,27 +226,6 @@ export interface TarefaEnfase {
 }
 
 /**
- * Compromisso na agenda pessoal do aluno.
- * É organização dele e só dele: sem grade fixa, sem slot, sem confirmação da
- * equipe. O admin apenas enxerga (a policy de admin em `gps.agenda` é SELECT).
- */
-export interface AgendaItem {
-  id: string;
-  aluno_id: string;
-  titulo: string;
-  data: string; // "YYYY-MM-DD"
-  horario: string | null; // "HH:MM[:SS]"
-  nota: string | null;
-  criado_em: string;
-  atualizado_em: string;
-}
-
-/** Compromisso com o nome do aluno — para a visão de leitura do admin. */
-export interface AgendaItemComAluno extends AgendaItem {
-  aluno_nome: string | null;
-}
-
-/**
  * Diário do aluno — linha do tempo da EQUIPE. Visualização EXCLUSIVA do
  * admin (LGPD: dado pessoal de terceiros no texto livre). Ver
  * `gps.aluno_notas` (migração 20260908000001).

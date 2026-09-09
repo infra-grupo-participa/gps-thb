@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { destinoInterno } from "@/lib/nav";
 
 export interface LoginState {
   erro?: string;
@@ -13,7 +14,9 @@ export async function login(
 ): Promise<LoginState> {
   const email = String(formData.get("email") ?? "").trim();
   const senha = String(formData.get("senha") ?? "");
-  const destino = String(formData.get("redirect") ?? "/") || "/";
+  // Campo oculto do formulário = input do cliente. Revalidar aqui, mesmo
+  // que a página já tenha sanitizado ao montar o campo.
+  const destino = destinoInterno(String(formData.get("redirect") ?? ""));
 
   if (!email || !senha) {
     return { erro: "Informe e-mail e senha." };
@@ -29,6 +32,6 @@ export async function login(
     return { erro: "E-mail ou senha inválidos." };
   }
 
-  // Só redireciona para caminhos internos.
-  redirect(destino.startsWith("/") ? destino : "/");
+  // `destino` já passou por `destinoInterno()` — sempre caminho interno.
+  redirect(destino);
 }

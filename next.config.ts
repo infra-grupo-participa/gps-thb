@@ -5,6 +5,10 @@ const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "")
   .replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
+  // Não anunciar a stack em toda resposta (`X-Powered-By: Next.js`): é
+  // reconhecimento grátis para quem procura versão vulnerável.
+  poweredByHeader: false,
+
   // Server Actions atrás do proxy reverso (LiteSpeed/Hostinger): confia na
   // origem do domínio público para não bloquear login/logout/mutações por
   // divergência de Origin × Host.
@@ -21,6 +25,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/etapa-1", destination: "/etapa/1", permanent: true },
+      // A fila de solicitações virou a aba "Solicitações" do painel. A rota
+      // existia só como `redirect()` em Server Component — uma página
+      // inteira (bundle + shell de HTML) para mandar o usuário embora.
+      // Aqui é 1 linha e o redirect sai antes de qualquer render.
+      { source: "/admin/solicitacoes", destination: "/admin", permanent: true },
       {
         source: "/admin/aluno/:id/etapa-1",
         destination: "/admin/aluno/:id/etapa/1",
@@ -49,6 +58,35 @@ const nextConfig: NextConfig = {
           {
             key: "Cache-Control",
             value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      // Higiene de resposta em TODAS as rotas (inclusive assets).
+      //
+      // `nosniff`: impede o browser de adivinhar o tipo de um upload/arquivo
+      // servido e executá-lo como script.
+      // HSTS: o portal só existe em HTTPS; sem o header, o primeiro acesso
+      // por http:// é interceptável. `includeSubDomains` sem `preload` de
+      // propósito — `preload` é irreversível e o domínio é compartilhado
+      // com outros sistemas do grupo.
+      // `Permissions-Policy`: nenhuma tela usa câmera, microfone,
+      // geolocalização ou pagamento; negar por padrão fecha o que um
+      // terceiro embutido poderia pedir em nome do portal.
+      //
+      // ⚠️ CSP `script-src` NÃO entra aqui: o Next inline-eia o bootstrap e,
+      // sem nonce por requisição, a política quebra a página inteira.
+      // É projeto próprio, não linha de config.
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=()",
           },
         ],
       },

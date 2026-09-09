@@ -3,7 +3,7 @@ import { getContextoSessao } from "@/lib/auth";
 import {
   getAlunosGps,
   getSolicitacoes,
-  acharAlunoPorEmail,
+  acharAlunosPorEmails,
   getEtapas,
   getPendenciasPorAluno,
 } from "@/lib/data";
@@ -26,19 +26,25 @@ export default async function AdminPage() {
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const [alunos, pendentes, etapas, pendenciasDiario] = await Promise.all([
-    getAlunosGps(),
-    getSolicitacoes("pendente"),
-    getEtapas(),
-    getPendenciasPorAluno(),
-  ]);
+  // A sugestão de vínculo depende da lista de pendentes, então são 2 estágios
+  // — mas o segundo dispara assim que `getSolicitacoes` resolve, em paralelo
+  // com as outras leituras, em vez de esperar o `Promise.all` inteiro.
+  // Antes: um `acharAlunoPorEmail` POR solicitação, em série, depois de tudo.
+  const pendentesPromise = getSolicitacoes("pendente");
+  const [alunos, pendentes, etapas, pendenciasDiario, alunosPorEmail] =
+    await Promise.all([
+      getAlunosGps(),
+      pendentesPromise,
+      getEtapas(),
+      getPendenciasPorAluno(),
+      pendentesPromise.then((ps) => acharAlunosPorEmails(ps.map((s) => s.email))),
+    ]);
   const pendenciasPorAluno = Object.fromEntries(pendenciasDiario);
-  const solicitacoesComMatch = await Promise.all(
-    pendentes.map(async (s) => ({
-      solicitacao: s,
-      alunoSugerido: await acharAlunoPorEmail(s.email),
-    })),
-  );
+  const solicitacoesComMatch = pendentes.map((s) => ({
+    solicitacao: s,
+    alunoSugerido:
+      alunosPorEmail.get((s.email ?? "").trim().toLowerCase()) ?? null,
+  }));
 
   const comLogin = alunos.filter((a) => a.temLogin).length;
   const semLogin = alunos.length - comLogin;

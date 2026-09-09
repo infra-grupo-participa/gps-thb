@@ -79,24 +79,36 @@ export default async function HomePage() {
   // Aluno — alunoId é o AMBIENTE (compartilhado); membroAlunoId é a PESSOA.
   const alunoId = ctx.alunoId!;
   const souSocio = ctx.papelMembro === "socio";
-  const [etapas, alunoAmbiente, clientes, progressoTodas, membro, favorito, membros] =
-    await Promise.all([
-      getEtapas(),
-      getAlunoById(alunoId),
-      getClientesEtapa1(alunoId),
-      getProgressoAluno(alunoId),
-      getMembroDoUsuario(ctx.user.id),
-      getClienteEquipe(alunoId),
-      getMembrosDoAmbiente(alunoId),
-    ]);
   // Identidade da PESSOA logada: o titular já é `alunoAmbiente`; o sócio
-  // busca o próprio cadastro por `membroAlunoId` (não reaproveita o do titular).
-  const aluno = souSocio
-    ? ctx.membroAlunoId
-      ? await getAlunoById(ctx.membroAlunoId)
-      : null
-    : alunoAmbiente;
+  // busca o próprio cadastro por `membroAlunoId` (não reaproveita o do
+  // titular). Essa busca NÃO depende de nenhuma das outras, então entra no
+  // mesmo lote — antes era um await em série pendurado no fim do caminho
+  // crítico (~44 ms de round-trip a sa-east-1 só para o sócio).
+  const [
+    etapas,
+    alunoAmbiente,
+    clientes,
+    progressoTodas,
+    membro,
+    favorito,
+    membros,
+    alunoSocio,
+  ] = await Promise.all([
+    getEtapas(),
+    getAlunoById(alunoId),
+    getClientesEtapa1(alunoId),
+    getProgressoAluno(alunoId),
+    getMembroDoUsuario(ctx.user.id),
+    getClienteEquipe(alunoId),
+    getMembrosDoAmbiente(alunoId),
+    souSocio && ctx.membroAlunoId
+      ? getAlunoById(ctx.membroAlunoId)
+      : Promise.resolve(null),
+  ]);
+  const aluno = souSocio ? alunoSocio : alunoAmbiente;
   const nomeExibicao = souSocio ? (aluno?.nome ?? ctx.membroNome) : aluno?.nome;
+  // Único estágio 2 que sobrou: depende de `aluno.turma_id`, que só existe
+  // depois do lote acima.
   const turma = await getTurmaCodigo(aluno?.turma_id);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);

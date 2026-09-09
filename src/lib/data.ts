@@ -9,8 +9,6 @@ import type {
   Membro,
   ModoEnfase,
   ProgressoTarefa,
-  AgendaItem,
-  AgendaItemComAluno,
   Solicitacao,
   StatusSolicitacao,
   AlunoNota,
@@ -249,14 +247,50 @@ export async function getSolicitacoes(
   return (data ?? []) as Solicitacao[];
 }
 
-export async function contarSolicitacoesPendentes(): Promise<number> {
+const COLUNAS_ALUNO_SUGESTAO =
+  "id, nome, email, telefone, turma_id, plano, status_acesso, eh_socio";
+
+/**
+ * Procura os thb_alunos de uma lista de e-mails em UMA query (para sugerir
+ * vínculo na fila de aprovação).
+ *
+ * 🔑 Substitui o N+1 do painel: `/admin` chamava `acharAlunoPorEmail` uma vez
+ * por solicitação pendente, em série depois do `Promise.all` das outras
+ * leituras — com 20 solicitações eram 20 round-trips ao PostgREST
+ * (~44 ms cada) empilhados no fim do caminho crítico.
+ *
+ * A chave do mapa é `lower(trim(email))`, a mesma normalização que o resto do
+ * projeto usa para casar pessoa por e-mail (o índice único de `thb_alunos` é
+ * em `lower(trim(email))`). O `.in()` é case-sensitive, por isso o casamento
+ * final é feito em memória sobre a chave normalizada.
+ */
+export async function acharAlunosPorEmails(
+  emails: (string | null)[],
+): Promise<Map<string, Aluno>> {
+  const chaves = [
+    ...new Set(
+      emails
+        .map((e) => (e ?? "").trim().toLowerCase())
+        .filter((e) => e.length > 0),
+    ),
+  ];
+  const mapa = new Map<string, Aluno>();
+  if (!chaves.length) return mapa;
+
   const supabase = await createClient();
-  const { count } = await supabase
-    .schema("gps")
-    .from("solicitacoes_acesso")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "pendente");
-  return count ?? 0;
+  const { data } = await supabase
+    .from("thb_alunos")
+    .select(COLUNAS_ALUNO_SUGESTAO)
+    .in("email", chaves);
+
+  for (const a of (data ?? []) as Aluno[]) {
+    const chave = (a.email ?? "").trim().toLowerCase();
+    // Primeira linha vence: `thb_alunos` tem único em lower(trim(email)),
+    // então empate não deveria existir — mas não sobrescrever mantém o
+    // resultado estável se existir.
+    if (chave && !mapa.has(chave)) mapa.set(chave, a);
+  }
+  return mapa;
 }
 
 /** Procura um thb_aluno pelo e-mail (para sugerir vínculo na aprovação). */
@@ -267,9 +301,7 @@ export async function acharAlunoPorEmail(
   const supabase = await createClient();
   const { data } = await supabase
     .from("thb_alunos")
-    .select(
-      "id, nome, email, telefone, turma_id, plano, status_acesso, eh_socio",
-    )
+    .select(COLUNAS_ALUNO_SUGESTAO)
     .ilike("email", email)
     .limit(1)
     .maybeSingle();
@@ -371,57 +403,6 @@ export async function getEnfasesEtapa(
     out[r.tarefa] = r.modo;
   }
   return out;
-}
-
-/** Agenda pessoal do aluno, do mais próximo ao mais distante. */
-export async function getAgenda(alunoId: string): Promise<AgendaItem[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .schema("gps")
-    .from("agenda")
-    .select("*")
-    .eq("aluno_id", alunoId)
-    .order("data")
-    .order("horario", { nullsFirst: true });
-  return (data ?? []) as AgendaItem[];
-}
-
-/**
- * O que os alunos agendaram, de `deIso` em diante — visão de LEITURA do admin.
- * Duas consultas porque o PostgREST não faz join entre schemas: a agenda vive
- * em `gps` e o aluno em `public`.
- */
-export async function getAgendaDeTodos(
-  deIso: string,
-): Promise<AgendaItemComAluno[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .schema("gps")
-    .from("agenda")
-    .select("*")
-    .gte("data", deIso)
-    .order("data")
-    .order("horario", { nullsFirst: true });
-
-  const itens = (data ?? []) as AgendaItem[];
-  if (!itens.length) return [];
-
-  const alunoIds = [...new Set(itens.map((i) => i.aluno_id))];
-  const { data: alunos } = await supabase
-    .from("thb_alunos")
-    .select("id, nome")
-    .in("id", alunoIds);
-
-  const nomePorId = new Map(
-    ((alunos ?? []) as { id: string; nome: string | null }[]).map((a) => [
-      a.id,
-      a.nome,
-    ]),
-  );
-  return itens.map((i) => ({
-    ...i,
-    aluno_nome: nomePorId.get(i.aluno_id) ?? null,
-  }));
 }
 
 // ─────────────────────────────────────────────────────────────────────────

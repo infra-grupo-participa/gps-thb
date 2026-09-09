@@ -3,6 +3,7 @@ import { LoginForm } from "./login-form";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ThbLogo } from "@/components/thb-logo";
 import { AuthLayout } from "@/components/auth-layout";
+import { destinoInterno } from "@/lib/nav";
 
 export default async function LoginPage({
   searchParams,
@@ -10,7 +11,7 @@ export default async function LoginPage({
   searchParams: Promise<{ redirect?: string }>;
 }) {
   const { redirect } = await searchParams;
-  const redirectTo = redirect?.startsWith("/") ? redirect : "/";
+  const redirectTo = destinoInterno(redirect);
 
   return (
     <AuthLayout>

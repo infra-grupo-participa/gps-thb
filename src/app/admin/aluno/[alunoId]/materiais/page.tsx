@@ -1,6 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getEtapas, getAmbiente } from "@/lib/data";
+import {
+  getAlunoById,
+  getEtapas,
+  getAmbiente,
+  contarMembrosDoAmbiente,
+} from "@/lib/data";
 import { listarMateriais } from "@/lib/materiais";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
@@ -22,9 +27,10 @@ export default async function AdminAlunoMateriaisPage({
   if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapas] = await Promise.all([
+  const [aluno, etapas, qtdMembros] = await Promise.all([
     getAlunoById(alunoId),
     getEtapas(),
+    contarMembrosDoAmbiente(alunoId),
   ]);
   const nomes: Record<number, string> = {};
   const liberadas: Record<number, boolean> = {};
@@ -40,7 +46,9 @@ export default async function AdminAlunoMateriaisPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={assistenciaNavItems(alunoId)}
+        navItems={assistenciaNavItems(alunoId, {
+          ambienteCompartilhado: qtdMembros > 1,
+        })}
       />
       <AssistBanner aluno={aluno} />
 

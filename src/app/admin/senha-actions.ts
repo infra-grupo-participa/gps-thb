@@ -6,6 +6,7 @@ import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { enviarCredenciaisAcesso } from "@/lib/email";
+import { logErro } from "@/lib/log";
 import type { PapelMembro } from "@/lib/types";
 
 /**
@@ -13,8 +14,10 @@ import type { PapelMembro } from "@/lib/types";
  * `service_role`. O trabalho pesado (mexer em `auth.users`) fica em funções
  * SECURITY DEFINER no schema `gps`, liberadas só para admin
  * (`public.gp_is_admin()`): `admin_status_acesso`, `admin_definir_senha`,
- * `admin_excluir_acesso`, `admin_adicionar_socio` e `admin_excluir_membro`.
- * Ver migração `gps_admin_gestao_de_acesso` (e a extensão para sócios).
+ * `admin_definir_senha_membro`, `admin_excluir_acesso`,
+ * `admin_adicionar_socio` e `admin_excluir_membro`.
+ * Ver migração `gps_admin_gestao_de_acesso` (e a extensão para sócios), o
+ * retrato em `...118` e `...132` (senha do membro).
  */
 
 /** Senha temporária legível para ditar por telefone (ex.: Thb-7f3a-2b9c). */
@@ -148,6 +151,112 @@ export async function definirSenhaAluno(
     email,
     senha,
     emailEnviado,
+    nome: aluno?.nome ?? null,
+    telefone: aluno?.telefone ?? null,
+  };
+}
+
+/**
+ * Códigos que a família `gps.admin_*` levanta com mensagem escrita para o
+ * admin ler ("Membro não encontrado.", "Esta conta é da equipe — …"). Só
+ * esses voltam ao navegador; qualquer outro erro do Postgres vira uma frase
+ * genérica (CD6: nome de constraint e de coluna orientam quem for tentar
+ * algo, e não ajudam o admin em nada).
+ */
+const CODIGOS_COM_MENSAGEM_PARA_O_ADMIN = new Set(["42501", "22023", "P0002"]);
+
+/**
+ * Define a senha de UM MEMBRO do ambiente (o remédio que faltava para o
+ * sócio — PL8). `definirSenhaAluno` acima endereça o AMBIENTE e sempre cai no
+ * titular (`gps.admin_user_do_aluno`); esta endereça `gps.membros.id`, que é
+ * exatamente a linha que o admin clicou em "Gerenciar acesso".
+ *
+ * Antes disso, a única saída para um sócio travado era removê-lo e
+ * re-adicioná-lo — o que APAGA o login e o histórico dele.
+ *
+ * As guardas ficam todas no banco (`gps.admin_definir_senha_membro`,
+ * migração ...132): admin, senha ≥ 8, o membro existe, tem login, não é
+ * conta de equipe e não é quem está executando. O `ehAdmin()` daqui é a
+ * primeira porta, não a única — quem decide é a RPC.
+ *
+ * Nome e telefone saem de `thb_alunos` pelo E-MAIL do login: para o sócio,
+ * `gps.membros.aluno_id` é o id do AMBIENTE (o titular), então buscar por ele
+ * traria o nome errado no e-mail e no link de WhatsApp. Sem cadastro
+ * correspondente, os dois voltam nulos e a tela some com o botão de WhatsApp.
+ */
+export async function definirSenhaMembro(
+  membroId: string,
+  opts?: { senha?: string; enviarEmail?: boolean },
+): Promise<{
+  erro?: string;
+  email?: string;
+  senha?: string;
+  emailEnviado?: boolean;
+  papel?: PapelMembro;
+  telefone?: string | null;
+  nome?: string | null;
+}> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+
+  const senha = opts?.senha?.trim() || gerarSenhaTemporaria();
+  if (senha.length < 8) {
+    return { erro: "A senha precisa ter ao menos 8 caracteres." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("admin_definir_senha_membro", {
+      p_membro_id: membroId,
+      p_senha: senha,
+    });
+
+  if (error) {
+    logErro("admin/definirSenhaMembro", error, { membroId });
+    return {
+      erro: CODIGOS_COM_MENSAGEM_PARA_O_ADMIN.has(error.code ?? "")
+        ? error.message
+        : "Não foi possível definir a senha deste membro.",
+    };
+  }
+
+  const resultado = (data ?? {}) as {
+    email?: string;
+    papel?: PapelMembro;
+  };
+  const email = resultado.email ?? null;
+  if (!email) {
+    // A senha JÁ trocou (a RPC commitou); o que falta é o e-mail para exibir.
+    // Dizer "não foi possível" aqui seria mentira que faz o admin repetir a
+    // operação e trocar a senha duas vezes.
+    return {
+      erro: "Senha definida, mas este login não tem e-mail para exibir.",
+    };
+  }
+
+  const { data: aluno } = await supabase
+    .from("thb_alunos")
+    .select("nome, telefone")
+    .eq("email", email)
+    .maybeSingle();
+
+  let emailEnviado = false;
+  if (opts?.enviarEmail !== false) {
+    const envio = await enviarCredenciaisAcesso({
+      para: email,
+      nome: aluno?.nome ?? null,
+      senha,
+      precisaConfirmar: false,
+    });
+    emailEnviado = envio.ok;
+  }
+
+  revalidatePath("/admin", "layout");
+  return {
+    email,
+    senha,
+    emailEnviado,
+    papel: resultado.papel,
     nome: aluno?.nome ?? null,
     telefone: aluno?.telefone ?? null,
   };

@@ -9,6 +9,7 @@ import {
   getAmbiente,
   getProgressoAluno,
   getResumoDiario,
+  contarMembrosDoAmbiente,
 } from "@/lib/data";
 import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
 import { assistenciaNavItems } from "@/lib/nav";
@@ -35,15 +36,23 @@ export default async function AdminAlunoInicioPage({
   if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapas, clientes, progressoTodas, favorito, resumoDiario] =
-    await Promise.all([
-      getAlunoById(alunoId),
-      getEtapas(),
-      getClientesEtapa1(alunoId),
-      getProgressoAluno(alunoId),
-      getClienteEquipe(alunoId),
-      getResumoDiario(alunoId),
-    ]);
+  const [
+    aluno,
+    etapas,
+    clientes,
+    progressoTodas,
+    favorito,
+    resumoDiario,
+    qtdMembros,
+  ] = await Promise.all([
+    getAlunoById(alunoId),
+    getEtapas(),
+    getClientesEtapa1(alunoId),
+    getProgressoAluno(alunoId),
+    getClienteEquipe(alunoId),
+    getResumoDiario(alunoId),
+    contarMembrosDoAmbiente(alunoId),
+  ]);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
   // Mesma regra do ambiente do aluno (PL2): tarefa travada não é próximo
@@ -59,7 +68,9 @@ export default async function AdminAlunoInicioPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={assistenciaNavItems(alunoId)}
+        navItems={assistenciaNavItems(alunoId, {
+          ambienteCompartilhado: qtdMembros > 1,
+        })}
       />
       <AssistBanner aluno={aluno} />
 

@@ -58,12 +58,36 @@ export function alunoNavItems(
  *
  * `financeiro: true` porque o admin sempre enxerga o financeiro do ambiente
  * (é ele que responde a divergência) — a mesma regra da guarda da RPC.
+ *
+ * 🔑 `ambienteCompartilhado` (UX8) existe só para a PRÉVIA "como o aluno vê".
+ * O admin continua com a aba: o que muda é que, num ambiente com sócio, ela
+ * ganha `adminOnly` — e `nav-tabs.tsx` a marca com `previa-oculta`. Motivo:
+ * a prévia é a ferramenta de suporte usada para responder "o que você está
+ * vendo aí?", e num ambiente compartilhado o admin não sabe se quem ligou é
+ * o titular ou o sócio. Mostrar uma aba que o sócio nunca terá faz a
+ * ferramenta mentir na única pergunta que ela existe para responder.
+ * Esconder na prévia é o custo baixo do lado seguro: some para os dois
+ * papéis num ambiente com sócio, em vez de aparecer para quem não tem.
+ *
+ * ⚠️ NÃO é fronteira de segurança: quem barra o sócio é a página
+ * `/financeiro` (reconfere no servidor) e a RPC `gps.financeiro_do_aluno`
+ * (42501). Isto aqui é honestidade de prévia. `opts` é obrigatório pelo
+ * mesmo motivo de `alunoNavItems`: default permissivo vira esquecimento.
  */
-export function assistenciaNavItems(alunoId: string): NavItem[] {
+export function assistenciaNavItems(
+  alunoId: string,
+  opts: { ambienteCompartilhado: boolean },
+): NavItem[] {
+  const base = `/admin/aluno/${alunoId}`;
+  const hrefFinanceiro = `${base}/financeiro`;
   return [
-    ...alunoNavItems(`/admin/aluno/${alunoId}`, { financeiro: true }),
+    ...alunoNavItems(base, { financeiro: true }).map((item) =>
+      opts.ambienteCompartilhado && item.href === hrefFinanceiro
+        ? { ...item, adminOnly: true }
+        : item,
+    ),
     {
-      href: `/admin/aluno/${alunoId}/diario`,
+      href: `${base}/diario`,
       label: "Diário",
       icon: "diario",
       adminOnly: true,

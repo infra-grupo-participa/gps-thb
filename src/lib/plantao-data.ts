@@ -202,17 +202,22 @@ export async function getMentoras(): Promise<MentoraAdmin[]> {
 /**
  * Estado do interruptor de inscrições, para a pílula do topo do calendário.
  *
- * 🔑 Espelha `gps.plantao_escrita_liberada()` — o mesmo `coalesce` de três
- * degraus, na mesma ordem — mas lendo a TABELA direto (é admin, tem policy).
- * O que ela NÃO consegue ver é o segundo degrau, `app.plantao_inscricao_aberta`:
+ * 🔑 Espelha `gps.plantao_escrita_liberada()` — mesmo `coalesce`, mesma
+ * ordem — mas lendo a TABELA direto (é admin, tem policy). Desde a migração
+ * ...130 a fonte é `gps.config` na chave `plantao_inscricao_aberta`:
+ * `gps.plantao_config` virou degrau de COMPATIBILIDADE do deploy e sai numa
+ * migração futura. Não ler as duas aqui é deliberado — quem escreve (a
+ * action `definirInscricoesAbertas`) escreve só em `gps.config`, então a
+ * segunda leitura só poderia mostrar um valor velho.
+ *
+ * O que ela NÃO consegue ver é o degrau do `app.plantao_inscricao_aberta`:
  * um GUC de sessão do `authenticator` não chega ao PostgREST desta consulta.
  *
  * Consequência assumida: com a linha ausente E o setting em 'false', a tela
  * diria "abertas" enquanto o banco recusa. É o cenário que a migração
- * ...070 fecha ao inserir a linha na aplicação — e o erro cai para o lado
- * seguro (mostrar "abertas" nunca autoriza escrita nenhuma; quem decide é a
- * função no banco, sempre). Ler o setting exigiria uma RPC nova só para
- * exibir um rótulo.
+ * ...130 fecha ao copiar a linha, e o erro cai para o lado seguro (mostrar
+ * "abertas" nunca autoriza escrita nenhuma; quem decide é a função no banco,
+ * sempre). Ler o setting exigiria uma RPC nova só para exibir um rótulo.
  *
  * Ausente = ABERTO, mesmo default da função: o produto não pode aparecer
  * pausado porque uma linha de config sumiu.
@@ -221,9 +226,9 @@ export async function lerInscricoesAbertas(): Promise<boolean> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("gps")
-    .from("plantao_config")
+    .from("config")
     .select("valor")
-    .eq("chave", "inscricao_aberta")
+    .eq("chave", "plantao_inscricao_aberta")
     .maybeSingle();
 
   if (error) {

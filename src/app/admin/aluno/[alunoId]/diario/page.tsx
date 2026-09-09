@@ -10,6 +10,7 @@ import {
   getAcoesAdministrativasDoAluno,
   getMarcosDeAcesso,
   getMarcosDeTrilha,
+  contarMembrosDoAmbiente,
 } from "@/lib/data";
 import { montarTrilha } from "@/lib/log-agregacao";
 import type { ItemTrilha } from "@/lib/types";
@@ -137,6 +138,7 @@ export default async function AdminAlunoDiarioPage({
     acoesAdministrativas,
     marcos,
     marcosTrilha,
+    qtdMembros,
   ] = await Promise.all([
     getAlunoById(alunoId),
     // A janela vale para as TRÊS fontes da trilha (eventos, notas e ações
@@ -155,6 +157,7 @@ export default async function AdminAlunoDiarioPage({
     // tempo escolhida na tela — ver `getMarcosDeTrilha`. Não usar `eventos`
     // (já filtrado por `desde`) para nenhum dos dois.
     getMarcosDeTrilha(alunoId),
+    contarMembrosDoAmbiente(alunoId),
   ]);
 
   // `truncado` = o teto de 300 cortou dentro da janela. A tela precisa dizer
@@ -176,7 +179,9 @@ export default async function AdminAlunoDiarioPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={assistenciaNavItems(alunoId)}
+        navItems={assistenciaNavItems(alunoId, {
+          ambienteCompartilhado: qtdMembros > 1,
+        })}
       />
       <AssistBanner aluno={aluno} />
 

@@ -38,7 +38,9 @@ export default async function AdminAlunoPerfilPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={assistenciaNavItems(alunoId)}
+        navItems={assistenciaNavItems(alunoId, {
+          ambienteCompartilhado: membros.length > 1,
+        })}
       />
       <AssistBanner aluno={aluno} />
 

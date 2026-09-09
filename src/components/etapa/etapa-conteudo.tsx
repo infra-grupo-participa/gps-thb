@@ -12,7 +12,7 @@ import { Etapa1Guide } from "@/components/etapa1/etapa1-guide";
 import { EtapaGuide } from "@/components/etapa/etapa-guide";
 import { Etapa3Guide } from "@/components/etapa/etapa3-guide";
 import { ClienteEquipeBanner } from "@/components/etapa/cliente-equipe-banner";
-import type { Etapa3Agendamento, Etapa3Revisao } from "@/lib/types";
+import type { Etapa3Agendamento, Etapa3Revisao, ModoEnfase } from "@/lib/types";
 
 /**
  * Renderiza o guia certo para a etapa (etapa 1 e 3 têm campos próprios;
@@ -32,9 +32,18 @@ export async function EtapaConteudo({
   const conteudo = conteudoEtapa(n);
   if (!conteudo) return null;
 
+  // CD12: a etapa 3 tem guia próprio (`Etapa3Guide`) e ele NÃO recebe
+  // `enfasesIniciais` — buscar as ênfases ali era uma ida ao banco por
+  // abertura da Etapa 03 cujo resultado ia direto para o lixo. Quem consome
+  // é `Etapa1Guide` (n === 1) e `EtapaGuide` (2, 4, 5, 6).
+  // ⚠️ Se um dia `Etapa3Guide` passar a destacar tarefa, é aqui que a
+  // condição precisa cair junto — senão o destaque some sem erro nenhum.
+  const usaEnfases = n !== 3;
   const [progresso, enfases] = await Promise.all([
     getProgressoEtapa(alunoId, n),
-    getEnfasesEtapa(alunoId, n),
+    usaEnfases
+      ? getEnfasesEtapa(alunoId, n)
+      : Promise.resolve({} as Record<number, ModoEnfase>),
   ]);
 
   if (n === 1) {

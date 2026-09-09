@@ -665,8 +665,10 @@ export async function cancelarSlot(
  * `alter role authenticator set app.plantao_inscricao_aberta = 'false'`
  * (lacuna L4 da Fase 8: só um dev com acesso ao banco conseguia pausar).
  *
- * Grava em `gps.plantao_config`, lida por `gps.plantao_escrita_liberada()`,
- * que guarda TODAS as escritas públicas: inscrever, cancelar, revelar link
+ * Grava em `gps.config` na chave `plantao_inscricao_aberta` (migração ...130;
+ * antes era `gps.plantao_config`, que virou degrau de compatibilidade e sai
+ * numa migração futura). Quem lê é `gps.plantao_escrita_liberada()`, que
+ * guarda TODAS as escritas públicas: inscrever, cancelar, revelar link
  * (grava presença) e registrar NPS. A LEITURA continua liberada — pausado, o
  * calendário segue visível e só os botões param de funcionar.
  *
@@ -684,14 +686,14 @@ export async function definirInscricoesAbertas(
   const supabase = await createClient();
 
   // `atualizado_em` NÃO vai no payload: quem carimba é o trigger
-  // `trg_plantao_config_atualizado_em`. Relógio de servidor de aplicação não
-  // decide "quando" num registro de auditoria.
+  // `trg_config_atualizado_em`. Relógio de servidor de aplicação não decide
+  // "quando" num registro de auditoria.
   const { error } = await supabase
     .schema("gps")
-    .from("plantao_config")
+    .from("config")
     .upsert(
       {
-        chave: "inscricao_aberta",
+        chave: "plantao_inscricao_aberta",
         valor: aberta ? "true" : "false",
         atualizado_por: ctx.user.id,
       },

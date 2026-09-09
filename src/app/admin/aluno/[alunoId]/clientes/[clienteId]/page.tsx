@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getClienteById, getAmbiente } from "@/lib/data";
+import {
+  getAlunoById,
+  getClienteById,
+  getAmbiente,
+  contarMembrosDoAmbiente,
+} from "@/lib/data";
 import { assistenciaNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
@@ -25,7 +30,10 @@ export default async function AdminAlunoClienteFichaPage({
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const aluno = await getAlunoById(alunoId);
+  const [aluno, qtdMembros] = await Promise.all([
+    getAlunoById(alunoId),
+    contarMembrosDoAmbiente(alunoId),
+  ]);
 
   return (
     <>
@@ -34,7 +42,9 @@ export default async function AdminAlunoClienteFichaPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={assistenciaNavItems(alunoId)}
+        navItems={assistenciaNavItems(alunoId, {
+          ambienteCompartilhado: qtdMembros > 1,
+        })}
       />
       <AssistBanner aluno={aluno} />
 

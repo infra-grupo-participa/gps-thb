@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { resumoEtapa1 } from "@/lib/etapa1";
 import { ehAdmin } from "@/lib/auth";
@@ -150,6 +151,44 @@ export async function getMembrosDoAmbiente(
   return (data ?? []) as Membro[];
 }
 
+/**
+ * Só a CONTAGEM de membros do ambiente — para responder "este ambiente tem
+ * sócio?" sem trazer as linhas (UX8: a prévia "como o aluno vê" esconde a aba
+ * Financeiro quando há sócio, ver `assistenciaNavItems` em `src/lib/nav.ts`).
+ *
+ * `head: true` + `count: "exact"`: nenhuma linha volta pela rede, e o filtro
+ * bate no índice `membros_aluno_id_idx`. Quem JÁ carrega os membros na página
+ * (chamados, financeiro, perfil do admin) usa `membros.length` e não chama
+ * isto — pagar duas idas ao banco pelo mesmo dado é o defeito que
+ * `chamados-data.ts` documenta.
+ *
+ * Memoizada por requisição (`cache()` do React — escopo de REQUISIÇÃO, nada
+ * atravessa usuário).
+ *
+ * Erro → devolve 1 (= ambiente sem sócio), que é o comportamento de antes do
+ * UX8: a aba Financeiro continua visível na prévia. Falha aqui não pode
+ * esconder informação do admin; a fronteira real do sócio é a RPC.
+ */
+export const contarMembrosDoAmbiente = cache(
+  async function contarMembrosDoAmbiente(alunoId: string): Promise<number> {
+    const supabase = await createClient();
+    const { count, error } = await supabase
+      .schema("gps")
+      .from("membros")
+      .select("id", { count: "exact", head: true })
+      .eq("aluno_id", alunoId);
+
+    if (error) {
+      logErro("data/contarMembrosDoAmbiente", error, {
+        alunoId,
+        efeito: "assume ambiente sem socio (previa mostra Financeiro)",
+      });
+      return 1;
+    }
+    return count ?? 1;
+  },
+);
+
 export async function getClientesEtapa1(
   alunoId: string,
 ): Promise<ClienteEtapa1[]> {
@@ -171,6 +210,8 @@ export interface AlunoGps {
   aluno: Aluno | null;
   pct: number;
   clientesPreenchidos: number;
+  /** Clientes com nome, telefone e nível preenchidos — o número que a tarefa 1 cobra (PL3). */
+  clientesComDados: number;
   agendados: number;
   /** Entrada no programa: menor `gps.membros.criado_em` do ambiente. ISO. */
   desde: string | null;
@@ -342,6 +383,7 @@ export async function getAlunosGps(opts?: {
       aluno: alunosMap.get(l.aluno_id) ?? null,
       pct,
       clientesPreenchidos: l.clientes_preenchidos,
+      clientesComDados: l.clientes_com_dados,
       agendados: l.agendados,
       desde: l.desde,
       ultimoAcesso: l.ultimo_acesso,

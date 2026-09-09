@@ -52,7 +52,8 @@ import { FiltroChip, ViewButton } from "./clientes-chips";
 import { Kanban } from "./clientes-quadro";
 import { ClientesTabela } from "./clientes-tabela";
 import { ConfirmacaoEquipe } from "./confirmacao-equipe";
-import { DialogoDesfavoritar, DialogoExcluirCliente } from "./dialogos";
+import { DialogoExcluirCliente } from "./dialogos";
+import { DialogoDesfavoritar } from "../dialogo-desfavoritar";
 import { contarPorFase, filtrarPorBusca, ordenarClientes } from "./ordenacao";
 import type { Ordenacao } from "./tipos";
 

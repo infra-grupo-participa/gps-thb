@@ -6,17 +6,12 @@ import { toast } from "sonner";
 import type { SlotAdmin } from "@/lib/plantao-tipos";
 import { faixaHorario, rotuloData } from "@/lib/plantao";
 import { cancelarSlot } from "@/app/admin/plantao/actions";
-import { Button } from "@/components/ui/button";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+
+/** Mesmo teto do motivo da recusa de solicitação (`solicitacao-card.tsx`). */
+const MAX_MOTIVO = 300;
 
 /**
  * Cancelar é diferente de remover: o plantão fica na agenda com o motivo, as
@@ -24,6 +19,12 @@ import {
  * diz quantas pessoas serão avisadas ANTES do clique e quantas foram avisadas
  * DEPOIS — e-mail que falha não desfaz o cancelamento, e alguém precisa avisar
  * essa pessoa por fora.
+ *
+ * 🔑 Esta tela foi a ORIGEM do `DialogoConfirmacao` (consequência escrita,
+ * botão nomeado, foco de volta) e agora consome o componente, como as outras
+ * cinco. O campo de motivo entra por `children`, no padrão do
+ * `SolicitacaoCard`. `destrutivo={false}` de propósito: cancelar um plantão é
+ * reversível (republica-se outro) e o botão nunca foi vermelho aqui.
  */
 export function DialogoCancelamento({
   slot,
@@ -66,58 +67,43 @@ export function DialogoCancelamento({
   }
 
   return (
-    <Dialog
-      open
-      onOpenChange={(v) => {
-        if (!v && !salvando) onFechar(false);
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Cancelar este plantão?</DialogTitle>
-          <DialogDescription>
-            {rotuloData(slot.data)} · {faixaHorario(slot.horaInicio, slot.duracaoMin)} ·{" "}
-            {slot.mentoraNome}
-          </DialogDescription>
-        </DialogHeader>
-
-        <p className="text-sm">
+    <DialogoConfirmacao
+      aberto
+      titulo="Cancelar este plantão?"
+      descricao={`${rotuloData(slot.data)} · ${faixaHorario(slot.horaInicio, slot.duracaoMin)} · ${slot.mentoraNome}`}
+      consequencia={
+        <>
           {slot.inscritosQtd === 0
             ? "Ninguém está inscrito neste plantão."
             : `${slot.inscritosQtd} inscrito(s) serão avisados por e-mail e a inscrição deles será cancelada.`}{" "}
           O plantão sai do ar para os alunos, mas continua aqui no histórico.
+        </>
+      }
+      rotuloConfirmar="Cancelar plantão"
+      rotuloConfirmando="Cancelando..."
+      destrutivo={false}
+      confirmando={salvando}
+      erro={erro}
+      onConfirmar={confirmar}
+      onCancelar={() => onFechar(false)}
+    >
+      <div className="grid gap-2">
+        <Label htmlFor="cancelar-motivo">Motivo (opcional)</Label>
+        <Textarea
+          id="cancelar-motivo"
+          value={motivo}
+          maxLength={MAX_MOTIVO}
+          rows={3}
+          disabled={salvando}
+          aria-describedby="cancelar-motivo-ajuda"
+          onChange={(e) => setMotivo(e.target.value)}
+          placeholder="Ex.: a mentora precisou remarcar; volta na semana que vem."
+        />
+        <p id="cancelar-motivo-ajuda" className="text-xs text-muted-foreground">
+          Vai no e-mail dos inscritos. Até {MAX_MOTIVO} caracteres (
+          {motivo.length}/{MAX_MOTIVO}).
         </p>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="cancelar-motivo">Motivo (opcional)</Label>
-          <Textarea
-            id="cancelar-motivo"
-            value={motivo}
-            maxLength={300}
-            rows={3}
-            disabled={salvando}
-            aria-describedby="cancelar-motivo-ajuda"
-            onChange={(e) => setMotivo(e.target.value)}
-            placeholder="Ex.: a mentora precisou remarcar; volta na semana que vem."
-          />
-          <p id="cancelar-motivo-ajuda" className="text-xs text-muted-foreground">
-            Vai no e-mail dos inscritos. Até 300 caracteres ({motivo.length}/300).
-          </p>
-        </div>
-
-        <p aria-live="assertive" className="text-xs text-destructive empty:hidden">
-          {erro}
-        </p>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onFechar(false)} disabled={salvando}>
-            Voltar
-          </Button>
-          <Button onClick={confirmar} disabled={salvando}>
-            {salvando ? "Cancelando..." : "Cancelar plantão"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </DialogoConfirmacao>
   );
 }

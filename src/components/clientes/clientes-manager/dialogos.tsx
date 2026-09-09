@@ -1,9 +1,13 @@
 "use client";
 
 /**
- * Os dois diálogos de confirmação da tela de clientes. Ficam num arquivo à
- * parte porque são CONVERSA, não lista: cada um existe para dizer o que a
- * ação apaga ou trava antes de ela acontecer.
+ * O diálogo de exclusão da tela de clientes. Fica num arquivo à parte porque é
+ * CONVERSA, não lista: existe para dizer o que a ação apaga antes de ela
+ * acontecer.
+ *
+ * O irmão dele, `DialogoDesfavoritar`, mudou para
+ * `src/components/clientes/dialogo-desfavoritar.tsx` — a ficha do cliente tem
+ * a mesma estrela e precisa da mesma conversa.
  *
  * 🔑 Quem confirma continua sendo o `ClientesManager` — `onConfirmar` e
  * `onCancelar` chegam prontos de lá. É por isso que a linha do cliente
@@ -50,43 +54,6 @@ export function DialogoExcluirCliente({
   }
   rotuloConfirmar="Excluir cliente"
   rotuloConfirmando="Excluindo…"
-  confirmando={pending}
-  erro={erroDialogo}
-      onConfirmar={onConfirmar}
-      onCancelar={onCancelar}
-    />
-  );
-}
-
-/** PL11 — desmarcar a estrela re-trava os passos 4 a 8 da Etapa 01. */
-export function DialogoDesfavoritar({
-  desfavoritando,
-  pending,
-  erroDialogo,
-  onConfirmar,
-  onCancelar,
-}: {
-  desfavoritando: ClienteEtapa1;
-  pending: boolean;
-  erroDialogo: string | null;
-  onConfirmar: () => void;
-  onCancelar: () => void;
-}) {
-  return (
-<DialogoConfirmacao
-  aberto
-  titulo="Tirar este cliente do acompanhamento da equipe?"
-  descricao={desfavoritando.nome || "Cliente sem nome"}
-  consequencia={
-    <>
-      Sem cliente acompanhado, os{" "}
-      <strong>passos 4 a 8 da Etapa 01 voltam a ficar travados</strong>{" "}
-      e o destaque na sua página inicial some. Nenhum dado do cliente é
-      apagado — dá para escolher outro (ou o mesmo) a qualquer momento.
-    </>
-  }
-  rotuloConfirmar="Tirar do acompanhamento"
-  rotuloConfirmando="Salvando…"
   confirmando={pending}
   erro={erroDialogo}
       onConfirmar={onConfirmar}

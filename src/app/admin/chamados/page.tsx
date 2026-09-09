@@ -96,6 +96,7 @@ export default async function AdminChamadosPage({
             <ChamadosConfig
               aberto={config.aberto}
               emailEquipe={config.emailEquipe}
+              fallbackEnv={config.fallbackEnv}
             />
           </TabsContent>
 

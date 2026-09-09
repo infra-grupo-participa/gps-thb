@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DialogoDesfavoritar } from "@/components/clientes/dialogo-desfavoritar";
 import {
   Select,
   SelectContent,
@@ -71,6 +72,14 @@ export function ClienteFicha({
   const [ligacao, setLigacao] = useState(cliente.ligacao_realizada);
   const [registro, setRegistro] = useState(cliente.registro_contato ?? "");
   const [acompanhado, setAcompanhado] = useState(cliente.acompanhado_equipe);
+  /**
+   * PL11 — desmarcar a estrela aqui trava os passos 4 a 8 da Etapa 01, igual
+   * a desmarcá-la na lista. A lista já confirmava; a ficha desligava num
+   * clique. `true` = diálogo aberto. Só o DESLIGAR pergunta: ligar é
+   * reversível e não tranca nada.
+   */
+  const [desfavoritando, setDesfavoritando] = useState(false);
+  const [erroDialogo, setErroDialogo] = useState<string | null>(null);
   // Honorários e link do contrato (Fase 7-B). Ficam no estado mesmo quando a
   // fase não é "contratado": o valor SOBREVIVE à volta de fase (B9-b) e é
   // reenviado como está — mudar de fase nunca apaga o que o aluno digitou.
@@ -95,14 +104,26 @@ export function ClienteFicha({
       contratoLimpo.length > 2000);
 
   function toggleEquipe() {
-    const ativar = !acompanhado;
+    if (acompanhado) {
+      setErroDialogo(null);
+      setDesfavoritando(true);
+      return;
+    }
+    aplicarEquipe(true);
+  }
+
+  function aplicarEquipe(ativar: boolean) {
     setAcompanhado(ativar);
     startTransition(async () => {
       const res = await definirClienteEquipe(cliente.id, alunoId, ativar);
       if (res.erro) {
+        // Desfaz o otimismo: sem isto a estrela ficaria mentindo na tela.
         setAcompanhado(!ativar);
+        setErroDialogo("Erro ao mudar o cliente da equipe.");
         toast.error("Erro ao marcar o cliente da equipe.");
+        return;
       }
+      setDesfavoritando(false);
     });
   }
 
@@ -482,6 +503,22 @@ export function ClienteFicha({
           </div>
         </CardContent>
       </Card>
+
+      {/* PL11 — o botão da estrela continua montado acima: é para lá que o
+          foco volta quando o aluno desiste. O nome vem do campo em edição,
+          que é o que ele está lendo na tela. */}
+      {desfavoritando ? (
+        <DialogoDesfavoritar
+          desfavoritando={{ ...cliente, nome: nome.trim() || cliente.nome }}
+          pending={pending}
+          erroDialogo={erroDialogo}
+          onConfirmar={() => aplicarEquipe(false)}
+          onCancelar={() => {
+            setDesfavoritando(false);
+            setErroDialogo(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

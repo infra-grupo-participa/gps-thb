@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
-import { AlertTriangle, Lock, Unlock } from "lucide-react";
+import { AlertTriangle, Info, Lock, Unlock } from "lucide-react";
 import { toast } from "sonner";
 import {
   definirChamadosAbertos,
@@ -31,13 +31,30 @@ import { Label } from "@/components/ui/label";
  * chamado, a action registra `console.error` e a tela do admin fica igual à de
  * um dia sem chamado nenhum. Falha silenciosa é o modo de falha proibido aqui,
  * então o vazio aparece em destaque, não em cinza.
+ *
+ * 🔑 PL6 — lista vazia NÃO é sinônimo de ninguém avisado. `avisarEquipe`
+ * (`src/app/chamados/actions.ts`) cai na env `EMAIL_SUPORTE`, e `fallbackEnv`
+ * diz se ela existe no servidor. São **três** estados, não dois:
+ *
+ * | lista | `fallbackEnv` | o que a tela diz |
+ * |---|---|---|
+ * | vazia | `false` | vermelho: **ninguém** recebe e-mail |
+ * | vazia | `true`  | neutro: o aviso sai pelo `EMAIL_SUPORTE` do servidor |
+ * | cheia | qualquer | nada — a lista na tela já é a resposta |
+ *
+ * Cravar o vermelho com a env definida seria alarme falso, e alarme falso
+ * treina o time a ignorar o alarme verdadeiro. Só o BOOLEANO chega aqui: o
+ * endereço de suporte nunca vira prop nem HTML.
  */
 export function ChamadosConfig({
   aberto,
   emailEquipe,
+  fallbackEnv,
 }: {
   aberto: boolean;
   emailEquipe: string[];
+  /** `true` = a env `EMAIL_SUPORTE` está definida no servidor. */
+  fallbackEnv: boolean;
 }) {
   const uid = useId();
   const idEmails = `${uid}-emails`;
@@ -49,7 +66,10 @@ export function ChamadosConfig({
   const [confirmandoFechar, setConfirmandoFechar] = useState(false);
   const [erroFechar, setErroFechar] = useState<string | null>(null);
   const [pendente, startTransition] = useTransition();
-  const semDestinatario = emailEquipe.length === 0;
+  /** Lista vazia E sem `EMAIL_SUPORTE`: o chamado novo não avisa ninguém. */
+  const ninguemRecebe = emailEquipe.length === 0 && !fallbackEnv;
+  /** Lista vazia, mas a env cobre: é lacuna de cadastro, não canal quebrado. */
+  const soPeloServidor = emailEquipe.length === 0 && fallbackEnv;
 
   /**
    * PL12 — fechar a entrada desliga a abertura E a resposta do aluno em TODO o
@@ -142,7 +162,7 @@ export function ChamadosConfig({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          {semDestinatario ? (
+          {ninguemRecebe ? (
             <p
               role="alert"
               className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
@@ -150,6 +170,23 @@ export function ChamadosConfig({
               <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
               Ninguém recebe e-mail quando um aluno abre chamado. Informe os
               endereços da equipe abaixo.
+            </p>
+          ) : null}
+
+          {soPeloServidor ? (
+            <p
+              role="status"
+              className="flex items-start gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm"
+            >
+              <Info
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+              />
+              <span>
+                Sem endereço cadastrado aqui; os avisos vão para o e-mail de
+                suporte configurado no servidor (EMAIL_SUPORTE). Cadastre um
+                endereço para a equipe receber por aqui.
+              </span>
             </p>
           ) : null}
 

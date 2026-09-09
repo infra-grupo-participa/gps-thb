@@ -104,7 +104,15 @@ export function IdentificacaoForm({
 
           {erro ? (
             <p role="alert" className="text-sm text-destructive">
-              {erro}
+              {erro}{" "}
+              <a
+                href="https://o.aceleraholding.com.br/monitoria"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium underline underline-offset-4 hover:no-underline"
+              >
+                Fale com a monitoria
+              </a>
             </p>
           ) : null}
 

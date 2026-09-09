@@ -248,7 +248,7 @@ export async function enviarPlantaoAvisoMentora(params: {
  * e o aluno não perde o direito de cancelar por falha da equipe.
  *
  * ⚠️ `zoomUrl` vira `href`. A validação de `https://` acontece na escrita
- * (`validarZoomUrl` em `src/app/admin/plantao/actions.ts`), mas repetimos a
+ * (`validarZoomUrl` em `src/app/admin/plantao/slots-actions.ts`), mas repetimos a
  * checagem aqui: um valor `javascript:` que escapasse viraria link clicável
  * no cliente de e-mail. Sem `https://`, manda-se o e-mail sem o botão.
  */

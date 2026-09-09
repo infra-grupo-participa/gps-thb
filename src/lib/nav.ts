@@ -1,4 +1,5 @@
 import type { NavItem } from "@/components/nav-tabs";
+import type { ContextoSessao } from "@/lib/auth";
 
 /**
  * Abas de navegação do aluno. basePath = "" para o aluno logado;
@@ -47,6 +48,30 @@ export function alunoNavItems(
     { href: `${basePath}/chamados`, label: "Suporte", icon: "suporte" },
     { href: `${basePath}/perfil`, label: "Perfil", icon: "perfil" },
   ];
+}
+
+/**
+ * As abas do aluno LOGADO, decididas a partir do contexto de sessão.
+ *
+ * 🔑 Existe para que a regra do sócio (B7-b) more num lugar só. Ela estava
+ * copiada como `financeiro: ctx.papelMembro === "titular"` em NOVE
+ * `page.tsx` (CD7): home, clientes, ficha do cliente, etapa, materiais,
+ * pasta, perfil, chamados e chamado. Uma página nova que esquecesse a linha
+ * ganhava a aba Financeiro por omissão — e o comentário de `alunoNavItems`
+ * pedia atenção justamente para isso. Avisar do erro é pior do que remover a
+ * chance dele.
+ *
+ * `basePath` continua existindo (default "") porque `alunoNavItems` é
+ * compartilhada com o modo assistência; para o aluno logado é sempre "".
+ *
+ * ⚠️ NÃO é fronteira de segurança — esconder a aba nunca foi. Quem barra o
+ * sócio é a página `/financeiro` (reconfere no servidor) e a RPC
+ * `gps.financeiro_do_aluno`, que levanta 42501. Ver `src/lib/financeiro.ts`.
+ */
+export function navDoAluno(ctx: ContextoSessao, basePath = ""): NavItem[] {
+  return alunoNavItems(basePath, {
+    financeiro: ctx.papelMembro === "titular",
+  });
 }
 
 /**

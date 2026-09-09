@@ -9,7 +9,7 @@ import "server-only";
  * Lê `data/plantao/acelera-ativos.json` (PII real — e-mail/CPF/telefone —,
  * por isso a pasta é `.gitignore`d: o repositório é PÚBLICO). Upsert
  * idempotente por e-mail, chamado pelo admin em `carregarLoteAcelera`
- * (`src/app/admin/plantao/actions.ts`):
+ * (`src/app/admin/plantao/alunos-actions.ts`):
  * - e-mail novo → insert, `ativo = true`, `lote = '2026-08'`;
  * - e-mail já existe → atualiza nome/documento/telefone SÓ SE vierem
  *   preenchidos no CSV (nunca sobrescreve dado já preenchido com vazio) e

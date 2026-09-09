@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getClientesEtapa1 } from "@/lib/data";
-import { alunoNavItems } from "@/lib/nav";
+import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { ClientesManager } from "@/components/clientes/clientes-manager";
@@ -26,9 +26,7 @@ export default async function ClientesPage() {
         nome={aluno?.nome ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
         papelRotulo="Aluno"
-        navItems={alunoNavItems("", {
-          financeiro: ctx.papelMembro === "titular",
-        })}
+        navItems={navDoAluno(ctx)}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
         <PageHeader

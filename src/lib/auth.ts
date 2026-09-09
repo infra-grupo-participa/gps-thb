@@ -130,7 +130,7 @@ export const getContextoSessao = cache(async function getContextoSessao(): Promi
 /**
  * Atalho para Server Actions/queries que só o admin pode chamar (era
  * triplicado em `admin/actions.ts`, `admin/senha-actions.ts` e
- * `admin/plantao/actions.ts` — extraído para cá).
+ * `admin/plantao/slots-actions.ts` — extraído para cá).
  *
  * Também memoizado por requisição: é chamado ~43 vezes no repo, e sem isso
  * cada guarda de `data.ts` custaria um round-trip ao GoTrue. A resposta não

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getEtapas } from "@/lib/data";
 import { listarMateriais } from "@/lib/materiais";
-import { alunoNavItems } from "@/lib/nav";
+import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { MateriaisView } from "@/components/materiais/materiais-view";
@@ -32,9 +32,7 @@ export default async function MateriaisPage() {
         nome={aluno?.nome ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
         papelRotulo="Aluno"
-        navItems={alunoNavItems("", {
-          financeiro: ctx.papelMembro === "titular",
-        })}
+        navItems={navDoAluno(ctx)}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
         <PageHeader

@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { pctPorEtapa, proximoPasso } from "@/lib/etapas";
 import { calcularMetricasEtapa1, resumoHonorarios } from "@/lib/etapa1";
-import { alunoNavItems } from "@/lib/nav";
+import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { EtapasOverview } from "@/components/etapas-overview";
@@ -144,9 +144,7 @@ export default async function HomePage() {
         nome={nomeExibicao ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
         papelRotulo="Aluno"
-        navItems={alunoNavItems("", {
-          financeiro: ctx.papelMembro === "titular",
-        })}
+        navItems={navDoAluno(ctx)}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
         <PageHeader

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getMembroDoUsuario, getTurmaCodigo } from "@/lib/data";
-import { alunoNavItems } from "@/lib/nav";
+import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { PerfilEditor } from "@/components/perfil/perfil-editor";
@@ -32,9 +32,7 @@ export default async function PerfilPage() {
         nome={aluno?.nome ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
         papelRotulo="Aluno"
-        navItems={alunoNavItems("", {
-          financeiro: ctx.papelMembro === "titular",
-        })}
+        navItems={navDoAluno(ctx)}
       />
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-8">
         <PageHeader

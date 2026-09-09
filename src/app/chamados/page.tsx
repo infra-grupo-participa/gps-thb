@@ -4,7 +4,7 @@ import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById } from "@/lib/data";
 import { getChamadosDoAmbiente, getSuporteAberto } from "@/lib/chamados-data";
 import { CHAMADOS_MAX_ABERTOS } from "@/lib/chamados-tipos";
-import { alunoNavItems } from "@/lib/nav";
+import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -49,9 +49,7 @@ export default async function ChamadosPage() {
         nome={aluno?.nome ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
         papelRotulo="Aluno"
-        navItems={alunoNavItems("", {
-          financeiro: ctx.papelMembro === "titular",
-        })}
+        navItems={navDoAluno(ctx)}
       />
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-8">
         <PageHeader

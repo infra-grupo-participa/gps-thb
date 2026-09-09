@@ -5,7 +5,7 @@ import {
   getSolicitacoes,
   acharAlunosPorEmails,
   getEtapas,
-  getPendenciasPorAluno,
+  getAtendimentoPorAluno,
 } from "@/lib/data";
 import { Users, UserCheck, UserX, Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
@@ -31,15 +31,17 @@ export default async function AdminPage() {
   // com as outras leituras, em vez de esperar o `Promise.all` inteiro.
   // Antes: um `acharAlunoPorEmail` POR solicitação, em série, depois de tudo.
   const pendentesPromise = getSolicitacoes("pendente");
-  const [alunos, pendentes, etapas, pendenciasDiario, alunosPorEmail] =
+  const [alunos, pendentes, etapas, atendimentoDiario, alunosPorEmail] =
     await Promise.all([
       getAlunosGps(),
       pendentesPromise,
       getEtapas(),
-      getPendenciasPorAluno(),
+      getAtendimentoPorAluno(),
       pendentesPromise.then((ps) => acharAlunosPorEmails(ps.map((s) => s.email))),
     ]);
-  const pendenciasPorAluno = Object.fromEntries(pendenciasDiario);
+  // Map -> objeto simples porque `Map` não atravessa a fronteira Server ->
+  // Client Component. Ambiente sem nota nenhuma não tem chave aqui.
+  const atendimentoPorAluno = Object.fromEntries(atendimentoDiario);
   const solicitacoesComMatch = pendentes.map((s) => ({
     solicitacao: s,
     alunoSugerido:
@@ -120,7 +122,7 @@ export default async function AdminPage() {
           <TabsContent value="ativos">
             <AlunosAtivosLista
               alunos={alunos}
-              pendenciasPorAluno={pendenciasPorAluno}
+              atendimentoPorAluno={atendimentoPorAluno}
             />
           </TabsContent>
 

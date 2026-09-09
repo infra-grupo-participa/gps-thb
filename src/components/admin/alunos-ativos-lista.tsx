@@ -3,8 +3,13 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Search, Users } from "lucide-react";
-import type { AlunoGps } from "@/lib/data";
+import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import { casaTodosOsTermos, semAcento } from "@/lib/texto";
+import {
+  ROTULO_TIPO,
+  formatarDataHora,
+} from "@/components/admin/diario-labels";
+import { NotaRapida } from "@/components/admin/nota-rapida";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -26,7 +31,34 @@ type OrdemAlunos =
   | "progresso"
   | "clientes"
   | "tempo_de_casa"
-  | "ultimo_acesso";
+  | "ultimo_acesso"
+  | "nota_recente";
+
+/**
+ * Rótulo de cada ordenação. Existe porque `SelectValue` do Base UI mostra o
+ * VALOR selecionado, não o texto do `SelectItem`: sem este mapa (e sem a função
+ * passada ao `SelectValue`), o gatilho fechado exibia "recentes"/"ultimo_acesso"
+ * — código cru, em inglês misturado, na cara do usuário.
+ */
+const ROTULO_ORDEM: Record<OrdemAlunos, string> = {
+  recentes: "mais recentes",
+  nome: "nome",
+  progresso: "progresso",
+  clientes: "clientes",
+  tempo_de_casa: "mais tempo de casa",
+  ultimo_acesso: "acesso mais recente",
+  nota_recente: "nota mais recente",
+};
+
+const ORDENS: OrdemAlunos[] = [
+  "recentes",
+  "nome",
+  "progresso",
+  "clientes",
+  "tempo_de_casa",
+  "ultimo_acesso",
+  "nota_recente",
+];
 
 /** Cliente e servidor formatam no MESMO fuso: sem isto o SSR (UTC) e o
  * navegador (BRT) divergem em toda data depois das 21h e a hidratação quebra. */
@@ -83,6 +115,23 @@ function diasSemAcesso(iso: string | null, agora: number): number {
 
 const DIAS_INATIVO = 30;
 const META_CLIENTES = 30;
+/** Janela do filtro "com nota nos últimos N dias" — dias de CALENDÁRIO. */
+const DIAS_NOTA_RECENTE = 7;
+
+/** Trecho vindo do banco (`left(texto,140)`). Ver `AtendimentoDoAluno`. */
+const TAMANHO_RESUMO = 140;
+
+const SEM_ATENDIMENTO: AtendimentoDoAluno = {
+  pendenciasAbertas: 0,
+  ultimaNotaEm: null,
+  ultimaNotaTipo: null,
+  ultimaNotaResumo: null,
+};
+
+/** Nota escrita nos últimos 7 dias de CALENDÁRIO. Sem nota nenhuma = `false`. */
+function notaRecente(iso: string | null | undefined, agora: number): boolean {
+  return iso ? diasDesde(iso, agora) <= DIAS_NOTA_RECENTE : false;
+}
 
 /** Um filtro da barra: só aparece quando há alguém para filtrar. */
 function FiltroCheckbox({
@@ -112,22 +161,31 @@ function FiltroCheckbox({
 }
 
 /**
- * Lista "Alunos ativos" com busca, ordenação, badge de pendência do diário e
- * filtro "com pendência". Recebe os dados já carregados pelo Server Component
- * (uma query no `Promise.all` de `admin/page.tsx`) — busca, ordenação e filtro
- * acontecem em memória, sobre o array recebido, sem segunda ida ao banco.
+ * Lista "Alunos ativos" com busca, ordenação, resumo do Diário no card e
+ * filtros. Recebe os dados já carregados pelo Server Component (uma query no
+ * `Promise.all` de `admin/page.tsx`) — busca, ordenação e filtro acontecem em
+ * memória, sobre o array recebido, sem segunda ida ao banco.
+ *
+ * 🔴 Esta é uma tela SÓ DE ADMIN. `atendimentoPorAluno` carrega trecho de nota
+ * do Diário (`gps.aluno_notas`, exclusiva do admin por LGPD — migração
+ * 20260908000001). Não reaproveitar este componente em rota de aluno.
  */
 export function AlunosAtivosLista({
   alunos,
-  pendenciasPorAluno,
+  atendimentoPorAluno,
 }: {
   alunos: AlunoGps[];
-  /** `alunoId` → contagem de pendências abertas. */
-  pendenciasPorAluno: Record<string, number>;
+  /**
+   * `alunoId` → resumo do Diário (pendências abertas + última nota). Ambiente
+   * sem nenhuma nota simplesmente não aparece no mapa.
+   */
+  atendimentoPorAluno: Record<string, AtendimentoDoAluno>;
 }) {
   const [somentePendencia, setSomentePendencia] = useState(false);
   const [somenteListou30, setSomenteListou30] = useState(false);
   const [somenteInativos, setSomenteInativos] = useState(false);
+  const [somenteNotaRecente, setSomenteNotaRecente] = useState(false);
+  const [somenteSemNota, setSomenteSemNota] = useState(false);
   const [termo, setTermo] = useState("");
   const [ordem, setOrdem] = useState<OrdemAlunos>("recentes");
 
@@ -135,9 +193,16 @@ export function AlunosAtivosLista({
   // lista mudar de conteúdo sem ninguém ter mexido em nada.
   const [agora] = useState(() => Date.now());
 
+  /** Nunca `undefined`: o card sempre tem o que ler, sem `?.` espalhado. */
+  const atendimentoDe = (alunoId: string): AtendimentoDoAluno =>
+    atendimentoPorAluno[alunoId] ?? SEM_ATENDIMENTO;
+
   const totalComPendencia = useMemo(
-    () => alunos.filter((a) => (pendenciasPorAluno[a.alunoId] ?? 0) > 0).length,
-    [alunos, pendenciasPorAluno],
+    () =>
+      alunos.filter(
+        (a) => (atendimentoPorAluno[a.alunoId]?.pendenciasAbertas ?? 0) > 0,
+      ).length,
+    [alunos, atendimentoPorAluno],
   );
 
   const totalListou30 = useMemo(
@@ -152,10 +217,27 @@ export function AlunosAtivosLista({
     [alunos, agora],
   );
 
+  const totalNotaRecente = useMemo(
+    () =>
+      alunos.filter((a) =>
+        notaRecente(atendimentoPorAluno[a.alunoId]?.ultimaNotaEm, agora),
+      ).length,
+    [alunos, atendimentoPorAluno, agora],
+  );
+
+  const totalSemNota = useMemo(
+    () =>
+      alunos.filter((a) => !atendimentoPorAluno[a.alunoId]?.ultimaNotaEm).length,
+    [alunos, atendimentoPorAluno],
+  );
+
   const visiveis = useMemo(() => {
     // Os filtros combinam por AND: marcar dois estreita, nunca alarga.
     const filtrados = alunos.filter((a) => {
-      if (somentePendencia && (pendenciasPorAluno[a.alunoId] ?? 0) === 0) {
+      if (
+        somentePendencia &&
+        (atendimentoPorAluno[a.alunoId]?.pendenciasAbertas ?? 0) === 0
+      ) {
         return false;
       }
       if (somenteListou30 && a.clientesPreenchidos < META_CLIENTES) return false;
@@ -163,6 +245,15 @@ export function AlunosAtivosLista({
         somenteInativos &&
         diasSemAcesso(a.ultimoAcesso, agora) < DIAS_INATIVO
       ) {
+        return false;
+      }
+      if (
+        somenteNotaRecente &&
+        !notaRecente(atendimentoPorAluno[a.alunoId]?.ultimaNotaEm, agora)
+      ) {
+        return false;
+      }
+      if (somenteSemNota && atendimentoPorAluno[a.alunoId]?.ultimaNotaEm) {
         return false;
       }
       const alvo = `${a.aluno?.nome ?? ""} ${a.aluno?.email ?? ""}`;
@@ -207,14 +298,27 @@ export function AlunosAtivosLista({
       if (ordem === "ultimo_acesso") {
         return porData(a.ultimoAcesso, b.ultimoAcesso, "desc") ?? porNome(a, b);
       }
+      if (ordem === "nota_recente") {
+        // Quem não tem nota vai para o fim — é o mesmo `porData`, então
+        // "sem nota" nunca se disfarça de "nota antiquíssima".
+        return (
+          porData(
+            atendimentoPorAluno[a.alunoId]?.ultimaNotaEm ?? null,
+            atendimentoPorAluno[b.alunoId]?.ultimaNotaEm ?? null,
+            "desc",
+          ) ?? porNome(a, b)
+        );
+      }
       return b.clientesPreenchidos - a.clientesPreenchidos || porNome(a, b);
     });
   }, [
     alunos,
-    pendenciasPorAluno,
+    atendimentoPorAluno,
     somentePendencia,
     somenteListou30,
     somenteInativos,
+    somenteNotaRecente,
+    somenteSemNota,
     agora,
     termo,
     ordem,
@@ -225,12 +329,16 @@ export function AlunosAtivosLista({
     somentePendencia ? "com pendência aberta" : null,
     somenteListou30 ? `já listou os ${META_CLIENTES}` : null,
     somenteInativos ? `sem acessar há ${DIAS_INATIVO}+ dias` : null,
+    somenteNotaRecente ? `com nota nos últimos ${DIAS_NOTA_RECENTE} dias` : null,
+    somenteSemNota ? "sem nenhuma nota" : null,
   ].filter((f): f is string => f !== null);
 
   const limparFiltros = () => {
     setSomentePendencia(false);
     setSomenteListou30(false);
     setSomenteInativos(false);
+    setSomenteNotaRecente(false);
+    setSomenteSemNota(false);
   };
 
   if (alunos.length === 0) {
@@ -267,19 +375,16 @@ export function AlunosAtivosLista({
           onValueChange={(v) => v && setOrdem(v as OrdemAlunos)}
         >
           <SelectTrigger aria-label="Ordenar alunos" className="w-[240px]">
-            <SelectValue />
+            <SelectValue>
+              {(v: OrdemAlunos) => `Ordenar: ${ROTULO_ORDEM[v]}`}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="recentes">Ordenar: mais recentes</SelectItem>
-            <SelectItem value="nome">Ordenar: nome</SelectItem>
-            <SelectItem value="progresso">Ordenar: progresso</SelectItem>
-            <SelectItem value="clientes">Ordenar: clientes</SelectItem>
-            <SelectItem value="tempo_de_casa">
-              Ordenar: mais tempo de casa
-            </SelectItem>
-            <SelectItem value="ultimo_acesso">
-              Ordenar: acesso mais recente
-            </SelectItem>
+            {ORDENS.map((o) => (
+              <SelectItem key={o} value={o}>
+                Ordenar: {ROTULO_ORDEM[o]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -300,6 +405,18 @@ export function AlunosAtivosLista({
           total={totalInativos}
           marcado={somenteInativos}
           onChange={setSomenteInativos}
+        />
+        <FiltroCheckbox
+          rotulo={`Com nota nos últimos ${DIAS_NOTA_RECENTE} dias`}
+          total={totalNotaRecente}
+          marcado={somenteNotaRecente}
+          onChange={setSomenteNotaRecente}
+        />
+        <FiltroCheckbox
+          rotulo="Sem nenhuma nota"
+          total={totalSemNota}
+          marcado={somenteSemNota}
+          onChange={setSomenteSemNota}
         />
       </div>
 
@@ -354,91 +471,155 @@ export function AlunosAtivosLista({
             desde,
             ultimoAcesso,
           }) => {
-            const pendencias = pendenciasPorAluno[alunoId] ?? 0;
+            const atendimento = atendimentoDe(alunoId);
+            const pendencias = atendimento.pendenciasAbertas;
+            const nome = aluno?.nome ?? "Aluno sem nome";
             return (
-              <Link key={alunoId} href={`/admin/aluno/${alunoId}`} className="block">
-                <Card className="transition hover:border-primary/50 hover:shadow-sm">
-                  <CardContent className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium">
-                          {aluno?.nome ?? "Aluno sem nome"}
-                        </span>
-                        {temLogin ? (
-                          <Badge variant="secondary" className="text-[10px]">
-                            com login
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px]">
-                            sem login
-                          </Badge>
-                        )}
-                        {qtdMembros > 1 ? (
-                          <Badge variant="outline" className="text-[10px]">
-                            {qtdMembros} pessoas
-                          </Badge>
-                        ) : null}
-                        {pendencias > 0 ? (
-                          <Badge variant="destructive" className="gap-1 text-[10px]">
-                            <AlertCircle className="size-3" />
-                            {pendencias}{" "}
-                            {pendencias === 1 ? "pendência" : "pendências"}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {aluno?.email}
-                      </div>
-                      <div className="mt-0.5 truncate text-xs text-muted-foreground/80">
-                        {desde ? (
-                          <>Entrou em {fmtData.format(new Date(desde))} · </>
-                        ) : null}
-                        {ultimoAcesso ? (
-                          <>
-                            {desde ? "último" : "Último"} acesso{" "}
-                            {/* "há N dias" depende do relógio: o valor do SSR
-                                pode cair num dia diferente do da hidratação. */}
-                            <span
-                              suppressHydrationWarning
-                              title={fmtDataHora.format(new Date(ultimoAcesso))}
-                            >
-                              {descreverAcesso(ultimoAcesso, agora)}
-                            </span>
-                          </>
-                        ) : (
-                          <span>{desde ? "nunca entrou" : "Nunca entrou"}</span>
-                        )}
-                      </div>
+              // O card NÃO é mais um `<Link>` por fora: botão dentro de link é
+              // HTML inválido, some do Tab e o clique navega em vez de abrir o
+              // diálogo. O link virou uma camada absoluta atrás do conteúdo
+              // (`z-0`), e todo controle sobe para `z-10` — sem
+              // `stopPropagation`, o empilhamento resolve.
+              <Card
+                key={alunoId}
+                className="relative transition hover:border-primary/50 hover:shadow-sm"
+              >
+                <CardContent className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  {/* Foco por `outline` com deslocamento NEGATIVO, não por
+                      `ring`: o link ocupa exatamente a caixa do `Card`, que é
+                      `overflow-hidden` — um anel desenhado para FORA da caixa
+                      é recortado por inteiro e o teclado navega às cegas.
+                      Medido no navegador: com `focus-visible:ring-3` não
+                      aparecia um pixel. */}
+                  <Link
+                    href={`/admin/aluno/${alunoId}`}
+                    aria-label={`Abrir o ambiente de ${nome}`}
+                    className="absolute inset-0 z-0 rounded-[inherit] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-medium">{nome}</span>
+                      {temLogin ? (
+                        <Badge variant="secondary" className="text-[10px]">
+                          com login
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px]">
+                          sem login
+                        </Badge>
+                      )}
+                      {qtdMembros > 1 ? (
+                        <Badge variant="outline" className="text-[10px]">
+                          {qtdMembros} pessoas
+                        </Badge>
+                      ) : null}
+                      {pendencias > 0 ? (
+                        <Badge
+                          variant="destructive"
+                          className="gap-1 text-[10px]"
+                        >
+                          <AlertCircle className="size-3" />
+                          {pendencias}{" "}
+                          {pendencias === 1 ? "pendência" : "pendências"}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {aluno?.email}
                     </div>
 
-                    <div className="flex items-center gap-6">
-                      <div className="text-center">
-                        <div className="text-sm font-semibold">
-                          {clientesPreenchidos}/30
-                        </div>
-                        <div className="text-[10px] uppercase text-muted-foreground">
-                          clientes
-                        </div>
+                    {/* Última nota do Diário — o trecho vem cortado do BANCO
+                        (`left(texto,140)`); aqui nunca se corta de novo nem se
+                        remonta a nota inteira. O `title` repete o MESMO trecho:
+                        inventar tooltip com texto que não veio seria mentir. */}
+                    <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs">
+                      {atendimento.ultimaNotaEm ? (
+                        <>
+                          {atendimento.ultimaNotaTipo ? (
+                            // Sempre `outline`: daqui não dá para saber se uma
+                            // "pendência" já foi resolvida, e pintar de vermelho
+                            // uma nota resolvida contradiria o badge de
+                            // pendências abertas ao lado.
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 text-[10px]"
+                            >
+                              {ROTULO_TIPO[atendimento.ultimaNotaTipo]}
+                            </Badge>
+                          ) : null}
+                          <span
+                            className="truncate text-muted-foreground"
+                            title={atendimento.ultimaNotaResumo ?? undefined}
+                          >
+                            {atendimento.ultimaNotaResumo}
+                            {(atendimento.ultimaNotaResumo?.length ?? 0) >=
+                            TAMANHO_RESUMO
+                              ? "…"
+                              : null}
+                          </span>
+                          <span className="shrink-0 text-muted-foreground/80">
+                            · {formatarDataHora(atendimento.ultimaNotaEm)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Sem nota no Diário
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-0.5 truncate text-xs text-muted-foreground/80">
+                      {desde ? (
+                        <>Entrou em {fmtData.format(new Date(desde))} · </>
+                      ) : null}
+                      {ultimoAcesso ? (
+                        <>
+                          {desde ? "último" : "Último"} acesso{" "}
+                          {/* "há N dias" depende do relógio: o valor do SSR
+                              pode cair num dia diferente do da hidratação. */}
+                          <span
+                            suppressHydrationWarning
+                            title={fmtDataHora.format(new Date(ultimoAcesso))}
+                          >
+                            {descreverAcesso(ultimoAcesso, agora)}
+                          </span>
+                        </>
+                      ) : (
+                        <span>{desde ? "nunca entrou" : "Nunca entrou"}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-6">
+                    <div className="text-center">
+                      <div className="text-sm font-semibold">
+                        {clientesPreenchidos}/30
                       </div>
-                      <div className="text-center">
-                        <div className="text-sm font-semibold">
-                          {agendados}/15
-                        </div>
-                        <div className="text-[10px] uppercase text-muted-foreground">
-                          reuniões
-                        </div>
-                      </div>
-                      <div className="w-32">
-                        <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
-                          <span>Etapa 01</span>
-                          <span>{pct}%</span>
-                        </div>
-                        <Progress value={pct} />
+                      <div className="text-[10px] uppercase text-muted-foreground">
+                        clientes
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                    <div className="text-center">
+                      <div className="text-sm font-semibold">{agendados}/15</div>
+                      <div className="text-[10px] uppercase text-muted-foreground">
+                        reuniões
+                      </div>
+                    </div>
+                    <div className="w-32">
+                      <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
+                        <span>Etapa 01</span>
+                        <span>{pct}%</span>
+                      </div>
+                      <Progress value={pct} />
+                    </div>
+                    {/* `relative z-10`: sobe acima da camada do link, senão o
+                        clique abriria o ambiente em vez do diálogo. */}
+                    <div className="relative z-10">
+                      <NotaRapida alunoId={alunoId} nomeDoAluno={nome} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             );
           },
         )

@@ -17,6 +17,7 @@ import type {
   AlunoEvento,
   AlunoEventoComAutor,
   AcaoAdministrativa,
+  TipoNota,
 } from "@/lib/types";
 
 export async function getEtapas(): Promise<Etapa[]> {
@@ -561,7 +562,8 @@ export async function getPendenciasAbertasDoAluno(
  * contagem de pendências abertas (`count: exact, head: true`, sem trazer
  * linha nenhuma). Contar dentro de um `.limit(50)` mentia a partir da 51ª
  * nota — uma pendência antiga sumia do card enquanto o badge do painel
- * (`getPendenciasPorAluno`, que varre a base inteira) seguia contando.
+ * (`getAtendimentoPorAluno`, que agrega a base inteira no banco) seguia
+ * contando.
  * A contagem casa exatamente com o índice parcial
  * `idx_aluno_notas_pendencia_aberta` (Index Only Scan, 0,108 ms medido).
  */
@@ -595,27 +597,86 @@ export async function getResumoDiario(alunoId: string): Promise<ResumoDiario> {
 }
 
 /**
- * Pendências abertas da base inteira, por aluno — para badges na lista de
- * alunos do admin. Só `aluno_id` (nunca `texto`, que pode ter dado sensível
- * de terceiros).
+ * Resumo de atendimento de UM ambiente, para os cards de `/admin`.
+ *
+ * ⚠️ `ultimaNotaResumo` é um TRECHO de no máximo 140 caracteres, cortado no
+ * BANCO (`left(texto,140)` em `gps.admin_painel_atendimento`) — o texto
+ * integral da nota, que pode ter dado pessoal de terceiro, nunca sai para uma
+ * tela de LISTA. Não reconstituir a nota inteira a partir daqui.
  */
-export async function getPendenciasPorAluno(): Promise<Map<string, number>> {
-  const vazio = new Map<string, number>();
-  if (!(await ehAdmin())) return vazio;
+export interface AtendimentoDoAluno {
+  pendenciasAbertas: number;
+  /** ISO da nota mais recente do ambiente. `null` = nenhuma nota no Diário. */
+  ultimaNotaEm: string | null;
+  ultimaNotaTipo: TipoNota | null;
+  /** Trecho de até 140 caracteres, cortado no BANCO. Nunca o texto integral. */
+  ultimaNotaResumo: string | null;
+}
 
+/** Linha crua de `gps.admin_painel_atendimento()` (migração 20260909000080). */
+interface LinhaPainelAtendimento {
+  aluno_id: string;
+  pendencias_abertas: number;
+  ultima_nota_em: string | null;
+  ultima_nota_tipo: TipoNota | null;
+  ultima_nota_resumo: string | null;
+}
+
+/**
+ * Resumo do Diário da base inteira, por ambiente — pendências abertas e um
+ * trecho da última nota, para os cards de `/admin`.
+ *
+ * UMA consulta: a RPC `gps.admin_painel_atendimento()` agrega onde o dado
+ * está. A função anterior (removida na Fase 5, migração 20260909000080)
+ * trazia uma linha por pendência aberta da BASE INTEIRA e contava num laço em
+ * JavaScript — o custo crescia com o total de pendências do sistema, não com
+ * os ambientes exibidos.
+ *
+ * Só ambientes COM nota aparecem no Map. Ausência = "Sem nota no Diário", que
+ * é informação, não erro.
+ *
+ * A RPC é SECURITY INVOKER e a RLS só-admin de `gps.aluno_notas` continua
+ * sendo a fonte de verdade; a guarda `gp_is_admin()` dentro dela devolve 42501
+ * para não-admin — por isso não há `ehAdmin()` aqui, pelo mesmo motivo de
+ * `getAlunosGps`.
+ */
+export async function getAtendimentoPorAluno(): Promise<
+  Map<string, AtendimentoDoAluno>
+> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .schema("gps")
-    .from("aluno_notas")
-    .select("aluno_id")
-    .eq("tipo", "pendencia")
-    .is("resolvido_em", null);
 
-  const contagem = new Map<string, number>();
-  for (const row of (data ?? []) as { aluno_id: string }[]) {
-    contagem.set(row.aluno_id, (contagem.get(row.aluno_id) ?? 0) + 1);
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("admin_painel_atendimento");
+
+  if (error) {
+    // Falha aqui não pode virar "nenhuma pendência em lugar nenhum" em
+    // silêncio: a tela ficaria idêntica à de um Diário vazio. Registra e só
+    // então devolve o Map vazio.
+    console.error(
+      "[getAtendimentoPorAluno] gps.admin_painel_atendimento() falhou; cards sem resumo do Diário",
+      {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      },
+    );
+    return new Map<string, AtendimentoDoAluno>();
   }
-  return contagem;
+
+  const linhas = (data ?? []) as LinhaPainelAtendimento[];
+  return new Map(
+    linhas.map((l) => [
+      l.aluno_id,
+      {
+        pendenciasAbertas: l.pendencias_abertas,
+        ultimaNotaEm: l.ultima_nota_em,
+        ultimaNotaTipo: l.ultima_nota_tipo,
+        ultimaNotaResumo: l.ultima_nota_resumo,
+      },
+    ]),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────

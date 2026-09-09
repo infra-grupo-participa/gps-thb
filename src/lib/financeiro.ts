@@ -364,6 +364,30 @@ function derivarPct(
 }
 
 /**
+ * Quanto o contrato pagou ACIMA do pacote — só quando isso é fato, nunca
+ * ruído de arredondamento (decisão do Marcio, 09/09: "ele vê que pagou os
+ * 15k, mas a equipe vê que ele tem 18k pagos").
+ *
+ * É o MESMO número de `divergenciaQuitacao`, só que com nome e sinal que
+ * dizem o que é: `divergenciaQuitacao` é fatia interna, pensada para os DOIS
+ * sentidos (FN1); esta função existe para quem só quer responder "pagou a
+ * mais?" sem reler o comentário do sinal. `null` quando não há excedente —
+ * inclui contrato não quitado, contrato sem `divergenciaQuitacao` e a
+ * divergência POSITIVA (quitado com dívida na conta, que é o problema
+ * oposto: falta dinheiro, não sobra).
+ *
+ * Só para o admin: o aluno já vê "Quitado, R$ 0,00" e continua vendo — esta
+ * função não é chamada na tela dele.
+ */
+export function excedentePago(
+  contrato: Pick<ContratoFinanceiro, "situacao" | "divergenciaQuitacao">,
+): number | null {
+  if (contrato.situacao !== "quitado") return null;
+  if (contrato.divergenciaQuitacao === null) return null;
+  return contrato.divergenciaQuitacao < 0 ? -contrato.divergenciaQuitacao : null;
+}
+
+/**
  * Guarda TS do Financeiro do programa (defesa em profundidade da guarda da
  * RPC). Um lugar só, para as duas leituras (contrato e extrato) não poderem
  * divergir — alargar uma e esquecer a outra é como guarda de dinheiro vaza.

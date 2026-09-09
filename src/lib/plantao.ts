@@ -76,7 +76,7 @@ export function limitesDoMes(
 
 /**
  * Normaliza e-mail para gravação/comparação no plantão: minúsculo + trim.
- * MESMA normalização usada na carga (`plantao-carga.ts`) e no login
+ * MESMA normalização usada no login e em `liberarAlunoPlantao`
  * (as RPCs públicas normalizam de novo no banco) — uma fonte só.
  * Não confundir com a normalização de `auth.users` (`lower(btrim(email))`)
  * nem de `thb_alunos` (`lower(trim(both from email))`): a identidade do

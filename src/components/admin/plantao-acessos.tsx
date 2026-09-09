@@ -27,14 +27,12 @@ import {
   UserRoundIcon,
   ShieldOffIcon,
   ShieldCheckIcon,
-  UploadIcon,
   TriangleAlertIcon,
 } from "lucide-react";
 import type { AlunoPlantaoAdmin } from "@/lib/plantao-tipos";
 import {
   revogarAcessoPlantao,
   reativarAcessoPlantao,
-  carregarLoteAcelera,
 } from "@/app/admin/plantao/actions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -94,7 +92,6 @@ export function PlantaoAcessos({
   const [pending, startTransition] = useTransition();
   const [busca, setBusca] = useState("");
   const [filtroSituacao, setFiltroSituacao] = useState<FiltroSituacao | null>(null);
-  const [carregandoLote, setCarregandoLote] = useState(false);
   const [alunoEmAcao, setAlunoEmAcao] = useState<string | null>(null);
 
   // Maior `situacaoEm` da base — "importado em" do topo. `null` só se
@@ -157,22 +154,6 @@ export function PlantaoAcessos({
     toast.success("Acesso reativado.");
   }
 
-  function onCarregarLote() {
-    setCarregandoLote(true);
-    startTransition(async () => {
-      const res = await carregarLoteAcelera();
-      setCarregandoLote(false);
-      if (!res.ok) {
-        toast.error(res.erro);
-        return;
-      }
-      toast.success(
-        `Lote carregado: ${res.inseridos ?? 0} novos, ${res.atualizados ?? 0} atualizados, ${res.inalterados ?? 0} sem mudança.`,
-      );
-      router.refresh();
-    });
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-borda-fina bg-superficie-afundada px-3 py-2 text-xs text-muted-foreground">
@@ -187,7 +168,7 @@ export function PlantaoAcessos({
         <p className="mt-1">
           {situacaoImportadaEm
             ? `Situação comercial importada em ${formatarDataHora(situacaoImportadaEm)}.`
-            : "Nenhuma situação comercial importada ainda — carregue um lote para começar."}
+            : "Nenhuma situação comercial importada ainda. A base vem do histórico de vendas; para um caso pontual, use “Liberar aluno”."}
         </p>
       </div>
 
@@ -207,10 +188,6 @@ export function PlantaoAcessos({
         </div>
         <div className="flex items-center gap-2">
           <LiberarAlunoPlantao />
-          <Button onClick={onCarregarLote} disabled={carregandoLote} variant="outline">
-            <UploadIcon className="size-4" />
-            {carregandoLote ? "Carregando lote..." : "Carregar lote"}
-          </Button>
         </div>
       </div>
 
@@ -239,7 +216,7 @@ export function PlantaoAcessos({
       {filtrados.length === 0 ? (
         <EmptyState
           titulo="Nenhum aluno encontrado."
-          descricao="Ajuste a busca ou carregue um lote de compradores do Acelera para liberar o acesso."
+          descricao="Ajuste a busca, ou use “Liberar aluno” para um caso pontual que ainda não está na base."
         />
       ) : (
         <Table>

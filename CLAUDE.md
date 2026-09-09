@@ -146,6 +146,70 @@ Funções: `gps.aluno_atual()` (aluno_id do usuário logado), `gps.touch_atualiz
 RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos próprios registros
 (via `gps.aluno_atual()`).
 
+## Dados alterados a mão em 09/09/2026 (war-room) — NÃO viram migration
+
+O dia 09/09 teve correções aplicadas direto no banco sob pressão. As de
+**schema** já têm migration (`…185` para `situacao_compra/detalhe/em`). As
+de **dado** abaixo são deliberadamente deixadas de fora de migration — inserir
+dado de pessoa numa migration é bomba-relógio (reaplicar o histórico do banco
+do zero reinsere transação/carimbo que já pode ter mudado de novo). O registro
+aqui serve para auditoria amanhã, com o SQL de conferência de cada uma.
+
+**No schema `gps` (este repo):**
+
+- **33 ambientes criados em `gps.membros`** (provisionamento de acesso do dia).
+  Conferência (contagem por dia, sem full scan — `criado_em` é o predicado e a
+  tabela é de tamanho controlado por natureza: 1 linha por aluno provisionado):
+  ```sql
+  select count(*) from gps.membros
+   where criado_em::date = '2026-09-09';
+  ```
+- **4 liberações + 11 revogações em `gps.plantao_alunos`** (campo `ativo`).
+  As **liberações** (`gps.admin_liberar_aluno_plantao`, migration `…175`) têm
+  trilha própria em `gps.plantao_eventos` (`acao='plantao_liberado_manualmente'`):
+  ```sql
+  select pe.criado_em, pa.email, pa.nome
+    from gps.plantao_eventos pe
+    join gps.plantao_alunos pa on pa.id = pe.aluno_plantao_id
+   where pe.acao = 'plantao_liberado_manualmente'
+     and pe.criado_em::date = '2026-09-09';
+  ```
+  ⚠️ As **revogações** (`revogarAcessoPlantao` em `alunos-actions.ts`) são só
+  `update ativo=false` **sem log** — a única pista é `atualizado_em`, que a
+  trigger `trg_plantao_alunos_atualizado_em` também move em QUALQUER outro
+  update do dia (ex.: a própria carga de `situacao_compra`). Portanto o
+  filtro abaixo é aproximado, não uma trilha de auditoria:
+  ```sql
+  select email, nome, atualizado_em from gps.plantao_alunos
+   where ativo = false and atualizado_em::date = '2026-09-09';
+  ```
+- **500 linhas de situação comercial importadas** em
+  `gps.plantao_alunos.situacao_compra/detalhe/em` (colunas da migration
+  `…185`, população inicial via CSV da Hotmart):
+  ```sql
+  select situacao_compra, count(*) from gps.plantao_alunos
+   where situacao_em::date = '2026-09-09'
+   group by situacao_compra;
+  ```
+
+**Fora deste repo — pertencem ao `sistema-grupo-participa-v2` (Financeiro/HM),
+mesmo projeto Supabase físico, schemas `cs`/`public` fora de `gps`:**
+
+- 2 pagamentos manuais do Heber em `cs.hm_pagamentos` (`HP2014051500`,
+  `HP2349587002`).
+- 15 carimbos `situacao_financeira` corrigidos em `public.thb_alunos` — tabela
+  compartilhada (o GPS só LÊ `thb_alunos`; nenhuma migration deste repo cria
+  ou altera essa coluna), mexida por código do Financeiro.
+- 12 ofertas do catálogo `public.hm_product_catalog` cadastradas via
+  war-room (`origem_do_dado='manual'`, `atualizado_por like '%war-room%'`) —
+  ainda faltam 6 ofertas não catalogadas (`5o3z1yur`, `yzih2l0a`, `t2vejhvv`,
+  `hyopam51`, `cnfrh6wj`, `p4t1xid7`; 37 transações pagas): regra de negócio
+  pendente, **não catalogar sem decisão**.
+
+⚠️ Essas quatro últimas escritas ficam de fora deste `CLAUDE.md` de propósito
+— não são schema nem dado deste repo. Ver/registrar no `CLAUDE.md` (ou
+`docs/`) de `sistema-grupo-participa-v2`.
+
 ## Arquitetura de informação (decisão do usuário)
 
 - **Início (home) do aluno**: hierarquia **ação → jornada + apoio**. Topo: hero + **"Continue de
@@ -254,9 +318,9 @@ salvamento da ficha. Pior caso é lacuna na trilha, nunca aluno impedido de usar
 o produto. `left(rotulo, 300)` pelo mesmo motivo: o CHECK é 1..300 e
 `etapa1_clientes.nome` é `text` sem limite.
 
-⚠️ **`primeiro_acesso` depende de job diário** — ver `ATIVAR-DIARIO-EVENTOS.md`.
-Sem agendar o `pg_cron`, quem entrar depois do backfill não tem o evento
-capturado.
+✅ **`primeiro_acesso` — job diário agendado e ativo** (09/09/2026):
+`gps-diario-primeiro-acesso`, `cron.job`, roda `0 9 * * *` (09:00 UTC =
+06:00 em São Paulo). Ver `ATIVAR-DIARIO-EVENTOS.md` para conferir/desligar.
 
 ### 🔑 Senha do aluno — trocar pelo próprio portal (2026-09-08)
 
@@ -357,10 +421,11 @@ Entrou a coluna **bloqueio por programa**, mostrando
 `bloqueadoPorPrograma`/`bloqueioExcecao` — hoje 20 pessoas perderam o
 Plantão por terem migrado para o Programa de Implementação e isso não
 aparecia em NENHUMA tela, só por SQL direto no banco.
-⚠️ **Contrato pendente:** `AlunoPlantaoAdmin` (`src/lib/plantao-tipos.ts`) e
-`getAlunosPlantao()` (`src/lib/plantao-data.ts`) ainda não expõem esses dois
-campos — a UI declara `AlunoPlantaoAdminComBloqueio` localmente e o
-`admin/plantao/page.tsx` faz cast documentado até o backend atualizar.
+✅ **Contrato resolvido:** `AlunoPlantaoAdmin` (`src/lib/plantao-tipos.ts`) já
+declara `bloqueadoPorPrograma`/`bloqueioExcecao` no tipo oficial e
+`getAlunosPlantao()` (`src/lib/plantao-data.ts`) já popula os dois campos —
+não existe mais tipo local `AlunoPlantaoAdminComBloqueio` nem cast em
+`admin/plantao/page.tsx`.
 
 ⚠️ **Identidade PRÓPRIA superada:** a ideia original (`gps.plantao_alunos` +
 `plantao_acessos` com bcrypt) tinha como efeito colateral bloquear qualquer
@@ -870,7 +935,7 @@ quebrava atrás do proxy LiteSpeed da Hostinger).
 5. **Ilan sem conta** — não existe em `auth.users`, logo não dá para promover a admin.
 6. **`frame-ancestors https://*.hotmart.com`** — depende do ensaio do iframe (abrir o Plantão dentro
    da Hotmart e ler o `document.referrer`). Fechar às cegas tira 421 pessoas do ar.
-7. **`pg_cron` do `primeiro_acesso`** — 1 comando, ver `ATIVAR-DIARIO-EVENTOS.md`.
+7. ~~`pg_cron` do `primeiro_acesso`~~ — ✅ agendado e ativo (09/09/2026), ver acima.
 8. **C7 — onde "recusou" mora** antes de remover `status` de `etapa1_clientes`.
 9. **Dropar `gps.plantao_config`** numa migration futura, depois de **1 semana** de `gps.config` no
    ar (o caminho de leitura já é o novo; some o código, não o histórico).
@@ -1573,8 +1638,8 @@ limita à própria linha. Já estava resolvido; o documento é que não tinha si
       autorizada pelo João. Ver "Rodada final de qualidade".
 - [ ] **Preencher `chamados_email_equipe`** em `/admin/chamados` (ou `EMAIL_SUPORTE` no
       painel da Hostinger). Hoje as duas estão vazias: chamado novo não avisa ninguém.
-- [ ] **Agendar o `pg_cron` do `primeiro_acesso`** — 1 comando, ver `ATIVAR-DIARIO-EVENTOS.md`.
-      Sem isso, quem entrar depois do backfill não tem o evento capturado.
+- [x] ✅ **`pg_cron` do `primeiro_acesso` AGENDADO (2026-09-09)** — `gps-diario-primeiro-acesso`,
+      `0 9 * * *` UTC, confirmado em `cron.job`. Ver `ATIVAR-DIARIO-EVENTOS.md`.
 - [x] **RLS de `thb_alunos` — ex-pendência DESARMADA (2026-09-08).** Testado com JWT real de
       aluno: lê 1 linha. As policies `qual=true` são RESTRICTIVE e combinam com AND. Ver a
       seção "✅ Ex-pendência de segurança" acima — **não reabrir**.

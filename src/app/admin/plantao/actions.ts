@@ -51,7 +51,6 @@ export {
 export type { CriarMentoraInput, EditarMentoraInput } from "./mentoras-actions";
 
 export {
-  carregarLoteAcelera,
   revogarAcessoPlantao,
   reativarAcessoPlantao,
 } from "./alunos-actions";

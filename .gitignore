@@ -39,9 +39,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-# Plantão de Dúvidas — lotes de carga (PII real: e-mail/CPF/telefone).
-# Repositório é PÚBLICO — nunca versionar dado de comprador.
-/data/plantao/*.json
 # Diario do aluno: notas com PII de TERCEIROS. Repo e publico.
 /data/diario/*.json
 

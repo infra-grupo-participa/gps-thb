@@ -2,14 +2,21 @@
 
 /**
  * Plantão de Dúvidas — Server Actions do ADMIN sobre os ALUNOS do Acelera:
- * carga do lote de compradores, revogar e reativar acesso.
+ * revogar, reativar e liberar acesso pontual.
  *
  * ⚠️ "Aluno do Plantão" (`gps.plantao_alunos`) NÃO é o aluno do GPS
  * (`public.thb_alunos` + `gps.membros`): o Plantão é do Acelera Holding e a
- * pessoa não tem login no portal. Ver `src/lib/plantao-carga.ts`.
+ * pessoa não tem login no portal.
  *
  * Recortado de `src/app/admin/plantao/actions.ts` (CD5) sem mudança de
  * comportamento. Aquele arquivo virou o agregador que reexporta daqui.
+ *
+ * ⚠️ **`carregarLoteAcelera` foi removida em 09/09/2026** (junto com
+ * `src/lib/plantao-carga.ts`): lia `data/plantao/acelera-ativos.json`, que
+ * está no `.gitignore` e nunca existiu no servidor da Hostinger — o botão
+ * falhava ou não fazia nada em produção, desde sempre. A base do Plantão
+ * (`gps.plantao_alunos`) vem do histórico de vendas; para um caso pontual,
+ * `liberarAlunoPlantao` (abaixo) é o caminho.
  */
 
 import { revalidatePath } from "next/cache";
@@ -18,24 +25,6 @@ import { ehAdmin } from "@/lib/auth";
 import { emailValido } from "@/lib/texto";
 import { traduzirErroBanco } from "@/lib/erros";
 import type { ResultadoAcao } from "@/lib/plantao-tipos";
-
-/**
- * Roda a carga dos compradores ativos do Acelera Holding
- * (`src/lib/plantao-carga.ts`) a partir do painel. Ver ali as regras de
- * upsert idempotente (nunca desativa por ausência, nunca sobrescreve
- * preenchido com vazio, nunca toca acessos/inscrições).
- */
-export async function carregarLoteAcelera(): Promise<
-  ResultadoAcao & { inseridos?: number; atualizados?: number; inalterados?: number }
-> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
-
-  const { carregarAcelera } = await import("@/lib/plantao-carga");
-  const resultado = await carregarAcelera();
-
-  revalidatePath("/admin/plantao");
-  return { ok: true, ...resultado };
-}
 
 /**
  * Revoga o acesso ao plantão: desativa o aluno.

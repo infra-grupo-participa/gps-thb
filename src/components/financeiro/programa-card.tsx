@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { formatarData, formatarDataSoDia, hojeSaoPaulo } from "@/lib/datas";
 import { brl, brlInteiro } from "@/lib/moeda";
-import type { ContratoFinanceiro, SituacaoContrato } from "@/lib/financeiro";
+import { excedentePago, type ContratoFinanceiro, type SituacaoContrato } from "@/lib/financeiro";
 import { cn } from "@/lib/utils";
 
 /**
@@ -215,6 +215,12 @@ export function ProgramaCard({
       ? contrato.divergenciaQuitacao
       : null;
 
+  // Caso 3.1 (decisão do Marcio, 09/09): pagou MAIS que o pacote. É
+  // informação, não erro de cadastro — por isso linha própria, discreta, sem
+  // o tom de "confira antes de responder ao aluno" da divergência positiva
+  // (que É um problema: falta dinheiro na conta apesar do "quitado").
+  const excedente = ehAdmin ? excedentePago(contrato) : null;
+
   const temDetalhes =
     (proximaCobranca !== null && !cancelado && !quitado) ||
     ultimoPagamento !== null ||
@@ -399,24 +405,22 @@ export function ProgramaCard({
           </dl>
         ) : null}
 
-        {divergencia !== null ? (
-          /* FN1 — a divergência vem também NEGATIVA (pagou acima do total).
-             Chamar isso de "quitado, mas o saldo é −R$ X" seria errado duas
-             vezes: não é dívida, é crédito. Dois ramos, duas frases. */
+        {excedente !== null ? (
+          /* Discreta de propósito (decisão do Marcio, 09/09): não é erro,
+             é informação — "ele vê que pagou os 15k, mas a equipe vê que
+             ele tem 18k pagos". Sem ícone de alerta, sem "confira o
+             cadastro": o aluno pagou a mais, ponto. */
+          <p className="previa-oculta text-xs text-muted-foreground">
+            Só a equipe vê: pagou {brl(excedente)} além do pacote.
+          </p>
+        ) : divergencia !== null ? (
+          /* FN1 — divergência POSITIVA: dito quitado, mas falta dinheiro na
+             conta. Este sim é problema de cadastro a conferir. */
           <AvisoInline icone={Info} className="previa-oculta">
             <span className="font-medium">Só a equipe vê esta linha.</span>{" "}
-            {divergencia < 0 ? (
-              <>
-                Pago acima do total em {brl(-divergencia)}. Confira no cadastro
-                financeiro antes de responder ao aluno.
-              </>
-            ) : (
-              <>
-                Contrato apresentado como quitado, mas o saldo apurado é{" "}
-                {brl(divergencia)}. Confira no cadastro financeiro antes de
-                responder ao aluno.
-              </>
-            )}
+            Contrato apresentado como quitado, mas o saldo apurado é{" "}
+            {brl(divergencia)}. Confira no cadastro financeiro antes de
+            responder ao aluno.
           </AvisoInline>
         ) : null}
       </CardContent>

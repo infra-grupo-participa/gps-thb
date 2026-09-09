@@ -24,7 +24,7 @@
 import { headers } from "next/headers";
 import { createHash } from "crypto";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
-import { JANELA_ANTES_MIN, JANELA_DEPOIS_MIN } from "@/lib/plantao-tipos";
+import { JANELA_ANTES_MIN } from "@/lib/plantao-tipos";
 import { normalizarEmail } from "@/lib/plantao";
 import type {
   ResultadoAcao,
@@ -148,13 +148,20 @@ export async function buscarMinhaInscricao(
     inicio_em: string;
     tem_sala: boolean;
     pode_cancelar: boolean;
+    duracao_min: number;
+    fim_em: string;
   };
 
   const inicioEm = new Date(row.inicio_em).getTime();
+  const fimEm = new Date(row.fim_em).getTime();
   const agora = Date.now();
+
+  // A sala abre 1h antes e fecha no FIM da sessão — não no início.
+  // `fim_em` vem do banco (início + `duracao_min` do slot), então mudar a
+  // duração de um plantão move a janela junto, sem tocar em código.
+  // Espelha exatamente a trava de `plantao_revelar_link`.
   const janelaAberta =
-    agora >= inicioEm - JANELA_ANTES_MIN * 60_000 &&
-    agora <= inicioEm + JANELA_DEPOIS_MIN * 60_000;
+    agora >= inicioEm - JANELA_ANTES_MIN * 60_000 && agora < fimEm;
 
   return {
     inscricaoId: row.inscricao_id,
@@ -164,7 +171,7 @@ export async function buscarMinhaInscricao(
     mentoraNome: row.mentora_nome,
     presencaEm: row.presenca_em,
     npsEm: row.nps_em,
-    encerrado: inicioEm <= agora,
+    encerrado: fimEm <= agora,
     janelaAberta,
     temSala: Boolean(row.tem_sala),
     podeCancelar: Boolean(row.pode_cancelar),
@@ -242,8 +249,17 @@ export async function cancelar(
 }
 
 /**
- * Revela o link da sala — e isso REGISTRA PRESENÇA. Só funciona dentro da
- * janela (1h antes a 1h depois do início) e só quando há sala cadastrada.
+ * Revela o link da sala — e isso REGISTRA PRESENÇA.
+ *
+ * Janela: de 1h ANTES do início até o FIM da sessão (`inicio_em` +
+ * `duracao_min`), e só quando há sala cadastrada. A trava real é da RPC;
+ * o que a tela calcula é só exibição.
+ *
+ * 🔑 `p_ip_hash` NÃO é decoração: a RPC limita a 10 tentativas por IP em 15
+ * minutos, no mesmo molde de `inscrever`/`cancelar`. Esta era a única das
+ * três sem atrito nenhum — e é justamente a que entrega o link do Zoom e
+ * grava presença em nome de alguém. Achado do `security-pentester`,
+ * 09/09/2026, depois que a janela passou de ~60 min para até 180.
  */
 export async function revelarLink(
   email: string,
@@ -252,10 +268,12 @@ export async function revelarLink(
   const emailNormalizado = normalizarEmail(email);
   if (!emailNormalizado) return { ok: false, erro: "Informe um e-mail válido." };
 
+  const ipHash = await ipHashAtual();
   const supabase = clientePublico();
   const { data, error } = await supabase.rpc("plantao_revelar_link", {
     p_email: emailNormalizado,
     p_inscricao_id: inscricaoId,
+    p_ip_hash: ipHash,
   });
 
   if (error) return { ok: false, erro: "Não foi possível abrir o link." };

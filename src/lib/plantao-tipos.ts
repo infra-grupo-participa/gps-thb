@@ -43,8 +43,16 @@ export interface MinhaInscricao {
   mentoraNome: string;
   presencaEm: string | null;
   npsEm: string | null;
+  /** true depois que a sessão TERMINOU (início + duração), não no início. */
   encerrado: boolean;
-  /** true quando `now()` está dentro de [início-1h, início+1h]. */
+  /**
+   * true quando `now()` está dentro de [início-1h, FIM da sessão].
+   *
+   * 🔑 O fim vem de `fim_em`, calculado no banco a partir de `duracao_min` do
+   * próprio slot (decisão do Marcio, 09/09/2026): a sala abre 1h antes e fica
+   * aberta durante toda a live. A regra anterior fechava no instante do
+   * início — quem chegasse 5 minutos atrasado não conseguia entrar.
+   */
   janelaAberta: boolean;
   /**
    * true quando o slot já tem sala cadastrada. É só um SINAL booleano — a URL
@@ -184,6 +192,12 @@ export type ResultadoCancelamento =
       falhas?: number;
     };
 
-/** Janela do Zoom: abre 1h antes do início, fecha 1h depois. */
+/**
+ * Quanto tempo ANTES do início a sala abre.
+ *
+ * O fechamento NÃO é uma constante: a sala fica aberta até o fim da sessão,
+ * que o banco calcula por slot (`fim_em` = `inicio_em` + `duracao_min`) e
+ * devolve em `plantao_minha_inscricao`. `JANELA_DEPOIS_MIN`, que fixava 60
+ * minutos, saiu em 09/09/2026 — plantão de 120 min fechava a sala na metade.
+ */
 export const JANELA_ANTES_MIN = 60;
-export const JANELA_DEPOIS_MIN = 60;

@@ -9,7 +9,9 @@
  * Três estados:
  * - antes da janela → contagem regressiva ("a sala abre 1 hora antes") +
  *   botão "Cancelar inscrição";
- * - dentro da janela → botão "Entrar na sala", que AVISA antes de revelar
+ * - dentro da janela — de 1h ANTES até o FIM da sessão, não até o início
+ *   (decisão do Marcio, 09/09/2026: quem chega atrasado ainda entra) →
+ *   botão "Entrar na sala", que AVISA antes de revelar
  *   (revelar confirma presença) — idempotente: reclicar não duplica nada;
  *   o botão de cancelar SOME e vira aviso ("o prazo para cancelar
  *   terminou") — `janelaAberta` é o mesmo instante em que a sala libera e
@@ -82,7 +84,7 @@ export function MinhaInscricaoCard({
         <CardContent className="flex items-center gap-3">
           <XCircleIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
           <div className="min-w-0 text-sm">
-            <p className="font-medium">Esta sala já encerrou.</p>
+            <p className="font-medium">Este plantão já foi encerrado.</p>
             <p className="text-muted-foreground">
               {rotuloData(inscricao.data)} às {inscricao.horaInicio} com{" "}
               {inscricao.mentoraNome}.
@@ -218,7 +220,8 @@ export function MinhaInscricaoCard({
           ) : (
             <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
               <p className="text-sm text-muted-foreground">
-                A sala está aberta. Ao entrar, sua presença é confirmada.
+                A sala está aberta até o fim do plantão. Ao entrar, sua
+                presença é confirmada.
               </p>
               <Button onClick={confirmarEEntrar} disabled={pending} className="self-start">
                 <VideoIcon className="size-4" />{" "}

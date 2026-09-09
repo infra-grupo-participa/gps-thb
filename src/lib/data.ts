@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { calcularMetricasEtapa1 } from "@/lib/etapa1";
+import { resumoEtapa1 } from "@/lib/etapa1";
 import { ehAdmin } from "@/lib/auth";
 import type {
   Aluno,
@@ -123,85 +123,99 @@ export interface AlunoGps {
   pct: number;
   clientesPreenchidos: number;
   agendados: number;
+  /** Entrada no programa: menor `gps.membros.criado_em` do ambiente. ISO. */
+  desde: string | null;
+  /** Maior `auth.users.last_sign_in_at` entre os membros. ISO. `null` = nunca entrou. */
+  ultimoAcesso: string | null;
+}
+
+/** Linha crua de `gps.admin_painel_alunos()` (migração 20260909000050). */
+interface LinhaPainelAlunos {
+  aluno_id: string;
+  qtd_membros: number;
+  tem_login: boolean;
+  desde: string | null;
+  ultimo_acesso: string | null;
+  clientes_preenchidos: number;
+  clientes_com_dados: number;
+  clientes_com_perda: number;
+  agendados: number;
+  tarefas_concluidas: number[] | null;
 }
 
 /**
  * Lista os AMBIENTES vinculados ao GPS (um por `aluno_id` titular) com um
- * resumo da Etapa 01. `gps.membros` agora tem N linhas por ambiente (titular
- * + sócios) — agrupa por `aluno_id`, senão o painel mostra o mesmo ambiente
- * repetido e infla os `.in()` a seguir.
+ * resumo da Etapa 01, já agregado pelo banco.
+ *
+ * São 2 consultas: a RPC `gps.admin_painel_alunos()` (uma linha por ambiente,
+ * já agrupada — `gps.membros` tem N linhas por ambiente, titular + sócios) e a
+ * leitura de `thb_alunos` pelos ids devolvidos. Antes eram 4, e duas delas
+ * traziam `select *` de `gps.etapa1_clientes` e `gps.progresso` para contar 4
+ * números em JavaScript: o custo do painel crescia com o TOTAL de clientes do
+ * sistema, não com os ambientes exibidos.
+ *
+ * A RPC é SECURITY DEFINER e já barra não-admin com 42501 — por isso não há
+ * `ehAdmin()` aqui. `pct` continua saindo de `resumoEtapa1`, a MESMA regra que
+ * a tela do aluno usa (o catálogo de tarefas é código, nunca duplicado em SQL).
  */
 export async function getAlunosGps(): Promise<AlunoGps[]> {
   const supabase = await createClient();
 
-  const { data: membros } = await supabase
+  const { data, error } = await supabase
     .schema("gps")
-    .from("membros")
-    .select("aluno_id, user_id, criado_em")
-    .order("criado_em", { ascending: false });
+    .rpc("admin_painel_alunos");
 
-  const lista = (membros ?? []) as {
-    aluno_id: string;
-    user_id: string | null;
-    criado_em: string;
-  }[];
-  if (lista.length === 0) return [];
-
-  // Agrupa por ambiente, preservando a ordem (ambiente mais recente primeiro).
-  const porAmbiente = new Map<
-    string,
-    { user_id: string | null; criado_em: string }[]
-  >();
-  for (const m of lista) {
-    const arr = porAmbiente.get(m.aluno_id) ?? [];
-    arr.push({ user_id: m.user_id, criado_em: m.criado_em });
-    porAmbiente.set(m.aluno_id, arr);
-  }
-  const alunoIds = [...porAmbiente.keys()];
-
-  const [{ data: alunos }, { data: clientes }, { data: progresso }] =
-    await Promise.all([
-      supabase
-        .from("thb_alunos")
-        .select(
-          "id, nome, email, telefone, turma_id, plano, status_acesso, eh_socio",
-        )
-        .in("id", alunoIds),
-      supabase
-        .schema("gps")
-        .from("etapa1_clientes")
-        .select("*")
-        .in("aluno_id", alunoIds),
-      supabase
-        .schema("gps")
-        .from("progresso")
-        .select("*")
-        .in("aluno_id", alunoIds)
-        .eq("etapa", 1),
-    ]);
-
-  const alunosMap = new Map(
-    ((alunos ?? []) as Aluno[]).map((a) => [a.id, a]),
-  );
-
-  return alunoIds.map((alunoId) => {
-    const membrosDoAmbiente = porAmbiente.get(alunoId)!;
-    const cs = ((clientes ?? []) as ClienteEtapa1[]).filter(
-      (c) => c.aluno_id === alunoId,
+  if (error) {
+    // Falha aqui não pode virar "nenhum aluno no programa" em silêncio: a tela
+    // ficaria idêntica à de um banco vazio. Registra e só então devolve [].
+    console.error(
+      "[getAlunosGps] gps.admin_painel_alunos() falhou; painel exibirá lista vazia",
+      {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      },
     );
-    const manual: Record<number, boolean> = {};
-    for (const p of (progresso ?? []) as ProgressoTarefa[]) {
-      if (p.aluno_id === alunoId) manual[p.tarefa] = p.concluida;
-    }
-    const m = calcularMetricasEtapa1(cs, manual);
+    return [];
+  }
+
+  const linhas = (data ?? []) as LinhaPainelAlunos[];
+  if (linhas.length === 0) return [];
+
+  const alunoIds = linhas.map((l) => l.aluno_id);
+  const { data: alunos } = await supabase
+    .from("thb_alunos")
+    .select(
+      "id, nome, email, telefone, turma_id, plano, status_acesso, eh_socio",
+    )
+    .in("id", alunoIds);
+
+  const alunosMap = new Map(((alunos ?? []) as Aluno[]).map((a) => [a.id, a]));
+
+  return linhas.map((l) => {
+    const manual: Record<number, boolean> = Object.fromEntries(
+      (l.tarefas_concluidas ?? []).map((t) => [t, true]),
+    );
+    const { pct } = resumoEtapa1(
+      {
+        preenchidos: l.clientes_preenchidos,
+        comDados: l.clientes_com_dados,
+        comPerda: l.clientes_com_perda,
+        agendados: l.agendados,
+      },
+      manual,
+    );
     return {
-      alunoId,
-      temLogin: membrosDoAmbiente.some((mb) => mb.user_id),
-      qtdMembros: membrosDoAmbiente.length,
-      aluno: alunosMap.get(alunoId) ?? null,
-      pct: m.pct,
-      clientesPreenchidos: m.preenchidos,
-      agendados: m.agendados,
+      alunoId: l.aluno_id,
+      temLogin: l.tem_login,
+      qtdMembros: l.qtd_membros,
+      aluno: alunosMap.get(l.aluno_id) ?? null,
+      pct,
+      clientesPreenchidos: l.clientes_preenchidos,
+      agendados: l.agendados,
+      desde: l.desde,
+      ultimoAcesso: l.ultimo_acesso,
     };
   });
 }

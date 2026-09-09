@@ -207,8 +207,62 @@ export interface MetricasEtapa1 {
 }
 
 /**
+ * As quatro contagens de cliente de que a Etapa 01 depende. Existe para que a
+ * regra de conclusão/`pct` possa ser calculada SEM as linhas de cliente — é o
+ * que permite ao painel do admin agregar no banco (`gps.admin_painel_alunos()`,
+ * migração 20260909000050) em vez de trazer a base inteira para o Node.
+ */
+export interface ContagensEtapa1 {
+  preenchidos: number;
+  comDados: number;
+  comPerda: number;
+  agendados: number;
+}
+
+/**
+ * Métricas derivadas SÓ das contagens — sem precisar das linhas de cliente.
+ * Fonte ÚNICA da regra de conclusão de tarefa e de `pct`: quem tem os clientes
+ * chama `calcularMetricasEtapa1` (que delega aqui) e quem só tem as contagens
+ * (o painel) chama esta função direto. Sem isso, o catálogo de tarefas teria de
+ * ser duplicado em SQL — catálogo é código, não dado.
+ */
+export function resumoEtapa1(
+  c: ContagensEtapa1,
+  manual: Record<number, boolean>,
+): {
+  totalTarefas: number;
+  totalConcluidas: number;
+  pct: number;
+  tarefaConcluida: (num: number) => boolean;
+} {
+  const tarefaConcluida = (num: number): boolean => {
+    switch (num) {
+      case 1:
+        // "Listar 30 clientes" agora inclui preencher os dados essenciais.
+        return c.preenchidos >= META_CLIENTES && c.comDados >= META_CLIENTES;
+      case 2:
+        return c.comPerda >= META_CLIENTES;
+      default:
+        return Boolean(manual[num]);
+    }
+  };
+
+  const totalConcluidas = TAREFAS_ETAPA1.filter((t) =>
+    tarefaConcluida(t.num),
+  ).length;
+
+  return {
+    totalTarefas: TAREFAS_ETAPA1.length,
+    totalConcluidas,
+    pct: Math.round((totalConcluidas / TAREFAS_ETAPA1.length) * 100),
+    tarefaConcluida,
+  };
+}
+
+/**
  * Calcula as métricas e o estado das tarefas da Etapa 01 a partir dos clientes
  * e do mapa de tarefas manuais concluídas. Pura — usada no servidor e no cliente.
+ * Deriva as contagens e delega a regra a `resumoEtapa1`.
  */
 export function calcularMetricasEtapa1(
   clientes: ClienteEtapa1[],
@@ -227,22 +281,10 @@ export function calcularMetricasEtapa1(
     0,
   );
 
-  const tarefaConcluida = (num: number): boolean => {
-    switch (num) {
-      case 1:
-        // "Listar 30 clientes" agora inclui preencher os dados essenciais.
-        return preenchidos >= META_CLIENTES && comDados >= META_CLIENTES;
-      case 2:
-        return comPerda >= META_CLIENTES;
-      default:
-        return Boolean(manual[num]);
-    }
-  };
-
-  const totalConcluidas = TAREFAS_ETAPA1.filter((t) =>
-    tarefaConcluida(t.num),
-  ).length;
-  const pct = Math.round((totalConcluidas / TAREFAS_ETAPA1.length) * 100);
+  const resumo = resumoEtapa1(
+    { preenchidos, comDados, comPerda, agendados },
+    manual,
+  );
 
   return {
     preenchidos,
@@ -250,9 +292,6 @@ export function calcularMetricasEtapa1(
     comDados,
     agendados,
     perdaTotal,
-    totalTarefas: TAREFAS_ETAPA1.length,
-    totalConcluidas,
-    pct,
-    tarefaConcluida,
+    ...resumo,
   };
 }

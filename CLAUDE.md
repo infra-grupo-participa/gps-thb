@@ -941,7 +941,7 @@ Pedido do João: acesso, sócio, financeiro e trilha se resolvem **pelo painel, 
 dev**, sem causar confusão (diagnóstico → ação guardada → log → reversível). Spec do arquiteto e
 decisões em `docs/audits/2026-09-09-central/central-resolucao.md`.
 
-**Backend (`674e1e6`, migrações `…150` a `…159`, todas aplicadas e conferidas em transação com
+**Backend (`340d27a`, migrações `…150` a `…159`, todas aplicadas e conferidas em transação com
 rollback — bloco B0–B9 da spec):**
 - `gps.admin_diagnostico_ambiente(uuid)` → jsonb com **20 verificações** `{chave, ok, valor,
   detalhe}` (`ok=true` verde, `false` vermelho/âmbar, **`null` = informação sem juízo** — a tela
@@ -994,7 +994,7 @@ rollback — bloco B0–B9 da spec):**
   `definirLiberacaoEtapa`, `reabrirEtapa`, `vincularPessoaMembro`, `trocarTitular`, `moverMembro`,
   `vincularFinanceiro`, `desvincularFinanceiro`.
 
-**Frontend (`83b992f`)**: aba **"Resolver"** (`adminOnly` — some na prévia "como o aluno vê")
+**Frontend (`e5176d4`)**: aba **"Resolver"** (`adminOnly` — some na prévia "como o aluno vê")
 em `assistenciaNavItems`, rota `/admin/aluno/[alunoId]/resolver` (+ `loading.tsx` com o esqueleto
 do checklist e `error.tsx` sobre `ErroPainel`). Componentes em `src/components/admin/central/`
 (`index.tsx` ≤ 400 linhas; `catalogo.ts` agrupa as 20 chaves em ACESSO · PESSOAS · FINANCEIRO ·
@@ -1019,7 +1019,7 @@ sucesso a partir do RETORNO da action, nunca de suposição).
 - ⚠️ **Não validada logada** (não há credencial de admin de teste na máquina): tsc, eslint e
   build limpos; falta o passe do roteiro abaixo.
 
-### 🎨 Redesign "Trilha" — Ondas A e B (2026-09-09, `4dcce9f` e `8af8230`)
+### 🎨 Redesign "Trilha" — Ondas A e B (2026-09-09, `cfe4938` e `17c3a88`)
 
 Pedido do João: "o visual está cru, sem nexo". Diagnóstico com fotos e direção em
 `docs/audits/2026-09-09-central/design-diagnostico.md` (A.0–A.9 os defeitos por tela, B.1–B.11 a
@@ -1392,11 +1392,11 @@ limita à própria linha. Já estava resolvido; o documento é que não tinha si
 - [x] **Financeiro v2 (2026-09-09, `fab0c9f`)** — a aba virou o painel de progresso da mentoria:
       meta de R$ 150 mil (Áureo), bônus em R$ 250 mil, pagamento do programa por
       `cs.vw_hm_financeiro` + extrato. Ver "💰 Financeiro v2".
-- [x] **Central de resolução (2026-09-09, `674e1e6` + `83b992f`, migrações `…150`–`…160`)** —
+- [x] **Central de resolução (2026-09-09, `340d27a` + `e5176d4`, migrações `…150`–`…160`)** —
       diagnóstico de 20 verificações + 7 ações guardadas (liberar/travar etapa por aluno, reabrir
       etapa, vincular pessoa, trocar titular, mover sócio, vincular/desvincular contrato) na aba
       "Resolver". `admin_direito_ao_acesso` ganhou a guarda que faltava. Ver "🩺 Central".
-- [x] **Redesign "Trilha" (2026-09-09, `4dcce9f` + `8af8230`)** — tokens quentes, tipografia com
+- [x] **Redesign "Trilha" (2026-09-09, `cfe4938` + `17c3a88`)** — tokens quentes, tipografia com
       salto, 4 pares semânticos, botão primário AA, 17 telas; 0 falhas de contraste medidas.
       Ver "🎨 Redesign".
 - [ ] **Validar logado** o roteiro de 15 passos da rodada final **+** a Central: abrir
@@ -1469,7 +1469,7 @@ ambiente e preencher a Etapa 01.
 
 ---
 _Última atualização: 2026-09-09 (noite) — **Financeiro v2 + Central de resolução + redesign
-"Trilha"** (`fab0c9f`, `4dcce9f`, `674e1e6`, `83b992f`, `8af8230`; migrações `…140` e
+"Trilha"** (`fab0c9f`, `cfe4938`, `340d27a`, `e5176d4`, `17c3a88`; migrações `…140` e
 `…150`–`…160` aplicadas e conferidas em rollback). A aba Financeiro virou painel de progresso
 (meta 150k = Áureo, bônus 250k, pagamento do programa pelas views do sip); a Central dá ao admin
 diagnóstico de 20 verificações + 7 ações guardadas e reversíveis (a única escrita fora do `gps` é

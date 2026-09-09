@@ -25,7 +25,9 @@ export default async function ClientesPage() {
         nome={aluno?.nome ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
         papelRotulo="Aluno"
-        navItems={alunoNavItems("")}
+        navItems={alunoNavItems("", {
+          financeiro: ctx.papelMembro === "titular",
+        })}
       />
       <main className="mx-auto w-full max-w-6xl px-4 py-8">
         <div className="mb-6">

@@ -3,13 +3,40 @@ import type { NavItem } from "@/components/nav-tabs";
 /**
  * Abas de navegação do aluno. basePath = "" para o aluno logado;
  * "/admin/aluno/<id>" para o admin no modo assistência.
+ *
+ * `opts` é OBRIGATÓRIO e SEM valor padrão, de propósito — mesmo motivo de
+ * `assistenciaNavItems(alunoId)` receber o id e não o basePath: a assinatura
+ * força cada página a DECIDIR o que aquele usuário vê, em vez de herdar um
+ * default permissivo. Um `{ financeiro = true }` faria a aba nascer visível
+ * em toda página nova por esquecimento.
+ *
+ * 🔴 `financeiro`: o SÓCIO NÃO VÊ o Financeiro (B7-b). `gps.aluno_atual()`
+ * devolve o aluno_id do AMBIENTE, então sócio e titular compartilham clientes
+ * e progresso — mas não o contrato de pagamento, que é do titular e que o
+ * sócio nunca assinou. São 13 sócios em 13 ambientes, gente real. Cada página
+ * de aluno passa `financeiro: ctx.papelMembro === "titular"`; o admin em
+ * assistência passa `true`. Esconder a aba NÃO é a fronteira: a página
+ * `/financeiro` reconfere no servidor e a RPC `gps.financeiro_do_aluno`
+ * levanta 42501 para o sócio.
  */
-export function alunoNavItems(basePath: string): NavItem[] {
+export function alunoNavItems(
+  basePath: string,
+  opts: { financeiro: boolean },
+): NavItem[] {
   return [
     { href: basePath || "/", label: "Início", icon: "inicio", exact: true },
     { href: `${basePath}/clientes`, label: "Clientes", icon: "clientes" },
     { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta" },
     { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" },
+    ...(opts.financeiro
+      ? [
+          {
+            href: `${basePath}/financeiro`,
+            label: "Financeiro",
+            icon: "financeiro" as const,
+          },
+        ]
+      : []),
     { href: `${basePath}/perfil`, label: "Perfil", icon: "perfil" },
   ];
 }
@@ -20,10 +47,13 @@ export function alunoNavItems(basePath: string): NavItem[] {
  * (basePath=""), e o Diário é dado sensível de terceiros (LGPD), exclusivo
  * do admin. Esta função recebe `alunoId` (não `basePath`) de propósito —
  * torna impossível chamá-la com "" por engano.
+ *
+ * `financeiro: true` porque o admin sempre enxerga o financeiro do ambiente
+ * (é ele que responde a divergência) — a mesma regra da guarda da RPC.
  */
 export function assistenciaNavItems(alunoId: string): NavItem[] {
   return [
-    ...alunoNavItems(`/admin/aluno/${alunoId}`),
+    ...alunoNavItems(`/admin/aluno/${alunoId}`, { financeiro: true }),
     {
       href: `/admin/aluno/${alunoId}/diario`,
       label: "Diário",

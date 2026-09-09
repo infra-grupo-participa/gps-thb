@@ -10,6 +10,7 @@ import {
   FolderOpen,
   UserRound,
   NotebookPen,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -24,7 +25,8 @@ export interface NavItem {
     | "pasta"
     | "perfil"
     | "alunos"
-    | "diario";
+    | "diario"
+    | "financeiro";
   /** casa exatamente (para o "Início"). */
   exact?: boolean;
   /** Item exclusivo do admin — some na pré-visualização. */
@@ -39,6 +41,7 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
   perfil: UserRound,
   alunos: Users,
   diario: NotebookPen,
+  financeiro: Wallet,
 };
 
 export function NavTabs({ items }: { items: NavItem[] }) {

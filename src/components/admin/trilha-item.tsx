@@ -35,9 +35,9 @@ import {
   ROTULO_TIPO_EVENTO,
   ROTULO_ATOR,
   variantePorTipo,
-  formatarDataHora,
   rotuloAcaoAdmin,
 } from "@/components/admin/diario-labels";
+import { formatarDataHora } from "@/lib/datas";
 
 /**
  * Contexto do evento ao qual a nota foi vinculada (via botão "Registrar

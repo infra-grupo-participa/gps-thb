@@ -53,3 +53,4 @@ supabase/.temp/
 # Skills instaladas por `npx skills add` (reinstalaveis; ver CLAUDE.md)
 .agents/
 .claude/skills/
+skills-lock.json

@@ -11,8 +11,11 @@ import {
   UserRound,
   NotebookPen,
   Wallet,
+  LifeBuoy,
   type LucideIcon,
 } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
 
 export interface NavItem {
   href: string;
@@ -26,11 +29,21 @@ export interface NavItem {
     | "perfil"
     | "alunos"
     | "diario"
-    | "financeiro";
+    | "financeiro"
+    | "suporte";
   /** casa exatamente (para o "Início"). */
   exact?: boolean;
   /** Item exclusivo do admin — some na pré-visualização. */
   adminOnly?: boolean;
+  /**
+   * Contador ao lado do rótulo (ex.: chamados esperando a equipe). `undefined`
+   * = a página não sabe o número; 0 = sabe e é zero, e aí a pílula NÃO aparece
+   * (badge com "0" é ruído: alerta é fila, não informação).
+   *
+   * 🔑 Quem passa é a página, e só quando já tem o número em mãos — nunca
+   * vale uma consulta a mais só para pintar a aba.
+   */
+  badge?: number;
 }
 
 const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
@@ -42,6 +55,7 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
   alunos: Users,
   diario: NotebookPen,
   financeiro: Wallet,
+  suporte: LifeBuoy,
 };
 
 export function NavTabs({ items }: { items: NavItem[] }) {
@@ -79,6 +93,11 @@ export function NavTabs({ items }: { items: NavItem[] }) {
           >
             {Icon ? <Icon className="size-4" /> : null}
             {item.label}
+            {item.badge && item.badge > 0 ? (
+              <Badge variant="secondary" className="text-[10px]">
+                {item.badge}
+              </Badge>
+            ) : null}
           </Link>
         );
       })}

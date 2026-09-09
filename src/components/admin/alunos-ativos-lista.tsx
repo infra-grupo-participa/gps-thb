@@ -5,10 +5,8 @@ import Link from "next/link";
 import { AlertCircle, Search, Users } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import { casaTodosOsTermos, semAcento } from "@/lib/texto";
-import {
-  ROTULO_TIPO,
-  formatarDataHora,
-} from "@/components/admin/diario-labels";
+import { ROTULO_TIPO } from "@/components/admin/diario-labels";
+import { formatarDataHora } from "@/lib/datas";
 import { NotaRapida } from "@/components/admin/nota-rapida";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -176,6 +174,8 @@ const SEM_ATENDIMENTO: AtendimentoDoAluno = {
   ultimaNotaEm: null,
   ultimaNotaTipo: null,
   ultimaNotaResumo: null,
+
+  chamadosAbertos: 0,
 };
 
 /** Nota escrita nos últimos 7 dias de CALENDÁRIO. Sem nota nenhuma = `false`. */

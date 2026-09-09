@@ -7,8 +7,8 @@ import {
   ROTULO_TIPO,
   ROTULO_ORIGEM,
   variantePorTipo,
-  formatarDataHora,
 } from "@/components/admin/diario-labels";
+import { formatarDataHora } from "@/lib/datas";
 import { DiarioBaixaButton } from "@/components/admin/diario-baixa-button";
 
 function NotaCard({ nota }: { nota: AlunoNotaComAutor }) {

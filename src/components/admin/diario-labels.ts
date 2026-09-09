@@ -83,16 +83,10 @@ export function rotuloAcaoAdmin(acao: string): string {
   return ROTULO_ACAO_ADMIN[acao] ?? acao;
 }
 
-export function formatarDataHora(iso: string): string {
-  // `DiarioTimeline`/`DiarioResumoCard` são Server Components: sem
-  // `timeZone`, o horário sai no fuso do processo Node (Hostinger), não no
-  // do usuário — mesma lição de `src/lib/plantao.ts`.
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  });
-}
+/**
+ * `formatarDataHora` MUDOU DE CASA (Fase 6): está em `src/lib/datas.ts`.
+ * Aqui era importada por 5 componentes de `components/admin/`, e a thread de
+ * chamados precisa da mesma formatação sem importar nada de `components/admin/`
+ * — o Diário é dado exclusivo do admin (LGPD) e o acoplamento convidaria a
+ * arrastar rótulo de nota para uma tela do aluno.
+ */

@@ -37,6 +37,14 @@ export function alunoNavItems(
           },
         ]
       : []),
+    // Suporte NÃO tem chave em `opts`: titular e sócio veem os dois. O
+    // chamado é do AMBIENTE (`gps.aluno_atual()`), como cliente e progresso —
+    // ao contrário do Financeiro, que é o contrato do titular (B7-b). Quem
+    // responde "posso abrir chamado?" é o interruptor `chamados_aberto`,
+    // dentro da página e com texto — nunca a presença da aba: esconder o
+    // canal de suporte deixaria o aluno sem saber que ele existe, que é
+    // exatamente o defeito que esta fase corrige.
+    { href: `${basePath}/chamados`, label: "Suporte", icon: "suporte" },
     { href: `${basePath}/perfil`, label: "Perfil", icon: "perfil" },
   ];
 }
@@ -63,14 +71,31 @@ export function assistenciaNavItems(alunoId: string): NavItem[] {
   ];
 }
 
-/** Abas do painel do admin (nível topo, não o modo assistência do aluno). */
-export function adminNavItems(): NavItem[] {
+/**
+ * Abas do painel do admin (nível topo, não o modo assistência do aluno).
+ *
+ * `chamadosAbertos` é OPCIONAL de propósito e só deve ser passado por quem já
+ * tem o número em mãos — hoje, `/admin/chamados`, que carrega a fila de
+ * qualquer jeito. Nenhuma página gasta uma consulta a mais para pintar uma
+ * pílula: `contarChamadosAbertosPorAluno()` e `getAtendimentoPorAluno()` batem
+ * na MESMA RPC (`gps.admin_painel_atendimento`), e chamar as duas na mesma
+ * página seria uma ida ao banco pelo mesmo dado (ver `chamados-data.ts`).
+ */
+export function adminNavItems(
+  opts: { chamadosAbertos?: number } = {},
+): NavItem[] {
   return [
     { href: "/admin", label: "Alunos", icon: "alunos", exact: true },
     // Ícone "materiais" (BookOpen) reaproveitado: não há chave dedicada a
     // calendário/atendimento em NavItem["icon"] (nav-tabs.tsx) e a regra do
     // projeto é não inventar chave nova de ícone.
     { href: "/admin/plantao", label: "Plantão", icon: "materiais" },
+    {
+      href: "/admin/chamados",
+      label: "Chamados",
+      icon: "suporte",
+      badge: opts.chamadosAbertos,
+    },
   ];
 }
 

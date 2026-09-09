@@ -1,6 +1,6 @@
 import { Info, LogIn, History } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatarDataHora } from "@/components/admin/diario-labels";
+import { formatarDataHora } from "@/lib/datas";
 
 /**
  * Cabeçalho da trilha: primeiro e último acesso do aluno ao portal.

@@ -6,8 +6,8 @@ import {
   ROTULO_VOZ,
   ROTULO_TIPO,
   variantePorTipo,
-  formatarDataHora,
 } from "@/components/admin/diario-labels";
+import { formatarDataHora } from "@/lib/datas";
 
 const TAMANHO_TRUNCAGEM = 220;
 

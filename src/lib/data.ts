@@ -753,12 +753,15 @@ export interface AtendimentoDoAluno {
   ultimaNotaTipo: TipoNota | null;
   /** Trecho de até 140 caracteres, cortado no BANCO. Nunca o texto integral. */
   ultimaNotaResumo: string | null;
+  /** Chamados de suporte não fechados do ambiente (migração 20260909000115). */
+  chamadosAbertos: number;
 }
 
 /** Linha crua de `gps.admin_painel_atendimento()` (migração 20260909000080). */
 interface LinhaPainelAtendimento {
   aluno_id: string;
   pendencias_abertas: number;
+  chamados_abertos?: number | null;
   ultima_nota_em: string | null;
   ultima_nota_tipo: TipoNota | null;
   ultima_nota_resumo: string | null;
@@ -808,6 +811,7 @@ export async function getAtendimentoPorAluno(): Promise<
       l.aluno_id,
       {
         pendenciasAbertas: l.pendencias_abertas,
+        chamadosAbertos: l.chamados_abertos ?? 0,
         ultimaNotaEm: l.ultima_nota_em,
         ultimaNotaTipo: l.ultima_nota_tipo,
         ultimaNotaResumo: l.ultima_nota_resumo,

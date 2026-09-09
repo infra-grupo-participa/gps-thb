@@ -1074,6 +1074,106 @@ com `body:has([data-assistindo]) main{padding-bottom}`. `/p/plantao` só herdou 
   com ✓ branco (mesmo caso); e a escolha #C74600 × #B04300 para o botão primário.
 
 
+### 🎧 Plantão — war-room de 09/09/2026 (o dia em que o produto foi usado)
+
+O Plantão saiu do papel: **23 inscritos**, 17 no plantão daquela tarde. E a
+entrega de e-mail **não existia** — quatro pontos de falha ao mesmo tempo:
+
+| Ponto | Estado medido |
+|---|---|
+| `/api/plantao/manutencao` em produção | **500** — `PLANTAO_MANUTENCAO_SEGREDO` nunca setado na Hostinger |
+| Cron do plantão | **não existia** (23 crons no banco, nenhum do plantão) |
+| `app.plantao_manutencao_segredo` | não setado — e **impossível de setar** por aqui |
+| `RESEND_API_KEY` local | **inválida** (`API key is invalid`) |
+
+🔴 **`alter role authenticator set app.*` é RECUSADO pelo Supabase mesmo com
+role `postgres`** (42501). Guarda por `current_setting` não se configura por
+MCP nem por migration — só pelo painel/superusuário. Isso invalida o passo 2
+do `ATIVAR-PLANTAO-AGORA.md` como tarefa executável daqui.
+
+#### O disparo passou a sair DO BANCO (migration `…170`)
+
+`pg_net` + `pg_cron` já estavam instalados, e `net.http_post` para
+`api.resend.com` responde **200**. `gps.plantao_disparar_emails_sala()`
+(SECURITY DEFINER, `revoke` de `public/anon/authenticated` — **não é
+endpoint**, quem chama é o cron) monta e envia os dois e-mails; cron
+**`plantao-emails-sala`, `*/10 * * * *`**.
+
+- **De 10 em 10 minutos, não diário**: a janela de envio é de 1 hora; diário
+  só alcançaria os plantões da hora seguinte à execução.
+- **Idempotente** pelos carimbos que já existiam (`email_sala_em`,
+  `aviso_mentora_em`): a segunda passada devolve 0 linhas — verificado.
+- **A mentora recebe no mesmo disparo** a lista nominal, o total, o horário e
+  o link da sala.
+- 🔑 **Credenciais em `gps.config`** (`resend_api_key`, `email_from`), nunca
+  no corpo da função: `pg_get_functiondef` é legível por quem tem `postgres`,
+  e a chave vazaria junto com o código.
+
+⚠️ **Duplicação assumida:** `src/lib/email-plantao.ts` monta os MESMOS
+e-mails em TypeScript para o caminho HTTP. Enquanto as duas implementações
+coexistirem, **mudança de conteúdo tem de ser feita nos dois lugares**. A
+consolidação depende de a rota voltar a responder em produção.
+
+#### A sala vive DURANTE a live (migrations `…171` e `…172`)
+
+Decisão do Marcio: a janela passou de `[início−1h, início)` para
+**`[início−1h, início + duracao_min)`**. Quem chega atrasado ainda entra.
+
+Dois bugs de borda saíram junto:
+- a tela calculava `encerrado: inicio_em <= agora` e dizia *"esta sala já
+  encerrou"* **no segundo em que a live começava**;
+- **`JANELA_DEPOIS_MIN = 60` num plantão de 120** fazia a sala sumir da tela
+  **na metade da live**. A constante foi REMOVIDA — o fim vem do banco
+  (`fim_em`), por slot, então mudar `duracao_min` move a janela junto.
+
+🔴 **`plantao_revelar_link` ganhou `p_ip_hash` e rate limit** (10/15min, molde
+de `plantao_inscrever`). Era a **única das três RPCs da rota pública sem
+atrito nenhum** — e é a que entrega o link do Zoom e grava presença em nome de
+alguém. A recusa por identidade virou **genérica** (as mensagens distintas
+deixavam enumerar inscrições de terceiros); a recusa por **janela** continua
+específica, porque ali o dono já foi confirmado. A versão de 2 argumentos foi
+**dropada**: se ficasse, a chamada sem ip cairia na função sem rate limit,
+ainda exposta a `anon`.
+
+#### "Problema no acesso" → monitoria
+
+`https://o.aceleraholding.com.br/monitoria` (encurtador → WhatsApp do suporte).
+Aparece no rodapé de `/p/*` (**inclusive para quem não conseguiu se
+identificar**, que é quem mais precisa), junto da mensagem de erro da
+identificação e no rodapé dos dois e-mails.
+
+#### Fundo cinza no iframe da Hotmart
+
+`globals.css` pinta o `body` com `bg-background` (#f4f5f8). Dentro da aula, o
+iframe fica sobre branco e o cinza virava uma caixa visível. `/p/*` força
+branco **no `body`** — pintar só a `div` não resolve: quem pinta a área do
+iframe é o `body`.
+
+#### Lições que custaram tempo
+
+- **Resend via `urllib` sem `User-Agent` devolve 403 code 1010** (borda
+  Cloudflare) e parece credencial inválida; com UA de navegador aparece o erro
+  real. `pg_net` não sofre disso.
+- **SVG não renderiza em Gmail/Outlook** — logo de e-mail em PNG
+  (`public/logo-thb.png`, gerado com o `sharp` que vem do Next; `density:600`
+  estoura o limite de pixels).
+- **`plantao_slots.inicio_em` é coluna GERADA** — não aceita valor no insert.
+- **Agendador de Tarefas do Windows não serviu** de plano B: `LastTaskResult 0`
+  (sucesso) e o `.bat` não escrevia nada. `nohup` no bash também não sobrevive
+  ao fim do shell. O cron do banco é o caminho — roda no servidor.
+- 🔴 **`auth.users` é compartilhado pelos 7 sistemas do grupo.** As 3 mentoras
+  já eram admin (Isabela e Cristiane `admin`, Elaine `dev`); a troca de senha
+  pedida foi **recusada** porque trocaria a senha delas em **todos** os
+  portais e derrubaria a sessão da Isabela, logada naquele momento. **Não
+  existe senha "só deste sistema".**
+
+⚠️ **A CSP não chega ao cliente em produção:** `/p/plantao` responde
+`Content-Security-Policy: upgrade-insecure-requests` — o **LiteSpeed da
+Hostinger sobrescreve** o header do Next, e **`frame-ancestors` não existe no
+ar**. O `Referrer-Policy` passa. Ou seja, a pendência 5/6 ("fechar o
+`*.hotmart.com`") é mais grave do que registrado: hoje **qualquer** site
+embeda a página. Não é resolvível por código — precisa de config no hPanel.
+
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 
 **Decisão do Marcio.** O motivo é **operacional, não técnico**: o fluxo não estava fluindo e
@@ -1468,7 +1568,21 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-09-09 (noite) — **Financeiro v2 + Central de resolução + redesign
+_Última atualização: 2026-09-09 (tarde) — **war-room do Plantão** (`18e2f16`,
+`19c098d`; migrações `…170`–`…172`). O produto foi usado pela primeira vez (23
+inscritos, 17 no plantão daquela tarde) e a entrega de e-mail não existia: rota
+500, cron inexistente, `alter role` recusado pelo Supabase e chave Resend
+inválida. O disparo passou a sair **do banco** por `pg_net` → Resend (cron
+`plantao-emails-sala`, de 10 em 10 min, idempotente), com as credenciais em
+`gps.config`. A sala passou a ficar aberta **durante** a live, o que revelou
+`JANELA_DEPOIS_MIN = 60` fechando a sala na metade de um plantão de 120 e a tela
+declarando "encerrada" no instante do início. Pentest reprovou e tinha razão:
+`plantao_revelar_link` era a única RPC pública sem rate limit — ganhou
+`p_ip_hash` (10/15min) e recusa genérica. Fundo cinza do iframe e link da
+monitoria no ar. **Aberto: a CSP não chega ao cliente — o LiteSpeed sobrescreve
+e `frame-ancestors` não existe em produção.**_
+
+_Anterior: 2026-09-09 (noite) — **Financeiro v2 + Central de resolução + redesign
 "Trilha"** (`fab0c9f`, `cfe4938`, `340d27a`, `e5176d4`, `17c3a88`; migrações `…140` e
 `…150`–`…160` aplicadas e conferidas em rollback). A aba Financeiro virou painel de progresso
 (meta 150k = Áureo, bônus 250k, pagamento do programa pelas views do sip); a Central dá ao admin

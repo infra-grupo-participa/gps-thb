@@ -79,6 +79,16 @@ export default async function AdminPage({
       alunosPorEmail.get((s.email ?? "").trim().toLowerCase()) ?? null,
   }));
 
+  // PL5 — contador da aba "Chamados" a partir do Map JÁ carregado
+  // (`getAtendimentoPorAluno`): ZERO consulta nova. Sem ele, chamado novo só
+  // aparecia para quem abrisse `/admin/chamados` por hábito — e a lista de
+  // e-mails da equipe está vazia, então ninguém era avisado por fora também.
+  // Conta o LOTE carregado, como todo número desta tela.
+  const chamadosAbertos = [...atendimentoDiario.values()].reduce(
+    (soma, a) => soma + a.chamadosAbertos,
+    0,
+  );
+
   const comLogin = alunos.filter((a) => a.temLogin).length;
   const semLogin = alunos.length - comLogin;
   // O lote não cobre a base inteira: os KPIs de login contam só o que veio, e
@@ -99,7 +109,7 @@ export default async function AdminPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={adminNavItems()}
+        navItems={adminNavItems({ chamadosAbertos })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
         <PageHeader

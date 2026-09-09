@@ -948,6 +948,13 @@ function DialogoCancelamento({
   );
 }
 
+/**
+ * Duração padrão de um plantão, em minutos. UM lugar só — antes o 120 vivia na
+ * migração e o 60 no formulário, e todo slot criado pela tela nascia com metade
+ * do tempo real da sessão.
+ */
+const DURACAO_PADRAO_MIN = 120;
+
 function FormularioSlot({
   dataInicial,
   slot,
@@ -977,7 +984,12 @@ function FormularioSlot({
 }) {
   const [data, setData] = useState(slot?.data ?? dataInicial);
   const [horaInicio, setHoraInicio] = useState(slot?.horaInicio ?? "19:00");
-  const [duracaoMin, setDuracaoMin] = useState(String(slot?.duracaoMin ?? 60));
+  // PL7 — o Plantão do Acelera é de 120 min ("duração fixa de 2 horas", na
+  // migração ...041, que publicou a Semana 1 com 120). O formulário nascia com
+  // 60 e a duração entra na conta de `revelar_link`, presença e NPS.
+  const [duracaoMin, setDuracaoMin] = useState(
+    String(slot?.duracaoMin ?? DURACAO_PADRAO_MIN),
+  );
   const [zoomUrl, setZoomUrl] = useState(slot?.zoomUrl ?? "");
   const [observacao, setObservacao] = useState(slot?.observacao ?? "");
   /** Só na criação: repete a mesma configuração nas próximas N semanas. */
@@ -1001,7 +1013,7 @@ function FormularioSlot({
           mentoraId,
           data,
           horaInicio,
-          duracaoMin: Number(duracaoMin) || 60,
+          duracaoMin: Number(duracaoMin) || DURACAO_PADRAO_MIN,
           zoomUrl,
           observacao,
           repetirSemanas,

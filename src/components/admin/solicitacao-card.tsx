@@ -11,8 +11,14 @@ import {
 } from "@/app/admin/actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+
+/** Mesmo teto do campo de motivo do cancelamento do Plantão. */
+const MAX_MOTIVO = 300;
 
 export function SolicitacaoCard({
   solicitacao,
@@ -27,6 +33,10 @@ export function SolicitacaoCard({
   const [termo, setTermo] = useState("");
   const [resultados, setResultados] = useState<Aluno[]>([]);
   const [buscando, setBuscando] = useState(false);
+  /** PL4 — diálogo de recusa aberto? O motivo é digitado dentro dele. */
+  const [recusando, setRecusando] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [erroRecusa, setErroRecusa] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   async function buscar(e: React.FormEvent) {
@@ -60,14 +70,35 @@ export function SolicitacaoCard({
     });
   }
 
+  /**
+   * PL4 — `recusarSolicitacao(id, observacao?)` sempre gravou a observação e a
+   * home do aluno recusado JÁ a renderiza ("Observação: …"); a tela nunca
+   * passava o segundo argumento. Resultado: a pessoa lia "sua solicitação não
+   * foi aprovada" e nada mais, num portal onde ela não tem canal de suporte.
+   *
+   * O motivo continua OPCIONAL (recusa de cadastro duplicado não precisa de
+   * texto), mas agora é oferecido — e a confirmação existe porque recusar
+   * fecha a porta de alguém.
+   */
   function recusar() {
+    setErroRecusa(null);
     startTransition(async () => {
-      const res = await recusarSolicitacao(solicitacao.id);
+      const texto = motivo.trim();
+      const res = await recusarSolicitacao(
+        solicitacao.id,
+        texto === "" ? undefined : texto,
+      );
       if (res.erro) {
+        setErroRecusa("Erro ao recusar solicitação.");
         toast.error("Erro ao recusar solicitação.");
         return;
       }
-      toast.success("Solicitação recusada.");
+      setRecusando(false);
+      toast.success(
+        texto === ""
+          ? "Solicitação recusada."
+          : "Solicitação recusada. O motivo aparece para a pessoa.",
+      );
       router.refresh();
     });
   }
@@ -175,7 +206,10 @@ export function SolicitacaoCard({
           <Button
             variant="outline"
             className="text-destructive hover:text-destructive"
-            onClick={recusar}
+            onClick={() => {
+              setErroRecusa(null);
+              setRecusando(true);
+            }}
             disabled={pending}
           >
             Recusar
@@ -185,6 +219,52 @@ export function SolicitacaoCard({
           </Button>
         </div>
       </CardContent>
+
+      <DialogoConfirmacao
+        aberto={recusando}
+        titulo="Recusar esta solicitação de acesso?"
+        descricao={`${solicitacao.nome ?? "Sem nome"} · ${solicitacao.email}`}
+        consequencia={
+          <>
+            A pessoa passa a ver <strong>&ldquo;sua solicitação não foi
+            aprovada&rdquo;</strong> ao entrar no portal, e o motivo abaixo
+            aparece para ela. Sem motivo, ela fica sem saber o que fazer — e
+            não tem canal de suporte antes de ter acesso.
+          </>
+        }
+        rotuloConfirmar="Recusar solicitação"
+        rotuloConfirmando="Recusando…"
+        confirmando={pending}
+        erro={erroRecusa}
+        onConfirmar={recusar}
+        onCancelar={() => {
+          setRecusando(false);
+          setErroRecusa(null);
+        }}
+      >
+        <div className="grid gap-2">
+          <Label htmlFor={`motivo-${solicitacao.id}`}>
+            Motivo (o aluno vê)
+          </Label>
+          <Textarea
+            id={`motivo-${solicitacao.id}`}
+            value={motivo}
+            maxLength={MAX_MOTIVO}
+            rows={3}
+            disabled={pending}
+            aria-describedby={`motivo-ajuda-${solicitacao.id}`}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Ex.: não encontramos seu CPF na base do programa — responda este e-mail com o número usado na compra."
+          />
+          <p
+            id={`motivo-ajuda-${solicitacao.id}`}
+            className="text-xs text-muted-foreground"
+          >
+            Opcional, mas é a única explicação que a pessoa recebe. Até{" "}
+            {MAX_MOTIVO} caracteres ({motivo.length}/{MAX_MOTIVO}).
+          </p>
+        </div>
+      </DialogoConfirmacao>
     </Card>
   );
 }

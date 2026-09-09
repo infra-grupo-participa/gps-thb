@@ -36,11 +36,17 @@ export function EsqueciForm() {
 
   if (enviado) {
     return (
-      <div className="rounded-md border bg-muted/40 p-4 text-sm">
+      // PL13 — a frase condicional ("se existir uma conta") FICA: dizer
+      // "enviamos" confirmaria a existência do e-mail para quem estivesse
+      // sondando a base. O que faltava era o prazo: o envio sai pelo SMTP
+      // embutido do Supabase (baixa entrega, limite por hora), e a pessoa que
+      // não recebia em 10 segundos concluía que o portal estava quebrado.
+      <div role="status" className="rounded-md border bg-muted/40 p-4 text-sm">
         <p className="font-medium">Verifique seu e-mail</p>
         <p className="mt-1 text-muted-foreground">
           Se existir uma conta com <strong>{email}</strong>, enviamos um link
-          para você criar uma nova senha.
+          para você criar uma nova senha. Pode levar alguns minutos; confira o
+          spam.
         </p>
       </div>
     );

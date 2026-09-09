@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -44,17 +45,37 @@ export function ChamadosConfig({
 
   const [lista, setLista] = useState(emailEquipe.join(", "));
   const [erro, setErro] = useState<string | null>(null);
+  /** PL12 — confirmação pendente do "Fechar entrada". */
+  const [confirmandoFechar, setConfirmandoFechar] = useState(false);
+  const [erroFechar, setErroFechar] = useState<string | null>(null);
   const [pendente, startTransition] = useTransition();
   const semDestinatario = emailEquipe.length === 0;
 
+  /**
+   * PL12 — fechar a entrada desliga a abertura E a resposta do aluno em TODO o
+   * portal, num clique. Reabrir também é um clique, mas o estrago do fechamento
+   * acontece enquanto ninguém percebe: o aluno vê o canal sumir sem explicação.
+   * Reabrir segue direto — voltar ao estado padrão não precisa de atrito.
+   */
   function alternar() {
+    if (aberto) {
+      setErroFechar(null);
+      setConfirmandoFechar(true);
+      return;
+    }
+    aplicarAlternancia();
+  }
+
+  function aplicarAlternancia() {
     setErro(null);
     startTransition(async () => {
       const r = await definirChamadosAbertos(!aberto);
       if (!r.ok) {
         setErro(r.erro);
+        setErroFechar(r.erro);
         return;
       }
+      setConfirmandoFechar(false);
       toast.success(
         aberto
           ? "Suporte fechado para novos chamados."
@@ -166,6 +187,32 @@ export function ChamadosConfig({
           </div>
         </CardContent>
       </Card>
+
+      {/* O botão "Fechar entrada" continua montado atrás do diálogo: é para lá
+          que o foco volta quando o admin desiste. */}
+      <DialogoConfirmacao
+        aberto={confirmandoFechar}
+        titulo="Fechar a entrada do suporte?"
+        consequencia={
+          <>
+            <strong>
+              Ninguém consegue abrir nem responder chamado até você reabrir
+            </strong>{" "}
+            — nem quem já tem um chamado em andamento esperando resposta. A
+            equipe continua respondendo e fechando os chamados que existem, e o
+            histórico não é apagado.
+          </>
+        }
+        rotuloConfirmar="Fechar entrada"
+        rotuloConfirmando="Fechando…"
+        confirmando={pendente}
+        erro={erroFechar}
+        onConfirmar={aplicarAlternancia}
+        onCancelar={() => {
+          setConfirmandoFechar(false);
+          setErroFechar(null);
+        }}
+      />
     </div>
   );
 }

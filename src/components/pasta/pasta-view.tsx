@@ -8,6 +8,7 @@ import { salvarPastaDriveUrl } from "@/app/admin/actions";
 import { embedPastaDrive } from "@/lib/pasta";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 
 export function PastaView({
@@ -103,14 +104,21 @@ export function PastaView({
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-10 text-center text-sm text-muted-foreground">
-            <FolderOpen className="size-8 opacity-40" />
-            {isAdmin
-              ? "Cole o link da pasta acima para disponibilizá-la ao aluno."
-              : "Sua pasta ainda não foi configurada pela equipe. Em breve ela aparecerá aqui."}
-          </CardContent>
-        </Card>
+        // UX6 — o vazio era um `Card` à mão, com `py-10` somando ao padding que
+        // o `Card` já paga e fora do `EmptyState` do design system.
+        <EmptyState
+          icone={<FolderOpen />}
+          titulo={
+            isAdmin
+              ? "Nenhuma pasta configurada para este aluno"
+              : "Sua pasta ainda não foi configurada"
+          }
+          descricao={
+            isAdmin
+              ? "Cole o link da pasta do Drive no campo acima para disponibilizá-la ao aluno."
+              : "A equipe cria e compartilha a pasta durante a implementação. Assim que ela existir, aparece aqui — não é preciso fazer nada."
+          }
+        />
       )}
     </div>
   );

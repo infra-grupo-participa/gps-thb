@@ -228,7 +228,8 @@ export function CriarAcesso() {
                     ) : (
                       <>
                         A conta existe mas ainda não está em nenhum programa —
-                        será aproveitada para o GPS.
+                        será aproveitada para o Programa de Implementação
+                        Assistida.
                       </>
                     )}
                   </p>

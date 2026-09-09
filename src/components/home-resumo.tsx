@@ -22,12 +22,23 @@ const brl = new Intl.NumberFormat("pt-BR", {
 export function HomeResumo({
   progressoGeral,
   clientes,
+  clientesComDados,
   agendados,
   perdaTotal,
   honorarios,
 }: {
   progressoGeral: number;
+  /** `preenchidos`: clientes com nome. É a lista, não o que a tarefa 1 cobra. */
   clientes: number;
+  /**
+   * PL3 — `comDados`: nome + telefone + nível, que é o que a tarefa 1 da Etapa
+   * 01 exige. Quando presente, é ELE que vira o número do KPI e `clientes` cai
+   * para o detalhe — senão o aluno lê "30/30" com o passo 2 travado.
+   *
+   * Opcional porque `src/app/page.tsx` ainda passa só `preenchidos`; sem o
+   * valor, o card fica exatamente como estava (nada é inventado).
+   */
+  clientesComDados?: number;
   agendados: number;
   perdaTotal: number;
   /** Meta de faturamento do ambiente (B8) — calculada em `resumoHonorarios`. */
@@ -57,8 +68,16 @@ export function HomeResumo({
         <KpiLinha
           icone={<Users />}
           rotulo="Clientes"
-          valor={`${clientes}/30`}
-          hint="da sua lista"
+          valor={
+            clientesComDados == null
+              ? `${clientes}/30`
+              : `${clientesComDados}/30`
+          }
+          hint={
+            clientesComDados == null
+              ? "da sua lista"
+              : `${clientes} listados · ${clientesComDados} com nome, telefone e nível`
+          }
         />
         <KpiLinha
           icone={<CalendarCheck />}

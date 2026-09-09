@@ -30,9 +30,16 @@ export default async function PastaPage() {
         })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+        {/* UX6 — o cabeçalho afirmava "todos os documentos… organizados no
+            Drive" mesmo para quem ainda não tem pasta nenhuma. A descrição
+            passa a depender do estado real do ambiente. */}
         <PageHeader
           titulo="Minha pasta"
-          descricao="Todos os documentos e arquivos do seu processo, organizados no Drive."
+          descricao={
+            ambiente?.pasta_drive_url
+              ? "Os documentos do seu processo, organizados na sua pasta do Drive."
+              : "Aqui fica a sua pasta de documentos no Drive, criada pela equipe durante a implementação."
+          }
         />
 
         <PastaView

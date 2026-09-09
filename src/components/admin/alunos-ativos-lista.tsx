@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Search, Users } from "lucide-react";
+import { AlertCircle, LifeBuoy, Search, Users } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import { casaTodosOsTermos, semAcento } from "@/lib/texto";
 import { ROTULO_TIPO } from "@/components/admin/diario-labels";
@@ -241,6 +241,8 @@ export function AlunosAtivosLista({
   const [somenteInativos, setSomenteInativos] = useState(false);
   const [somenteNotaRecente, setSomenteNotaRecente] = useState(false);
   const [somenteSemNota, setSomenteSemNota] = useState(false);
+  /** PL5 — chamado aberto era invisível no painel, com o dado já na tela. */
+  const [somenteChamado, setSomenteChamado] = useState(false);
   const [termo, setTermo] = useState("");
   const [ordem, setOrdem] = useState<OrdemAlunos>("recentes");
 
@@ -286,6 +288,14 @@ export function AlunosAtivosLista({
     [alunos, atendimentoPorAluno],
   );
 
+  const totalComChamado = useMemo(
+    () =>
+      alunos.filter(
+        (a) => (atendimentoPorAluno[a.alunoId]?.chamadosAbertos ?? 0) > 0,
+      ).length,
+    [alunos, atendimentoPorAluno],
+  );
+
   const visiveis = useMemo(() => {
     // Os filtros combinam por AND: marcar dois estreita, nunca alarga.
     const filtrados = alunos.filter((a) => {
@@ -309,6 +319,12 @@ export function AlunosAtivosLista({
         return false;
       }
       if (somenteSemNota && atendimentoPorAluno[a.alunoId]?.ultimaNotaEm) {
+        return false;
+      }
+      if (
+        somenteChamado &&
+        (atendimentoPorAluno[a.alunoId]?.chamadosAbertos ?? 0) === 0
+      ) {
         return false;
       }
       const alvo = `${a.aluno?.nome ?? ""} ${a.aluno?.email ?? ""}`;
@@ -384,6 +400,7 @@ export function AlunosAtivosLista({
     somenteInativos,
     somenteNotaRecente,
     somenteSemNota,
+    somenteChamado,
     agora,
     termo,
     ordem,
@@ -396,6 +413,7 @@ export function AlunosAtivosLista({
     somenteInativos ? `sem acessar há ${DIAS_INATIVO}+ dias` : null,
     somenteNotaRecente ? `com nota nos últimos ${DIAS_NOTA_RECENTE} dias` : null,
     somenteSemNota ? "sem nenhuma nota" : null,
+    somenteChamado ? "com chamado aberto" : null,
   ].filter((f): f is string => f !== null);
 
   const limparFiltros = () => {
@@ -404,6 +422,7 @@ export function AlunosAtivosLista({
     setSomenteInativos(false);
     setSomenteNotaRecente(false);
     setSomenteSemNota(false);
+    setSomenteChamado(false);
   };
 
   if (alunos.length === 0) {
@@ -482,6 +501,12 @@ export function AlunosAtivosLista({
           total={totalSemNota}
           marcado={somenteSemNota}
           onChange={setSomenteSemNota}
+        />
+        <FiltroCheckbox
+          rotulo="Com chamado aberto"
+          total={totalComChamado}
+          marcado={somenteChamado}
+          onChange={setSomenteChamado}
         />
       </div>
 
@@ -575,6 +600,7 @@ export function AlunosAtivosLista({
               contratadosSemValor,
             );
             const pendencias = atendimento.pendenciasAbertas;
+            const chamados = atendimento.chamadosAbertos;
             const nome = aluno?.nome ?? "Aluno sem nome";
             return (
               // O card NÃO é mais um `<Link>` por fora: botão dentro de link é
@@ -620,9 +646,24 @@ export function AlunosAtivosLista({
                           variant="destructive"
                           className="gap-1 text-[10px]"
                         >
-                          <AlertCircle className="size-3" />
+                          <AlertCircle className="size-3" aria-hidden />
                           {pendencias}{" "}
                           {pendencias === 1 ? "pendência" : "pendências"}
+                        </Badge>
+                      ) : null}
+                      {/* PL5 — `chamadosAbertos` já vinha na RPC de
+                          atendimento e não aparecia em lugar nenhum: sem a
+                          lista de e-mails da equipe preenchida, um chamado
+                          novo não avisava ninguém E não era visível. Zero
+                          consulta nova — é o mesmo Map do badge acima. */}
+                      {chamados > 0 ? (
+                        <Badge
+                          variant="destructive"
+                          className="gap-1 text-[10px]"
+                        >
+                          <LifeBuoy className="size-3" aria-hidden />
+                          {chamados}{" "}
+                          {chamados === 1 ? "chamado aberto" : "chamados abertos"}
                         </Badge>
                       ) : null}
                     </div>
@@ -693,12 +734,17 @@ export function AlunosAtivosLista({
                   </div>
 
                   <div className="flex items-center gap-6">
+                    {/* PL3 — o número é `clientes_preenchidos` (tem nome),
+                        que NÃO é o que a tarefa 1 cobra (nome + telefone +
+                        nível). `AlunoGps` ainda não expõe `clientes_com_dados`,
+                        embora a RPC já o devolva — enquanto isso o rótulo diz
+                        o que o número realmente é, em vez de "clientes". */}
                     <div className="text-center">
                       <div className="text-sm font-semibold">
-                        {clientesPreenchidos}/30
+                        {clientesPreenchidos}/{META_CLIENTES}
                       </div>
                       <div className="text-[10px] uppercase text-muted-foreground">
-                        clientes
+                        listados
                       </div>
                     </div>
                     <div className="text-center">

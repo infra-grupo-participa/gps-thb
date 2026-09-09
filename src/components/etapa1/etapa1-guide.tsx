@@ -128,10 +128,14 @@ export function Etapa1Guide({
         >
           <Progress value={progressoPct} className="mt-2" />
         </MetricCard>
+        {/* PL3 — a tarefa 1 exige nome + telefone + nível (`comDados`), e era
+            `preenchidos` (só o nome) que aparecia aqui: o aluno lia "30/30" ao
+            lado de um cadeado dizendo "faltam N clientes com nome, telefone e
+            nível". Um número, uma verdade — o outro vira detalhe. */}
         <MetricCard
-          titulo="Clientes listados"
-          valor={`${preenchidos}/${META_CLIENTES}`}
-          detalhe="meta de 30 clientes"
+          titulo="Clientes com os dados"
+          valor={`${comDados}/${META_CLIENTES}`}
+          detalhe={`${preenchidos} listados · ${comDados} com nome, telefone e nível`}
         />
         <MetricCard
           titulo="Reuniões agendadas"

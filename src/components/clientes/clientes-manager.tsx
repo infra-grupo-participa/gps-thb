@@ -29,6 +29,7 @@ import {
 import { MetaHonorarios } from "@/components/etapa1/meta-honorarios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -69,6 +70,13 @@ export function ClientesManager({
   const [filtro, setFiltro] = useState<"todos" | FaseCliente>("todos");
   const [view, setView] = useState<"lista" | "quadro">("lista");
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("recentes");
+  /** Cliente aguardando confirmação de exclusão (PL9). `null` = sem diálogo. */
+  const [excluindo, setExcluindo] = useState<ClienteEtapa1 | null>(null);
+  /** Cliente aguardando confirmação de desfavoritar (PL11). */
+  const [desfavoritando, setDesfavoritando] = useState<ClienteEtapa1 | null>(
+    null,
+  );
+  const [erroDialogo, setErroDialogo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const fichaHref = (id: string) => `${basePath}/clientes/${id}`;
@@ -151,7 +159,22 @@ export function ClientesManager({
     });
   }
 
+  /**
+   * PL11 — DESMARCAR a estrela re-trava os passos 4 a 8 da Etapa 01 e some com
+   * o banner verde, e isso acontecia em silêncio (o toast só existia ao
+   * ativar), a 8 px do nome do cliente na tabela. Ativar continua num clique:
+   * é reversível e é o caminho que o produto quer.
+   */
   function toggleEquipe(cliente: ClienteEtapa1) {
+    if (cliente.acompanhado_equipe) {
+      setErroDialogo(null);
+      setDesfavoritando(cliente);
+      return;
+    }
+    aplicarEquipe(cliente);
+  }
+
+  function aplicarEquipe(cliente: ClienteEtapa1) {
     const ativar = !cliente.acompanhado_equipe;
     setClientes((prev) =>
       prev.map((c) => ({
@@ -162,26 +185,47 @@ export function ClientesManager({
     startTransition(async () => {
       const res = await definirClienteEquipe(cliente.id, alunoId, ativar);
       if (res.erro) {
+        // Desfaz o otimismo: sem isto a estrela ficava mentindo na tela.
+        setClientes((prev) =>
+          prev.map((c) =>
+            c.id === cliente.id
+              ? { ...c, acompanhado_equipe: !ativar }
+              : c,
+          ),
+        );
+        setErroDialogo("Erro ao mudar o cliente da equipe.");
         toast.error("Erro ao marcar o cliente da equipe.");
         return;
       }
+      setDesfavoritando(null);
       if (ativar) {
         toast.success(
           `A equipe vai acompanhar ${cliente.nome || "este cliente"}. Os próximos passos da Etapa 01 estão liberados.`,
+        );
+      } else {
+        toast.success(
+          `${cliente.nome || "O cliente"} não é mais acompanhado pela equipe. Os passos 4 a 8 da Etapa 01 voltaram a ficar travados.`,
         );
       }
     });
   }
 
-  function excluir(id: string) {
+  /**
+   * PL9 — `removerCliente` faz DELETE: vão junto nome, telefone, perda pela
+   * inércia, registro do contato, honorários e link do contrato. O botão fica
+   * encostado em "Abrir ficha", e não havia confirmação nenhuma.
+   */
+  function excluir(cliente: ClienteEtapa1) {
     startTransition(async () => {
-      const res = await removerCliente(id, alunoId);
+      const res = await removerCliente(cliente.id, alunoId);
       if (res.erro) {
+        setErroDialogo("Erro ao excluir o cliente.");
         toast.error("Erro ao remover cliente.");
         return;
       }
-      setClientes((prev) => prev.filter((c) => c.id !== id));
-      toast.success("Cliente removido.");
+      setExcluindo(null);
+      setClientes((prev) => prev.filter((c) => c.id !== cliente.id));
+      toast.success(`${cliente.nome || "Cliente"} excluído.`);
     });
   }
 
@@ -309,7 +353,10 @@ export function ClientesManager({
                   fichaHref={fichaHref}
                   onFase={mudarFase}
                   onEquipe={toggleEquipe}
-                  onExcluir={excluir}
+                  onExcluir={(c) => {
+                    setErroDialogo(null);
+                    setExcluindo(c);
+                  }}
                   pending={pending}
                 />
               ))}
@@ -406,11 +453,18 @@ export function ClientesManager({
                           >
                             Abrir ficha
                           </Link>
+                          {/* PL9 — separador + margem: o destrutivo estava
+                              encostado em "Abrir ficha" e o erro de mira
+                              apagava a linha inteira. */}
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => excluir(c.id)}
+                            aria-label={`Excluir ${c.nome || "cliente sem nome"}`}
+                            className="ml-3 border-l pl-3 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              setErroDialogo(null);
+                              setExcluindo(c);
+                            }}
                             disabled={pending}
                           >
                             Excluir
@@ -427,6 +481,66 @@ export function ClientesManager({
         )}
       </CardContent>
     </Card>
+
+      {/* PL9 — a linha do cliente continua na lista atrás do diálogo: é o que
+          faz o foco voltar ao botão "Excluir" quando se cancela. */}
+      {excluindo ? (
+        <DialogoConfirmacao
+          aberto
+          titulo="Excluir este cliente?"
+          descricao={excluindo.nome || "Cliente sem nome"}
+          consequencia={
+            <>
+              Apaga nome, telefone, registro do contato, perda pela inércia,
+              honorários e link do contrato de{" "}
+              <strong>{excluindo.nome || "este cliente"}</strong>.{" "}
+              <strong>Não dá para desfazer.</strong>
+              {excluindo.acompanhado_equipe ? (
+                <>
+                  {" "}
+                  Ele é o cliente acompanhado pela equipe: excluir também volta
+                  a travar os passos 4 a 8 da Etapa 01.
+                </>
+              ) : null}
+            </>
+          }
+          rotuloConfirmar="Excluir cliente"
+          rotuloConfirmando="Excluindo…"
+          confirmando={pending}
+          erro={erroDialogo}
+          onConfirmar={() => excluir(excluindo)}
+          onCancelar={() => {
+            setExcluindo(null);
+            setErroDialogo(null);
+          }}
+        />
+      ) : null}
+
+      {/* PL11 — desmarcar a estrela re-trava 5 passos da Etapa 01. */}
+      {desfavoritando ? (
+        <DialogoConfirmacao
+          aberto
+          titulo="Tirar este cliente do acompanhamento da equipe?"
+          descricao={desfavoritando.nome || "Cliente sem nome"}
+          consequencia={
+            <>
+              Sem cliente acompanhado, os{" "}
+              <strong>passos 4 a 8 da Etapa 01 voltam a ficar travados</strong>{" "}
+              e o destaque na sua página inicial some. Nenhum dado do cliente é
+              apagado — dá para escolher outro (ou o mesmo) a qualquer momento.
+            </>
+          }
+          rotuloConfirmar="Tirar do acompanhamento"
+          rotuloConfirmando="Salvando…"
+          confirmando={pending}
+          erro={erroDialogo}
+          onConfirmar={() => aplicarEquipe(desfavoritando)}
+          onCancelar={() => {
+            setDesfavoritando(null);
+            setErroDialogo(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -587,7 +701,7 @@ function ClienteCardLista({
   fichaHref: (id: string) => string;
   onFase: (c: ClienteEtapa1, f: FaseCliente) => void;
   onEquipe: (c: ClienteEtapa1) => void;
-  onExcluir: (id: string) => void;
+  onExcluir: (c: ClienteEtapa1) => void;
   pending: boolean;
 }) {
   const wpp = linkWhatsapp(c.telefone);
@@ -656,8 +770,9 @@ function ClienteCardLista({
         <Button
           variant="ghost"
           size="sm"
-          className="text-destructive hover:text-destructive"
-          onClick={() => onExcluir(c.id)}
+          aria-label={`Excluir ${c.nome || "cliente sem nome"}`}
+          className="ml-2 border-l pl-3 text-destructive hover:text-destructive"
+          onClick={() => onExcluir(c)}
           disabled={pending}
         >
           Excluir

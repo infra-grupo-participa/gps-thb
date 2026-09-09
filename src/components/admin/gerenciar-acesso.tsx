@@ -38,6 +38,7 @@ import { Input } from "@/components/ui/input";
 import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { linkWhatsapp } from "@/lib/whatsapp";
 
 interface Credenciais {
@@ -84,6 +85,9 @@ export function GerenciarAcesso({
   const [senha, setSenha] = useState("");
   const [credenciais, setCredenciais] = useState<Credenciais | null>(null);
   const [confirmaExclusao, setConfirmaExclusao] = useState("");
+  /** Sócio aguardando confirmação de remoção (PL10). `null` = diálogo fechado. */
+  const [removendo, setRemovendo] = useState<MembroAcesso | null>(null);
+  const [erroRemocao, setErroRemocao] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function carregarStatus() {
@@ -101,6 +105,8 @@ export function GerenciarAcesso({
     setTela("principal");
     setCredenciais(null);
     setConfirmaExclusao("");
+    setRemovendo(null);
+    setErroRemocao(null);
     setSenha(sugerirSenha());
     carregarStatus();
   }
@@ -145,7 +151,9 @@ export function GerenciarAcesso({
       toast.success(
         res.loginApagado
           ? "Ambiente e todos os logins (titular e sócios) excluídos por completo."
-          : "Ambiente do GPS excluído (não havia login).",
+          // "GPS" é nome interno (schema, repo, identificador) e não aparece
+          // para o usuário desde a decisão de marca de 09/07.
+          : "Ambiente excluído (não havia login).",
       );
       setOpen(false);
       router.push("/admin");
@@ -153,13 +161,19 @@ export function GerenciarAcesso({
     });
   }
 
+  // PL10 — remover sócio apaga o LOGIN da pessoa, e ficava a um clique, ao
+  // lado de "Excluir ambiente", que exige digitar EXCLUIR. Duas ações
+  // irreversíveis não podem ter dois níveis de atrito opostos.
   function excluirMembro(m: MembroAcesso) {
+    setErroRemocao(null);
     startTransition(async () => {
       const res = await excluirMembroAluno(m.membroId);
       if (res.erro) {
+        setErroRemocao(res.erro);
         toast.error(res.erro);
         return;
       }
+      setRemovendo(null);
       toast.success(`${m.email ?? "Sócio"} removido do ambiente.`);
       carregarStatus();
       router.refresh();
@@ -217,7 +231,10 @@ export function GerenciarAcesso({
                 carregando={carregando}
                 pending={pending}
                 onAdicionarSocio={() => setTela("adicionar-socio")}
-                onExcluirMembro={excluirMembro}
+                onExcluirMembro={(m) => {
+                  setErroRemocao(null);
+                  setRemovendo(m);
+                }}
               />
 
               <div className="grid gap-2">
@@ -291,6 +308,36 @@ export function GerenciarAcesso({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* PL10 — o diálogo fica FORA do `Dialog` principal e o gatilho (a linha
+          do sócio) continua montado atrás dele: é assim que o foco volta para
+          o botão "Remover" ao cancelar. */}
+      {removendo ? (
+        <DialogoConfirmacao
+          aberto
+          titulo="Remover este sócio do ambiente?"
+          descricao={`${removendo.email ?? "Sócio sem e-mail"} · sócio deste ambiente`}
+          consequencia={
+            <>
+              Remove o acesso de{" "}
+              <strong>{removendo.email ?? "este sócio"}</strong> a este ambiente
+              e <strong>apaga o login dele</strong>. Os clientes, o progresso e
+              o histórico do ambiente continuam com o titular. Não dá para
+              desfazer: para voltar, é preciso adicionar o sócio de novo e
+              definir uma senha nova.
+            </>
+          }
+          rotuloConfirmar="Remover sócio"
+          rotuloConfirmando="Removendo…"
+          confirmando={pending}
+          erro={erroRemocao}
+          onConfirmar={() => excluirMembro(removendo)}
+          onCancelar={() => {
+            setRemovendo(null);
+            setErroRemocao(null);
+          }}
+        />
+      ) : null}
     </>
   );
 }

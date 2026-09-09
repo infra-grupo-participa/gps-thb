@@ -41,9 +41,15 @@ export function TarefaItem({
 }) {
   const codigo = t.codigo ?? String(t.num);
 
+  // VIS3 (UX3): a tarefa bloqueada NÃO recebe mais opacidade no bloco
+  // inteiro — a opacidade derrubava junto o contraste do título, da descrição
+  // e do badge, e é justamente aqui que o aluno passa o tempo. O estado passa
+  // a ser dito por FORMA (borda tracejada + fundo apagado + chip neutro),
+  // exatamente como já se fazia no card de etapa (`etapas-overview.tsx`), que
+  // não custa contraste nenhum. O cadeado e o `detalheBloqueio` continuam.
   const containerCls = bloqueada
-    ? "group flex items-start gap-3 rounded-md px-2 py-2.5 opacity-60"
-    : "group flex items-start gap-3 rounded-md px-2 py-2.5 transition " +
+    ? "group flex items-start gap-3 rounded-md border border-dashed bg-muted/20 px-2 py-2.5"
+    : "group flex items-start gap-3 rounded-md border border-transparent px-2 py-2.5 transition " +
       (enfase === "realce"
         ? "bg-primary/5 ring-1 ring-primary/30"
         : enfase === "esmaecer"
@@ -69,8 +75,11 @@ export function TarefaItem({
             {codigo}. {t.titulo}
           </span>
           {bloqueada ? (
-            <Badge variant="outline" className="gap-1 text-[10px]">
-              <Lock className="size-3" />{" "}
+            // `secondary` (fundo cinza sólido) em vez de `outline`: sem a
+            // opacidade do container, o chip precisa se sustentar sozinho — e
+            // texto cinza sobre borda fina lia pior que o próprio título.
+            <Badge variant="secondary" className="gap-1 text-[10px]">
+              <Lock className="size-3" aria-hidden />{" "}
               {motivoBloqueio ?? "Após escolher o cliente da equipe"}
             </Badge>
           ) : null}
@@ -136,7 +145,9 @@ export function TarefaItem({
         ) : null}
 
         {isAdmin && onEnfase ? (
-          <div className="previa-oculta mt-2 flex items-center gap-1 opacity-60 transition group-hover:opacity-100">
+          // Revela no hover E no foco: `group-hover` sozinho deixava os
+          // controles de ênfase quase invisíveis para quem navega por Tab.
+          <div className="previa-oculta mt-2 flex items-center gap-1 opacity-70 transition group-hover:opacity-100 focus-within:opacity-100">
             <span className="mr-1 text-[10px] uppercase tracking-wide text-muted-foreground">
               Destaque:
             </span>

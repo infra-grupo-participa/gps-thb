@@ -109,6 +109,13 @@ export function MateriaisView({
                     etapaHref={
                       acessivel ? `${basePath}/etapa/${m.etapa}` : null
                     }
+                    // PL1 (decisão F.1) — o acervo abria o que a etapa
+                    // trancava: 10 aulas/modelos das etapas 2, 3 e 4 tinham
+                    // link ativo ao lado do badge "bloqueada". O card continua
+                    // LISTADO (o aluno vê o que vem pela frente) e o link some
+                    // até a etapa liberar. Admin e prévia (`podeAbrirBloqueadas`)
+                    // continuam abrindo tudo.
+                    liberado={acessivel}
                   />
                 ))}
               </div>
@@ -123,13 +130,24 @@ export function MateriaisView({
 function MaterialCard({
   material: m,
   etapaHref,
+  liberado,
 }: {
   material: Material;
   etapaHref: string | null;
+  /** Etapa liberada (ou admin). `false` = material listado, sem link ativo. */
+  liberado: boolean;
 }) {
   const Icon = m.tipo === "aula" ? GraduationCap : FileText;
   return (
-    <Card className="transition hover:border-primary/40">
+    <Card
+      className={
+        liberado
+          ? "transition hover:border-primary/40"
+          : // Mesma regra do card de etapa: estado por FORMA, nunca opacidade —
+            // o título do material precisa continuar legível.
+            "border-dashed bg-muted/20"
+      }
+    >
       <CardContent className="flex items-start gap-3 py-3">
         <div
           className={
@@ -163,7 +181,12 @@ function MaterialCard({
             {m.titulo}
           </div>
           <div className="mt-1">
-            {m.url ? (
+            {!liberado ? (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Lock className="size-3" aria-hidden />
+                Libera com a Etapa {String(m.etapa).padStart(2, "0")}
+              </span>
+            ) : m.url ? (
               <a
                 href={m.url}
                 target="_blank"
@@ -171,7 +194,8 @@ function MaterialCard({
                 className="inline-flex items-center gap-1 text-xs font-medium text-accent-foreground underline-offset-4 hover:underline"
               >
                 {m.tipo === "aula" ? "Assistir" : "Abrir modelo"}
-                <ExternalLink className="size-3" />
+                <ExternalLink className="size-3" aria-hidden />
+                <span className="sr-only">(abre em nova aba)</span>
               </a>
             ) : (
               <span className="text-xs text-muted-foreground">

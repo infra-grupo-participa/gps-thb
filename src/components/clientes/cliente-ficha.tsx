@@ -216,9 +216,9 @@ export function ClienteFicha({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>Nível de relacionamento</Label>
+              <Label htmlFor="f-nivel">Nível de relacionamento</Label>
               <Select value={nivel} onValueChange={(v) => setNivel(v ?? "")}>
-                <SelectTrigger>
+                <SelectTrigger id="f-nivel">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
@@ -232,8 +232,13 @@ export function ClienteFicha({
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <Label>Problemas (marque ao menos um)</Label>
+          {/* UX5 — grupo de checkboxes não tem um controle único para
+              apontar: o rótulo vira legenda de um `fieldset`, que é a forma
+              correta de nomear o conjunto (WCAG 1.3.1). */}
+          <fieldset className="grid gap-2">
+            <legend className="mb-2 text-sm leading-none font-medium">
+              Problemas (marque ao menos um)
+            </legend>
             <div className="grid gap-2 rounded-md border p-3 sm:grid-cols-2">
               {PROBLEMAS_7.map((p) => (
                 <label
@@ -249,7 +254,7 @@ export function ClienteFicha({
                 </label>
               ))}
             </div>
-          </div>
+          </fieldset>
 
           <div className="grid gap-5 sm:grid-cols-3">
             <div className="grid gap-2">
@@ -402,7 +407,11 @@ export function ClienteFicha({
                       rel="noopener noreferrer"
                       className="inline-flex w-fit items-center gap-1.5 rounded-sm text-xs font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
-                      Abrir contrato no Drive
+                      {/* UX2 — o CHECK do banco exige só `https://`: o link
+                          pode ser Dropbox, OneDrive ou o site do cartório. A
+                          ajuda e o `placeholder` acima seguem SUGERINDO o
+                          Drive; o rótulo do botão não pode AFIRMAR. */}
+                      Abrir contrato
                       <ExternalLink className="size-3.5" aria-hidden />
                       <span className="sr-only">(abre em nova aba)</span>
                     </a>
@@ -428,7 +437,7 @@ export function ClienteFicha({
                   rel="noopener noreferrer"
                   className="inline-flex w-fit items-center gap-1.5 rounded-sm text-xs font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
-                  Abrir contrato no Drive
+                  Abrir contrato
                   <ExternalLink className="size-3.5" aria-hidden />
                   <span className="sr-only">(abre em nova aba)</span>
                 </a>
@@ -442,9 +451,9 @@ export function ClienteFicha({
 
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label>Perfil DISC</Label>
+              <Label htmlFor="f-disc">Perfil DISC</Label>
               <Select value={disc} onValueChange={(v) => setDisc(v ?? "")}>
-                <SelectTrigger>
+                <SelectTrigger id="f-disc">
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>

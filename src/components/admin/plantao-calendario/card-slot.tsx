@@ -14,8 +14,10 @@
  */
 
 import type { RefObject } from "react";
+import { toast } from "sonner";
 import {
   CalendarOffIcon,
+  CopyIcon,
   PencilIcon,
   Trash2Icon,
   VideoIcon,
@@ -24,8 +26,8 @@ import {
   MailXIcon,
 } from "lucide-react";
 import type { SlotAdmin, MentoraAdmin } from "@/lib/plantao-tipos";
-import { faixaHorario } from "@/lib/plantao";
-import { Button } from "@/components/ui/button";
+import { faixaHorario, urlSegura } from "@/lib/plantao";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrocaDeMentora } from "./troca-de-mentora";
 import { FormularioGravacao } from "./formulario-gravacao";
@@ -101,6 +103,32 @@ export function CardSlot({
           </div>
         </div>
         <div className="flex shrink-0 gap-1">
+          {!cancelado && slot.zoomUrl && urlSegura(slot.zoomUrl) ? (
+            <>
+              <a
+                href={slot.zoomUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Abrir a sala do Zoom"
+                aria-label={`Abrir a sala do Zoom do plantão das ${faixa}`}
+                className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+              >
+                <VideoIcon className="size-4" />
+              </a>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => {
+                  navigator.clipboard?.writeText(slot.zoomUrl!);
+                  toast.success("Link copiado.");
+                }}
+                title="Copiar link da sala"
+                aria-label={`Copiar o link da sala do plantão das ${faixa}`}
+              >
+                <CopyIcon className="size-4" />
+              </Button>
+            </>
+          ) : null}
           {!cancelado ? (
             <>
               <Button

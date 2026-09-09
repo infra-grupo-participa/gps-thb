@@ -18,6 +18,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   buscarCalendario,
   buscarMinhaInscricao,
@@ -50,6 +51,10 @@ export default async function PlantaoPage({
     e && emailValido(e) ? normalizarEmail(e) : null;
   const nome = n?.trim() || null;
 
+  // "Trocar e-mail" volta ao formulário de identificação, preservando o mês
+  // que a pessoa estava vendo (senão ela perde o lugar no calendário).
+  const hrefTrocarEmail = m ? `/p/plantao?m=${m}` : "/p/plantao";
+
   const [calendario, minhaInscricao] = await Promise.all([
     buscarCalendario(ano, mes, email ?? undefined),
     email ? buscarMinhaInscricao(email) : Promise.resolve(null),
@@ -71,7 +76,13 @@ export default async function PlantaoPage({
         <IdentificacaoForm emailInicial={email} />
       ) : (
         <p className="text-sm">
-          Inscrevendo como <span className="font-medium">{nome}</span>.
+          Inscrevendo como <span className="font-medium">{nome}</span>.{" "}
+          <Link
+            href={hrefTrocarEmail}
+            className="font-medium text-accent-foreground underline underline-offset-4 hover:no-underline"
+          >
+            Não é você? Trocar e-mail
+          </Link>
         </p>
       )}
 

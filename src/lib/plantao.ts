@@ -96,3 +96,23 @@ export function normalizarEmail(email: string): string {
  * os 5 importadores do Plantão não mudarem de caminho.
  */
 export { emailValido } from "@/lib/texto";
+
+/**
+ * Só deixa virar `<a href>` o que for http(s).
+ *
+ * Defesa em profundidade: a validação principal do `zoom_url` está em
+ * `editarSlot` (`src/app/admin/plantao/actions.ts`), mas React NÃO
+ * neutraliza `javascript:` em `href` — se um valor antigo ou gravado por
+ * outro caminho chegar aqui, o link não é renderizado como clicável.
+ *
+ * Um lugar só: usada tanto pelo aluno (`MinhaInscricaoCard`) quanto pelo
+ * admin (`CardSlot`, botão "Abrir a sala").
+ */
+export function urlSegura(valor: string): boolean {
+  try {
+    const p = new URL(valor).protocol;
+    return p === "https:" || p === "http:";
+  } catch {
+    return false;
+  }
+}

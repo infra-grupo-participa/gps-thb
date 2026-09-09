@@ -12,6 +12,7 @@
  */
 
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import { getContextoSessao } from "@/lib/auth";
 import {
   getSlotsDoMesAdmin,
@@ -83,7 +84,25 @@ export default async function AdminPlantaoPage({
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Plantão de Dúvidas"
-          descricao="Acelera Holding — agenda das mentoras, inscritos e acesso dos alunos."
+          eyebrow="Produto: Acelera Holding"
+          descricao="Só participa quem comprou o Acelera Holding — agenda das mentoras, inscritos e acesso dos alunos."
+          acao={
+            // A logo do Acelera (public/logo-acelera.svg) foi desenhada para
+            // fundo escuro: sobre branco a palavra "ACELERA" some (degradê
+            // branco→prata). Por isso ela vive dentro de um cartão na cor de
+            // marca do Acelera (#180b00), mesmo padrão de src/app/p/layout.tsx.
+            // `unoptimized`: o otimizador do Next recusa SVG por padrão.
+            <div className="flex items-center justify-center rounded-lg bg-[#180b00] px-3 py-2">
+              <Image
+                src="/logo-acelera.svg"
+                alt="Acelera Holding"
+                width={1664}
+                height={345}
+                unoptimized
+                className="h-auto w-full max-w-[160px]"
+              />
+            </div>
+          }
         />
 
         <Tabs defaultValue="calendario">

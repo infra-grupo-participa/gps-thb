@@ -26,7 +26,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CalendarClockIcon, CheckCircle2Icon, CopyIcon, VideoIcon, XCircleIcon } from "lucide-react";
 import type { MinhaInscricao } from "@/lib/plantao-tipos";
-import { rotuloData } from "@/lib/plantao";
+import { rotuloData, urlSegura } from "@/lib/plantao";
 import { cancelar, revelarLink } from "@/app/p/plantao/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,23 +40,6 @@ function formatarContagem(ms: number): string {
   return `${min}min`;
 }
 
-
-/**
- * Só deixa virar `<a href>` o que for http(s).
- *
- * Defesa em profundidade: a validação principal está em `editarSlot`
- * (`src/app/admin/plantao/actions.ts`), mas React NÃO neutraliza
- * `javascript:` em `href` — se um valor antigo ou gravado por outro caminho
- * chegar aqui, o link não é renderizado como clicável.
- */
-function urlSegura(valor: string): boolean {
-  try {
-    const p = new URL(valor).protocol;
-    return p === "https:" || p === "http:";
-  } catch {
-    return false;
-  }
-}
 
 export function MinhaInscricaoCard({
   inscricao,

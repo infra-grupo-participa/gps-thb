@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { traduzirErroBanco } from "@/lib/erros";
 
 function revalidar(alunoId: string) {
   revalidatePath("/etapa", "layout");
@@ -18,7 +19,7 @@ export async function addAgendamentoEtapa3(alunoId: string) {
     .insert({ aluno_id: alunoId })
     .select("*")
     .single();
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("etapa3/addAgendamento", error) };
   revalidar(alunoId);
   return { agendamento: data };
 }
@@ -38,7 +39,9 @@ export async function atualizarAgendamentoEtapa3(
     .from("etapa3_agendamentos")
     .update(patch)
     .eq("id", id);
-  if (error) return { erro: error.message };
+  if (error) {
+    return { erro: traduzirErroBanco("etapa3/atualizarAgendamento", error) };
+  }
   revalidar(alunoId);
   return {};
 }
@@ -50,7 +53,9 @@ export async function removerAgendamentoEtapa3(id: string, alunoId: string) {
     .from("etapa3_agendamentos")
     .delete()
     .eq("id", id);
-  if (error) return { erro: error.message };
+  if (error) {
+    return { erro: traduzirErroBanco("etapa3/removerAgendamento", error) };
+  }
   revalidar(alunoId);
   return {};
 }
@@ -69,13 +74,13 @@ export async function definirEquipeParticipa(id: string, alunoId: string) {
     .update({ equipe_participa: false })
     .eq("aluno_id", alunoId)
     .neq("id", id);
-  if (e1) return { erro: e1.message };
+  if (e1) return { erro: traduzirErroBanco("etapa3/definirEquipeParticipa", e1) };
 
   const { error: e2 } = await gps
     .from("etapa3_agendamentos")
     .update({ equipe_participa: true })
     .eq("id", id);
-  if (e2) return { erro: e2.message };
+  if (e2) return { erro: traduzirErroBanco("etapa3/definirEquipeParticipa", e2) };
 
   revalidar(alunoId);
   return {};
@@ -95,7 +100,7 @@ export async function salvarRevisaoEtapa3(
       { aluno_id: alunoId, ...patch },
       { onConflict: "aluno_id" },
     );
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("etapa3/salvarRevisao", error) };
   revalidar(alunoId);
   return {};
 }

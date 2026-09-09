@@ -1,12 +1,13 @@
 "use server";
 
-import { emailValido } from "@/lib/texto";
+import { emailParaIlike, emailValido } from "@/lib/texto";
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { enviarCredenciaisAcesso } from "@/lib/email";
+import { traduzirErroBanco } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import type { PapelMembro } from "@/lib/types";
 
@@ -64,7 +65,9 @@ export async function statusAcessoAluno(
     .schema("gps")
     .rpc("admin_status_acesso", { p_aluno_id: alunoId });
 
-  if (error) return { erro: error.message };
+  if (error) {
+    return { erro: traduzirErroBanco("admin/statusAcessoAluno", error) };
+  }
 
   const d = data as Record<string, unknown>;
   const membrosRaw = (d.membros as Record<string, unknown>[]) ?? [];
@@ -125,7 +128,9 @@ export async function definirSenhaAluno(
     .schema("gps")
     .rpc("admin_definir_senha", { p_aluno_id: alunoId, p_senha: senha });
 
-  if (error) return { erro: error.message };
+  if (error) {
+    return { erro: traduzirErroBanco("admin/definirSenhaAluno", error) };
+  }
 
   const email = (data as { email?: string })?.email ?? null;
   if (!email) return { erro: "Não foi possível identificar o login do aluno." };
@@ -156,15 +161,6 @@ export async function definirSenhaAluno(
     telefone: aluno?.telefone ?? null,
   };
 }
-
-/**
- * Códigos que a família `gps.admin_*` levanta com mensagem escrita para o
- * admin ler ("Membro não encontrado.", "Esta conta é da equipe — …"). Só
- * esses voltam ao navegador; qualquer outro erro do Postgres vira uma frase
- * genérica (CD6: nome de constraint e de coluna orientam quem for tentar
- * algo, e não ajudam o admin em nada).
- */
-const CODIGOS_COM_MENSAGEM_PARA_O_ADMIN = new Set(["42501", "22023", "P0002"]);
 
 /**
  * Define a senha de UM MEMBRO do ambiente (o remédio que faltava para o
@@ -250,11 +246,8 @@ export async function definirSenhaMembro(
     });
 
   if (error) {
-    logErro("admin/definirSenhaMembro", error, { membroId });
     return {
-      erro: CODIGOS_COM_MENSAGEM_PARA_O_ADMIN.has(error.code ?? "")
-        ? error.message
-        : "Não foi possível definir a senha deste membro.",
+      erro: traduzirErroBanco("admin/definirSenhaMembro", error, { membroId }),
     };
   }
 
@@ -272,10 +265,15 @@ export async function definirSenhaMembro(
     };
   }
 
+  // `ilike` com o e-mail escapado, não `eq`: `thb_alunos.email` é base
+  // compartilhada com o sip e guarda o que a pessoa digitou ("Fulano@X.com"),
+  // enquanto o login vem sempre em minúsculas do GoTrue. Com `eq` o cadastro
+  // não casava e o admin recebia a senha certa com nome e telefone vazios — a
+  // tela some com o botão de WhatsApp exatamente quando ele é mais útil.
   const { data: aluno } = await supabase
     .from("thb_alunos")
     .select("nome, telefone")
-    .eq("email", email)
+    .ilike("email", emailParaIlike(email))
     .maybeSingle();
 
   let emailEnviado = false;
@@ -316,7 +314,9 @@ export async function excluirAcessoAluno(
     .schema("gps")
     .rpc("admin_excluir_acesso", { p_aluno_id: alunoId });
 
-  if (error) return { erro: error.message };
+  if (error) {
+    return { erro: traduzirErroBanco("admin/excluirAcessoAluno", error) };
+  }
 
   revalidatePath("/admin", "layout");
   return {
@@ -362,7 +362,9 @@ export async function adicionarSocioAluno(
     },
   );
 
-  if (error) return { erro: error.message };
+  if (error) {
+    return { erro: traduzirErroBanco("admin/adicionarSocioAluno", error) };
+  }
 
   const { data: socio } = await supabase
     .from("thb_alunos")
@@ -399,7 +401,9 @@ export async function excluirMembroAluno(
     .schema("gps")
     .rpc("admin_excluir_membro", { p_membro_id: membroId });
 
-  if (error) return { erro: error.message };
+  if (error) {
+    return { erro: traduzirErroBanco("admin/excluirMembroAluno", error, { membroId }) };
+  }
 
   revalidatePath("/admin", "layout");
   return {};
@@ -431,6 +435,11 @@ export async function enviarRedefinicaoSenha(alunoId: string) {
   const { error } = await sb.auth.resetPasswordForEmail(aluno.email, {
     redirectTo: `${appUrl}/auth/confirm?next=/auth/redefinir`,
   });
-  if (error) return { erro: "Não foi possível enviar o e-mail." };
+  if (error) {
+    // Erro do GoTrue, não do Postgres: `traduzirErroBanco` não o conhece. A
+    // frase para a tela continua a mesma; o que faltava era a linha no log.
+    logErro("admin/enviarRedefinicaoSenha", error, { alunoId });
+    return { erro: "Não foi possível enviar o e-mail." };
+  }
   return { email: aluno.email };
 }

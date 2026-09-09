@@ -24,6 +24,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
+import { traduzirErroBanco, type ErroDeBanco } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import { listaDeEmails } from "@/lib/texto";
 import {
@@ -45,12 +46,17 @@ import {
 } from "@/lib/chamados-tipos";
 
 /**
- * Tradução dos erros do banco para frase de tela.
+ * Tradução dos erros das RPCs de CHAMADO para frase de tela.
  *
  * A chave é a mensagem CRUA das RPCs (sem acento, como elas levantam). O que
- * não estiver aqui vira frase genérica + `logErro`: `error.message` cru
- * nunca chega ao usuário (pode carregar nome de tabela, de coluna e de
- * constraint).
+ * não estiver aqui cai no mapa comum de `traduzirErroBanco` e, se nem lá
+ * estiver, vira frase genérica + `logErro`: `error.message` cru nunca chega
+ * ao usuário (pode carregar nome de tabela, de coluna e de constraint).
+ *
+ * ⚠️ Mora aqui, e não em `FRASES_DO_BANCO`, porque é copy de UM domínio
+ * ("abra um chamado novo para continuar o assunto"). O que era duplicata de
+ * `src/lib/erros.ts` — ler `error.message`, o mapa por SQLSTATE e o `logErro`
+ * — saiu daqui.
  */
 const FRASES: Record<string, string> = {
   "sem permissao": "Você não tem acesso a este chamado.",
@@ -82,20 +88,8 @@ const FRASES: Record<string, string> = {
   "anexo maior que 5 MB": "Arquivo maior que 5 MB.",
 };
 
-function traduzirErro(
-  contexto: string,
-  error: { code?: string; message?: string; details?: string | null },
-): string {
-  const bruto = (error.message ?? "").trim();
-  const conhecida = FRASES[bruto];
-  if (conhecida) return conhecida;
-
-  logErro(contexto, error, { mapeado: false });
-
-  if (error.code === "23514") {
-    return "Algum campo está fora do formato aceito. Revise e tente de novo.";
-  }
-  return "Não foi possível concluir agora. Tente de novo em instantes.";
+function traduzirErro(escopo: string, error: ErroDeBanco): string {
+  return traduzirErroBanco(escopo, error, undefined, FRASES);
 }
 
 /**

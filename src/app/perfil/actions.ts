@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
+import { traduzirErroBanco } from "@/lib/erros";
 import type { PerfilAluno } from "@/lib/types";
 
 const CAMPOS: (keyof PerfilAluno)[] = [
@@ -62,7 +63,9 @@ export async function salvarPerfilAluno(
       .eq("aluno_id", alunoId)
       .eq("papel", "titular")
       .maybeSingle();
-    if (eTitular) return { erro: eTitular.message };
+    if (eTitular) {
+      return { erro: traduzirErroBanco("perfil/acharTitular", eTitular) };
+    }
     if (!titular) return { erro: "Titular do ambiente não encontrado." };
 
     query = supabase
@@ -80,7 +83,7 @@ export async function salvarPerfilAluno(
   }
 
   const { data, error } = await query.select("id");
-  if (error) return { erro: error.message };
+  if (error) return { erro: traduzirErroBanco("perfil/salvar", error) };
   if (!data || data.length === 0) {
     return { erro: "Perfil não encontrado — nada foi salvo." };
   }

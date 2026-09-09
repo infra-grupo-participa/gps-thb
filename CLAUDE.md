@@ -772,7 +772,12 @@ que apaga sem atrito* e *repetição que já cobrava preço*.
   arquivo — não "consertar".
 - **Componente grande vive em pasta com `index.tsx`**, e os importadores não mudam:
   `plantao-calendario/`, `clientes-manager/`, `alunos-ativos-lista/`, `gerenciar-acesso/`.
-  **Nenhum arquivo novo passa de 400 linhas.** As **funções puras saem do JSX** para `ordenacao.ts`
+  **Componente cortado fica com `index.tsx` de até 400 linhas** (`gerenciar-acesso/painel.tsx` é
+  o maior, com 410). ⚠️ Não vale para tudo: **`slots-actions.ts` (731 linhas) ficou inteiro de
+  propósito** — são 7 actions da MESMA entidade (o slot do Plantão), e cortar por verbo
+  espalharia `validarZoomUrl`/`somarDias`, que as sete usam, em dois arquivos ou num terceiro só
+  para elas. Coesão ganha da métrica de linhas; o corte por linha é meio, não meta.
+  As **funções puras saem do JSX** para `ordenacao.ts`
   (ordem e filtro de clientes e de alunos) e para `datas-da-serie.ts` — sem React, testáveis.
 - **`navDoAluno(ctx)` (`src/lib/nav.ts`) é o único lugar da regra do sócio** (B7-b). Estava copiada
   em 9 `page.tsx`; hoje `rg 'papelMembro === "titular"' src/app` dá **0**.
@@ -1198,7 +1203,9 @@ limita à própria linha. Já estava resolvido; o documento é que não tinha si
 - [x] **Arquivos gigantes cortados (2026-09-09):** `data.ts` virou fachada
       (`src/lib/data/<assunto>.ts`), as actions do Plantão viraram
       `slots-/mentoras-/alunos-/config-actions.ts` e 4 componentes de 739–1212 linhas viraram pasta
-      com `index.tsx` (nenhum arquivo novo passa de 400 linhas). Movimento puro: 26 capturas
+      com `index.tsx` de até 400 linhas (o maior é `gerenciar-acesso/painel.tsx`, 410).
+      **`slots-actions.ts` continua com 731 e é de propósito** — 7 actions da mesma entidade,
+      compartilhando `validarZoomUrl`/`somarDias`. Movimento puro: 26 capturas
       Playwright com md5 idêntico antes/depois.
 - [x] **`gps.admin_definir_senha_membro` (2026-09-09)** — "Definir senha" por membro do ambiente,
       o remédio que faltava para os 13 sócios. Pede confirmação nomeando os sistemas quando a conta

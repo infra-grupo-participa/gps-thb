@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
+import { traduzirErroBanco } from "@/lib/erros";
 
 /** Libera ou bloqueia uma etapa para todos os alunos (gps.etapas). */
 export async function definirEtapaLiberada(
@@ -18,7 +19,9 @@ export async function definirEtapaLiberada(
     .from("etapas")
     .update({ liberada })
     .eq("id", etapaId);
-  if (error) return { erro: error.message };
+  if (error) {
+    return { erro: traduzirErroBanco("admin/definirEtapaLiberada", error, { etapaId }) };
+  }
 
   revalidatePath("/", "layout");
   return {};

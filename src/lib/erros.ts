@@ -55,6 +55,43 @@ const FRASES_DO_BANCO: Record<string, string> = {
     "Esta conta é da equipe — não pode virar acesso de aluno.",
   "Este login já pertence a outro ambiente do GPS.":
     "Este login já pertence a outro ambiente do programa.",
+
+  // --- gps.admin_definir_senha (migração ...118) ---
+  'Este aluno ainda não tem login. Use "Criar acesso".':
+    'Este aluno ainda não tem login. Use "Criar acesso".',
+  "Esta conta é da equipe — a senha não pode ser trocada por aqui.":
+    "Esta conta é da equipe — a senha não pode ser trocada por aqui.",
+
+  // --- gps.admin_definir_senha_membro (migração ...132) ---
+  "Membro não encontrado.": "Membro não encontrado.",
+  "Este membro ainda não tem login.": "Este membro ainda não tem login.",
+  "Você não pode trocar a própria senha por aqui — use o seu perfil.":
+    "Você não pode trocar a própria senha por aqui — use o seu perfil.",
+  "O login deste membro não existe mais.":
+    "O login deste membro não existe mais.",
+
+  // --- gps.admin_adicionar_socio (migração ...118) ---
+  "Informe o e-mail do sócio.": "Informe o e-mail do sócio.",
+  "Este ambiente não tem titular — crie o acesso do titular primeiro.":
+    "Este ambiente não tem titular — crie o acesso do titular primeiro.",
+  "Esta conta é da equipe — não pode virar sócio de um ambiente.":
+    "Esta conta é da equipe — não pode virar sócio de um ambiente.",
+  "Este e-mail já pertence a outro ambiente do GPS. Remova o acesso anterior antes.":
+    "Este e-mail já pertence a outro ambiente do programa. Remova o acesso anterior antes.",
+
+  // --- gps.admin_excluir_membro (migração ...131) ---
+  'Este é o titular do ambiente. Para remover, use "Excluir acesso".':
+    'Este é o titular do ambiente. Para remover, use "Excluir acesso".',
+  "Você não pode excluir o próprio acesso.":
+    "Você não pode excluir o próprio acesso.",
+  "Esta conta é da equipe — não pode ser excluída por aqui.":
+    "Esta conta é da equipe — não pode ser excluída por aqui.",
+
+  // --- gps.admin_excluir_acesso (migração ...114) ---
+  // Não é recusa: o ambiente FOI limpo e só o login sobreviveu. Trocar por uma
+  // frase genérica faria o admin repetir a exclusão de um ambiente já vazio.
+  "O login não pôde ser apagado: esta conta tem registros em outros sistemas do grupo. O ambiente do GPS foi limpo.":
+    "O login não pôde ser apagado: esta conta tem registros em outros sistemas do grupo. O ambiente do programa foi limpo.",
 };
 
 /**
@@ -84,14 +121,20 @@ const GENERICA = "Não foi possível concluir agora. Tente de novo em instantes.
  * Frase em português para a tela; o erro cru vai para o log com `contexto`.
  *
  * @param escopo identificador da operação no log (ex.: `"atualizarCliente"`).
+ * @param frasesExtras frases de UM domínio, consultadas ANTES do mapa comum.
+ *   Existe para `src/app/chamados/actions.ts`, cujas RPCs levantam mensagem
+ *   sem acento e específica do chamado ("voce ja tem 5 chamados em aberto") —
+ *   copy que não faz sentido no mapa compartilhado. O que ficou aqui é o que
+ *   estava duplicado: ler `error.message`, o mapa por SQLSTATE e o `logErro`.
  */
 export function traduzirErroBanco(
   escopo: string,
   erro: ErroDeBanco,
   contexto?: ContextoLog,
+  frasesExtras?: Record<string, string>,
 ): string {
   const bruto = (erro.message ?? "").trim();
-  const conhecida = FRASES_DO_BANCO[bruto];
+  const conhecida = frasesExtras?.[bruto] ?? FRASES_DO_BANCO[bruto];
 
   // Log SEMPRE: mesmo o erro previsto é sinal de fluxo travando na produção, e
   // é a única forma de descobrir que uma frase nova precisa entrar aqui.

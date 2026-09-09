@@ -1,29 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { ThbLogo } from "@/components/thb-logo";
+import { ErroPainel } from "@/components/ui/erro-painel";
 
-export default function Error({ reset }: { error: Error; reset: () => void }) {
+/**
+ * Boundary de erro da raiz. Pega qualquer falha de render abaixo do root
+ * layout que não tenha boundary mais próximo.
+ *
+ * O `error` era recebido e descartado: a tela não dizia nada e o log do
+ * servidor não tinha como ser encontrado a partir da queixa. Agora o
+ * `error.digest` aparece na tela. `error.message` continua fora — em produção
+ * o Next já o substitui por texto genérico, mas em erro de cliente ele carrega
+ * o texto cru da exceção, que não é para o aluno ler.
+ */
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   return (
-    <main id="conteudo" className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
-      <ThbLogo />
-      <div className="flex flex-col items-center gap-2">
-        <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-          <AlertTriangle className="size-6" />
-        </div>
-        <h1 className="text-xl font-semibold">Não foi possível carregar</h1>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          Tivemos um problema momentâneo. Tente novamente ou volte ao início.
-        </p>
-      </div>
-      <div className="flex gap-2">
-        <Button onClick={() => reset()}>Tentar de novo</Button>
-        <Link href="/" className={buttonVariants({ variant: "outline" })}>
-          Ir para o início
-        </Link>
-      </div>
-    </main>
+    <ErroPainel
+      titulo="Não foi possível carregar"
+      descricao="Tivemos um problema momentâneo. Tente novamente ou volte ao início."
+      digest={error.digest}
+    >
+      <Button onClick={() => reset()}>Tentar de novo</Button>
+      <Link href="/" className={buttonVariants({ variant: "outline" })}>
+        Ir para o início
+      </Link>
+    </ErroPainel>
   );
 }

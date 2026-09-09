@@ -41,9 +41,16 @@ export async function cadastrar(
   });
 
   if (error) {
+    // Enumeração de conta: "Já existe uma conta com este e-mail" confirmava,
+    // para quem não está logado, que aquele e-mail tem cadastro no portal —
+    // basta um CPF de formato válido para varrer uma lista. O texto abaixo
+    // não afirma que a conta existe; oferece a saída (entrar / recuperar
+    // senha) de um jeito que serve tanto para quem já tem conta quanto para
+    // quem errou o dado.
     if (error.code === "user_already_exists" || error.status === 422) {
       return {
-        erro: "Já existe uma conta com este e-mail. Tente entrar.",
+        erro:
+          "Não foi possível criar a conta com estes dados. Se você já tem acesso ao portal, entre pela tela de login ou use “Esqueci minha senha”.",
       };
     }
     return { erro: "Não foi possível concluir o cadastro. Tente novamente." };

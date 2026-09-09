@@ -155,7 +155,7 @@ RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos pr�
   sticky) com o painel **`HomeResumo`** (progresso geral + clientes/reuniões/perda num único card).
   Os atalhos Clientes/Pasta/Materiais foram removidos da home (já estão no `NavTabs` do header).
 - **Cliente favoritado** (`FavoritoDestaque`, compartilhado aluno/admin): card **só informativo**
-  do cliente que a equipe acompanha — nome, status, telefone/WhatsApp, perda pela inércia e
+  do cliente que a equipe acompanha — nome, fase, telefone/WhatsApp, perda pela inércia e
   "Abrir ficha". É Server Component (sem `"use client"`, sem estado, sem action).
 
 ### 📓 Diário do aluno (2026-09-08)
@@ -424,6 +424,51 @@ comprou o quê testando e-mails. **Alguém tem que avisar por fora.**
 (`(data + hora_inicio) at time zone 'America/Sao_Paulo'`). Toda comparação com `now()` usa
 ela, nunca `data` isolada — que mentiria o prazo das 21h à meia-noite.
 
+### 📋 As 9 features do Marcio — o que entrou em 2026-09-08 (Fases 1–4 e 8)
+
+Plano em `PLANO-9-FEATURES.md` (raiz). Ordem por esforço × risco. Entregue nesta sessão:
+
+- **Senha com olho em todo o portal** — `src/components/ui/input-senha.tsx` é o ÚNICO campo
+  de senha (login, redefinir, perfil, "Nova senha do titular" em Gerenciar acesso, que era
+  texto puro). `rg 'type="password"' src` tem de continuar vazio.
+- **Busca/ordenação/filtros no painel** (`alunos-ativos-lista.tsx`, tudo em memória): busca
+  sem acento (`src/lib/texto.ts`), ordenar por nome/progresso/clientes/tempo de casa/último
+  acesso, filtros "Já listou os 30" e "Sem acessar há 30+ dias". `null` = "nunca entrou".
+- **`gps.admin_painel_alunos()`** (migrações ...050/...061): o painel virou UMA RPC agregada
+  (SECURITY DEFINER, `gp_is_admin()` ou 42501) + o select de `thb_alunos`. Antes trazia as
+  879 linhas inteiras de `etapa1_clientes` para contar no Node. Medido: 125 linhas, 7,7 ms.
+  `ultimo_acesso` vem de `auth.users.last_sign_in_at` — **nunca** de `gps.acessos_log`,
+  que é log de ação administrativa. `agendados` conta por EVIDÊNCIA
+  (`data_reuniao_preliminar`/`aderiu_reuniao`), não por status nem por fase.
+- **Copy sequencial** (Etapa 01): passos 2 e 3 (mensagem padrão e estudo de caso) só abrem
+  com a tarefa 1 concluída (`exigeTarefa: 1` em `src/lib/etapa1.ts`). **Trava de UI**:
+  `marcarTarefa` continua aceitando qualquer tarefa. Medido em 08/09: só 5 de 63 ambientes
+  com cliente cumprem 30 com dados — a trava fecha a copy para quase todos, e é literal ao
+  pedido do Marcio (levar o número a ele). Escape: apagar `exigeTarefa` nas duas tarefas.
+- **Pré-visualizar como o aluno vê** (`src/components/admin/previa-aluno.tsx`): botão no
+  Modo Assistência que só ESCONDE elementos só-admin via `html[data-previa="aluno"]
+  .previa-oculta` (CSS). `ehAdmin()` intocado; a pílula diz que o admin continua admin e que
+  editar salva na conta do aluno. Aba Diário some (`adminOnly` em `assistenciaNavItems`).
+- **Cliente tem FASE, não status** (migrações ...060/...061/...062): `fase` ∈
+  prospeccao | fechamento | contratado (CHECK). Backfill por evidência, não de-para por
+  status (22 "pendente" já tinham reunião): prospeccao 842 · fechamento 37 · contratado 0.
+  `status` **continua na tabela, CONGELADO** (trigger `trg_etapa1_clientes_status_congelado`
+  recusa com 42501; `PatchCliente` filtra por allowlist em runtime) — é o caminho de volta:
+  `drop column fase` restaura sem restore. A trigger do diário audita `fase`
+  (`cliente_fase_mudou`, detalhe {de,para}); `cliente_status_mudou` fica para o histórico.
+  UI: `FASES_CLIENTE` (`STATUS_CLIENTE` não existe mais), quadro de 3 colunas, marcador
+  "Recusou" só enquanto `status='recusou'` existir (1 linha). **Não remover `status` sem
+  decidir onde "recusou" mora** — as 3 fases não têm lugar para recusa (C7 do plano).
+- **Plantão com autonomia da equipe** (migração ...070): `cancelarSlot` (despublica, cancela
+  inscrições, e-mail aos inscritos com o motivo), interruptor de inscrições na tela
+  (`gps.plantao_config.inscricao_aberta` é a fonte de `plantao_escrita_liberada()`; o
+  setting `app.plantao_inscricao_aberta` virou fallback), `trocarMentoraSlot`/`editarSlot`
+  zeram `aviso_mentora_em` quando a mentora muda, publicar recusa mentora sem e-mail,
+  criar com "repetir semanalmente por N semanas" (0–12).
+
+**Fora deste ciclo (dependem do Marcio):** notas por aluno (B2), ticket com anexo (B5/B6),
+financeiro (B7–B9), feature 1 (sócio — já existe). Ver tabela de bloqueios no plano.
+
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 
 **Decisão do Marcio.** O motivo é **operacional, não técnico**: o fluxo não estava fluindo e
@@ -625,13 +670,12 @@ escalada de privilégio — e o painel de usuários do sip listava 1.285 pessoas
 `perfis` — ele não faz insert direto no `create-user`. Se mexer no gatilho de novo, teste esse
 caminho.
 
-## ⚠️ Pendências de segurança (antes de dar login a alunos)
+## ✅ Ex-pendência de segurança — `thb_alunos` (desarmada em 2026-09-08)
 
-Hoje `public.thb_alunos` tem SELECT com `qual: true` p/ **qualquer autenticado** (2 policies:
-`read_authenticated`, `thb_alunos_read_authenticated`). Isso era seguro só porque apenas a equipe
-tinha login. **Ao provisionar login para alunos, um aluno logado conseguiria ler os 2.459 alunos.**
-Endurecer com policy que restrinja o aluno à própria linha — mas cuidado: é tabela compartilhada
-com o `sip` ao vivo. Coordenar antes de aplicar. O GPS em si (schema `gps`) já está seguro.
+Este documento dizia que "um aluno logado leria os 2.459 alunos" por causa das policies
+`qual: true` em `public.thb_alunos`. **Testado com JWT real de aluno em 08/09: lê 1.** As
+policies `qual=true` são RESTRICTIVE (combinam com AND) e `thb_alunos_gps_aluno_restrito`
+limita à própria linha. Já estava resolvido; o documento é que não tinha sido atualizado.
 
 ## Estado atual (2026-07-08)
 
@@ -725,7 +769,15 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-09-08 — **o Plantão virou link público sem login**.
+_Última atualização: 2026-09-08 (noite) — **Fases 1–4 e 8 das 9 features do Marcio**:
+campo de senha único com olho, busca/filtros no painel, `gps.admin_painel_alunos()` no
+lugar de varrer a base, copy sequencial (trava de UI), pré-visualização "como o aluno vê",
+cliente com FASE (status congelado por trigger; backfill por evidência 842/37/0) e Plantão
+com cancelar/pausar/trocar mentora/série semanal. Pentest aprovado nas duas rodadas (1 MÉDIO
+e 1 BAIXO corrigidos). Migrações ...050, ...060, ...061, ...062, ...070 aplicadas. Ver a
+seção "As 9 features do Marcio" e `PLANO-9-FEATURES.md`._
+
+_Anterior: 2026-09-08 — **o Plantão virou link público sem login**.
 Saíram 2 tabelas (`plantao_acessos`, `plantao_sessoes`, ambas vazias), 5 RPCs de
 login/sessão e 537 linhas de front (sonda de cookie de terceiro, guarda de
 CHIPS/Safari, login, troca de senha) — com elas foi embora todo o risco de iframe

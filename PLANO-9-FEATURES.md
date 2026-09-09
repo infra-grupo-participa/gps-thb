@@ -4,8 +4,9 @@ Documento de continuidade: o pedido do Marcio, o que foi levantado no banco, e
 as 7 fases ordenadas **da mais fácil para a mais difícil**. Serve para retomar
 o trabalho em outra máquina sem perder contexto.
 
-> Etapa 1 (planejamento) **concluída**. Etapas 2–4 pendentes.
-> Nada deste plano foi implementado ainda.
+> Etapas 1–3 **concluídas em 08/09/2026** para as Fases 1, 2, 2-bis, 3 e 4 (+ Fase 8, pedido
+> novo do mesmo dia). Etapa 4 (auditoria) feita pelo pentest (2 rodadas) e pelo Fable.
+> Fases 5, 6 e 7 seguem bloqueadas por decisão do Marcio (B2, B5–B9). Ver "Executado" no fim.
 
 ---
 
@@ -245,8 +246,30 @@ existe para 24% dos alunos.
 ## Etapas do trabalho (pedido do Marcio)
 
 - [x] **1 — Planejamento** (este documento)
-- [ ] **2 — Sequência de tarefas em fases de implementação**
-- [ ] **3 — Codificação por fases + observações**
-- [ ] **4 — Auditoria geral + validação**
+- [x] **2 — Sequência de tarefas em fases de implementação** (`tmp/squad/9-features.md` → resumo abaixo)
+- [x] **3 — Codificação por fases + observações** (Fases 1, 2, 2-bis, 3, 4, 8)
+- [x] **4 — Auditoria geral + validação** (pentest ×2 + fable-orchestrator)
 
 **A Fase 1 não depende de nenhum bloqueio** — pode começar a qualquer momento.
+
+---
+
+## Executado em 08/09/2026 (commits `282c1a7..`)
+
+| Fase | Commit(s) | Estado |
+|---|---|---|
+| 1 senha + busca | `282c1a7` | feito |
+| 2 copy sequencial | `4ada717` | feito — **B10:** só 5 de 63 ambientes liberam a copy hoje; é o pedido literal, levar o número ao Marcio |
+| 2-bis pré-visualizar | `b4cf375` | feito (visual, B3 = recomendação) |
+| 3 filtros + dívida da query | `2f6a9a9`, `e05c27e` | feito — RPC `gps.admin_painel_alunos()`, 125 linhas/7,7 ms; igualdade provada (0 divergências) |
+| 4 três fases | `503ac60`, `4dcd96a`, `b65746f` | feito — B4 decidido: `realizada`/`agendado`/evidência → fechamento; `recusou` → prospecção com marcador; sem catraca; `status` congelado por trigger |
+| 8 Plantão (pedido novo) | `3bfc583` | feito — cancelar, pausar, trocar mentora, série semanal |
+| 5 notas | — | bloqueada (B2) |
+| 6 ticket | — | bloqueada (B5/B6) |
+| 7 financeiro | — | bloqueada (B7–B9) |
+| 1 sócio | — | já existia (B1: qual caso o Marcio viu?) |
+
+**Pendências que só o Marcio/João resolvem:** B1, B2, B5–B9 (tabela acima); B10 (copy fechada
+para 58 de 63 ambientes); conta para **Ilan** (não existe em `auth.users`, logo não dá para
+promover a admin — Isabela e Cristiane já são admin, Elaine é dev); C7 (onde "recusou" mora
+antes de remover `status`).

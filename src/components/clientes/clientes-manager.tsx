@@ -12,14 +12,14 @@ import {
   CheckCircle2,
   ArrowRight,
 } from "lucide-react";
-import type { ClienteEtapa1, StatusCliente } from "@/lib/types";
-import { STATUS_CLIENTE, META_CLIENTES } from "@/lib/etapa1";
+import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
+import { FASES_CLIENTE, META_CLIENTES } from "@/lib/etapa1";
 import { mascaraTelefone } from "@/lib/masks";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import {
   criarCliente,
   definirClienteEquipe,
-  mudarStatusCliente,
+  mudarFaseCliente,
   removerCliente,
 } from "@/app/etapa-1/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,7 +61,7 @@ export function ClientesManager({
   const router = useRouter();
   const [clientes, setClientes] = useState<ClienteEtapa1[]>(clientesIniciais);
   const [busca, setBusca] = useState("");
-  const [filtro, setFiltro] = useState<"todos" | StatusCliente>("todos");
+  const [filtro, setFiltro] = useState<"todos" | FaseCliente>("todos");
   const [view, setView] = useState<"lista" | "quadro">("lista");
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("recentes");
   const [pending, startTransition] = useTransition();
@@ -69,11 +69,13 @@ export function ClientesManager({
   const fichaHref = (id: string) => `${basePath}/clientes/${id}`;
   const preenchidos = clientes.filter((c) => c.nome.trim() !== "").length;
 
-  const contagemStatus = useMemo(
+  // Tudo em memória, sobre os ≤ 30 clientes já carregados: nenhuma ida nova ao
+  // banco para contar ou filtrar por fase.
+  const contagemFase = useMemo(
     () =>
-      STATUS_CLIENTE.map((s) => ({
-        ...s,
-        qtd: clientes.filter((c) => c.status === s.id).length,
+      FASES_CLIENTE.map((f) => ({
+        ...f,
+        qtd: clientes.filter((c) => c.fase === f.id).length,
       })),
     [clientes],
   );
@@ -90,7 +92,7 @@ export function ClientesManager({
 
   const listaOrdenada = useMemo(() => {
     const arr = buscaFiltrada.filter(
-      (c) => filtro === "todos" || c.status === filtro,
+      (c) => filtro === "todos" || c.fase === filtro,
     );
     const copia = [...arr];
     switch (ordenacao) {
@@ -123,21 +125,19 @@ export function ClientesManager({
     });
   }
 
-  function mudarStatus(cliente: ClienteEtapa1, novo: StatusCliente) {
-    if (cliente.status === novo) return;
-    const anterior = cliente.status;
+  function mudarFase(cliente: ClienteEtapa1, nova: FaseCliente) {
+    if (cliente.fase === nova) return;
+    const anterior = cliente.fase;
     setClientes((prev) =>
-      prev.map((c) => (c.id === cliente.id ? { ...c, status: novo } : c)),
+      prev.map((c) => (c.id === cliente.id ? { ...c, fase: nova } : c)),
     );
     startTransition(async () => {
-      const res = await mudarStatusCliente(cliente.id, alunoId, novo);
+      const res = await mudarFaseCliente(cliente.id, alunoId, nova);
       if (res.erro) {
         setClientes((prev) =>
-          prev.map((c) =>
-            c.id === cliente.id ? { ...c, status: anterior } : c,
-          ),
+          prev.map((c) => (c.id === cliente.id ? { ...c, fase: anterior } : c)),
         );
-        toast.error("Erro ao mudar o status.");
+        toast.error("Erro ao mudar a fase.");
       }
     });
   }
@@ -250,13 +250,14 @@ export function ClientesManager({
               rotulo="Todos"
               qtd={clientes.length}
             />
-            {contagemStatus.map((s) => (
+            {contagemFase.map((f) => (
               <FiltroChip
-                key={s.id}
-                ativo={filtro === s.id}
-                onClick={() => setFiltro(s.id)}
-                rotulo={s.rotulo}
-                qtd={s.qtd}
+                key={f.id}
+                ativo={filtro === f.id}
+                onClick={() => setFiltro(f.id)}
+                rotulo={f.rotulo}
+                titulo={f.ajuda}
+                qtd={f.qtd}
               />
             ))}
           </div>
@@ -273,7 +274,7 @@ export function ClientesManager({
           <Kanban
             clientes={buscaFiltrada}
             fichaHref={fichaHref}
-            onMover={mudarStatus}
+            onMover={mudarFase}
             onToggleEquipe={toggleEquipe}
           />
         ) : listaOrdenada.length === 0 ? (
@@ -289,7 +290,7 @@ export function ClientesManager({
                   key={c.id}
                   cliente={c}
                   fichaHref={fichaHref}
-                  onStatus={mudarStatus}
+                  onFase={mudarFase}
                   onEquipe={toggleEquipe}
                   onExcluir={excluir}
                   pending={pending}
@@ -305,7 +306,7 @@ export function ClientesManager({
                   <TableHead>Nome</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead className="text-right">Perda inércia</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Fase</TableHead>
                   <TableHead>Reunião</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -334,6 +335,7 @@ export function ClientesManager({
                         {c.acompanhado_equipe ? (
                           <Badge className="ml-2 text-[10px]">Equipe</Badge>
                         ) : null}
+                        <MarcaRecusou cliente={c} />
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         <div className="flex items-center gap-2">
@@ -348,21 +350,22 @@ export function ClientesManager({
                       </TableCell>
                       <TableCell>
                         <Select
-                          value={c.status}
+                          value={c.fase}
                           onValueChange={(v) =>
-                            v && mudarStatus(c, v as StatusCliente)
+                            v && mudarFase(c, v as FaseCliente)
                           }
                         >
                           <SelectTrigger
                             size="sm"
-                            className="h-7 w-[130px] text-xs"
+                            className="h-7 w-[140px] text-xs"
+                            aria-label={`Fase de ${c.nome || "cliente sem nome"}`}
                           >
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {STATUS_CLIENTE.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>
-                                {s.rotulo}
+                            {FASES_CLIENTE.map((f) => (
+                              <SelectItem key={f.id} value={f.id}>
+                                {f.rotulo}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -454,17 +457,17 @@ function Kanban({
 }: {
   clientes: ClienteEtapa1[];
   fichaHref: (id: string) => string;
-  onMover: (c: ClienteEtapa1, s: StatusCliente) => void;
+  onMover: (c: ClienteEtapa1, f: FaseCliente) => void;
   onToggleEquipe: (c: ClienteEtapa1) => void;
 }) {
   const [arrastando, setArrastando] = useState<string | null>(null);
-  const [sobre, setSobre] = useState<StatusCliente | null>(null);
+  const [sobre, setSobre] = useState<FaseCliente | null>(null);
 
   return (
     <div className="overflow-x-auto pb-2">
       <div className="flex min-w-max gap-3">
-        {STATUS_CLIENTE.map((coluna) => {
-          const itens = clientes.filter((c) => c.status === coluna.id);
+        {FASES_CLIENTE.map((coluna) => {
+          const itens = clientes.filter((c) => c.fase === coluna.id);
           const destaque = sobre === coluna.id;
           return (
             <div
@@ -485,11 +488,16 @@ function Kanban({
                 (destaque ? "border-primary ring-1 ring-primary" : "")
               }
             >
-              <div className="mb-2 flex items-center justify-between px-1">
-                <span className="text-sm font-medium">{coluna.rotulo}</span>
-                <Badge variant="secondary" className="text-[10px]">
-                  {itens.length}
-                </Badge>
+              <div className="mb-2 px-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{coluna.coluna}</span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {itens.length}
+                  </Badge>
+                </div>
+                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                  {coluna.ajuda}
+                </p>
               </div>
               <div className="flex flex-1 flex-col gap-2">
                 {itens.map((c) => {
@@ -517,6 +525,7 @@ function Kanban({
                           onClick={() => onToggleEquipe(c)}
                         />
                       </div>
+                      <MarcaRecusou cliente={c} className="mt-1" />
                       {c.perda_inercia != null ? (
                         <div className="mt-1 text-xs tabular-nums text-muted-foreground">
                           {brl.format(c.perda_inercia)}
@@ -552,14 +561,14 @@ function Kanban({
 function ClienteCardLista({
   cliente: c,
   fichaHref,
-  onStatus,
+  onFase,
   onEquipe,
   onExcluir,
   pending,
 }: {
   cliente: ClienteEtapa1;
   fichaHref: (id: string) => string;
-  onStatus: (c: ClienteEtapa1, s: StatusCliente) => void;
+  onFase: (c: ClienteEtapa1, f: FaseCliente) => void;
   onEquipe: (c: ClienteEtapa1) => void;
   onExcluir: (id: string) => void;
   pending: boolean;
@@ -580,6 +589,7 @@ function ClienteCardLista({
           >
             {c.nome || "Sem nome"}
           </Link>
+          <MarcaRecusou cliente={c} />
         </div>
         {c.perda_inercia != null ? (
           <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
@@ -602,16 +612,20 @@ function ClienteCardLista({
 
       <div className="mt-3 flex items-center gap-2">
         <Select
-          value={c.status}
-          onValueChange={(v) => v && onStatus(c, v as StatusCliente)}
+          value={c.fase}
+          onValueChange={(v) => v && onFase(c, v as FaseCliente)}
         >
-          <SelectTrigger size="sm" className="h-8 flex-1 text-xs">
+          <SelectTrigger
+            size="sm"
+            className="h-8 flex-1 text-xs"
+            aria-label={`Fase de ${c.nome || "cliente sem nome"}`}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_CLIENTE.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.rotulo}
+            {FASES_CLIENTE.map((f) => (
+              <SelectItem key={f.id} value={f.id}>
+                {f.rotulo}
               </SelectItem>
             ))}
           </SelectContent>
@@ -637,6 +651,32 @@ function ClienteCardLista({
 }
 
 // ---------- Auxiliares ----------
+
+/**
+ * Vestígio do modelo antigo de 5 status: sem esta marca, o cliente que disse
+ * "não" sumiria dentro de "Prospecção" e o aluno o reprospectaria. Some
+ * sozinha quando a coluna `status` for removida do banco.
+ */
+function MarcaRecusou({
+  cliente,
+  className = "ml-2",
+}: {
+  cliente: ClienteEtapa1;
+  className?: string;
+}) {
+  if (cliente.status !== "recusou") return null;
+  return (
+    <span
+      title="Registro anterior às fases: este cliente foi marcado como “Recusou” no modelo antigo de status, que saiu do ar."
+      className={
+        "inline-flex shrink-0 items-center rounded-full border border-destructive/30 px-1.5 py-0.5 align-middle text-[10px] font-medium text-destructive " +
+        className
+      }
+    >
+      Recusou
+    </span>
+  );
+}
 
 function WhatsappLink({ href }: { href: string }) {
   return (
@@ -708,17 +748,21 @@ function FiltroChip({
   ativo,
   onClick,
   rotulo,
+  titulo,
   qtd,
 }: {
   ativo: boolean;
   onClick: () => void;
   rotulo: string;
+  titulo?: string;
   qtd: number;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      title={titulo}
+      aria-pressed={ativo}
       className={
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition " +
         (ativo

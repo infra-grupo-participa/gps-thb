@@ -3,7 +3,7 @@
 
 import type {
   NivelRelacionamento,
-  StatusCliente,
+  FaseCliente,
   PerfilDisc,
 } from "@/lib/types";
 
@@ -42,30 +42,39 @@ export const NIVEIS_RELACIONAMENTO: {
   { id: "quente", rotulo: "Quente" },
 ];
 
-export const STATUS_CLIENTE: {
-  id: StatusCliente;
+/**
+ * As 3 fases de negócio do cliente (migração 20260909000060), no lugar dos 5
+ * status. Sem catraca: o cliente pode voltar de fase a qualquer momento.
+ */
+export const FASES_CLIENTE: {
+  id: FaseCliente;
+  /** Rótulo singular — badge, ficha. */
   rotulo: string;
+  /** Rótulo plural — cabeçalho de coluna do quadro. */
+  coluna: string;
+  /** Uma linha explicando o que a fase significa. */
+  ajuda: string;
   cor: string;
 }[] = [
-  { id: "pendente", rotulo: "Pendente", cor: "bg-muted text-muted-foreground" },
   {
-    id: "contatado",
-    rotulo: "Contatado",
-    cor: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+    id: "prospeccao",
+    rotulo: "Prospecção",
+    coluna: "Prospecção",
+    ajuda: "Ainda em contato — mensagem, ligação, tentativa de agenda.",
+    cor: "bg-muted text-muted-foreground",
   },
   {
-    id: "agendado",
-    rotulo: "Agendado",
-    cor: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
+    id: "fechamento",
+    rotulo: "Fechamento",
+    coluna: "Fechamento",
+    ajuda: "Da reunião preliminar ao croqui estrutural.",
+    cor: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
   },
   {
-    id: "recusou",
-    rotulo: "Recusou",
-    cor: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-  },
-  {
-    id: "realizada",
-    rotulo: "Realizada",
+    id: "contratado",
+    rotulo: "Contratado",
+    coluna: "Contratados",
+    ajuda: "Contrato fechado — segue para a execução.",
     cor: "bg-emerald-600 text-white",
   },
 ];
@@ -273,8 +282,13 @@ export function calcularMetricasEtapa1(
   const comDados = clientes.filter(
     (c) => c.nome.trim() && c.telefone && c.nivel_relacionamento,
   ).length;
+  // EVIDÊNCIA, não `status` (congelado na migração 20260909000060) e não
+  // `fase` (que o aluno edita arrastando o card no quadro — arrastar para
+  // "Fechamento" não é uma reunião agendada). Mesmo critério do painel do
+  // admin, gps.admin_painel_alunos() (migração 20260909000061): o número da
+  // tela do aluno e o do painel têm de ser o mesmo número.
   const agendados = clientes.filter(
-    (c) => c.status === "agendado" || c.status === "realizada",
+    (c) => c.data_reuniao_preliminar != null || c.aderiu_reuniao,
   ).length;
   const perdaTotal = clientes.reduce(
     (soma, c) => soma + (c.perda_inercia ?? 0),

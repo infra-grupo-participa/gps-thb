@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Star, MessageCircle, ArrowRight } from "lucide-react";
 import type { ClienteEtapa1 } from "@/lib/types";
-import { STATUS_CLIENTE } from "@/lib/etapa1";
+import { FASES_CLIENTE } from "@/lib/etapa1";
 import { mascaraTelefone } from "@/lib/masks";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,7 +19,7 @@ export function FavoritoDestaque({
   cliente: ClienteEtapa1;
   basePath: string;
 }) {
-  const status = STATUS_CLIENTE.find((s) => s.id === cliente.status);
+  const fase = FASES_CLIENTE.find((f) => f.id === cliente.fase);
   const wpp = linkWhatsapp(cliente.telefone);
 
   return (
@@ -38,13 +38,14 @@ export function FavoritoDestaque({
                 {cliente.nome || "Sem nome"}
               </div>
               <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                {status ? (
+                {fase ? (
                   <span
                     className={
-                      "rounded-full px-2 py-0.5 text-xs font-medium " + status.cor
+                      "rounded-full px-2 py-0.5 text-xs font-medium " + fase.cor
                     }
+                    title={fase.ajuda}
                   >
-                    {status.rotulo}
+                    {fase.rotulo}
                   </span>
                 ) : null}
                 {cliente.telefone ? (

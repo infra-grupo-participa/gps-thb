@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import type { ClienteEtapa1 } from "@/lib/types";
+import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
 import {
   PROBLEMAS_7,
   NIVEIS_RELACIONAMENTO,
-  STATUS_CLIENTE,
+  FASES_CLIENTE,
   PERFIS_DISC,
 } from "@/lib/etapa1";
 import {
@@ -46,7 +46,9 @@ export function ClienteFicha({
   const [nivel, setNivel] = useState(cliente.nivel_relacionamento ?? "");
   const [problemas, setProblemas] = useState<string[]>(cliente.problemas ?? []);
   const [perda, setPerda] = useState(numeroParaMoeda(cliente.perda_inercia));
-  const [status, setStatus] = useState(cliente.status ?? "pendente");
+  const [fase, setFase] = useState<FaseCliente>(
+    cliente.fase ?? "prospeccao",
+  );
   const [dataReuniao, setDataReuniao] = useState(
     cliente.data_reuniao_preliminar ?? "",
   );
@@ -60,6 +62,7 @@ export function ClienteFicha({
   const [pending, startTransition] = useTransition();
 
   const wpp = linkWhatsapp(telefone);
+  const faseAtual = FASES_CLIENTE.find((f) => f.id === fase);
 
   function toggleEquipe() {
     const ativar = !acompanhado;
@@ -88,7 +91,9 @@ export function ClienteFicha({
           (nivel as ClienteEtapa1["nivel_relacionamento"]) || null,
         problemas,
         perda_inercia: moedaParaNumero(perda),
-        status: status as ClienteEtapa1["status"],
+        // `status` congelou na migração 20260909000060 (é o caminho de volta):
+        // nenhum caminho de escrita da aplicação pode tocar nele.
+        fase,
         data_reuniao_preliminar: dataReuniao || null,
         perfil_disc: (disc as ClienteEtapa1["perfil_disc"]) || null,
         aderiu_reuniao: aderiu,
@@ -214,22 +219,28 @@ export function ClienteFicha({
               />
             </div>
             <div className="grid gap-2">
-              <Label>Status</Label>
+              <Label htmlFor="f-fase">Fase</Label>
               <Select
-                value={status}
-                onValueChange={(v) => setStatus(v ?? "pendente")}
+                value={fase}
+                onValueChange={(v) => setFase((v as FaseCliente) || "prospeccao")}
               >
-                <SelectTrigger>
+                <SelectTrigger id="f-fase" aria-describedby="f-fase-ajuda">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_CLIENTE.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.rotulo}
+                  {FASES_CLIENTE.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.rotulo}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p
+                id="f-fase-ajuda"
+                className="text-xs leading-snug text-muted-foreground"
+              >
+                {faseAtual?.ajuda}
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="f-data">Data da reunião preliminar</Label>

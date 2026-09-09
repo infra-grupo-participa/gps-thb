@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 import {
   Home,
   Users,
@@ -26,6 +27,8 @@ export interface NavItem {
     | "diario";
   /** casa exatamente (para o "Início"). */
   exact?: boolean;
+  /** Item exclusivo do admin — some na pré-visualização. */
+  adminOnly?: boolean;
 }
 
 const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
@@ -58,12 +61,13 @@ export function NavTabs({ items }: { items: NavItem[] }) {
             // a home sozinha dispara ~10 queries. Medido nos logs do Supabase.
             // Nada muda para o usuário: a rota carrega ao clicar.
             prefetch={false}
-            className={
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition " +
-              (ativo
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition",
+              ativo
                 ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground")
-            }
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              item.adminOnly && "previa-oculta",
+            )}
           >
             {Icon ? <Icon className="size-4" /> : null}
             {item.label}

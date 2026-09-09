@@ -28,6 +28,7 @@ export function assistenciaNavItems(alunoId: string): NavItem[] {
       href: `/admin/aluno/${alunoId}/diario`,
       label: "Diário",
       icon: "diario",
+      adminOnly: true,
     },
   ];
 }

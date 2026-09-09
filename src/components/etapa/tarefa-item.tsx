@@ -136,7 +136,7 @@ export function TarefaItem({
         ) : null}
 
         {isAdmin && onEnfase ? (
-          <div className="mt-2 flex items-center gap-1 opacity-60 transition group-hover:opacity-100">
+          <div className="previa-oculta mt-2 flex items-center gap-1 opacity-60 transition group-hover:opacity-100">
             <span className="mr-1 text-[10px] uppercase tracking-wide text-muted-foreground">
               Destaque:
             </span>

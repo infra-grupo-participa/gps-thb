@@ -168,7 +168,12 @@ export function GerenciarAcesso({
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={abrir}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={abrir}
+        className="previa-oculta"
+      >
         <KeyRound className="size-4" /> Gerenciar acesso
       </Button>
 

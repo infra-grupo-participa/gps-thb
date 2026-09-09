@@ -62,7 +62,7 @@ export default async function AdminAlunoInicioPage({
         <div className="mb-6">
           <Link
             href="/admin"
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className="previa-oculta text-sm text-muted-foreground hover:text-foreground"
           >
             ← Voltar aos alunos
           </Link>

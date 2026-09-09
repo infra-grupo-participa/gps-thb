@@ -33,7 +33,7 @@ export function DiarioResumoCard({
     return (
       <Link
         href={hrefDiario}
-        className="group flex items-center gap-4 rounded-xl border border-dashed px-5 py-4 transition hover:border-primary/50 hover:bg-muted/40"
+        className="previa-oculta group flex items-center gap-4 rounded-xl border border-dashed px-5 py-4 transition hover:border-primary/50 hover:bg-muted/40"
       >
         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
           <NotebookPen className="size-5" />
@@ -56,7 +56,7 @@ export function DiarioResumoCard({
   return (
     <Link
       href={hrefDiario}
-      className="group flex flex-col gap-3 rounded-xl border px-5 py-4 transition hover:border-primary/50 hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-4"
+      className="previa-oculta group flex flex-col gap-3 rounded-xl border px-5 py-4 transition hover:border-primary/50 hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-4"
     >
       <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
         <NotebookPen className="size-5" />

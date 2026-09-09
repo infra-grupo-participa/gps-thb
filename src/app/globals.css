@@ -135,3 +135,7 @@
     font-family: var(--font-display);
   }
 }
+/* Pré-visualização "como o aluno vê" (src/components/admin/previa-aluno.tsx):
+   esconde o que é exclusivo do admin. É puramente visual — a sessão continua
+   sendo a do admin e as permissões não mudam. */
+html[data-previa="aluno"] .previa-oculta { display: none !important; }

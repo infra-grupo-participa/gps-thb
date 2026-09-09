@@ -1149,6 +1149,59 @@ iframe fica sobre branco e o cinza virava uma caixa visível. `/p/*` força
 branco **no `body`** — pintar só a `div` não resolve: quem pinta a área do
 iframe é o `body`.
 
+#### 🔴 O incidente das 13:00 — 11 de 20 e-mails perdidos em silêncio
+
+O cron disparou os 20 e-mails de "falta 1 hora" de uma vez. **A Resend
+limita 10 requisições por segundo**: 11 voltaram **429**. E como
+`net.http_post` é **assíncrono** (devolve o id do pedido, não o resultado),
+a função carimbava `email_sala_em` logo depois do post — as 11 pessoas
+ficaram **sem o link E marcadas como avisadas**.
+
+🔑 **O cron reportou `succeeded, 20 rows`.** O banco dizia que tinha dado
+certo. Só apareceu porque fomos conferir destinatário a destinatário na API
+(`GET /emails/{id}` devolve `to` e `last_event`). Falha silenciosa é a pior
+espécie: ninguém investiga o que diz ter funcionado.
+
+**As três correções (migration `…174`):**
+1. `pg_sleep(0.15)` entre envios (~6,7 req/s) e **teto de 8 por passada** —
+   o teto também protege o `statement_timeout` de 8s do `authenticator`.
+2. **`gps.plantao_reconciliar_envios()`** — o carimbo passa a guardar o
+   `request_id`; a função, chamada no início de cada passada, limpa o
+   carimbo de quem não teve 2xx e devolve a pessoa para a fila.
+   ⚠️ `http_collect_response(async := false)` resolveria na hora, mas
+   **bloqueia até a resposta e estoura o timeout de 8s** — testado.
+3. **Segundo e-mail, no início da live** ("começou agora"), além do de 1h
+   antes. Alcança também quem se inscreveu nos últimos 59 minutos.
+
+🔑 **A aritmética que quase falhou de novo:** `teto 8 × cron 10min × janela
+15min` = **16 pessoas alcançáveis**, e havia 19 inscritos — 3 ficariam sem o
+e-mail de abertura com a live rolando. Janela → **30 min**, cron → **5 min**.
+**Regra:** fila com teto por passada exige conferir `teto × intervalo ×
+janela` contra o tamanho real da fila. Não falha com erro — falha deixando
+gente de fora.
+
+Resultado do dia: **23 de 23 nos dois e-mails** (a base cresceu de 19 para
+23 durante a própria live).
+
+#### A lista do Plantão é um CSV CONGELADO
+
+`gps.plantao_alunos` são 421 linhas carregadas em 01/09 (`origem =
+'acelera_csv'`). **Nada a atualiza**: `plantao_reconciliar_elegibilidade` só
+REMOVE (quem migrou para o Programa), nunca ADICIONA quem comprou o Acelera
+depois. Todo comprador novo fica de fora até alguém recarregar a planilha.
+
+Custou hoje: a Bianca (compradora desde 17/08) foi recusada na inscrição.
+Há **49 compradores** criados depois da carga — não dá para saber quantos
+são do Acelera, porque **não existe marcação de produto no banco** (foi por
+isso que a base veio de CSV).
+
+Remédio: **`gps.admin_liberar_aluno_plantao`** + botão "Liberar aluno" na
+aba Alunos. Sempre grava `origem='liberacao_manual'` e
+`bloqueio_excecao=true` — sem a exceção, o job noturno rebloquearia na
+madrugada seguinte quem a equipe acabou de liberar. Log em
+`gps.plantao_eventos`, **não** em `gps.acessos_log`: este referencia
+`public.thb_alunos`, e quem é liberado aqui pode não ter cadastro lá.
+
 #### Lições que custaram tempo
 
 - **Resend via `urllib` sem `User-Agent` devolve 403 code 1010** (borda
@@ -1568,8 +1621,8 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-09-09 (tarde) — **war-room do Plantão** (`18e2f16`,
-`19c098d`; migrações `…170`–`…172`). O produto foi usado pela primeira vez (23
+_Última atualização: 2026-09-09 (tarde) — **war-room do Plantão** (`18e2f16`
+a `48fc5b9`; migrações `…170`–`…175`). O produto foi usado pela primeira vez (23
 inscritos, 17 no plantão daquela tarde) e a entrega de e-mail não existia: rota
 500, cron inexistente, `alter role` recusado pelo Supabase e chave Resend
 inválida. O disparo passou a sair **do banco** por `pg_net` → Resend (cron
@@ -1579,8 +1632,13 @@ inválida. O disparo passou a sair **do banco** por `pg_net` → Resend (cron
 declarando "encerrada" no instante do início. Pentest reprovou e tinha razão:
 `plantao_revelar_link` era a única RPC pública sem rate limit — ganhou
 `p_ip_hash` (10/15min) e recusa genérica. Fundo cinza do iframe e link da
-monitoria no ar. **Aberto: a CSP não chega ao cliente — o LiteSpeed sobrescreve
-e `frame-ancestors` não existe em produção.**_
+monitoria no ar. Às 13:00 o primeiro disparo real perdeu 11 de 20 e-mails em
+silêncio (Resend: 10 req/s; `net.http_post` é assíncrono e o carimbo vinha antes
+do resultado) — corrigido com pausa, teto por passada e reconciliação pelo
+`request_id`; e a lista do Plantão revelou-se um CSV congelado de 01/09, que
+ganhou o botão "Liberar aluno". Resultado: **23 de 23 nos dois e-mails**.
+**Aberto: a CSP não chega ao cliente — o LiteSpeed sobrescreve e
+`frame-ancestors` não existe em produção.**_
 
 _Anterior: 2026-09-09 (noite) — **Financeiro v2 + Central de resolução + redesign
 "Trilha"** (`fab0c9f`, `cfe4938`, `340d27a`, `e5176d4`, `17c3a88`; migrações `…140` e

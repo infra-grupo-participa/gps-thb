@@ -47,7 +47,7 @@ Sobre o export "Histórico de vendas" da Hotmart (1.643 transações):
 
 ## 🔴 O QUE FALTA — e por que não fiz
 
-### a) Versionar as 6 ofertas na migration certa
+### a) Versionar as 12 ofertas na migration certa
 
 `hm_product_catalog` **não pertence ao GPS nem ao `sistema-grupo-participa-v2`**.
 O dono é **`sistema-disparos-participa`** (`C:\Users\infra\sistema-disparos-participa`),
@@ -60,33 +60,67 @@ outra pessoa. Acrescentar arquivo ali, sem contexto do trabalho em curso,
 criaria conflito.
 
 **Ação:** criar a migration em `sistema-disparos-participa/db/migrations/`
-quando aquela branch estabilizar. O SQL exato está no fim deste documento.
+quando aquela branch estabilizar. O SQL das **12** está no fim deste documento.
 
-### b) 6 ofertas ainda NÃO catalogadas
+### b) ✅ As 6 ofertas de saldo foram catalogadas (09/09, mesma noite)
 
-`5o3z1yur` (27 transações) e `yzih2l0a` (7) — "HM com desconto de Acelera" —,
-mais `t2vejhvv`, `hyopam51`, `cnfrh6wj`, `p4t1xid7` (1 cada). **37 transações
-pagas.**
+`5o3z1yur` (27 transações) · `yzih2l0a` (7) · `t2vejhvv` · `hyopam51` ·
+`cnfrh6wj` · `p4t1xid7` (1 cada). **37 transações pagas.**
 
-São o **saldo** (`categoria='diferenca'`), não a entrada, e o valor varia
-conforme o desconto. **Catalogar com o valor errado move dinheiro na conta de
-gente real** — depende de o Marcio informar a regra de cada uma.
+Entraram como `categoria='diferenca'`, `pacote_cheio` NULO, `papel` NULO —
+o mesmo padrão das ofertas de saldo já catalogadas (`2mxcjw8t`, `1ayp826g`…).
 
-Reencontrá-las:
+**Por que era seguro, medido antes de escrever** (o receio original era
+"catalogar com valor errado move dinheiro"):
+
+1. **As 6 JÁ contavam para o HM.** `cs.fn_hm_produto_da_oferta_calc` cai no
+   default `'HM'` quando a oferta não está em lugar nenhum —
+   `fn_hm_pagamento_do_produto(oferta,'HM')` devolvia `true` para todas
+   antes do catálogo. O catálogo **não é** o que decide se o pagamento entra
+   na conta.
+2. **`categoria='diferenca'` não tem `pacote_cheio`**, então não entra no
+   LATERAL `ent` de `cs.vw_hm_financeiro` — que só olha `categoria='sinal'`
+   com `pacote_cheio` não nulo. Nenhum `pacote_regra` mudou.
+3. **`valor_tabela` de oferta `diferenca` é RÓTULO.** Nenhuma view usa esse
+   campo em aritmética; a conta usa o valor REAL de `cs.hm_pagamentos`. Por
+   isso os valores variados (12.003 / 13.439 / 14.982 / 15.249 na mesma
+   oferta — é o saldo parcelado com juros) não são problema: gravamos o
+   menor (à vista) como referência.
+
+**Diferença para a entrada:** as 6 do Acelera (item anterior) entraram como
+`sinal` com `pacote_cheio=15000` **porque elas SIM alimentam o cálculo** do
+pacote. Ali o valor importa; aqui não.
+
+Conferido depois de aplicar: as 12 ofertas do export estão catalogadas,
+`cs.vw_hm_pagamentos_orfaos` tem 3 linhas (nenhuma delas destas ofertas).
+
+### c) Os outros 89 marcados `so_sinal` — reavaliar
+
+Corrigi os 15 que tinham pagamento reconhecido acima de R$ 1.000.
+
+⚠️ **O diagnóstico mudou depois de investigar o catálogo:** como as ofertas
+já eram reconhecidas como HM pelo cálculo por default, o catálogo **não era**
+a causa de pagamento não reconhecido. A causa do caso Heber foi outra — o
+pagamento simplesmente nunca virou linha em `cs.hm_pagamentos`, apesar de o
+webhook `PURCHASE_APPROVED` ter chegado.
+
+**Isso é uma pendência aberta e maior:** chegaram **211 eventos
+`PURCHASE_APPROVED` de 122 pessoas** entre 15/07 e 08/09
+(`cs.hotmart_eventos`). Falta descobrir **por que alguns não viram
+pagamento** — o webhook chega e a escrita não acontece.
+
+Consulta de partida:
 ```sql
-select p.oferta_codigo, count(*)
-  from cs.hm_pagamentos p
-  left join hm_product_catalog c on c.offer_code = p.oferta_codigo
- where c.offer_code is null group by 1 order by 2 desc;
+select count(*) as aprovados, count(distinct email) as pessoas
+  from cs.hotmart_eventos where evento = 'PURCHASE_APPROVED';
+-- cruzar com cs.hm_pagamentos por transacao para achar os que faltam
 ```
 
-### c) Os outros 89 marcados `so_sinal`
+Enquanto isso não for resolvido, **casos como o do Heber vão continuar
+aparecendo** — e a tela vai continuar dizendo "sem direito ao acesso" para
+quem pagou.
 
-Corrigi os 15 que tinham pagamento reconhecido acima de R$ 1.000. Os demais
-podem ter pagamento **não reconhecido** pelo mesmo motivo (oferta fora do
-catálogo) — só dá para saber depois de (b).
-
-## SQL das 6 ofertas, para a migration no repo certo
+## SQL das 12 ofertas, para a migration no repo certo
 
 ```sql
 insert into hm_product_catalog
@@ -117,8 +151,39 @@ values
 on conflict (offer_code) do nothing;
 ```
 
-Conferir o que está aplicado hoje:
 ```sql
-select offer_code, nome_comercial, categoria, pacote_cheio
-  from hm_product_catalog where atualizado_por like '%war-room%';
+-- As 6 de SALDO (categoria diferenca, sem pacote_cheio -- nao entram no
+-- calculo do pacote; valor_tabela e so rotulo)
+insert into hm_product_catalog
+  (product_id, offer_code, product_name, product_type, categoria,
+   concede_trilha, pacote_cheio, entrada_condicao_fechada, entrada_do_programa,
+   nome_comercial, valor_tabela, explicacao, ativo, origem_do_dado, atualizado_por)
+values
+  ('5064314','5o3z1yur','Holding Masters','hm','diferenca', true, null, false, false,
+   'HM com desconto de Acelera Holding','12003.00',
+   'Saldo do HM para quem comprou o Acelera. 27 transacoes pagas sem catalogo ate 09/09.',
+   true, 'manual', 'marcio via war-room 09/09'),
+  ('5064314','yzih2l0a','Holding Masters','hm','diferenca', true, null, false, false,
+   'HM com desconto de Acelera Holding','11503.00','Saldo pos-Acelera (2a oferta). 7 pagas.',
+   true, 'manual', 'marcio via war-room 09/09'),
+  ('5064314','t2vejhvv','Holding Masters','hm','diferenca', true, null, false, false,
+   'HM com desconto de Acelera Holding','11003.00','Saldo pos-Acelera (3a oferta).',
+   true, 'manual', 'marcio via war-room 09/09'),
+  ('5064314','hyopam51','Holding Masters','hm','diferenca', true, null, false, false,
+   'HM com desconto de Acelera Holding','11441.88','Saldo pos-Acelera (4a oferta).',
+   true, 'manual', 'marcio via war-room 09/09'),
+  ('5064314','cnfrh6wj','Holding Masters','hm','diferenca', true, null, false, false,
+   'Saldo HM Programa de Implementacao','7767.12','Saldo individual, pago em 02/09.',
+   true, 'manual', 'marcio via war-room 09/09'),
+  ('5064314','p4t1xid7','Holding Masters','hm','diferenca', true, null, false, false,
+   'Saldo HM Programa de Implementacao','15320.40','Saldo individual, pago em 08/09.',
+   true, 'manual', 'marcio via war-room 09/09')
+on conflict (offer_code) do nothing;
+```
+
+Conferir o que está aplicado hoje (esperado: 12):
+```sql
+select offer_code, nome_comercial, categoria, pacote_cheio, valor_tabela
+  from hm_product_catalog where atualizado_por like '%war-room%'
+ order by categoria, offer_code;
 ```

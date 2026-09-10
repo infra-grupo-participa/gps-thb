@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { login, type LoginState } from "./actions";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
@@ -90,18 +90,18 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
                       para quem nunca teve. Medido em 10/09: 12 titulares
                       sem login nenhum, todos com CPF — todos se resolvem
                       por aqui. */}
-      <div className="mt-2 grid gap-2 rounded-xl border border-borda-fina bg-superficie-afundada p-3">
-        <p className="corpo-sm font-medium">Não consegue entrar?</p>
+      {/* 🔑 A ENTRADA PELO CÓDIGO EM DESTAQUE (10/09/2026, durante o evento).
+          Não é mais um link discreto: é a porta que a equipe está divulgando,
+          e serve para quem esqueceu a senha E para quem nunca teve acesso. */}
+      <div className="mt-2 grid gap-2 rounded-xl border border-marca-acao/40 bg-primary/[0.04] p-3">
+        <p className="corpo-sm font-medium">Não sabe a senha?</p>
         <p className="corpo-sm text-muted-foreground">
-          <Link
-            href="/resgate"
-            className="font-medium text-accent-foreground underline-offset-4 hover:underline"
-          >
-            Use o código que a equipe divulgou
-          </Link>{" "}
-          — você confirma com seu e-mail e CPF e cria a senha na hora, sem
-          esperar e-mail. Serve também para quem nunca entrou.
+          Entre com o seu e-mail e o código que a equipe passou — você cria a
+          sua senha depois de entrar. Serve também para quem nunca acessou.
         </p>
+        <Link href="/entrar" className={buttonVariants({ variant: "outline" })}>
+          Entrar com o código
+        </Link>
         <p className="corpo-sm text-muted-foreground">
           Prefere por e-mail?{" "}
           <Link

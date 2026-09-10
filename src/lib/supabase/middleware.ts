@@ -46,6 +46,10 @@ export async function updateSession(request: NextRequest) {
     // consegue logar. Se cair na guarda de sessão, o proxy manda para o
     // `/login` e a tela vira inalcançável para o seu único público.
     pathname === "/resgate" ||
+    // 🔑 `/entrar` é a porta principal durante o evento de acessos: e-mail +
+    // código do grupo, sem senha. Se cair na guarda de sessão, o proxy manda
+    // para o `/login` e a tela vira inalcançável para quem ela atende.
+    pathname === "/entrar" ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||

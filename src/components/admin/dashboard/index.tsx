@@ -138,7 +138,6 @@ export function DashboardExecutivo({
     FASES_CLIENTE.find((x) => x.id === fase)?.rotulo ?? fase;
 
   const faixaCem = trilha.find((f) => f.faixa === "100")?.qtd ?? 0;
-  const esperandoEquipe = atendimento.pendenciasAbertas + atendimento.chamadosAbertos;
 
   const atividade = dados.atividade.map((d) => ({
     dia: diaCurto(d.dia),
@@ -377,33 +376,59 @@ export function DashboardExecutivo({
         </CardDashboard>
 
         {/* 7 — a fila de atendimento. Sem gráfico: é uma FILA, e fila se lê em
-            números com destino, não em desenho. */}
+            números com destino, não em desenho.
+
+            🔴 DOIS números, nunca a soma. Pendência do Diário é um combinado
+            que a equipe anotou; chamado é uma mensagem do aluno esperando
+            resposta. Unidades diferentes somadas viram um total que não existe
+            em lugar nenhum — e o card 5 já proíbe isso em comentário. Cada um
+            leva à sua lista, e o escopo ("no lote carregado") está escrito:
+            este card vale sobre os ambientes carregados, enquanto o badge do
+            header vale sobre a base inteira. */}
         <CardDashboard
           icone={<LifeBuoy />}
           rotulo="Esperando a equipe"
-          valor={String(esperandoEquipe)}
+          valor={
+            <>
+              <Link
+                href={`${LINK_LISTA}&f=pendencia`}
+                prefetch={false}
+                className="foco-visivel rounded-sm hover:underline"
+              >
+                {atendimento.pendenciasAbertas}
+                <span className="corpo-sm text-muted-foreground">
+                  {" "}
+                  pendências
+                </span>
+              </Link>
+              <span aria-hidden className="px-2 text-muted-foreground">
+                ·
+              </span>
+              <Link
+                href={`${LINK_LISTA}&f=chamado`}
+                prefetch={false}
+                className="foco-visivel rounded-sm hover:underline"
+              >
+                {atendimento.chamadosAbertos}
+                <span className="corpo-sm text-muted-foreground">
+                  {" "}
+                  chamados
+                </span>
+              </Link>
+            </>
+          }
+          contexto={`${atendimento.pendenciasAbertas} pendências do Diário e ${atendimento.chamadosAbertos} chamados abertos, nos ${ambientesCarregados} ambientes deste lote. Não se somam.`}
           pares={[
             {
-              rotulo: "Pendências do Diário",
-              valor: String(atendimento.pendenciasAbertas),
-            },
-            {
-              rotulo: "Ambientes",
+              rotulo: "Ambientes com pendência",
               valor: String(atendimento.ambientesComPendencia),
             },
           ]}
-          link={{
-            href: `${LINK_LISTA}&f=pendencia`,
-            rotulo: "Ver quem tem pendência",
-          }}
+          link={null}
+          semLink="Cada número acima abre a lista filtrada."
         >
           <ul className="grid gap-1.5 corpo-sm">
             {[
-              {
-                rotulo: "Chamados abertos",
-                valor: atendimento.chamadosAbertos,
-                href: `${LINK_LISTA}&f=chamado`,
-              },
               {
                 rotulo: "Sem nota no Diário",
                 valor: atendimento.semNenhumaNota,

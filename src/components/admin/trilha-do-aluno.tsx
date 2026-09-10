@@ -1,6 +1,7 @@
-import { History, AlertTriangle } from "lucide-react";
+import { History } from "lucide-react";
 import type { ItemTrilha } from "@/lib/types";
 import { FUSO, formatarData } from "@/lib/datas";
+import { AvisoInline } from "@/components/ui/aviso-inline";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Separator } from "@/components/ui/separator";
@@ -108,14 +109,11 @@ export function TrilhaDoAluno({
       <Separator />
 
       {truncado ? (
-        <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-800">
-          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-          <p>
-            Mostrando apenas os {itens.length} registros mais recentes desta
-            janela — há mais histórico não exibido. Reduza o período ou
-            considere que esta lista não cobre a janela inteira.
-          </p>
-        </div>
+        <AvisoInline>
+          Mostrando apenas os {itens.length} registros mais recentes desta
+          janela — há mais histórico não exibido. Reduza o período ou
+          considere que esta lista não cobre a janela inteira.
+        </AvisoInline>
       ) : null}
 
       <p className="text-xs text-muted-foreground">

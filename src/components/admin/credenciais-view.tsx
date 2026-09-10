@@ -78,25 +78,28 @@ export function CredenciaisView({
 
   return (
     <div className="grid gap-4">
-      <div className="rounded-md border border-green-600/30 bg-green-600/10 p-4">
-        <div className="mb-2 text-sm font-medium text-green-700">{titulo}</div>
+      {/* Par semântico `sucesso` (#186A3B sobre #E8F5EC = 5,91:1), medido na
+          Onda A — não o verde cru do Tailwind, que nunca passou por medição
+          nesta tela. */}
+      <div className="rounded-lg bg-sucesso p-4 text-sucesso-foreground">
+        <div className="mb-2 text-sm font-medium">{titulo}</div>
         <div className="grid gap-1 text-sm">
           <div>
-            <span className="text-muted-foreground">Login:</span>{" "}
+            <span className="text-sucesso-foreground/80">Login:</span>{" "}
             <span className="font-medium">{credenciais.email}</span>
           </div>
           <div>
-            <span className="text-muted-foreground">Senha:</span>{" "}
+            <span className="text-sucesso-foreground/80">Senha:</span>{" "}
             <span className="font-mono font-medium">{credenciais.senha}</span>
           </div>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-xs">
           {credenciais.emailEnviado
             ? "As credenciais também foram enviadas por e-mail."
             : "O e-mail não saiu — repasse as credenciais por WhatsApp."}
         </p>
         {credenciais.precisaConfirmar ? (
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs">
             Obs.: a confirmação de e-mail está ativa — a pessoa precisa
             confirmar o e-mail antes de entrar.
           </p>

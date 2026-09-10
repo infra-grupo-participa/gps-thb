@@ -42,6 +42,13 @@ export interface ErroDeBanco {
  * `42501` também é o código do `permission denied for table gps.membros` do
  * próprio Postgres, que não pode chegar à tela.
  */
+/**
+ * Frase única das guardas de "faltou argumento" das RPCs (`aluno nao
+ * informado`, `cliente nao informado`, ...). Ver o bloco no fim do mapa.
+ */
+const FALTA_PARAMETRO =
+  "Faltou um dado obrigatório para concluir esta ação. Recarregue a tela e tente de novo.";
+
 const FRASES_DO_BANCO: Record<string, string> = {
   "Sem permissão.": "Sem permissão para esta ação.",
   "A senha precisa ter ao menos 8 caracteres.":
@@ -263,6 +270,79 @@ const FRASES_DO_BANCO: Record<string, string> = {
   // o PostgREST direto — a tela nunca escreve estas colunas.
   "O contrato do cliente é anexado pelo próprio portal — este campo não pode ser escrito direto.":
     "O contrato é anexado pelo próprio portal, no botão de anexar da ficha do cliente.",
+
+  // ══════════════════════════════════════════════════════════════════════
+  // PLANTÃO DE DÚVIDAS (migrações ...180 a ...183)
+  // ══════════════════════════════════════════════════════════════════════
+  //
+  // As actions do Plantão (`src/app/admin/plantao/inscritos-actions.ts` e
+  // `alunos-actions.ts`) chamam `traduzirErroBanco` SEM `frasesExtras`, então
+  // tudo o que não estivesse aqui virava "Algum dado enviado está fora do
+  // formato aceito" — genérica onde havia uma frase pronta em português, que é
+  // a única informação acionável da recusa (Auditor C, 10/09).
+  "A edição do painel está temporariamente indisponível.":
+    "A edição do painel está temporariamente indisponível.",
+  "Plantão não encontrado.": "Plantão não encontrado.",
+  "Inscrição não encontrada.": "Inscrição não encontrada.",
+  "Inscrição não encontrada, ou já cancelada.":
+    "Inscrição não encontrada, ou já cancelada.",
+  "Esta inscrição já estava cancelada, ou não existe.":
+    "Esta inscrição já estava cancelada, ou não existe.",
+  "O motivo pode ter no máximo 300 caracteres.":
+    "O motivo pode ter no máximo 300 caracteres.",
+  "O nome pode ter no máximo 120 caracteres.":
+    "O nome pode ter no máximo 120 caracteres.",
+  // ⚠️ Verbatim da migração, COM as aspas em «Liberar aluno»: o mapa casa por
+  // igualdade exata e a frase é o passo seguinte que o admin tem de dar.
+  'Este e-mail não está na base de compradores do Acelera (ou está bloqueado). Use "Liberar aluno" antes de inscrever.':
+    'Este e-mail não está na base de compradores do Acelera (ou está bloqueado). Use "Liberar aluno" antes de inscrever.',
+
+  // ── Onboarding: recusas de FORMA do passo (...206) ─────────────────────
+  //
+  // ⚠️ `'Campo não reconhecido no questionário: %'` NÃO entra: `%` é
+  // placeholder do `raise` e o texto que chega tem o nome do campo no lugar
+  // dele — nenhuma chave por igualdade casaria. Ela cai em POR_CODIGO['22023'],
+  // que é o comportamento certo: o aluno não escolhe nome de campo, quem vê
+  // isso é quem chamou a RPC fora da tela.
+  "passo fora da faixa":
+    "Não foi possível salvar este passo. Recarregue a página e tente de novo.",
+  "dados do passo em formato invalido":
+    "Não foi possível salvar este passo. Recarregue a página e tente de novo.",
+
+  // ══════════════════════════════════════════════════════════════════════
+  // GUARDAS INTERNAS DE PARÂMETRO (RPCs ...152 a ...214)
+  // ══════════════════════════════════════════════════════════════════════
+  //
+  // Minúsculas e sem acento de propósito: NÃO são copy, são a guarda de
+  // "faltou argumento" no topo de cada RPC. Chegar aqui significa chamador
+  // errado (ou chamada direta ao PostgREST), nunca erro de digitação do
+  // usuário — por isso a frase de tela é a mesma para todas e não cita nome de
+  // parâmetro. Mapeadas para o log marcar `mapeado: true` e a tela parar de
+  // dizer "Algum dado enviado está fora do formato aceito", que sugere ao
+  // admin conferir o que ele digitou.
+  "aluno nao informado": FALTA_PARAMETRO,
+  "aluno ou etapa nao informado": FALTA_PARAMETRO,
+  "ambiente ou membro nao informado": FALTA_PARAMETRO,
+  "anexo nao informado": FALTA_PARAMETRO,
+  "cliente nao informado": FALTA_PARAMETRO,
+  "contrato nao informado": FALTA_PARAMETRO,
+  "membro nao informado": FALTA_PARAMETRO,
+  "membro ou ambiente de destino nao informado": FALTA_PARAMETRO,
+  "nota nao informada": FALTA_PARAMETRO,
+
+  // Guardas de PAPEL (mesmas RPCs). A frase é a de `42501`, escrita aqui para
+  // não depender do SQLSTATE que a RPC escolheu.
+  "apenas administradores": "Sem permissão para esta ação.",
+  "sem permissao": "Sem permissão para esta ação.",
+
+  // ── Anexo: variante que faltava (as outras já estão mapeadas acima) ────
+  "tipo de anexo invalido": "Formato não aceito. Envie PNG, JPG, WEBP ou PDF.",
+
+  // ── Config ausente (cron/RPC do Plantão, migrações ...170 a ...176) ────
+  // Não é erro do usuário: é a chave da Resend faltando em `gps.config`. Quem
+  // vê isto é a equipe, e a frase precisa dizer que ninguém recebeu o e-mail.
+  "gps.config.resend_api_key nao configurada":
+    "O envio de e-mail não está configurado no banco — a mensagem não foi enviada. Avise a equipe técnica.",
 };
 
 /**

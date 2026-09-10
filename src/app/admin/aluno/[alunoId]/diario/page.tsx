@@ -1,3 +1,4 @@
+import { cache } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
@@ -24,7 +25,33 @@ import { TrilhaCabecalho } from "@/components/admin/trilha-cabecalho";
 import { TrilhaDoAluno } from "@/components/admin/trilha-do-aluno";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Diário do aluno" };
+/**
+ * 🔑 `cache()` do React: `generateMetadata` e a página pedem o MESMO aluno na
+ * mesma requisição. Sem isto, pôr o nome no título custaria uma segunda
+ * consulta a `thb_alunos` por abertura de tela.
+ */
+const carregarAluno = cache(getAlunoById);
+
+/**
+ * O nome do aluno no título da aba. Com oito abas abertas — o dia normal da
+ * equipe — "Diário do aluno" oito vezes não distingue de quem é cada uma.
+ *
+ * ⚠️ Guarda de papel aqui também: o Diário é exclusivo do admin por LGPD, e
+ * metadata é gerada em paralelo com a página. Sem a guarda, o nome do aluno
+ * poderia sair no título de uma tela que a pessoa nem pode abrir.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ alunoId: string }>;
+}) {
+  const ctx = await getContextoSessao();
+  if (!ctx || ctx.papel !== "admin") return { title: "Diário do aluno" };
+  const { alunoId } = await params;
+  const aluno = await carregarAluno(alunoId);
+  const nome = aluno?.nome?.trim();
+  return { title: nome ? `Diário — ${nome}` : "Diário do aluno" };
+}
 
 type Foco = "tudo" | "aluno" | "equipe";
 type Janela = "30" | "90" | "tudo";
@@ -140,7 +167,7 @@ export default async function AdminAlunoDiarioPage({
     marcosTrilha,
     qtdMembros,
   ] = await Promise.all([
-    getAlunoById(alunoId),
+    carregarAluno(alunoId),
     // A janela vale para as TRÊS fontes da trilha (eventos, notas e ações
     // administrativas) — senão o filtro "30 dias" mostraria nota de 6 meses
     // atrás e a tela mentiria sobre o próprio recorte.

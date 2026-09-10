@@ -234,7 +234,7 @@ export const LIMITE_PAINEL_ALUNOS = 200;
  *  qualquer jeito. */
 export const LIMITE_PAINEL_ALUNOS_MAX = 1000;
 
-/** O que `getAlunosGps` devolve: o LOTE + o tamanho do universo. */
+/** O que `getAlunosGps` devolve: o LOTE + o tamanho do universo (ou o erro). */
 export interface PaginaAlunosGps {
   /** Os ambientes deste lote, já na ordem do banco. */
   alunos: AlunoGps[];
@@ -243,6 +243,18 @@ export interface PaginaAlunosGps {
    * dizer "Mostrando 200 de 1.250" em vez de fingir que 200 é tudo.
    */
   total: number;
+  /**
+   * 🔴 FALHA DA RPC, em português. `undefined` = leitura OK (mesmo com lista
+   * vazia, que aí é base vazia de verdade).
+   *
+   * Existe porque `{ alunos: [], total: 0 }` era INDISTINGUÍVEL dos dois
+   * casos, e a lista renderizava "Nenhum aluno no programa ainda" com CTA de
+   * criar acesso quando o banco tinha caído (Auditor B, achado 7). Quem
+   * consome é OBRIGADO a renderizar `ErroPainel` quando este campo existir —
+   * nunca o `EmptyState`. É a mesma disciplina que `getDashboard()` já segue
+   * na aba ao lado.
+   */
+  erro?: string;
 }
 
 /**
@@ -295,11 +307,16 @@ export async function getAlunosGps(opts?: {
     // ficaria idêntica à de um banco vazio. Registra e só então devolve [].
     logErro("getAlunosGps", error, {
       rpc: "gps.admin_painel_alunos",
-      efeito: "painel exibe lista vazia",
+      efeito: "painel exibe ErroPainel",
       limite,
       offset,
     });
-    return { alunos: [], total: 0 };
+    // Frase de tela, nunca `error.message`: o detalhe cru já foi para o log.
+    return {
+      alunos: [],
+      total: 0,
+      erro: "Não foi possível carregar a lista de alunos agora. Recarregue a página em instantes.",
+    };
   }
 
   const linhas = (data ?? []) as LinhaPainelAlunos[];

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { KeyRound, UserRoundPlus } from "lucide-react";
+import { Info, KeyRound, TriangleAlert, UserRoundPlus } from "lucide-react";
 import {
   buscarAlunos,
   criarAcessoAluno,
@@ -26,6 +26,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
+import { AvisoInline } from "@/components/ui/aviso-inline";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +57,19 @@ export function CriarAcessoPainel({
   const [credenciais, setCredenciais] = useState<Credenciais | null>(null);
   const [cadastrando, setCadastrando] = useState(false);
   const [diag, setDiag] = useState<DiagnosticoLogin | null>(null);
+  /**
+   * O diagnóstico NÃO respondeu (RPC fora do ar, e-mail vazio, sem permissão).
+   * Sem isto a tela ficava idêntica à de um e-mail limpo e o admin criava o
+   * login sem saber que a conta já existe em outro portal do grupo.
+   */
+  const [erroDiag, setErroDiag] = useState<string | null>(null);
+  /** A frase que a action devolveu, JÁ traduzida. Nunca "Erro ao …". */
+  const [erroAcao, setErroAcao] = useState<string | null>(null);
+  /**
+   * A adoção do login preexistente esperando decisão: os outros programas em
+   * que esse mesmo login já é usado. `null` = nada a confirmar.
+   */
+  const [adocao, setAdocao] = useState<string[] | null>(null);
   const [pending, startTransition] = useTransition();
 
   function reset() {
@@ -65,6 +80,9 @@ export function CriarAcessoPainel({
     setCredenciais(null);
     setCadastrando(false);
     setDiag(null);
+    setErroDiag(null);
+    setErroAcao(null);
+    setAdocao(null);
   }
 
   async function buscar(e: React.FormEvent) {
@@ -83,9 +101,18 @@ export function CriarAcessoPainel({
     setEmail(a.email ?? "");
     setCredenciais(null);
     setDiag(null);
+    setErroDiag(null);
+    setErroAcao(null);
+    setAdocao(null);
     startTransition(async () => {
       const res = await diagnosticarLoginAluno(a.id, a.email ?? undefined);
-      if (res.diagnostico) setDiag(res.diagnostico);
+      if (res.diagnostico) {
+        setDiag(res.diagnostico);
+        return;
+      }
+      // 🔴 Falhou: a tela DIZ que não conferiu. Silêncio aqui é
+      // indistinguível de "e-mail limpo, pode criar".
+      setErroDiag(res.erro ?? "A conferência não respondeu.");
     });
   }
 
@@ -102,14 +129,37 @@ export function CriarAcessoPainel({
     }
   }
 
-  function criarLogin() {
+  /**
+   * "Criar login agora" — em DOIS tempos quando o e-mail já tem conta.
+   *
+   * 🔴 A primeira chamada vai sempre com `permitirAdocao: false`. Se o e-mail
+   * já existir em `auth.users` (compartilhado por 7 portais do grupo), a action
+   * volta em `precisaDecisao` **sem ter alterado nada**, com a lista de
+   * programas — e só então perguntamos. Adotar o login TROCA A SENHA da pessoa
+   * nesses sistemas e derruba as sessões dela: é a mesma decisão que o lote se
+   * recusa a tomar 19 vezes num clique, e ela precisa ser nomeada.
+   *
+   * A segunda chamada (`permitirAdocao: true`) só sai do botão do diálogo.
+   */
+  function criarLogin(permitirAdocao: boolean) {
     if (!sel) return;
+    setErroAcao(null);
     startTransition(async () => {
-      const res = await criarAcessoAluno(sel.id, { email });
+      const res = await criarAcessoAluno(sel.id, { email, permitirAdocao });
       if (res.erro) {
+        const decisao = res as { precisaDecisao?: boolean; programas?: string[] };
+        if (!permitirAdocao && decisao.precisaDecisao) {
+          // "GPS" é o nome INTERNO deste portal e não aparece para o usuário:
+          // a lista nomeia só os outros sistemas afetados.
+          setAdocao((decisao.programas ?? []).filter((p) => p !== "GPS"));
+          return;
+        }
+        setAdocao(null);
+        setErroAcao(res.erro);
         toast.error(res.erro);
         return;
       }
+      setAdocao(null);
       setCredenciais({
         email: res.email!,
         senha: res.senha!,
@@ -135,10 +185,13 @@ export function CriarAcessoPainel({
 
   function criarAmbiente() {
     if (!sel) return;
+    setErroAcao(null);
     startTransition(async () => {
       const res = await adicionarAlunoGps(sel.id);
       if (res.erro) {
-        toast.error("Erro ao criar o ambiente.");
+        // A frase já vem traduzida da action; a genérica escondia a instrução.
+        setErroAcao(res.erro);
+        toast.error(res.erro);
         return;
       }
       toast.success("Ambiente criado. O aluno pode se cadastrar com o CPF.");
@@ -204,12 +257,24 @@ export function CriarAcessoPainel({
                 </div>
               </div>
 
+              {/* 🔴 O diagnóstico não respondeu: dizer isso é o mínimo. Criar
+                  o login assim mesmo continua possível — o que não pode é o
+                  admin achar que a conferência foi feita e deu limpo. */}
+              {erroDiag ? (
+                <AvisoInline>
+                  Não foi possível conferir este e-mail nos outros portais do
+                  grupo ({erroDiag}) — confira antes de criar, ou tente de novo
+                  selecionando o aluno outra vez.
+                </AvisoInline>
+              ) : null}
+
               {diag && !diag.temDireito && (
-                <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
-                  <div className="font-medium text-amber-700">
+                <div className="rounded-lg bg-atencao p-3 text-atencao-foreground">
+                  <p className="flex items-center gap-2 text-sm font-medium">
+                    <TriangleAlert aria-hidden className="size-4 shrink-0" />
                     Sem direito ao acesso
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  </p>
+                  <p className="mt-1 text-xs">
                     {diag.motivoDireito} O acesso segue o pagamento — libere
                     pelo financeiro antes de criar o login.
                   </p>
@@ -217,11 +282,12 @@ export function CriarAcessoPainel({
               )}
 
               {diag?.temLogin && (
-                <div className="rounded-md border border-blue-500/50 bg-blue-500/10 p-3 text-sm">
-                  <div className="font-medium text-blue-700">
+                <div className="rounded-lg bg-neutro p-3 text-neutro-foreground">
+                  <p className="flex items-center gap-2 text-sm font-medium">
+                    <Info aria-hidden className="size-4 shrink-0" />
                     Este e-mail já tem login
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  </p>
+                  <p className="mt-1 text-xs">
                     {diag.programas.length > 0 ? (
                       <>
                         Já usado em:{" "}
@@ -265,9 +331,18 @@ export function CriarAcessoPainel({
                 </p>
               </div>
 
+              {/* Sempre montado: região viva que nasce junto com o texto não é
+                  anunciada por parte dos leitores de tela. */}
+              <p
+                role="alert"
+                className="text-sm text-destructive empty:hidden"
+              >
+                {erroAcao}
+              </p>
+
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button
-                  onClick={criarLogin}
+                  onClick={() => criarLogin(false)}
                   disabled={pending}
                   className="flex-1"
                 >
@@ -378,6 +453,45 @@ export function CriarAcessoPainel({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 🔴 A adoção do login preexistente, nomeando os sistemas. Só chega aqui
+          depois de a action ter voltado em `precisaDecisao` — ou seja, nada
+          foi alterado ainda. O botão diz o que vai acontecer, não "OK". */}
+      {adocao ? (
+        <DialogoConfirmacao
+          aberto
+          titulo="Aproveitar o login que já existe?"
+          descricao={`${sel?.nome ?? "Este aluno"} · ${email}`}
+          consequencia={
+            adocao.length > 0 ? (
+              <>
+                Aproveitar esse login <strong>troca a senha da pessoa em: </strong>
+                <strong>{adocao.join(", ")}</strong> e derruba as sessões dela
+                nesses sistemas — ela vai precisar entrar de novo, com a senha
+                nova. O login e a senha são os mesmos em todos os portais do
+                grupo.
+                <br />
+                <br />
+                Avise a pessoa: o sistema não avisa por conta própria.
+              </>
+            ) : (
+              <>
+                A conta existe, mas ainda não está em nenhum outro programa.
+                Aproveitá-la <strong>troca a senha atual</strong> dela e derruba
+                as sessões abertas — avise a pessoa.
+              </>
+            )
+          }
+          rotuloConfirmar="Aproveitar e trocar a senha"
+          rotuloConfirmando="Aproveitando…"
+          confirmando={pending}
+          onConfirmar={() => criarLogin(true)}
+          onCancelar={() => {
+            if (pending) return;
+            setAdocao(null);
+          }}
+        />
+      ) : null}
     </>
   );
 }

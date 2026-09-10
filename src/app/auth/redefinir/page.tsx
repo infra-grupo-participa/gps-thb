@@ -12,9 +12,11 @@ export default function RedefinirSenhaPage() {
         <ThbLogo />
       </div>
 
-      <Card>
+      {/* Mesma família das outras três telas de entrada: `Card raised lg` e
+          `h1` na escala de título. */}
+      <Card elevacao="raised" size="lg">
         <CardHeader>
-          <h1 className="text-lg font-semibold">Criar nova senha</h1>
+          <h1 className="font-heading titulo-h2">Criar nova senha</h1>
           <p className="text-sm text-muted-foreground">
             Defina a nova senha da sua conta.
           </p>

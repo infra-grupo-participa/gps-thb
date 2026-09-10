@@ -1,3 +1,4 @@
+import { cache } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
@@ -13,7 +14,33 @@ import { ChamadoThread } from "@/components/chamados/chamado-thread";
 import { ChamadoResponder } from "@/components/chamados/chamado-responder";
 import { estadoDaResposta } from "@/components/chamados/estado-resposta";
 
-export const metadata = { title: "Admin — Chamado" };
+/**
+ * 🔑 `cache()` do React: `generateMetadata` e a página pedem o MESMO chamado, e
+ * as duas rodam na mesma requisição. Sem isto, pôr o assunto no título custaria
+ * uma segunda leitura de `gps.chamados` + mensagens por abertura de tela.
+ */
+const carregarChamado = cache(getChamado);
+
+/**
+ * O assunto no título da aba. Com oito abas abertas — o dia normal da equipe —
+ * "Admin — Chamado" oito vezes não distingue nada.
+ *
+ * A guarda de papel está aqui também: metadata é gerada em paralelo com a
+ * página, e quem não é admin não deve ver o assunto nem pelo título.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ chamadoId: string }>;
+}) {
+  const ctx = await getContextoSessao();
+  if (!ctx || ctx.papel !== "admin") return { title: "Chamado" };
+  const { chamadoId } = await params;
+  const dados = await carregarChamado(chamadoId);
+  if (!dados) return { title: "Chamado" };
+  const assunto = dados.chamado.assunto?.trim();
+  return { title: assunto ? `${assunto} — chamado` : "Chamado" };
+}
 
 /**
  * A thread na visão da equipe.
@@ -39,7 +66,7 @@ export default async function AdminChamadoPage({
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const dados = await getChamado(chamadoId);
+  const dados = await carregarChamado(chamadoId);
   if (!dados) notFound();
 
   const { chamado, mensagens } = dados;

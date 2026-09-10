@@ -198,6 +198,19 @@ const ROTULO_MACRO_POR_TIPO: Partial<
   // — agregá-los ("Concluiu 1 questionário") só pioraria a leitura. O Partial
   // deste Record é exatamente o que permite deixá-los de fora sem quebrar o
   // build; eles caem no rótulo de evento solto de `ROTULO_TIPO_EVENTO`.
+  //
+  // 🔑 `conta_criada`, `email_confirmado`, `primeiro_acesso`,
+  // `entrou_no_programa` e `cliente_excluido` também NÃO entram — e aqui a
+  // ausência é CONSEQUÊNCIA, não esquecimento (Auditor C, 10/09): os cinco
+  // estão em `TIPOS_NUNCA_AGREGAM`, no topo deste arquivo, e por decisão do
+  // Marcio nunca formam macro. Um rótulo de macro para eles seria código morto
+  // por construção — e, no caso de `cliente_excluido`, contrariaria a regra
+  // ("exclusão é evento sensível, não deve sumir dentro de uma macro"). Os
+  // cinco aparecem soltos, com hora exata, pelo `ROTULO_TIPO_EVENTO` de
+  // `src/components/admin/diario-labels.ts`.
+  //
+  // ⚠️ Antes de acrescentar tipo aqui: confira `TIPOS_NUNCA_AGREGAM`. Rótulo
+  // para tipo que nunca agrega nunca é lido.
   favorito_confirmado_pela_equipe: (n) =>
     `A equipe assumiu o acompanhamento de ${n} clientes`,
   favorito_liberado_pela_equipe: (n) =>

@@ -68,6 +68,8 @@ export function Etapa1Guide({
   const [dataAgendamento, setDataAgendamento] = useState(
     dataAgendamentoInicial ?? "",
   );
+  /** Último valor que o servidor confirmou — a régua do "mudou?" no `blur`. */
+  const [dataSalva, setDataSalva] = useState(dataAgendamentoInicial ?? "");
   const [pending, startTransition] = useTransition();
 
   const {
@@ -112,12 +114,30 @@ export function Etapa1Guide({
     });
   }
 
+  /**
+   * Grava a data — chamada no `blur`, nunca no `onChange`.
+   *
+   * 🔑 `input[type=date]` dispara `change` a cada pedaço digitado (dia, mês,
+   * ano) e a cada clique no calendário: escrever "10/09/2026" à mão rendia
+   * três `update` no banco e três toasts empilhados. No `blur` a gravação
+   * acontece uma vez, com o valor final — e sai um toast só.
+   *
+   * Sem escrita quando nada mudou: sair do campo sem tocar nele não é evento
+   * de salvamento, e um "Data salva." sem alteração ensina a ignorar o aviso.
+   * A comparação é contra o último valor CONFIRMADO pelo servidor
+   * (`dataSalva`), não contra a prop inicial — senão voltar ao valor de origem
+   * depois de gravar outro seria descartado em silêncio.
+   */
   function salvarData(valor: string) {
-    setDataAgendamento(valor);
+    if (valor === dataSalva) return;
     startTransition(async () => {
       const res = await salvarDataAgendamento(alunoId, valor || null);
-      if (res.erro) toast.error("Erro ao salvar a data.");
-      else toast.success("Data de agendamento salva.");
+      if (res.erro) {
+        toast.error("Erro ao salvar a data.");
+        return;
+      }
+      setDataSalva(valor);
+      toast.success("Data de agendamento salva.");
     });
   }
 
@@ -178,9 +198,13 @@ export function Etapa1Guide({
               A lista e a gestão dos clientes ficam na aba{" "}
               <span className="text-accent-foreground">Clientes</span>.
             </div>
+            {/* 🔴 O fichário de documentos por cliente saiu da UI em 07/2026 e
+                não volta: o documento do cliente vive no Drive. A aba Clientes
+                guarda UM arquivo, o contrato assinado (bucket
+                `gps-onboarding`), e é isso que a frase promete. */}
             <p className="text-sm text-muted-foreground">
               Aqui você acompanha o passo a passo; lá você cadastra, controla o
-              contato e guarda os documentos de cada cliente.
+              contato e anexa o contrato assinado.
             </p>
           </div>
           {/* Era o ÚNICO botão laranja sólido da tela, acima do passo a
@@ -327,7 +351,8 @@ export function Etapa1Guide({
                 id="data-agendamento"
                 type="date"
                 value={dataAgendamento}
-                onChange={(e) => salvarData(e.target.value)}
+                onChange={(e) => setDataAgendamento(e.target.value)}
+                onBlur={(e) => salvarData(e.target.value)}
                 className="w-48"
               />
             </div>

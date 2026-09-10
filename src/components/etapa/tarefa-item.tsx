@@ -70,10 +70,17 @@ export function TarefaItem({
 
   return (
     <div className={containerCls}>
+      {/* ♿ A interação principal do produto não tinha nome acessível: sem
+          `<label for>` e sem `aria-label`, o leitor de tela anunciava "caixa
+          de seleção, não marcada" seis vezes seguidas, sem dizer qual passo.
+          O código entra junto do título porque é ele que o aluno usa para se
+          achar na sequência (e no trilho da Etapa 01 o número é `aria-hidden`,
+          então some do texto lido). */}
       <Checkbox
         checked={concluida}
         disabled={t.automatica || pending || bloqueada}
         onCheckedChange={(v) => onToggle(Boolean(v))}
+        aria-label={`Passo ${codigo}: ${t.titulo}`}
         className="mt-0.5"
       />
       <div className="min-w-0 flex-1">

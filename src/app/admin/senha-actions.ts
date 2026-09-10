@@ -1,7 +1,7 @@
 "use server";
 
 import { emailParaIlike, emailValido } from "@/lib/texto";
-import { randomBytes } from "crypto";
+import { gerarSenhaTemporaria } from "@/lib/senha-temporaria";
 import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
@@ -23,11 +23,10 @@ import type { PapelMembro } from "@/lib/types";
  * retrato em `...118` e `...132` (senha do membro).
  */
 
-/** Senha temporária legível para ditar por telefone (ex.: Thb-7f3a-2b9c). */
-function gerarSenhaTemporaria(): string {
-  const b = randomBytes(4).toString("hex");
-  return `Thb-${b.slice(0, 4)}-${b.slice(4)}`;
-}
+// A senha temporária (`Thb-7f3a-2b9c`) vem de `@/lib/senha-temporaria`: o
+// MESMO gerador que `src/app/admin/actions.ts` usa ao criar o acesso. Um
+// módulo `"use server"` não pode exportar função síncrona, por isso ela não
+// mora aqui.
 
 export interface MembroAcesso {
   membroId: string;
@@ -82,10 +81,24 @@ export async function statusAcessoAluno(
  * repassar. Também confirma o e-mail, derruba as sessões antigas e garante o
  * vínculo aluno ⇄ login. O e-mail é só cortesia: se não sair, o acesso já
  * está valendo do mesmo jeito.
+ *
+ * 🔴 MESMA GUARDA CROSS-SISTEMA de `definirSenhaMembro` (war-room 10/09,
+ * achado B2). Esta função endereça o AMBIENTE e cai sempre no TITULAR; a de
+ * baixo endereça `gps.membros.id`. As duas trocam a senha da pessoa nos 7
+ * portais que compartilham `auth.users` e derrubam as sessões dela — e só uma
+ * avisava. Duas portas para o mesmo efeito com atritos opostos é o defeito;
+ * agora as duas param, nomeiam os programas e esperam confirmação.
+ *
+ * Retorno com `precisaConfirmar: true` significa **nada foi alterado**: repita
+ * a chamada com `confirmarOutrosSistemas: true`.
  */
 export async function definirSenhaAluno(
   alunoId: string,
-  opts?: { senha?: string; enviarEmail?: boolean },
+  opts?: {
+    senha?: string;
+    enviarEmail?: boolean;
+    confirmarOutrosSistemas?: boolean;
+  },
 ): Promise<{
   erro?: string;
   email?: string;
@@ -93,6 +106,9 @@ export async function definirSenhaAluno(
   emailEnviado?: boolean;
   telefone?: string | null;
   nome?: string | null;
+  /** A conta tem papel em OUTRO sistema do grupo; nada foi alterado. Repita com `confirmarOutrosSistemas: true`. */
+  precisaConfirmar?: boolean;
+  programas?: string[];
 }> {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
 
@@ -102,6 +118,38 @@ export async function definirSenhaAluno(
   }
 
   const supabase = await createClient();
+
+  // Antes de trocar a senha (e derrubar as sessões) de uma conta privilegiada
+  // em OUTRO portal, o admin precisa saber — e confirmar. `admin_status_acesso`
+  // é a MESMA RPC que a tela já usa: `email_login` é o e-mail do titular, que
+  // é exatamente quem `admin_definir_senha` atinge. "GPS" sai da lista porque é
+  // o portal em que o admin já está.
+  if (opts?.confirmarOutrosSistemas !== true) {
+    const { data: status } = await supabase
+      .schema("gps")
+      .rpc("admin_status_acesso", { p_aluno_id: alunoId });
+    const emailLogin = (status as { email_login?: string | null } | null)
+      ?.email_login;
+    if (emailLogin) {
+      const { data: prog, error: erroProg } = await supabase
+        .schema("gps")
+        .rpc("admin_programas_do_email", { p_email: emailLogin });
+      // Falha FECHADA: sem saber em quais portais a conta tem papel, não se
+      // troca senha nenhuma (Fable, war-room 10/09).
+      if (erroProg) {
+        return { erro: traduzirErroBanco("admin/definirSenhaAluno.programas", erroProg) };
+      }
+      const programas = (
+        (prog as { programas?: { programa: string }[] } | null)?.programas ?? []
+      )
+        .map((x) => x.programa)
+        .filter((nome) => nome !== "GPS");
+      if (programas.length > 0) {
+        return { precisaConfirmar: true, programas };
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .schema("gps")
     .rpc("admin_definir_senha", { p_aluno_id: alunoId, p_senha: senha });
@@ -202,9 +250,12 @@ export async function definirSenhaMembro(
         (status as { membros?: { membro_id: string; email: string | null }[] } | null)?.membros ?? []
       ).find((m) => m.membro_id === membroId)?.email;
       if (emailDoMembro) {
-        const { data: prog } = await supabase
+        const { data: prog, error: erroProg } = await supabase
           .schema("gps")
           .rpc("admin_programas_do_email", { p_email: emailDoMembro });
+        if (erroProg) {
+          return { erro: traduzirErroBanco("admin/definirSenhaMembro.programas", erroProg) };
+        }
         const programas = (
           (prog as { programas?: { programa: string }[] } | null)?.programas ?? []
         )
@@ -284,7 +335,13 @@ export async function definirSenhaMembro(
  */
 export async function excluirAcessoAluno(
   alunoId: string,
-): Promise<{ erro?: string; loginApagado?: boolean; email?: string | null }> {
+): Promise<{
+  erro?: string;
+  loginApagado?: boolean;
+  email?: string | null;
+  /** Preenchido quando o login FICOU (tem registros em outro portal do grupo) e só o ambiente foi apagado (…217). */
+  loginPreservadoMotivo?: string | null;
+}> {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
 
   const supabase = await createClient();
@@ -296,10 +353,16 @@ export async function excluirAcessoAluno(
     return { erro: traduzirErroBanco("admin/excluirAcessoAluno", error) };
   }
 
+  const r = data as {
+    login_apagado?: boolean;
+    email?: string;
+    login_preservado_motivo?: string | null;
+  } | null;
   revalidatePath("/admin", "layout");
   return {
-    loginApagado: Boolean((data as { login_apagado?: boolean })?.login_apagado),
-    email: (data as { email?: string })?.email ?? null,
+    loginApagado: Boolean(r?.login_apagado),
+    email: r?.email ?? null,
+    loginPreservadoMotivo: r?.login_preservado_motivo ?? null,
   };
 }
 
@@ -311,12 +374,15 @@ export async function excluirAcessoAluno(
 export async function adicionarSocioAluno(
   ambienteAlunoId: string,
   socioAlunoId: string,
-  opts?: { email?: string; senha?: string },
+  opts?: { email?: string; senha?: string; confirmarOutrosSistemas?: boolean },
 ): Promise<{
   erro?: string;
   email?: string;
   senha?: string;
   emailEnviado?: boolean;
+  /** O e-mail já tem conta com papel em OUTRO sistema do grupo; nada foi alterado. Repita com `confirmarOutrosSistemas: true`. */
+  precisaConfirmar?: boolean;
+  programas?: string[];
 }> {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
 
@@ -330,6 +396,29 @@ export async function adicionarSocioAluno(
   }
 
   const supabase = await createClient();
+
+  // Guarda cross-sistema (war-room 10/09, achado E1): quando o e-mail JÁ tem
+  // conta em `auth.users`, `admin_adicionar_socio` TROCA a senha dela e derruba
+  // as sessões — e `auth.users` é de 7 portais. Mesmo contrato de
+  // `definirSenhaAluno`/`definirSenhaMembro`: devolve `precisaConfirmar` +
+  // programas SEM tocar em nada; a UI repete com `confirmarOutrosSistemas`.
+  if (opts?.confirmarOutrosSistemas !== true) {
+    const { data: prog, error: erroProg } = await supabase
+      .schema("gps")
+      .rpc("admin_programas_do_email", { p_email: email });
+    if (erroProg) {
+      return { erro: traduzirErroBanco("admin/adicionarSocioAluno.programas", erroProg) };
+    }
+    const programas = (
+      (prog as { programas?: { programa: string }[] } | null)?.programas ?? []
+    )
+      .map((x) => x.programa)
+      .filter((nome) => nome !== "GPS");
+    if (programas.length > 0) {
+      return { precisaConfirmar: true, programas };
+    }
+  }
+
   const { data, error } = await supabase.schema("gps").rpc(
     "admin_adicionar_socio",
     {

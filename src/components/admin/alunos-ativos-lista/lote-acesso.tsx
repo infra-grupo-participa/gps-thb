@@ -51,6 +51,37 @@ import {
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import type { AlunoGps } from "@/lib/data";
 
+/** Como chamar e como falar com uma pessoa do lote, no instante do clique. */
+interface PessoaDoLote {
+  nome: string;
+  telefone: string | null;
+  email: string | null;
+}
+
+/** O relatório e as pessoas dele, congelados juntos. */
+interface RelatorioCongelado {
+  resultados: ResultadoAcessoEmLote[];
+  pessoas: Map<string, PessoaDoLote>;
+}
+
+/**
+ * Fotografa nome/telefone/e-mail dos ambientes informados. Chamada no clique,
+ * NUNCA no render: o que a tela tem depois do `router.refresh()` já é outra
+ * lista.
+ */
+function congelarPessoas(lista: AlunoGps[]): Map<string, PessoaDoLote> {
+  const mapa = new Map<string, PessoaDoLote>();
+  for (const a of lista) {
+    if (mapa.has(a.alunoId)) continue;
+    mapa.set(a.alunoId, {
+      nome: a.aluno?.nome ?? a.aluno?.email ?? "Aluno sem nome",
+      telefone: a.aluno?.telefone ?? null,
+      email: a.aluno?.email ?? null,
+    });
+  }
+  return mapa;
+}
+
 export function LoteDeAcesso({
   selecionados,
   candidatos,
@@ -68,7 +99,18 @@ export function LoteDeAcesso({
   const router = useRouter();
   const [confirmando, setConfirmando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [relatorio, setRelatorio] = useState<ResultadoAcessoEmLote[] | null>(null);
+  /**
+   * 🔴 O relatório guarda os RESULTADOS **e** a identificação das pessoas,
+   * congelada no clique.
+   *
+   * `candidatos` é a lista do filtro "sem login" — e o `router.refresh()` que
+   * o próprio lote dispara ESVAZIA essa lista (quem ganhou login sai do
+   * filtro). Ler nome/telefone dela na hora de desenhar o relatório fazia
+   * justamente quem ficou **sem e-mail** virar "Aluno", com a mensagem de
+   * WhatsApp saindo sem nome e sem link — no único caso em que a senha só
+   * existe ali, naquela tela.
+   */
+  const [relatorio, setRelatorio] = useState<RelatorioCongelado | null>(null);
   const [enviando, startTransition] = useTransition();
 
   const qtd = selecionados.length;
@@ -76,10 +118,12 @@ export function LoteDeAcesso({
   const nomeDe = new Map(
     candidatos.map((a) => [a.alunoId, a.aluno?.nome ?? a.aluno?.email ?? "Aluno sem nome"]),
   );
-  const telefoneDe = new Map(candidatos.map((a) => [a.alunoId, a.aluno?.telefone ?? null]));
 
   function criar() {
     setErro(null);
+    // Snapshot SÍNCRONO, antes do await: `selecionados` e `candidatos` ainda
+    // são os desta tela. Depois do `router.refresh()` eles não existem mais.
+    const pessoas = congelarPessoas([...candidatos, ...selecionados]);
     startTransition(async () => {
       const r = await criarAcessosEmLote(selecionados.map((a) => a.alunoId));
       if (r.erro) {
@@ -87,7 +131,7 @@ export function LoteDeAcesso({
         return;
       }
       setConfirmando(false);
-      setRelatorio(r.resultados);
+      setRelatorio({ resultados: r.resultados, pessoas });
       onLimpar();
       // O lote muda `temLogin` de todo mundo que passou: sem isto os cards
       // continuariam dizendo "sem login" até alguém recarregar à mão.
@@ -188,9 +232,8 @@ export function LoteDeAcesso({
 
       {relatorio ? (
         <RelatorioDoLote
-          resultados={relatorio}
-          nomeDe={nomeDe}
-          telefoneDe={telefoneDe}
+          resultados={relatorio.resultados}
+          pessoas={relatorio.pessoas}
           onFechar={() => setRelatorio(null)}
         />
       ) : null}
@@ -211,13 +254,12 @@ export function LoteDeAcesso({
  */
 function RelatorioDoLote({
   resultados,
-  nomeDe,
-  telefoneDe,
+  pessoas,
   onFechar,
 }: {
   resultados: ResultadoAcessoEmLote[];
-  nomeDe: Map<string, string>;
-  telefoneDe: Map<string, string | null>;
+  /** Nome, telefone e e-mail congelados no clique — ver `RelatorioCongelado`. */
+  pessoas: Map<string, PessoaDoLote>;
   onFechar: () => void;
 }) {
   const criados = resultados.filter((r) => r.ok);
@@ -277,7 +319,7 @@ function RelatorioDoLote({
                   />
                 )}
                 <span className="min-w-0 flex-1 truncate corpo-sm font-medium">
-                  {nomeDe.get(r.alunoId) ?? "Aluno"}
+                  {pessoas.get(r.alunoId)?.nome ?? "Aluno"}
                 </span>
                 <span
                   className={`shrink-0 rotulo ${
@@ -326,8 +368,8 @@ function RelatorioDoLote({
                 <CopiarCredenciais
                   email={r.email}
                   senha={r.senha}
-                  nome={nomeDe.get(r.alunoId) ?? null}
-                  telefone={telefoneDe.get(r.alunoId) ?? null}
+                  nome={pessoas.get(r.alunoId)?.nome ?? null}
+                  telefone={pessoas.get(r.alunoId)?.telefone ?? null}
                 />
               ) : null}
             </li>

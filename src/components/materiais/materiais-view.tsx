@@ -221,10 +221,13 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
+      // ⚠️ CONTRASTE — o chip ativo era `bg-primary` (#FF6300) com branco:
+      // **2,98:1**. `marca-acao` (#C74600) com branco dá **4,88:1**, medido —
+      // é o mesmo par dos chips de filtro de `/clientes` e `/admin`.
       className={
         "rounded-full border px-3 py-1 text-xs font-medium transition " +
         (ativo
-          ? "border-primary bg-primary text-primary-foreground"
+          ? "border-marca-acao bg-marca-acao text-white"
           : "border-border bg-background text-muted-foreground hover:bg-muted")
       }
     >

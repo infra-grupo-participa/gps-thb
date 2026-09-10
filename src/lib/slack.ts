@@ -69,11 +69,10 @@ export function slackConfigurado(): { configurado: boolean; modo: Modo | null } 
   return { configurado: m !== null, modo: m?.modo ?? null };
 }
 
-/** @deprecated use `slackConfigurado()`; mantido para os chamadores antigos. */
-export function webhookConfigurado(): boolean {
-  return modoAtivo() !== null;
-}
-
+// `webhookConfigurado()` foi APAGADA (war-room 10/09): 0 chamadores e
+// @deprecated desde que nasceu. Duas funções respondendo "está configurado?"
+// é a chance de uma tela dizer "sim" enquanto a outra diz "não".
+//
 export interface MencaoParaSlack {
   /** Nome de quem escreveu a nota. */
   autor: string;

@@ -31,10 +31,11 @@ export function ExcluirAmbiente({
             <ShieldAlert className="size-4" /> Excluir o ambiente inteiro
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Apaga o login de <strong>todos os membros</strong> (titular
-            e sócios) e tudo que existe no programa (clientes,
-            progresso, reuniões). O cadastro de cada um na base do Time
-            Holding Brasil é preservado. Não tem volta — para digitar{" "}
+            Apaga tudo que existe no programa (clientes, progresso,
+            diário, chamados) e o login de <strong>todos os membros</strong>{" "}
+            (titular e sócios) — exceto o login que também tenha registro em
+            outro portal do grupo, que é preservado e avisado ao final. O
+            cadastro de cada um na base do Time Holding Brasil é preservado. Não tem volta — para digitar{" "}
             <span className="font-mono font-medium">EXCLUIR</span> e
             confirmar.
           </p>

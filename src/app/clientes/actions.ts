@@ -252,13 +252,29 @@ export async function atualizarCliente(
   const { patch: validado, erro: erroValidacao } = validarPatch(seguro);
   if (erroValidacao || !validado) return { erro: erroValidacao };
   const supabase = await createClient();
-  const { error } = await supabase
+  // `.select("id")` NÃO é enfeite: sem ele, um `update` que não casa linha
+  // nenhuma (id de outro ambiente, cliente já apagado, RLS recusando) volta
+  // `error: null` e a ficha dizia "Ficha salva." tendo salvo NADA — a mesma
+  // armadilha já fechada em `salvarPerfilAluno`. Com o `select`, a resposta
+  // traz as linhas afetadas e 0 vira erro em português.
+  const { data, error } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
     .update(validado)
-    .eq("id", clienteId);
+    .eq("id", clienteId)
+    .select("id");
 
   if (error) return { erro: traduzirErroBanco("atualizarCliente", error) };
+  if ((data ?? []).length === 0) {
+    logErro("atualizarCliente", "update sem linha afetada", {
+      alunoId,
+      campos: Object.keys(validado).join(","),
+    });
+    return {
+      erro:
+        "Nada foi salvo — a ficha não foi encontrada ou você não tem acesso a ela.",
+    };
+  }
   revalidar(alunoId);
   return {};
 }
@@ -314,6 +330,34 @@ export async function definirClienteEquipe(
   const supabase = await createClient();
   const gps = supabase.schema("gps");
 
+  // 🔴 CONFERE O ALVO ANTES DE DESMARCAR (achado do Auditor A). A ordem
+  // "desmarca todos → marca um" é OBRIGATÓRIA: o índice único parcial
+  // `etapa1_clientes_unico_equipe` recusa duas linhas marcadas ao mesmo tempo,
+  // então marcar primeiro é impossível. O defeito era outro: com um id fora do
+  // ambiente, o segundo `update` não casava linha nenhuma, voltava sem erro —
+  // e a estrela do aluno tinha sido apagada por nada.
+  //
+  // ESCOLHA: pré-checagem aqui, não RPC nova. Uma RPC exigiria migração
+  // aplicada pelo João e duplicaria em SQL a regra que a trigger da ...215 já
+  // impõe; a pré-checagem fecha o caso relatado (id de outro ambiente) ANTES
+  // de qualquer escrita e não acrescenta superfície no banco. O `.eq(aluno_id)`
+  // é defesa em profundidade — quem autoriza é a RLS, e para o admin em Modo
+  // Assistência `alunoId` é o ambiente que ele está gerenciando.
+  if (ativar) {
+    const { data: alvo, error: eAlvo } = await gps
+      .from("etapa1_clientes")
+      .select("id")
+      .eq("id", clienteId)
+      .eq("aluno_id", alunoId)
+      .maybeSingle();
+    if (eAlvo) return { erro: traduzirErroBanco("definirClienteEquipe", eAlvo) };
+    if (!alvo) {
+      return {
+        erro: "Cliente não encontrado neste ambiente. Recarregue a lista.",
+      };
+    }
+  }
+
   // Desmarca todos primeiro (respeita o índice único parcial).
   const { error: e1 } = await gps
     .from("etapa1_clientes")
@@ -323,11 +367,23 @@ export async function definirClienteEquipe(
   if (e1) return { erro: traduzirErroBanco("definirClienteEquipe", e1) };
 
   if (ativar) {
-    const { error: e2 } = await gps
+    const { data: marcados, error: e2 } = await gps
       .from("etapa1_clientes")
       .update({ acompanhado_equipe: true })
-      .eq("id", clienteId);
+      .eq("id", clienteId)
+      .select("id");
     if (e2) return { erro: traduzirErroBanco("definirClienteEquipe", e2) };
+    // Corrida estreita (a linha sumiu entre a checagem e o update): não dá
+    // para restaurar a estrela anterior daqui, mas mentir "salvo" é pior —
+    // a tela recarrega e o aluno vê o estado real.
+    if ((marcados ?? []).length === 0) {
+      logErro("definirClienteEquipe", "update sem linha afetada", { alunoId });
+      revalidar(alunoId);
+      return {
+        erro:
+          "Não foi possível marcar este cliente. Recarregue a lista e tente de novo.",
+      };
+    }
   }
 
   revalidar(alunoId);

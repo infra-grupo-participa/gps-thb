@@ -146,6 +146,11 @@ export function FichaCabecalho({
       {/* Só a equipe confirma/libera — e só quando este cliente É a estrela.
           Confirmar um que não é a estrela criaria um terceiro estado que
           nenhuma tela sabe mostrar (a RPC recusa).
+          🔑 Na prévia "como o aluno vê" este bloco SOME: a classe
+          `previa-oculta` vive na raiz de `AcoesAcompanhamento`, um lugar só,
+          para valer em qualquer tela que venha a montá-lo. O aviso logo acima
+          (`AvisoAcompanhamento`) troca para a variante do aluno pela mesma
+          regra de CSS.
           🔑 A condição lê `cliente.acompanhado_equipe` (dado do SERVIDOR), não
           o `acompanhado` otimista: com o otimista, marcar a estrela faria o
           botão "Confirmar" aparecer antes de o banco ter a estrela, e o clique

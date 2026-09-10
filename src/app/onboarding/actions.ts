@@ -433,12 +433,32 @@ export async function trocarSenhaObrigatoria(
   if (error) {
     // GoTrue, não Postgres: `traduzirErroBanco` não serve. As duas causas
     // reais precisam chegar ao usuário com o que fazer.
-    logErro("trocarSenhaObrigatoria", error, { code: error.code ?? null });
-    if (error.code === "weak_password" || /password/i.test(error.message)) {
+    //
+    // 🔴 CLASSIFICA POR `error.code`, NUNCA POR `error.message`. Este passo é
+    // obrigatório para todo aluno com senha temporária, e repetir a senha
+    // atual é o erro mais comum dele: o GoTrue devolve `same_password` com a
+    // mensagem "New password should be different from the old password", que
+    // casa com `/password/i`. Com o teste de mensagem primeiro, a tela acusava
+    // "Senha fraca" — juízo errado sobre a senha da pessoa.
+    const codigo = error.code ?? null;
+    logErro("trocarSenhaObrigatoria", error, { code: codigo });
+    if (codigo === "same_password") {
+      return { erro: "Escolha uma senha diferente da atual." };
+    }
+    if (codigo === "weak_password") {
       return { erro: "Senha fraca: escolha uma senha mais forte." };
     }
-    if (error.code === "same_password") {
-      return { erro: "Escolha uma senha diferente da atual." };
+    // Fallback SÓ quando o GoTrue não mandou `code` (versões antigas do
+    // servidor de auth). Mesmo aqui, "senha igual" é testada antes de "senha
+    // fraca" — a frase específica vem primeiro, a genérica depois.
+    if (!codigo) {
+      const msg = error.message ?? "";
+      if (/different from the old password/i.test(msg)) {
+        return { erro: "Escolha uma senha diferente da atual." };
+      }
+      if (/password/i.test(msg)) {
+        return { erro: "Senha fraca: escolha uma senha mais forte." };
+      }
     }
     return { erro: "Não foi possível trocar a senha agora. Tente de novo." };
   }

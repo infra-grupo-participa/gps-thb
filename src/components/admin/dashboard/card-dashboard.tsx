@@ -52,8 +52,15 @@ export function CardDashboard({
 }: {
   icone: React.ReactNode;
   rotulo: string;
-  /** O número macro, já formatado. */
-  valor: string;
+  /**
+   * O número macro, já formatado.
+   *
+   * Aceita nó, e não só texto, para o caso em que somar seria mentir: o card
+   * "Esperando a equipe" mostra DOIS números lado a lado (pendências ·
+   * chamados), porque são unidades diferentes. Quando for nó, mande também
+   * `valorDescricao` — é o que o leitor de tela anuncia.
+   */
+  valor: React.ReactNode;
   /** Texto para leitor de tela quando `valor` é abreviado ("R$ 42 mil"). */
   valorDescricao?: string;
   destaque?: boolean;

@@ -85,14 +85,19 @@ export function InterruptorInscricoes({
             "mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium " +
             // O laranja da marca (#ff6300) não passa 4.5:1 como texto —
             // entra só no ponto (decorativo); o rótulo usa a cor de texto.
+            // Pausado é estado de ATENÇÃO e usa o par semântico medido
+            // (#8A5300 sobre #FFF4E0 = 5,81:1), o mesmo do `Badge warning` e
+            // do `AvisoInline` — não o âmbar cru do Tailwind, que nunca passou
+            // por medição de contraste nesta tela.
             (inscricoesAbertas
               ? "border-primary/40 bg-primary/10 text-foreground"
-              :"border-amber-600/40 bg-amber-500/15 text-amber-900")
+              : "border-atencao-foreground/30 bg-atencao text-atencao-foreground")
           }
         >
           <span
             className={
-              "size-1.5 rounded-full " + (inscricoesAbertas ? "bg-primary" : "bg-amber-500")
+              "size-1.5 rounded-full " +
+              (inscricoesAbertas ? "bg-primary" : "bg-atencao-foreground")
             }
             aria-hidden
           />

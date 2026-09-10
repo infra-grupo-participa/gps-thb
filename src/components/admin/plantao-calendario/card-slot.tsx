@@ -65,6 +65,12 @@ export function CardSlot({
   const cancelado = slot.canceladoEm !== null;
   const emAcao = slotEmAcao === slot.slotId;
   const semEmailDaMentora = !slot.mentoraEmail;
+  /**
+   * 🔴 Remover com inscrito ATIVO é recusado pelo servidor. A tela tem o
+   * número — então ela desabilita e ESCREVE a razão, em vez de deixar clicar
+   * para o servidor recusar depois (a mesma regra do lote de acesso).
+   */
+  const travadoPorInscritos = slot.inscritosQtd > 0;
   const faixa = faixaHorario(slot.horaInicio, slot.duracaoMin);
   return (
     <div
@@ -160,10 +166,17 @@ export function CardSlot({
           <Button
             variant="ghost"
             size="icon-sm"
-            disabled={pending}
+            disabled={pending || travadoPorInscritos}
             onClick={() => remover(slot)}
             className="text-muted-foreground hover:text-destructive"
-            title="Remover"
+            title={
+              travadoPorInscritos
+                ? "Não dá para remover um plantão com inscrito ativo"
+                : "Remover"
+            }
+            aria-describedby={
+              travadoPorInscritos ? `remover-travado-${slot.slotId}` : undefined
+            }
             aria-label={`Remover o plantão das ${faixa}`}
           >
             <Trash2Icon className="size-4" />
@@ -180,6 +193,20 @@ export function CardSlot({
           (quem não recebeu precisa ser avisado por fora) e o plantão
           saiu do ar. Fica aqui como histórico; use remover para tirar
           da agenda.
+        </p>
+      ) : null}
+
+      {travadoPorInscritos ? (
+        <p
+          id={`remover-travado-${slot.slotId}`}
+          className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground"
+        >
+          <UsersIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          <span>
+            &ldquo;Remover&rdquo; está travado: {slot.inscritosQtd} pessoa(s)
+            inscrita(s). Use <strong>&ldquo;Cancelar plantão&rdquo;</strong> —
+            ele avisa os inscritos por e-mail e mantém o registro.
+          </span>
         </p>
       ) : null}
 

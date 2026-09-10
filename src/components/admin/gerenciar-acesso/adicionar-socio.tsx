@@ -16,6 +16,7 @@ import { UserPlus } from "lucide-react";
 import { adicionarSocioAluno } from "@/app/admin/senha-actions";
 import { buscarAlunos, type AlunoBusca } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,10 @@ export function AdicionarSocio({
   const [sel, setSel] = useState<AlunoBusca | null>(null);
   const [email, setEmail] = useState("");
   const [credenciais, setCredenciais] = useState<Credenciais | null>(null);
+  // E1 (war-room 10/09): o e-mail já tem conta com papel em OUTRO portal do
+  // grupo. A action voltou SEM mexer em nada; só depois do "sim" ela repete
+  // com `confirmarOutrosSistemas` — mesmo contrato do "Definir senha".
+  const [outrosPortais, setOutrosPortais] = useState<string[] | null>(null);
   const [pending, startTransition] = useTransition();
 
   async function buscar(e: React.FormEvent) {
@@ -61,12 +66,18 @@ export function AdicionarSocio({
     setEmail(a.email ?? "");
   }
 
-  function adicionar() {
+  function adicionar(confirmarOutros = false) {
     if (!sel) return;
     startTransition(async () => {
       const res = await adicionarSocioAluno(ambienteAlunoId, sel.id, {
         email,
+        confirmarOutrosSistemas: confirmarOutros || undefined,
       });
+      if (res.precisaConfirmar) {
+        setOutrosPortais(res.programas ?? []);
+        return;
+      }
+      setOutrosPortais(null);
       if (res.erro) {
         toast.error(res.erro);
         return;
@@ -126,9 +137,26 @@ export function AdicionarSocio({
               placeholder="email@exemplo.com"
             />
           </div>
-          <Button onClick={adicionar} disabled={pending}>
+          <Button onClick={() => adicionar()} disabled={pending}>
             <UserPlus className="size-4" /> Adicionar como sócio
           </Button>
+          <DialogoConfirmacao
+            aberto={outrosPortais !== null}
+            titulo="Este e-mail já tem conta em outro portal do grupo"
+            descricao={
+              <>
+                <strong>{email}</strong> já entra em:{" "}
+                <strong>{(outrosPortais ?? []).join(", ")}</strong>.
+              </>
+            }
+            consequencia="Adicionar como sócio TROCA a senha dessa conta e derruba as sessões abertas dela em todos os portais. A pessoa precisa ser avisada da senha nova."
+            rotuloConfirmar="Trocar a senha e adicionar como sócio"
+            rotuloConfirmando="Adicionando..."
+            destrutivo
+            confirmando={pending}
+            onConfirmar={() => adicionar(true)}
+            onCancelar={() => setOutrosPortais(null)}
+          />
         </>
       ) : (
         <>

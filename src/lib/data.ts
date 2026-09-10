@@ -38,10 +38,13 @@ export {
   getClientesEtapa1,
   getClienteById,
   getClienteEquipe,
-  getClientesHonorarios,
   getAgendamentosEtapa3,
   getRevisaoEtapa3,
 } from "@/lib/data/clientes";
+// `getClientesHonorarios` NÃO passa por aqui: o único consumidor é
+// `src/lib/financeiro.ts`, que importa direto de `@/lib/data/clientes`.
+// Barril com nome que ninguém pega é convite a um segundo caminho para o
+// mesmo dado.
 
 export {
   getEtapas,
@@ -53,8 +56,10 @@ export {
 export {
   getDiagnosticoAmbiente,
   getEtapasLiberadasPara,
-  mapearStatusAcesso,
 } from "@/lib/data/central";
+// `mapearStatusAcesso` NÃO passa por aqui: `src/app/admin/senha-actions.ts`
+// importa direto de `@/lib/data/central` (e precisa, porque um módulo
+// `"use server"` não pode reexportar função síncrona).
 export type {
   DiagnosticoAmbiente,
   VerificacaoDiagnostico,

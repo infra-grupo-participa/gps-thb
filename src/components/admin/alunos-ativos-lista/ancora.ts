@@ -22,13 +22,25 @@ import { useLayoutEffect } from "react";
  * React. É o caso que o `useLayoutEffect` existe para atender — sincronizar
  * com um sistema externo (a página) — e evita re-renderizar a lista inteira
  * duas vezes por causa de um anel que dura 2,6 s.
+ *
+ * 🔴 **A marca tem VALIDADE.** A chave só era consumida quando a lista
+ * MONTAVA — e a aba "Alunos ativos" desmonta quando o admin vai para
+ * "Plantão". Sair por outra aba e voltar meia hora depois fazia a tela pular
+ * sozinha para um card que ninguém pediu, que é exatamente o caso que este
+ * arquivo existe para evitar. Agora a marca guarda o instante e vence em
+ * {@link VALIDADE_MS}: passou disso, é lixo e é descartada sem rolar nada.
  */
 const CHAVE = "gps.admin.painel.ultimoAluno";
+
+/** Quanto tempo a marca "eu saí deste card" continua valendo. */
+const VALIDADE_MS = 10 * 60 * 1000;
 
 /** Chamado no clique do card, antes de sair da página. */
 export function marcarUltimoAluno(alunoId: string) {
   try {
-    sessionStorage.setItem(CHAVE, alunoId);
+    // `id|timestamp`: um `JSON.parse` a menos e o formato antigo (só o id)
+    // simplesmente não casa o `split`, então vence por ausência de data.
+    sessionStorage.setItem(CHAVE, `${alunoId}|${Date.now()}`);
   } catch {
     // Aba anônima com storage bloqueado: a âncora é conforto, não função.
   }
@@ -40,19 +52,25 @@ export function marcarUltimoAluno(alunoId: string) {
  * Roda **depois** de a lista filtrada existir no DOM (ela é calculada durante
  * o render), que é a condição que o `scrollY` não conseguia satisfazer.
  *
- * A chave é consumida numa tentativa só: sem isso, mudar o filtro cinco
- * minutos depois faria a tela pular sozinha para um card que ninguém pediu.
+ * A chave é consumida numa tentativa só — e vence em {@link VALIDADE_MS}, para
+ * o caso em que a lista nem chega a montar (o admin saiu pela aba Plantão).
  */
 export function useAncoraDoPainel(): void {
   useLayoutEffect(() => {
-    let alvo: string | null = null;
+    let bruto: string | null = null;
     try {
-      alvo = sessionStorage.getItem(CHAVE);
-      if (alvo) sessionStorage.removeItem(CHAVE);
+      bruto = sessionStorage.getItem(CHAVE);
+      // Consome SEMPRE que existir: uma tentativa só, válida ou vencida.
+      if (bruto) sessionStorage.removeItem(CHAVE);
     } catch {
       return;
     }
-    if (!alvo) return;
+    if (!bruto) return;
+
+    const [alvo, carimbo] = bruto.split("|");
+    const marcadoEm = Number(carimbo);
+    if (!alvo || !Number.isFinite(marcadoEm)) return;
+    if (Date.now() - marcadoEm > VALIDADE_MS) return; // marca velha: não rola
 
     const el = document.querySelector<HTMLElement>(
       `[data-aluno-id="${CSS.escape(alvo)}"]`,

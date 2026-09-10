@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cadastrar, type CadastroState } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 import {
   mascaraCpfCnpj,
@@ -12,6 +13,15 @@ import {
   soDigitos,
   tipoDocumento,
 } from "@/lib/masks";
+
+/**
+ * Mínimo de caracteres da senha.
+ *
+ * Era 6 aqui, 6 no `/auth/redefinir` e no `/perfil`, e 8 no onboarding e nas
+ * três RPCs de senha do admin: a MESMA conta tinha duas regras, e a mais
+ * frouxa era a da porta de entrada. 8 é o valor que o banco já exige.
+ */
+import { SENHA_MINIMO } from "@/lib/senha-regras";
 
 export function CadastroForm() {
   const router = useRouter();
@@ -21,7 +31,6 @@ export function CadastroForm() {
   );
   const [documento, setDocumento] = useState("");
   const [telefone, setTelefone] = useState("");
-  const [senhaVisivel, setSenhaVisivel] = useState(false);
 
   const digitosDoc = soDigitos(documento);
   const tipo = tipoDocumento(documento);
@@ -92,24 +101,18 @@ export function CadastroForm() {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="senha">Senha</Label>
-        <div className="relative">
-          <Input
-            id="senha"
-            name="senha"
-            type={senhaVisivel ? "text" : "password"}
-            autoComplete="new-password"
-            placeholder="Mínimo de 6 caracteres"
-            required
-            minLength={6}
-          />
-          <button
-            type="button"
-            onClick={() => setSenhaVisivel((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
-          >
-            {senhaVisivel ? "ocultar" : "mostrar"}
-          </button>
-        </div>
+        {/* `InputSenha` é o ÚNICO campo de senha do portal. O campo escrito à
+            mão que estava aqui tinha um "mostrar" sem `aria-label` nem
+            `aria-pressed` e escapava da checagem `rg 'type="password"'` do
+            CLAUDE.md, porque o tipo era calculado. */}
+        <InputSenha
+          id="senha"
+          name="senha"
+          autoComplete="new-password"
+          placeholder={`Mínimo de ${SENHA_MINIMO} caracteres`}
+          required
+          minLength={SENHA_MINIMO}
+        />
       </div>
 
       <details className="text-sm">

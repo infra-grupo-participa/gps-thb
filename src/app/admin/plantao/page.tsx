@@ -26,7 +26,7 @@ import type { InscritoAdmin } from "@/lib/plantao-tipos";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { adminNavItems } from "@/lib/nav";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PlantaoAbas } from "@/components/admin/plantao-abas";
 import { PlantaoCalendario } from "@/components/admin/plantao-calendario";
 import { PlantaoAcessos } from "@/components/admin/plantao-acessos";
 import { PlantaoMentoras } from "@/components/admin/plantao-mentoras";
@@ -44,7 +44,8 @@ function parseMes(m: string | undefined): { ano: number; mes: number } {
 export default async function AdminPlantaoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ m?: string }>;
+  /** `m` = mês do calendário; `aba` é lida no cliente por `PlantaoAbas`. */
+  searchParams: Promise<{ m?: string; aba?: string }>;
 }) {
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
@@ -110,14 +111,11 @@ export default async function AdminPlantaoPage({
           }
         />
 
-        <Tabs defaultValue="calendario">
-          <TabsList variant="line">
-            <TabsTrigger value="calendario">Calendário</TabsTrigger>
-            <TabsTrigger value="acessos">Alunos</TabsTrigger>
-            <TabsTrigger value="mentoras">Mentoras</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="calendario" className="mt-4">
+        {/* 🔴 A aba vive em `?aba=` (allowlist em `PlantaoAbas`): com
+            `defaultValue`, navegar o mês (`?m=`) recarregava este Server
+            Component e devolvia o admin para "Calendário". */}
+        <PlantaoAbas
+          calendario={
             <PlantaoCalendario
               ano={ano}
               mes={mes}
@@ -127,16 +125,10 @@ export default async function AdminPlantaoPage({
               totalInscritosPorSlot={totalInscritosPorSlot}
               inscricoesAbertas={inscricoesAbertas}
             />
-          </TabsContent>
-
-          <TabsContent value="acessos" className="mt-4">
-            <PlantaoAcessos alunos={alunos} />
-          </TabsContent>
-
-          <TabsContent value="mentoras" className="mt-4">
-            <PlantaoMentoras mentoras={mentoras} />
-          </TabsContent>
-        </Tabs>
+          }
+          alunos={<PlantaoAcessos alunos={alunos} />}
+          mentoras={<PlantaoMentoras mentoras={mentoras} />}
+        />
       </main>
     </>
   );

@@ -88,7 +88,7 @@ export function NpsForm({
               onClick={() => setNota(n)}
               disabled={pending}
               className={
-                "flex h-9 items-center justify-center rounded-lg border text-sm font-medium tabular-nums transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 " +
+                "flex h-9 items-center justify-center rounded-lg border text-sm font-medium tabular-nums transition foco-visivel " +
                 (nota === n
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-input bg-transparent hover:bg-muted")

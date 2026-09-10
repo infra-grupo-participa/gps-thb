@@ -20,6 +20,14 @@ const APP_URL = (
 ).replace(/\/+$/, "");
 
 /** "2026-09-15" → "terça-feira, 15 de setembro de 2026" (fuso fixo em UTC — data-only). */
+/**
+ * "Problema no acesso → monitoria" (decisão do Marcio, 09/09/2026). O e-mail
+ * que sai do BANCO (`gps.plantao_disparar_emails_sala`, migração …174) já
+ * leva este link; o caminho HTTP precisa dizer o mesmo (paridade cobrada pelo
+ * Auditor D no war-room de 10/09).
+ */
+const MONITORIA_URL = "https://o.aceleraholding.com.br/monitoria";
+
 function dataLongaBrasilia(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("pt-BR", {
@@ -283,13 +291,18 @@ export async function enviarPlantaoSala(params: {
       <span style="word-break:break-all;">${esc(linkSeguro)}</span>
     </p>`
         : `${botao(portalUrl, "Abrir o plantão")}`
-    }`;
+    }
+    <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6560;">
+      Problemas para entrar? <a href="${MONITORIA_URL}" style="color:#9a3412;font-weight:bold;">Fale com a monitoria</a>.
+    </p>`;
 
   const texto = [
     ola,
     "",
     `Seu plantão de dúvidas começa em 1 hora: ${dataLonga}, às ${hora}, com ${mentoraNome}.`,
     linkSeguro ? `Sala: ${linkSeguro}` : `Acesse: ${portalUrl}`,
+    "",
+    `Problemas para entrar? Fale com a monitoria: ${MONITORIA_URL}`,
   ].join("\n");
 
   return enviar({

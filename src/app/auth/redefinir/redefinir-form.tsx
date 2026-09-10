@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 
+/**
+ * Mínimo de caracteres da senha — o mesmo do cadastro, do onboarding e das
+ * RPCs de senha do admin. Era 6 aqui: a mesma conta tinha duas regras, e o
+ * texto do erro é literalmente o mesmo em todas as telas.
+ */
+import { SENHA_MINIMO } from "@/lib/senha-regras";
+
 // PF1 — o SDK do Supabase (62 KB gzip) só é buscado no submit. A validação de
 // tamanho e de confirmação da senha roda ANTES do `import()`, então quem errar
 // a digitação recebe o erro sem baixar byte nenhum.
@@ -19,8 +26,8 @@ export function RedefinirForm() {
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
-    if (senha.length < 6) {
-      setErro("A senha deve ter ao menos 6 caracteres.");
+    if (senha.length < SENHA_MINIMO) {
+      setErro(`A senha precisa ter ao menos ${SENHA_MINIMO} caracteres.`);
       return;
     }
     if (senha !== confirma) {
@@ -59,9 +66,9 @@ export function RedefinirForm() {
           autoComplete="new-password"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
-          placeholder="Mínimo de 6 caracteres"
+          placeholder={`Mínimo de ${SENHA_MINIMO} caracteres`}
           required
-          minLength={6}
+          minLength={SENHA_MINIMO}
           autoFocus
         />
       </div>
@@ -73,7 +80,7 @@ export function RedefinirForm() {
           value={confirma}
           onChange={(e) => setConfirma(e.target.value)}
           required
-          minLength={6}
+          minLength={SENHA_MINIMO}
         />
       </div>
       {/* Anunciado pelo leitor de tela (WCAG 3.3.1 / 4.1.3). */}

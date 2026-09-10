@@ -53,6 +53,12 @@ export function MinhaInscricaoCard({
   const [pending, startTransition] = useTransition();
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [agora, setAgora] = useState(() => Date.now());
+  // Confirmação em DOIS cliques dentro do próprio card, com a consequência
+  // escrita — no lugar do `window.confirm` (war-room 10/09). Não é o
+  // `DialogoConfirmacao`: esta rota é pública e vive num iframe da Hotmart;
+  // um diálogo modal custaria bundle e foco dentro do iframe por uma
+  // pergunta que cabe em duas linhas.
+  const [pedindo, setPedindo] = useState<"entrar" | "cancelar" | null>(null);
 
   // Recalcula a cada 30s só para manter a contagem regressiva viva — a
   // decisão de "janela aberta" continua vindo do servidor a cada refresh.
@@ -79,13 +85,7 @@ export function MinhaInscricaoCard({
   }
 
   function confirmarEEntrar() {
-    if (
-      !window.confirm(
-        "Ao entrar na sala agora, sua presença neste plantão fica confirmada. Continuar?",
-      )
-    ) {
-      return;
-    }
+    setPedindo(null);
     startTransition(async () => {
       const res = await revelarLink(email, inscricao.inscricaoId);
       if (!res.ok) {
@@ -105,13 +105,7 @@ export function MinhaInscricaoCard({
   }
 
   function cancelarInscricao() {
-    if (
-      !window.confirm(
-        `Cancelar sua inscrição no plantão de ${rotuloData(inscricao.data)} às ${inscricao.horaInicio}?`,
-      )
-    ) {
-      return;
-    }
+    setPedindo(null);
     startTransition(async () => {
       const res = await cancelar(email, inscricao.inscricaoId);
       if (!res.ok) {
@@ -206,10 +200,40 @@ export function MinhaInscricaoCard({
                 A sala está aberta até o fim do plantão. Ao entrar, sua
                 presença é confirmada.
               </p>
-              <Button onClick={confirmarEEntrar} disabled={pending} className="self-start">
-                <VideoIcon className="size-4" />{" "}
-                {pending ? "Entrando..." : "Entrar na sala"}
-              </Button>
+              {pedindo === "entrar" ? (
+                <div
+                  role="group"
+                  aria-label="Confirmar entrada na sala"
+                  className="flex flex-col gap-2"
+                >
+                  <p className="text-sm font-medium">
+                    Ao entrar agora, sua presença neste plantão fica
+                    registrada. Continuar?
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={confirmarEEntrar} disabled={pending} autoFocus>
+                      <VideoIcon className="size-4" />{" "}
+                      {pending ? "Entrando..." : "Confirmar presença e entrar"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setPedindo(null)}
+                      disabled={pending}
+                    >
+                      Voltar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => setPedindo("entrar")}
+                  disabled={pending}
+                  className="self-start"
+                >
+                  <VideoIcon className="size-4" />{" "}
+                  {pending ? "Entrando..." : "Entrar na sala"}
+                </Button>
+              )}
             </div>
           )
         ) : (
@@ -237,11 +261,45 @@ export function MinhaInscricaoCard({
               ? "O prazo para cancelar terminou — a sala já foi liberada."
               : "O prazo para cancelar terminou."}
           </p>
+        ) : pedindo === "cancelar" ? (
+          <div
+            role="group"
+            aria-label="Confirmar cancelamento da inscrição"
+            className="flex flex-col gap-2 rounded-lg border border-risco-foreground/30 bg-risco p-3"
+          >
+            <p className="text-sm font-medium">
+              Cancelar sua inscrição no plantão de {rotuloData(inscricao.data)}{" "}
+              às {inscricao.horaInicio}?
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Você perde esta vaga. Dá para se inscrever de novo, neste ou em
+              outro plantão, até o horário de início.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={cancelarInscricao}
+                disabled={pending}
+                autoFocus
+              >
+                {pending ? "Cancelando..." : "Sim, cancelar inscrição"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPedindo(null)}
+                disabled={pending}
+              >
+                Manter inscrição
+              </Button>
+            </div>
+          </div>
         ) : (
           <Button
             variant="ghost"
             size="sm"
-            onClick={cancelarInscricao}
+            onClick={() => setPedindo("cancelar")}
             disabled={pending}
             className="self-start text-muted-foreground hover:text-destructive"
           >

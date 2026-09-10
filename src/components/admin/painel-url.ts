@@ -33,8 +33,8 @@ import {
 } from "./alunos-ativos-lista/estado-na-url";
 import { ORDENS } from "./alunos-ativos-lista/tipos";
 
-/** Uma chave, um valor. */
-export const CHAVE_URL_PAINEL = "gps.admin.painel.ultimaUrl";
+/** Uma chave, um valor. Interna: só as três funções abaixo a tocam. */
+const CHAVE_URL_PAINEL = "gps.admin.painel.ultimaUrl";
 
 /**
  * Para onde ir quando não há nada gravado (primeira visita, aba anônima com
@@ -60,7 +60,7 @@ const MAX_TERMO = 80;
  * "Voltar" ressuscitaria o lixo no endereço a cada ida e volta. A regra da
  * casa é uma só — allowlist fechada no parse **e** na volta.
  */
-export function sanitizarUrlDoPainel(
+function sanitizarUrlDoPainel(
   url: string | null | undefined,
 ): string | null {
   if (typeof url !== "string" || url.length === 0 || url.length > 600) {
@@ -113,14 +113,27 @@ export function gravarUrlDoPainel(url: string): void {
   }
 }
 
-/** A URL gravada, saneada — ou `URL_PAINEL_PADRAO`. Nunca lança. */
+/**
+ * A URL gravada, saneada — ou `URL_PAINEL_PADRAO`. Nunca lança.
+ *
+ * 🔑 **Sempre com uma aba de LISTA.** Quem chama é o link "← Voltar aos
+ * alunos", e o rótulo promete a lista. Se a última tela do painel foi a "Visão
+ * geral", a URL gravada não tem `?aba=` (o padrão sai do endereço) — e voltar
+ * devolvia o dashboard, não os alunos. Só `ativos` e as outras abas gravadas
+ * sobrevivem; a ausência de aba e a aba padrão viram `aba=ativos`.
+ */
 export function lerUrlDoPainel(): string {
+  let limpa: string | null = null;
   try {
-    return (
-      sanitizarUrlDoPainel(sessionStorage.getItem(CHAVE_URL_PAINEL)) ??
-      URL_PAINEL_PADRAO
-    );
+    limpa = sanitizarUrlDoPainel(sessionStorage.getItem(CHAVE_URL_PAINEL));
   } catch {
     return URL_PAINEL_PADRAO;
   }
+  if (!limpa) return URL_PAINEL_PADRAO;
+
+  const [caminho, consulta = ""] = limpa.split("?");
+  const sp = new URLSearchParams(consulta);
+  if (sp.get("aba")) return limpa;
+  sp.set("aba", "ativos");
+  return `${caminho}?${sp.toString().replace(/%2C/g, ",")}`;
 }

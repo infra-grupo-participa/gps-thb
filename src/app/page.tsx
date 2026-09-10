@@ -29,6 +29,7 @@ import { Secao } from "@/components/ui/secao";
 import { EtapasOverview } from "@/components/etapas-overview";
 import { FavoritoDestaque } from "@/components/etapa/favorito-destaque";
 import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
+import { TudoEmDiaCard } from "@/components/etapa/tudo-em-dia-card";
 import { HomeResumo } from "@/components/home-resumo";
 import { PerfilHero } from "@/components/perfil/perfil-hero";
 import { ThbLogo } from "@/components/thb-logo";
@@ -98,7 +99,7 @@ export default async function HomePage() {
   // mesmo lote — antes era um await em série pendurado no fim do caminho
   // crítico (~44 ms de round-trip a sa-east-1 só para o sócio).
   const [
-    etapas,
+    etapasEOverrides,
     alunoAmbiente,
     clientes,
     progressoTodas,
@@ -111,8 +112,14 @@ export default async function HomePage() {
     // (`gps.etapa_liberacao_aluno`) manda nos dois sentidos — libera quem está
     // adiantado e trava quem precisa refazer. As duas leituras vão juntas para
     // não virar `await` em série no caminho crítico da home.
+    // Os overrides seguem VIVOS depois de resolver a liberação: `EtapasOverview`
+    // precisa deles para dizer POR QUE uma etapa está travada (ou aberta) só
+    // para este aluno — a decisão da equipe vem com motivo escrito.
     Promise.all([getEtapas(), getEtapasLiberadasPara(alunoId)]).then(
-      ([todas, overrides]) => etapasComLiberacaoDoAluno(todas, overrides),
+      ([todas, overrides]) => ({
+        etapas: etapasComLiberacaoDoAluno(todas, overrides),
+        overrides,
+      }),
     ),
     getAlunoById(alunoId),
     getClientesEtapa1(alunoId),
@@ -124,6 +131,7 @@ export default async function HomePage() {
       ? getAlunoById(ctx.membroAlunoId)
       : Promise.resolve(null),
   ]);
+  const { etapas, overrides } = etapasEOverrides;
   const aluno = souSocio ? alunoSocio : alunoAmbiente;
   // `alunoSocio` já é `getAlunoById(ctx.membroAlunoId)` — o nome do sócio vem
   // dali. O `?? ctx.membroNome` que existia aqui era o último consumidor de um
@@ -168,6 +176,13 @@ export default async function HomePage() {
   // A etapa que o hero anuncia é a do próximo passo; sem passo pendente (tudo
   // em dia), é a liberada mais avançada. Nunca inventa etapa: sem nenhuma
   // liberada, o hero fica só com a identidade.
+  // A próxima etapa que ainda não abriu para ele — só para a frase de
+  // expectativa do "tudo em dia". `null` quando as seis já estão liberadas.
+  const proximaBloqueada =
+    [...etapas]
+      .sort((a, b) => a.ordem - b.ordem)
+      .find((e) => !e.liberada) ?? null;
+
   const etapaDoHero =
     (passo ? etapas.find((e) => e.id === passo.etapa) : null) ??
     [...liberadas].sort((a, b) => b.ordem - a.ordem)[0] ??
@@ -213,11 +228,16 @@ export default async function HomePage() {
           }
         />
 
-        {passo ? (
-          <div className="mt-6">
+        {/* O lugar mais forte da home nunca fica vazio: com passo pendente é o
+            `ProximoPassoCard`; sem nenhum, o card diz que está tudo em dia e o
+            que esperar. Antes o bloco simplesmente sumia. */}
+        <div className="mt-6">
+          {passo ? (
             <ProximoPassoCard passo={passo} basePath="" />
-          </div>
-        ) : null}
+          ) : (
+            <TudoEmDiaCard proximaEtapa={proximaBloqueada} />
+          )}
+        </div>
 
         {/* Conteúdo: jornada (principal) + resumo (apoio) lado a lado.
             🔑 No CELULAR o resumo sobe (`order-first`): a home mobile tinha
@@ -232,7 +252,13 @@ export default async function HomePage() {
             ) : null}
 
             <Secao titulo="Seu caminho" icone={<Map />}>
-              <EtapasOverview etapas={etapas} basePath="" pctPorEtapa={pcts} dense />
+              <EtapasOverview
+                etapas={etapas}
+                basePath=""
+                pctPorEtapa={pcts}
+                overrides={overrides}
+                dense
+              />
             </Secao>
           </div>
 

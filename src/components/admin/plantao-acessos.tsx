@@ -46,6 +46,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { LiberarAlunoPlantao } from "@/components/admin/liberar-aluno-plantao";
 import { semAcento } from "@/lib/texto";
 import { formatarDataHora } from "@/lib/datas";
@@ -93,6 +94,9 @@ export function PlantaoAcessos({
   const [busca, setBusca] = useState("");
   const [filtroSituacao, setFiltroSituacao] = useState<FiltroSituacao | null>(null);
   const [alunoEmAcao, setAlunoEmAcao] = useState<string | null>(null);
+  /** O aluno cuja revogação está sendo confirmada. `null` = nada aberto. */
+  const [revogando, setRevogando] = useState<AlunoPlantaoAdmin | null>(null);
+  const [erroRevogar, setErroRevogar] = useState<string | null>(null);
 
   // Maior `situacaoEm` da base — "importado em" do topo. `null` só se
   // NINGUÉM ainda tem situação registrada (ex.: ambiente novo, sem CSV).
@@ -124,34 +128,48 @@ export function PlantaoAcessos({
     });
   }, [alunos, busca, filtroSituacao]);
 
-  function executar(id: string, acao: () => Promise<{ ok: boolean; erro?: string }>) {
+  /**
+   * 🔴 O toast de sucesso mora AQUI, dentro do fluxo da action, e só depois de
+   * `res.ok`. Antes ele era disparado logo depois de chamar `executar()` —
+   * fora da transição, antes do resultado — e uma falha do servidor pintava a
+   * tela com "Acesso revogado." E "erro" ao mesmo tempo.
+   */
+  function executar(
+    id: string,
+    acao: () => Promise<{ ok: boolean; erro?: string }>,
+    sucesso: string,
+    aoFalhar?: (erro: string) => void,
+  ) {
     setAlunoEmAcao(id);
     startTransition(async () => {
       const res = await acao();
       setAlunoEmAcao(null);
       if (!res.ok) {
-        toast.error(res.erro);
+        const erro = res.erro ?? "Não foi possível concluir a ação.";
+        toast.error(erro);
+        aoFalhar?.(erro);
         return;
       }
+      toast.success(sucesso);
+      setRevogando(null);
       router.refresh();
     });
   }
 
-  function onRevogar(a: AlunoPlantaoAdmin) {
-    if (
-      !window.confirm(
-        `Revogar o acesso de ${a.nome} ao plantão? Ele para de conseguir entrar até você reativar.`,
-      )
-    ) {
-      return;
-    }
-    executar(a.id, () => revogarAcessoPlantao(a.id));
-    toast.success("Acesso revogado.");
+  function confirmarRevogacao() {
+    if (!revogando) return;
+    setErroRevogar(null);
+    const a = revogando;
+    executar(
+      a.id,
+      () => revogarAcessoPlantao(a.id),
+      "Acesso revogado.",
+      setErroRevogar,
+    );
   }
 
   function onReativar(a: AlunoPlantaoAdmin) {
-    executar(a.id, () => reativarAcessoPlantao(a.id));
-    toast.success("Acesso reativado.");
+    executar(a.id, () => reativarAcessoPlantao(a.id), "Acesso reativado.");
   }
 
   return (
@@ -275,7 +293,11 @@ export function PlantaoAcessos({
                         className="inline-flex items-center gap-1 text-xs text-foreground"
                         title="Migrou para o Programa de Implementação, mas a equipe abriu uma exceção manual — continua com acesso ao Plantão."
                       >
-                        <TriangleAlertIcon className="size-3.5 text-amber-600" /> Exceção aberta
+                        <TriangleAlertIcon
+                          aria-hidden
+                          className="size-3.5 text-atencao-foreground"
+                        />{" "}
+                        Exceção aberta
                       </span>
                     ) : (
                       <span
@@ -299,7 +321,10 @@ export function PlantaoAcessos({
                           variant="ghost"
                           size="sm"
                           disabled={emAcao}
-                          onClick={() => onRevogar(a)}
+                          onClick={() => {
+                            setErroRevogar(null);
+                            setRevogando(a);
+                          }}
                           className="text-muted-foreground hover:text-destructive"
                         >
                           <ShieldOffIcon className="size-4" /> Revogar
@@ -322,6 +347,41 @@ export function PlantaoAcessos({
           </TableBody>
         </Table>
       )}
+
+      {/* 🔑 O gatilho continua montado (a linha não sai da tabela antes da
+          confirmação), então o foco volta para o botão "Revogar" ao fechar. */}
+      {revogando ? (
+        <DialogoConfirmacao
+          aberto
+          titulo="Revogar o acesso ao Plantão?"
+          descricao={`${revogando.nome} · ${revogando.email}`}
+          consequencia={
+            <>
+              A pessoa <strong>para de conseguir se inscrever</strong> nos
+              plantões e de revelar o link da sala, até alguém reativar aqui.
+              {revogando.inscricoesQtd > 0 ? (
+                <>
+                  {" "}
+                  As {revogando.inscricoesQtd} inscrição(ões) já feitas
+                  continuam registradas — revogar não avisa ninguém por e-mail.
+                </>
+              ) : (
+                " Revogar não avisa a pessoa por e-mail — alguém precisa avisar por fora."
+              )}
+            </>
+          }
+          rotuloConfirmar="Revogar acesso"
+          rotuloConfirmando="Revogando…"
+          confirmando={pending && alunoEmAcao === revogando.id}
+          erro={erroRevogar}
+          onConfirmar={confirmarRevogacao}
+          onCancelar={() => {
+            if (pending) return;
+            setRevogando(null);
+            setErroRevogar(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

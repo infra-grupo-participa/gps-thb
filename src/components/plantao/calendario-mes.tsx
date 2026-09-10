@@ -157,7 +157,7 @@ export function CalendarioMes({
       <div className="flex items-center justify-between gap-2 rounded-xl border bg-card p-3 shadow-sm">
         <Link
           href={hrefMes(anterior.ano, anterior.mes, email, nome)}
-          className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground foco-visivel"
           aria-label="Mês anterior"
         >
           <ChevronLeftIcon className="size-4" />
@@ -168,7 +168,7 @@ export function CalendarioMes({
         </div>
         <Link
           href={hrefMes(proximo.ano, proximo.mes, email, nome)}
-          className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground foco-visivel"
           aria-label="Próximo mês"
         >
           <ChevronRightIcon className="size-4" />
@@ -214,7 +214,7 @@ export function CalendarioMes({
                       : rotuloData(iso)
                   }
                   className={
-                    "relative flex aspect-square flex-col items-center justify-center gap-0.5 border-b border-r text-sm transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 " +
+                    "relative flex aspect-square flex-col items-center justify-center gap-0.5 border-b border-r text-sm transition foco-visivel " +
                     (temSlot
                       ? "cursor-pointer hover:bg-muted"
                       : "cursor-default text-muted-foreground/50")

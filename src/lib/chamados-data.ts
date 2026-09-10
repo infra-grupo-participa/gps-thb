@@ -15,10 +15,10 @@ import "server-only";
  * limite — mesmo padrão de `plantao-data.ts`.
  */
 
-import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { logErro } from "@/lib/log";
+import { slackConfigurado } from "@/lib/slack";
 import {
   ANEXO_PATH_REGEX,
   BUCKET_CHAMADOS,
@@ -229,48 +229,41 @@ export async function getFilaChamados(): Promise<ChamadoNaFila[]> {
 }
 
 /**
- * Quantos chamados VIVOS (aberto + respondido) cada ambiente tem.
+ * O NÚMERO do badge "Chamados" do header do admin — UMA definição só.
  *
- * 🔑 ANTES DE USAR: se a página já chama `getAtendimentoPorAluno()`
- * (`src/lib/data.ts`), o número já vem de lá — a RPC `gps.admin_painel_atendimento()`
- * passou a devolver `chamados_abertos` na migração `20260909000115`, na MESMA
- * ida ao banco do resumo do Diário. Esta função existe para telas que NÃO
- * carregam aquele resumo; chamar as duas na mesma página é uma consulta a mais
- * pelo mesmo dado.
+ * 🔴 O DEFEITO QUE ISTO FECHA (war-room 10/09, achado B1): o mesmo badge
+ * contava coisas diferentes em duas telas. Em `/admin` somava os chamados
+ * NÃO-FECHADOS (`gps.admin_painel_atendimento`, `status <> 'fechado'`); em
+ * `/admin/chamados` contava só os `aberto`. Trocar de aba mudava o número sem
+ * nada ter mudado no banco — "um número, uma verdade" (PL3).
  *
- * Memoizada por requisição (`cache()` do React, escopo de REQUISIÇÃO — nada
- * atravessa requests, como em `getContextoSessao`).
+ * A DEFINIÇÃO É "NÃO-FECHADO": chamado `respondido` continua vivo (espera o
+ * aluno) e sumir com ele do badge esconderia fila de suporte.
+ *
+ * 🔑 ZERO CONSULTA NOVA. As duas telas já carregam a fonte de que precisam, e
+ * é por isso que a função aceita as DUAS formas em vez de ir ao banco:
+ *   · `/admin` tem o Map de `getAtendimentoPorAluno()` (a RPC do painel);
+ *   · `/admin/chamados` tem a fila de `getFilaChamados()`, que já nasce
+ *     filtrada por `.neq("status","fechado")`.
+ * Uma função que consultasse por conta própria acrescentaria uma ida ao banco
+ * por tela pelo dado que a página tem na mão.
+ *
+ * ⚠️ ESCOPO: a fila tem teto (`LIMITE_FILA`); o Map do painel é a base
+ * inteira. Com fila acima do teto os dois números divergiriam — hoje o banco
+ * limita 5 chamados não-fechados por ambiente e a fila não chega perto.
  */
-export const contarChamadosAbertosPorAluno = cache(
-  async function contarChamadosAbertosPorAluno(): Promise<Map<string, number>> {
-    const vazio = new Map<string, number>();
-    if (!(await ehAdmin())) return vazio;
-    const supabase = await createClient();
-
-    const { data, error } = await supabase
-      .schema("gps")
-      .rpc("admin_painel_atendimento");
-
-    if (error) {
-      // Falha aqui não pode virar "ninguém tem chamado" em silêncio: a tela
-      // ficaria idêntica à de uma fila vazia.
-      logErro("contarChamadosAbertosPorAluno", error, {
-        rpc: "gps.admin_painel_atendimento",
-      });
-      return vazio;
-    }
-
-    const linhas = (data ?? []) as {
-      aluno_id: string;
-      chamados_abertos: number | null;
-    }[];
-    return new Map(
-      linhas
-        .filter((l) => (l.chamados_abertos ?? 0) > 0)
-        .map((l) => [l.aluno_id, l.chamados_abertos ?? 0]),
-    );
-  },
-);
+export function contarChamadosDoBadge(
+  origem:
+    | { fila: Pick<Chamado, "status">[] }
+    | { atendimento: Iterable<{ chamadosAbertos: number }> },
+): number {
+  if ("fila" in origem) {
+    return origem.fila.filter((c) => c.status !== "fechado").length;
+  }
+  let total = 0;
+  for (const a of origem.atendimento) total += a.chamadosAbertos;
+  return total;
+}
 
 /**
  * Estado do interruptor + para quem a equipe é avisada. Só admin
@@ -286,19 +279,37 @@ export const contarChamadosAbertosPorAluno = cache(
  * env definida na Hostinger — aviso que mente treina o time a ignorar aviso
  * (PL6). **Só o booleano sai daqui**: o endereço de suporte não vira prop de
  * componente nem HTML.
+ *
+ * `slack` segue a MESMA regra: `slackConfigurado()` devolve só
+ * `{ configurado, modo }` — nunca o token nem a URL do webhook. E diz
+ * CONFIGURADO, jamais FUNCIONANDO: token revogado só aparece no log do envio
+ * ("env presente não é env válida").
  */
 export async function getChamadosConfig(): Promise<{
   aberto: boolean;
   emailEquipe: string[];
   /** `true` = a env `EMAIL_SUPORTE` está definida no servidor. */
   fallbackEnv: boolean;
+  /** Aviso de @menção para o Slack: modo ativo, sem nenhum segredo. */
+  slack: { configurado: boolean; modo: "bot" | "webhook" | null };
 }> {
   // Mesmo teste do `avisarEquipe`: string só com espaço não é destinatário.
   const fallbackEnv = Boolean(process.env.EMAIL_SUPORTE?.trim());
   if (!(await ehAdmin())) {
-    return { aberto: true, emailEquipe: [], fallbackEnv: false };
+    return {
+      aberto: true,
+      emailEquipe: [],
+      fallbackEnv: false,
+      slack: { configurado: false, modo: null },
+    };
   }
-  const padrao = { aberto: true, emailEquipe: [] as string[], fallbackEnv };
+  const slack = slackConfigurado();
+  const padrao = {
+    aberto: true,
+    emailEquipe: [] as string[],
+    fallbackEnv,
+    slack,
+  };
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -321,6 +332,7 @@ export async function getChamadosConfig(): Promise<{
 
   return {
     fallbackEnv,
+    slack,
     // Ausente = ABERTO, igual ao banco: o default tem de ser funcionar.
     aberto: (porChave.get("chamados_aberto") ?? "true") !== "false",
     emailEquipe: (porChave.get("chamados_email_equipe") ?? "")

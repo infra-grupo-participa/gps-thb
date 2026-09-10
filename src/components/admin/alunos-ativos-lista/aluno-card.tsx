@@ -25,7 +25,7 @@
  */
 
 import Link from "next/link";
-import { LifeBuoy, MailPlus } from "lucide-react";
+import { KeyRound, LifeBuoy } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import type { StatusOnboarding } from "@/lib/types";
 import { ROTULO_TIPO } from "@/components/admin/diario-labels";
@@ -325,10 +325,15 @@ export function AlunoCard({
                 em outro portal do grupo — devolve `precisaConfirmar` com a
                 lista de sistemas SEM alterar nada. A senha não é
                 reimplementada aqui: um segundo caminho de escrita de senha é
-                um segundo lugar para essa confirmação sumir. */}
+                um segundo lugar para essa confirmação sumir.
+
+                🔑 Chamava-se "Reenviar acesso" e NÃO reenviava nada: levava à
+                mesma ficha do link do card, e lá o admin ainda tinha de achar
+                "Gerenciar acesso". Agora o nome diz o que o botão faz e o
+                `#acesso` abre o diálogo direto (ver `gerenciar-acesso`). */}
             {temLogin && !ultimoAcesso ? (
               <Link
-                href={`/admin/aluno/${alunoId}`}
+                href={`/admin/aluno/${alunoId}#acesso`}
                 prefetch={false}
                 onClick={() => marcarUltimoAluno(alunoId)}
                 className={
@@ -336,8 +341,8 @@ export function AlunoCard({
                   "text-accent-foreground hover:bg-muted"
                 }
               >
-                <MailPlus aria-hidden className="size-3.5" />
-                Reenviar acesso
+                <KeyRound aria-hidden className="size-3.5" />
+                Resolver acesso
               </Link>
             ) : null}
             <NotaRapida alunoId={alunoId} nomeDoAluno={nome} />

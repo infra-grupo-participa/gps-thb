@@ -83,7 +83,7 @@ export interface EstadoDoPainel {
 const MAX_TERMO = 80;
 
 /** Lê o estado da URL. Qualquer coisa fora da allowlist vira o padrão. */
-export function lerEstado(sp: URLSearchParams): EstadoDoPainel {
+function lerEstado(sp: URLSearchParams): EstadoDoPainel {
   const aba = sp.get("aba");
   const ordem = sp.get("ordem");
   const f = (sp.get("f") ?? "")
@@ -105,7 +105,7 @@ export function lerEstado(sp: URLSearchParams): EstadoDoPainel {
  * a existir). Valor no padrão é REMOVIDO do endereço: `/admin` limpo tem de
  * continuar sendo `/admin`, não `/admin?aba=ativos&q=&ordem=recentes&f=`.
  */
-export function escreverEstado(
+function escreverEstado(
   atual: URLSearchParams,
   estado: EstadoDoPainel,
 ): string {

@@ -20,10 +20,9 @@
  */
 
 import { useId } from "react";
-import Link from "next/link";
 import type { FaseCliente } from "@/lib/types";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -46,7 +45,6 @@ export function DialogoNovoCliente({
   grau,
   pending,
   erro,
-  abrirFichaHref,
   onFase,
   onGrau,
   onCriar,
@@ -57,12 +55,6 @@ export function DialogoNovoCliente({
   grau: string;
   pending: boolean;
   erro: string | null;
-  /**
-   * O cliente foi criado mas a fase/vínculo não gravaram: o diálogo para de
-   * oferecer "Criar" (criaria um segundo cliente) e passa a oferecer a ficha,
-   * que é onde o ajuste acontece. `null` = fluxo normal.
-   */
-  abrirFichaHref: string | null;
   onFase: (v: FaseCliente) => void;
   onGrau: (v: string) => void;
   onCriar: () => void;
@@ -168,24 +160,15 @@ export function DialogoNovoCliente({
 
         <DialogFooter>
           <Button variant="outline" onClick={onCancelar} disabled={pending}>
-            {abrirFichaHref ? "Fechar" : "Cancelar"}
+            Cancelar
           </Button>
-          {abrirFichaHref ? (
-            <Link
-              href={abrirFichaHref}
-              className={buttonVariants({ variant: "default" })}
-            >
-              Abrir ficha
-            </Link>
-          ) : (
-            <Button
-              onClick={onCriar}
-              disabled={pending}
-              aria-busy={pending || undefined}
-            >
-              {pending ? "Criando…" : "Criar e abrir a ficha"}
-            </Button>
-          )}
+          <Button
+            onClick={onCriar}
+            disabled={pending}
+            aria-busy={pending || undefined}
+          >
+            {pending ? "Criando…" : "Criar e abrir a ficha"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -170,9 +170,13 @@ const CATALOGO: Record<string, DefinicaoVerificacao> = {
     rotulo: "Etapas com regra própria",
     seFalhar: "atencao",
   },
+  // "abertos" no rótulo mentia: a chave conta os chamados NÃO-FECHADOS, e
+  // `respondido` é chamado que espera o ALUNO. A migração ...216 separa os dois
+  // no `valor`/`detalhe` e só manda `ok: false` quando a equipe está devendo
+  // resposta — com apenas respondidos, `ok` vem null e a linha é informação.
   chamados_abertos: {
     secao: "atendimento",
-    rotulo: "Chamados abertos",
+    rotulo: "Chamados em andamento",
     seFalhar: "atencao",
   },
   pendencias_diario: {

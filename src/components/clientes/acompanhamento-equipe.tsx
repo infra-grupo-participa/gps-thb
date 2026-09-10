@@ -103,6 +103,14 @@ export function AvisoEscolhaFeita() {
  *
  * `admin` muda só a última linha: mandar a equipe "falar com a equipe pelo
  * Suporte" seria mandá-la abrir chamado consigo mesma.
+ *
+ * 🔑 **Na prévia "como o aluno vê" a última linha troca de variante**, por CSS
+ * e sem JavaScript: a linha da equipe leva `previa-oculta` (some quando
+ * `html[data-previa="aluno"]`) e a linha do aluno é montada junto, escondida,
+ * aparecendo só nessa mesma condição. Sem isso a prévia mostrava ao admin um
+ * texto que o aluno NUNCA vê — mentindo na única pergunta que ela existe para
+ * responder. Só o admin paga o custo do nó extra: para o aluno de verdade,
+ * `admin` é `false` e a variante dele é renderizada direto.
  */
 export function AvisoAcompanhamento({
   confirmadoEm,
@@ -127,15 +135,23 @@ export function AvisoAcompanhamento({
         DISC e problemas.
       </p>
       {admin ? (
-        // ⚠️ Depois da migração ...215 “Liberar acompanhamento” NÃO devolve ao
-        // aluno o direito de trocar a estrela: ele solta só a camada de dentro
-        // (a fase volta a poder ir para Prospecção e o cliente volta a poder
-        // ser excluído). A troca continua sendo da equipe, aqui mesmo.
-        <p className="corpo-sm text-sucesso-foreground">
-          “Liberar acompanhamento” solta a fase e a exclusão deste cliente. A
-          troca do cliente acompanhado continua sendo da equipe — feita aqui,
-          no Modo Assistência.
-        </p>
+        <>
+          {/* ⚠️ Depois da migração ...215 “Liberar acompanhamento” NÃO devolve
+              ao aluno o direito de trocar a estrela: ele solta só a camada de
+              dentro (a fase volta a poder ir para Prospecção e o cliente volta
+              a poder ser excluído). A troca continua sendo da equipe, aqui
+              mesmo. */}
+          <p className="previa-oculta corpo-sm text-sucesso-foreground">
+            “Liberar acompanhamento” solta a fase e a exclusão deste cliente. A
+            troca do cliente acompanhado continua sendo da equipe — feita aqui,
+            no Modo Assistência.
+          </p>
+          {/* A MESMA linha que o aluno lê, visível só dentro da prévia. */}
+          <p className="hidden corpo-sm text-sucesso-foreground [html[data-previa=aluno]_&]:block">
+            Precisa trocar? <LinkTrocaPorChamado /> — a equipe faz a troca com
+            você.
+          </p>
+        </>
       ) : (
         <p className="corpo-sm text-sucesso-foreground">
           Precisa trocar? <LinkTrocaPorChamado /> — a equipe faz a troca com
@@ -280,7 +296,11 @@ export function AcoesAcompanhamento({
   }
 
   return (
-    <div className="grid gap-2 rounded-xl border border-borda-fina bg-superficie-afundada p-3.5">
+    // 🔑 `previa-oculta`: o bloco "Equipe" (Confirmar/Liberar acompanhamento) é
+    // exclusivo do admin e SOME na prévia "como o aluno vê" — o aluno não tem
+    // esses botões nem esse texto. É só visual: a sessão continua sendo a do
+    // admin e a RPC continua exigindo `gp_is_admin()`.
+    <div className="previa-oculta grid gap-2 rounded-xl border border-borda-fina bg-superficie-afundada p-3.5">
       <p className="rotulo text-accent-foreground">Equipe</p>
       <p className="corpo-sm text-muted-foreground">
         {confirmado

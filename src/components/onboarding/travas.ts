@@ -1,3 +1,5 @@
+import { MSG_SENHA_MINIMO, SENHA_MINIMO } from "@/lib/senha-regras";
+
 /**
  * Por que o "Continuar" está travado — em texto, e em texto que a pessoa lê.
  *
@@ -29,8 +31,8 @@ export function razaoParaTravar(entrada: {
 }): string {
   const { passo } = entrada;
   if (passo === 0) {
-    if (entrada.senha.length < 8) {
-      return "A senha precisa de pelo menos 8 caracteres.";
+    if (entrada.senha.length < SENHA_MINIMO) {
+      return MSG_SENHA_MINIMO;
     }
     if (entrada.senha !== entrada.senha2) {
       return "As duas senhas precisam ser iguais.";

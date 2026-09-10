@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import {
   Dialog,
   DialogContent,
@@ -69,30 +70,33 @@ export function PlantaoMentoras({ mentoras }: { mentoras: MentoraAdmin[] }) {
   const [pending, startTransition] = useTransition();
   const [mentoraEmAcao, setMentoraEmAcao] = useState<string | null>(null);
   const [modo, setModo] = useState<ModoDialog>(null);
+  /** A mentora cuja DESATIVAÇÃO está sendo confirmada. Reativar não pergunta. */
+  const [desativando, setDesativando] = useState<MentoraAdmin | null>(null);
+  const [erroDesativar, setErroDesativar] = useState<string | null>(null);
 
   const semEmailAtivas = useMemo(
     () => mentoras.filter((m) => m.ativa && !m.email),
     [mentoras],
   );
 
-  function alternarAtiva(m: MentoraAdmin) {
-    const proximaAtiva = !m.ativa;
-    if (
-      proximaAtiva === false &&
-      !window.confirm(
-        `Desativar ${m.nome}? Ela deixa de aparecer para novos plantões, mas os plantões já publicados dela continuam de pé.`,
-      )
-    ) {
-      return;
-    }
+  /**
+   * Desativar é a ação que tira alguém da escala: passa por
+   * `DialogoConfirmacao` (consequência escrita, botão nomeado, foco de volta).
+   * REATIVAR não pergunta — não tira nada de ninguém.
+   */
+  function alternarAtiva(m: MentoraAdmin, proximaAtiva: boolean) {
+    setErroDesativar(null);
     setMentoraEmAcao(m.id);
     startTransition(async () => {
       const res = await alternarAtivaMentora(m.id, proximaAtiva);
       setMentoraEmAcao(null);
       if (!res.ok) {
-        toast.error(res.erro);
+        const erro = res.erro ?? "Não foi possível concluir a ação.";
+        toast.error(erro);
+        if (!proximaAtiva) setErroDesativar(erro);
         return;
       }
+      setDesativando(null);
       if (!proximaAtiva && res.plantoesFuturos && res.plantoesFuturos > 0) {
         toast.warning(
           `${m.nome} desativada. Atenção: ela tem ${res.plantoesFuturos} plantão(ões) publicado(s) e futuro(s) — eles continuam de pé, mas ela não recebe mais o aviso de véspera se ficar sem e-mail.`,
@@ -228,7 +232,10 @@ export function PlantaoMentoras({ mentoras }: { mentoras: MentoraAdmin[] }) {
                           variant="ghost"
                           size="sm"
                           disabled={emAcao}
-                          onClick={() => alternarAtiva(m)}
+                          onClick={() => {
+                            setErroDesativar(null);
+                            setDesativando(m);
+                          }}
                           className="text-muted-foreground hover:text-destructive"
                         >
                           <ShieldOffIcon className="size-4" /> Desativar
@@ -238,7 +245,7 @@ export function PlantaoMentoras({ mentoras }: { mentoras: MentoraAdmin[] }) {
                           variant="outline"
                           size="sm"
                           disabled={emAcao}
-                          onClick={() => alternarAtiva(m)}
+                          onClick={() => alternarAtiva(m, true)}
                         >
                           <ShieldCheckIcon className="size-4" /> Reativar
                         </Button>
@@ -278,6 +285,35 @@ export function PlantaoMentoras({ mentoras }: { mentoras: MentoraAdmin[] }) {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {/* 🔑 A linha da mentora NÃO sai da tabela antes da confirmação: o
+          gatilho continua montado e o foco volta para "Desativar". */}
+      {desativando ? (
+        <DialogoConfirmacao
+          aberto
+          titulo="Desativar esta mentora?"
+          descricao={desativando.nome}
+          consequencia={
+            <>
+              Ela <strong>deixa de aparecer no seletor</strong> de novos
+              plantões. Os plantões já publicados dela{" "}
+              <strong>continuam de pé</strong> e os inscritos não são avisados —
+              se algum precisar mudar de mentora, use &ldquo;Quem
+              apresenta&rdquo; no card do dia.
+            </>
+          }
+          rotuloConfirmar="Desativar mentora"
+          rotuloConfirmando="Desativando…"
+          confirmando={pending && mentoraEmAcao === desativando.id}
+          erro={erroDesativar}
+          onConfirmar={() => alternarAtiva(desativando, false)}
+          onCancelar={() => {
+            if (pending) return;
+            setDesativando(null);
+            setErroDesativar(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

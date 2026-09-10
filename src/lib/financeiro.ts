@@ -42,16 +42,14 @@ export type {
   NivelFaturamento,
 } from "@/lib/etapa1";
 
-/**
- * Reexportada de propósito: a aba Financeiro monta o progresso a partir das
- * linhas de cliente que a página já carregou, e quem lê a página não deveria
- * precisar saber que a conta mora em `etapa1.ts`.
- *
- * ⚠️ **Só de Server Component.** Este módulo importa `@/lib/supabase/server`;
- * um client component que importar daqui puxa o SDK para o bundle. No client
- * (ex.: `MetaHonorarios`), importe de `@/lib/etapa1`, que é puro.
+/*
+ * `progressoFaturamento` NÃO é reexportada daqui (war-room 10/09): o reexporte
+ * tinha ZERO consumidores — quem usa a conta importa de `@/lib/etapa1`, que é
+ * puro e serve também ao client (`MetaHonorarios`). Este módulo importa
+ * `@/lib/supabase/server`, então reexportar por aqui só oferecia um caminho
+ * que puxa o SDK do Supabase para o bundle de quem se enganar. A função
+ * continua sendo usada INTERNAMENTE, no import da linha 36.
  */
-export { progressoFaturamento } from "@/lib/etapa1";
 
 /**
  * Abaixo disto, diferença é ruído de arredondamento — não é dívida nem
@@ -59,7 +57,7 @@ export { progressoFaturamento } from "@/lib/etapa1";
  * 15.000,00. Sem esta tolerância a tela mostraria "−R$ 0,06 a pagar" para quem
  * quitou.
  */
-export const TOLERANCIA_CENTAVOS = 0.5;
+const TOLERANCIA_CENTAVOS = 0.5;
 
 /**
  * Teto do que se espera de uma leitura de contratos. Não trunca nada (truncar

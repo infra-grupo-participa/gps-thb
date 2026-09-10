@@ -20,12 +20,20 @@ export default function CadastroPage() {
         </div>
       </div>
 
-      <Card>
+      {/* Mesma família das outras três telas de entrada: `Card raised lg` e
+          `h1` na escala de título. */}
+      <Card elevacao="raised" size="lg">
         <CardHeader>
-          <h1 className="text-lg font-semibold">Criar conta</h1>
+          <h1 className="font-heading titulo-h2">Criar conta</h1>
+          {/* 🔴 A promessa anterior ("seus dados são vinculados automaticamente
+              e você já acessa o programa") só se cumpre quando o CPF/CNPJ casa
+              com um cadastro do Time Holding Brasil. Sem match, o gatilho abre
+              uma SOLICITAÇÃO e a pessoa fica esperando alguém aprovar — a tela
+              prometia o caminho feliz para os dois casos. */}
           <p className="text-sm text-muted-foreground">
-            Cadastre-se com seu CPF/CNPJ e e-mail. Seus dados são vinculados
-            automaticamente e você já acessa o programa.
+            Cadastre-se com seu CPF/CNPJ e e-mail. Se o seu CPF/CNPJ estiver na
+            nossa base, você já entra; se não, sua solicitação fica registrada e
+            a equipe libera o acesso.
           </p>
         </CardHeader>
         <CardContent>

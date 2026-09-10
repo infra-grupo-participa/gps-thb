@@ -29,6 +29,7 @@ import {
 import { atualizarCliente, definirClienteEquipe } from "@/app/clientes/actions";
 import { brlInteiro } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Secao } from "@/components/ui/secao";
 import { Button } from "@/components/ui/button";
@@ -131,6 +132,19 @@ export function ClienteFicha({
   );
   const [contratoUrl, setContratoUrl] = useState(cliente.contrato_url ?? "");
   const [pending, startTransition] = useTransition();
+  /**
+   * Por que a ficha recusou salvar — a frase EXATA, no `role="alert"` da barra
+   * de salvar.
+   *
+   * Era `toast.error("Erro ao salvar.")`, que jogava fora a frase que a action
+   * já traduziu do banco (`traduzirErroBanco`): quando a trigger do
+   * acompanhamento confirmado recusa com 42501, "Erro ao salvar." não diz nada
+   * e o aluno tenta de novo para sempre. O erro mora ao lado do botão que
+   * falhou, não some sozinho em 4 segundos, e some quando ele salva de novo.
+   */
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null);
+  /** Já houve uma tentativa de salvar? Marca os campos inválidos só depois. */
+  const [tentouSalvar, setTentouSalvar] = useState(false);
 
   const wpp = linkWhatsapp(telefone);
   const contratoLimpo = contratoUrl.trim();
@@ -193,6 +207,9 @@ export function ClienteFicha({
     honorarios !== numeroParaMoeda(cliente.valor_honorarios) ||
     (contratoLimpo || null) !== (cliente.contrato_url ?? null);
 
+  /** Salvar já foi tentado e o grupo de problemas continua vazio. */
+  const problemasEmFalta = tentouSalvar && problemas.length === 0;
+
   const contratado = fase === "contratado";
   const honorariosValor = moedaParaNumero(honorarios);
   // Mesma regra do CHECK no banco (migração ...090): https, sem espaço, de 12 a
@@ -250,12 +267,28 @@ export function ClienteFicha({
   }
 
   function salvar() {
+    setTentouSalvar(true);
+    setErroSalvar(null);
     if (contratoInvalido) {
-      toast.error(
+      setErroSalvar(
         "O link do contrato precisa começar com https:// e não pode ter espaços.",
       );
       return;
     }
+    // 🔑 A exigência do rótulo passou a ser real. A tarefa 1 da Etapa 01 é
+    // "listar 30 clientes potenciais com ao menos 1 dos 7 problemas": o
+    // problema é o que qualifica a pessoa como cliente de holding, e a legenda
+    // já pedia "marque ao menos um" havia meses sem nada conferir — rótulo que
+    // não vale é rótulo que ensina a ignorar rótulo. Custa um clique, e o
+    // aviso diz qual campo é. Não mexe em métrica nenhuma: `comDados` é nome +
+    // telefone + nível, e `problemas` não entra nela.
+    //
+    // ⚠️ Medido em 10/09 (Fable, war-room): 355 dos 879 clientes (39
+    // ambientes) estão com ZERO problema marcado — dado legado de meses. Travar
+    // o salvamento inteiro por isso deixaria 40% das fichas sem poder corrigir
+    // telefone ou fase. Então: o grupo fica marcado e explicado
+    // (`problemasEmFalta`), mas a ficha SALVA. A cobrança do problema é da
+    // tarefa 1.1, não do botão Salvar.
     startTransition(async () => {
       const res = await atualizarCliente(cliente.id, alunoId, {
         nome: nome.trim(),
@@ -284,9 +317,10 @@ export function ClienteFicha({
         contrato_url: contratoLimpo || null,
       });
       if (res.erro) {
-        toast.error("Erro ao salvar.");
+        setErroSalvar(res.erro);
         return;
       }
+      setTentouSalvar(false);
       toast.success("Ficha salva.");
     });
   }
@@ -417,11 +451,22 @@ export function ClienteFicha({
           {/* UX5 — grupo de checkboxes não tem um controle único para
               apontar: o rótulo vira legenda de um `fieldset`, que é a forma
               correta de nomear o conjunto (WCAG 1.3.1). */}
-          <fieldset className="grid gap-2">
+          {/* O `fieldset` já É o grupo (o `legend` o nomeia): a explicação da
+              recusa entra por `aria-describedby` NELE, não numa `div` com
+              `role="group"` — que não aceita `aria-invalid`. */}
+          <fieldset
+            className="grid gap-2"
+            aria-describedby={problemasEmFalta ? "f-problemas-erro" : undefined}
+          >
             <legend className="mb-2 text-sm leading-none font-medium">
               Problemas (marque ao menos um)
             </legend>
-            <div className="grid gap-2 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2">
+            <div
+              className={cn(
+                "grid gap-2 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2",
+                problemasEmFalta && "outline-2 outline-atencao-foreground",
+              )}
+            >
               {PROBLEMAS_7.map((p) => (
                 <label
                   key={p.id}
@@ -436,6 +481,15 @@ export function ClienteFicha({
                 </label>
               ))}
             </div>
+            {problemasEmFalta ? (
+              // Sem `role="alert"`: a barra de salvar já anuncia. Aqui é a
+              // marca visual ao lado do campo, para o olho achar onde voltar.
+              <p id="f-problemas-erro" className="corpo-sm text-atencao-foreground">
+                Nenhum problema marcado — é o que qualifica um cliente de
+                holding (tarefa 1.1). A ficha salva mesmo assim; marque quando
+                souber.
+              </p>
+            ) : null}
           </fieldset>
 
           <div className="grid gap-5 sm:grid-cols-3">
@@ -629,11 +683,20 @@ export function ClienteFicha({
           de alteração não salva é `aria-live="polite"`: quem não vê a barra
           precisa ouvir que há algo pendente antes de sair da tela. */}
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-end gap-3 border-t bg-card/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-4 sm:shadow-(--shadow-raised)">
-        <p aria-live="polite" className="mr-auto corpo-sm text-muted-foreground">
-          {alterado
-            ? "Você tem alterações não salvas nesta ficha."
-            : "Tudo salvo."}
-        </p>
+        {erroSalvar ? (
+          <p role="alert" className="mr-auto corpo-sm text-destructive">
+            {erroSalvar}
+          </p>
+        ) : (
+          <p
+            aria-live="polite"
+            className="mr-auto corpo-sm text-muted-foreground"
+          >
+            {alterado
+              ? "Você tem alterações não salvas nesta ficha."
+              : "Tudo salvo."}
+          </p>
+        )}
         {/* O botão NUNCA é desabilitado por `alterado`: se a comparação
             errar por um campo, o aluno fica preso sem conseguir salvar a
             ficha. O sinal é informativo; salvar de novo é inofensivo. */}

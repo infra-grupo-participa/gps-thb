@@ -12,6 +12,7 @@ import {
   LIMITE_PAINEL_ALUNOS,
   LIMITE_PAINEL_ALUNOS_MAX,
 } from "@/lib/data";
+import { contarChamadosDoBadge } from "@/lib/chamados-data";
 import { Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
@@ -92,11 +93,13 @@ export default async function AdminPage({
   // (`getAtendimentoPorAluno`): ZERO consulta nova. Sem ele, chamado novo só
   // aparecia para quem abrisse `/admin/chamados` por hábito — e a lista de
   // e-mails da equipe está vazia, então ninguém era avisado por fora também.
-  // Conta o LOTE carregado, como todo número desta tela.
-  const chamadosAbertos = [...atendimentoDiario.values()].reduce(
-    (soma, a) => soma + a.chamadosAbertos,
-    0,
-  );
+  //
+  // A CONTA mora em `contarChamadosDoBadge` (`src/lib/chamados-data.ts`) e é a
+  // MESMA que `/admin/chamados` usa: não-fechados. Antes eram duas contas para
+  // o mesmo badge e o número mudava ao trocar de tela.
+  const chamadosAbertos = contarChamadosDoBadge({
+    atendimento: atendimentoDiario.values(),
+  });
 
   // 🔑 C-9 — os 4 KPIs antigos ("Alunos no programa", "Com login", "Sem
   // login", "Solicitações") FORAM REMOVIDOS: os cards 1, 2 e 7 do dashboard
@@ -160,6 +163,7 @@ export default async function AdminPage({
               alunos={alunos}
               atendimentoPorAluno={atendimentoPorAluno}
               total={totalAlunos}
+              erro={pagina.erro ?? null}
               carregarMaisHref={carregarMaisHref}
               carregarMaisQtd={proximoLote}
             />
@@ -183,7 +187,9 @@ export default async function AdminPage({
               </div>
             )
           }
-          etapas={<EtapasControle etapasIniciais={etapas} />}
+          etapas={
+            <EtapasControle etapasIniciais={etapas} totalAmbientes={totalAlunos} />
+          }
         />
       </main>
     </>

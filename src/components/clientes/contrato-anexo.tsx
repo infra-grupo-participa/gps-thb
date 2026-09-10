@@ -239,7 +239,7 @@ export function ContratoAnexo({
             aria-hidden
             className="size-4 shrink-0 text-muted-foreground"
           />
-          <span className="min-w-0 flex-1 truncate corpo-sm font-medium">
+          <span className="order-first basis-full truncate corpo-sm font-medium sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto">
             {contrato?.nome}
           </span>
           {contrato?.tamanho ? (

@@ -156,18 +156,23 @@ export function OnboardingPortal({
    * que eu pensava"); crescer no meio do caminho seria uma promessa quebrada —
    * e a barra existe justamente para ser confiável.
    */
+  // Congelado na abertura: depois de trocar a senha, `precisaTrocarSenha` vira
+  // false na próxima leitura e o passo 0 sumiria da conta — "Passo 1 de 10"
+  // virava "Passo 1 de 9" (achado do Fable). A barra só pode ENCOLHER por
+  // escolha da pessoa (captação), nunca por um passo que ela acabou de cumprir.
+  const [teveSenhaNaAbertura] = useState(() => dados.precisaTrocarSenha);
   const sequencia = useMemo(() => {
     if (soTour) return [8, 9];
     // Senha temporária sobre questionário concluído: a senha e o aviso de que
     // deu certo. Nada de reabrir perguntas que a pessoa já respondeu.
     if (soSenha) return [0, 9];
     const passos: number[] = [];
-    if (dados.precisaTrocarSenha) passos.push(0);
+    if (teveSenhaNaAbertura) passos.push(0);
     passos.push(1, 2);
     if (origem !== "captacao") passos.push(3, 4);
     passos.push(5, 6, 7, 8, 9);
     return passos;
-  }, [dados.precisaTrocarSenha, origem, soTour, soSenha]);
+  }, [teveSenhaNaAbertura, origem, soTour, soSenha]);
 
   const posicao = Math.max(0, sequencia.indexOf(passo));
   const podeFechar = passo >= 1;

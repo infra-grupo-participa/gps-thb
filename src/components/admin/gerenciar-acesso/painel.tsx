@@ -229,13 +229,23 @@ export function GerenciarAcessoPainel({
         toast.error(res.erro);
         return;
       }
-      toast.success(
-        res.loginApagado
-          ? "Ambiente e todos os logins (titular e sócios) excluídos por completo."
-          // "GPS" é nome interno (schema, repo, identificador) e não aparece
-          // para o usuário desde a decisão de marca de 09/07.
-          : "Ambiente excluído (não havia login).",
-      );
+      if (res.loginApagado) {
+        toast.success(
+          "Ambiente e todos os logins (titular e sócios) excluídos por completo.",
+        );
+      } else if (res.loginPreservadoMotivo) {
+        // …217: o login tem registros em outro portal do grupo e FICOU; só o
+        // ambiente do programa saiu. Antes a função abortava tudo dizendo que
+        // tinha limpado — a tela precisa dizer o que de fato aconteceu.
+        toast.warning("Ambiente excluído; o login foi preservado.", {
+          description: res.loginPreservadoMotivo,
+          duration: 10_000,
+        });
+      } else {
+        // "GPS" é nome interno (schema, repo, identificador) e não aparece
+        // para o usuário desde a decisão de marca de 09/07.
+        toast.success("Ambiente excluído (não havia login).");
+      }
       onOpenChange(false);
       router.push("/admin");
       router.refresh();

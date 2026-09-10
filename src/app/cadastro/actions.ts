@@ -1,7 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { soDigitos } from "@/lib/masks";
+import { documentoValido, soDigitos } from "@/lib/masks";
+import { MSG_SENHA_MINIMO, SENHA_MINIMO } from "@/lib/senha-regras";
 
 export interface CadastroState {
   erro?: string;
@@ -28,8 +29,17 @@ export async function cadastrar(
   if (documento.length !== 11 && documento.length !== 14) {
     return { erro: "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido." };
   }
-  if (senha.length < 6) {
-    return { erro: "A senha deve ter ao menos 6 caracteres." };
+  // Dígito verificador, a MESMA regra do cadastro pelo admin
+  // (`documentoValido` em `src/lib/masks.ts`). Sem ela, um CPF de 11 dígitos
+  // digitado errado passava aqui e só falhava depois, no vínculo por
+  // documento: a pessoa virava solicitação pendente sem entender por quê.
+  if (!documentoValido(documento)) {
+    return { erro: "CPF/CNPJ inválido — confira os dígitos." };
+  }
+  // O MESMO mínimo do formulário (`cadastro-form.tsx`) e dos outros 4 caminhos
+  // de senha — o servidor aceitava 6 enquanto a tela pedia 8.
+  if (senha.length < SENHA_MINIMO) {
+    return { erro: MSG_SENHA_MINIMO };
   }
 
   const supabase = await createClient();

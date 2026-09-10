@@ -179,15 +179,17 @@ export function CadastrarAlunoForm({
         <ArrowLeft className="size-3" /> voltar para a busca
       </button>
 
+      {/* Par semântico `atencao` (#8A5300 sobre #FFF4E0 = 5,81:1), o mesmo do
+          `AvisoInline` — não o âmbar cru do Tailwind. */}
       {duplicado ? (
-        <div className="rounded-md border border-amber-600/30 bg-amber-600/10 p-3">
+        <div className="rounded-lg bg-atencao p-3 text-atencao-foreground">
           <div className="flex items-start gap-2">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-amber-800">
+              <p className="text-sm font-medium">
                 Este aluno já está na base
               </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs">
                 Encontrado pelo{" "}
                 {duplicado.motivo === "documento" ? "CPF/CNPJ" : "e-mail"}:{" "}
                 <strong>{duplicado.nome ?? "—"}</strong>

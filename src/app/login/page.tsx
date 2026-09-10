@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Clock } from "lucide-react";
 import { LoginForm } from "./login-form";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { AvisoInline } from "@/components/ui/aviso-inline";
 import { ThbLogo } from "@/components/thb-logo";
 import { AuthLayout } from "@/components/auth-layout";
 import { destinoInterno } from "@/lib/nav";
@@ -8,10 +10,15 @@ import { destinoInterno } from "@/lib/nav";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ redirect?: string }>;
+  searchParams: Promise<{ redirect?: string; motivo?: string }>;
 }) {
-  const { redirect } = await searchParams;
+  const { redirect, motivo } = await searchParams;
   const redirectTo = destinoInterno(redirect);
+  // `auto-logout.tsx` manda para `/login?motivo=inatividade` depois de 30 min
+  // parado. Nenhuma tela lia o parâmetro: a sessão caía no meio do uso e o
+  // aluno reencontrava o login limpo, sem uma palavra — parecia defeito.
+  // Allowlist de um valor só: nada do que vem na URL é ecoado na tela.
+  const porInatividade = motivo === "inatividade";
 
   return (
     <AuthLayout>
@@ -26,6 +33,16 @@ export default async function LoginPage({
           <p className="text-sm text-muted-foreground">Time Holding Brasil</p>
         </div>
       </div>
+
+      {porInatividade ? (
+        // `role="status"`: quem já estava com o leitor de tela aberto quando a
+        // sessão caiu precisa ouvir o porquê sem sair caçando pela página.
+        <div role="status" className="mb-4">
+          <AvisoInline icone={Clock}>
+            Sua sessão foi encerrada por inatividade. Entre de novo.
+          </AvisoInline>
+        </div>
+      ) : null}
 
       <Card elevacao="raised" size="lg">
         <CardHeader>

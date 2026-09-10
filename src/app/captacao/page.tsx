@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
+import { adminNavItems, navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +12,17 @@ export default async function CaptacaoPage() {
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
 
+  // O header vinha SEM `navItems`: quem caísse em `/captacao` ficava só com o
+  // logo, sem nenhuma aba — a página bloqueada virava beco sem saída. As abas
+  // são as do papel de quem está logado; `sem_acesso` continua sem nenhuma
+  // (não há para onde mandá-lo, e a home já explica o estado dele).
+  const navItems =
+    ctx.papel === "admin"
+      ? adminNavItems()
+      : ctx.papel === "aluno"
+        ? navDoAluno(ctx)
+        : undefined;
+
   return (
     <>
       <AppHeader
@@ -18,6 +30,7 @@ export default async function CaptacaoPage() {
         email={ctx.user.email ?? null}
         papelRotulo={ctx.papel === "admin" ? "Admin" : "Aluno"}
         homeHref={ctx.papel === "admin" ? "/admin" : "/"}
+        navItems={navItems}
       />
       {/* O cabeçalho é o mesmo `PageHeader` das outras 17 páginas — o card
           continua sendo o corpo, agora só com o texto. Antes o `h1` morava

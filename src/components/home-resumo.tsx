@@ -1,5 +1,9 @@
 import { TrendingUp, Users, CalendarCheck, Coins } from "lucide-react";
-import type { ResumoHonorarios } from "@/lib/etapa1";
+import {
+  META_CLIENTES,
+  META_REUNIOES,
+  type ResumoHonorarios,
+} from "@/lib/etapa1";
 import { brl } from "@/lib/moeda";
 import { MetaHonorarios } from "@/components/etapa1/meta-honorarios";
 import { Card, CardContent } from "@/components/ui/card";
@@ -87,10 +91,13 @@ export function HomeResumo({
           <KpiLinha
             icone={<Users />}
             rotulo="Clientes"
+            // As metas vêm de `src/lib/etapa1.ts` — "/30" e "/15" escritos à
+            // mão faziam a home mentir no dia em que a meta mudasse, e ela é
+            // a MESMA da Etapa 01 e da aba Clientes.
             valor={
               clientesComDados == null
-                ? `${clientes}/30`
-                : `${clientesComDados}/30`
+                ? `${clientes}/${META_CLIENTES}`
+                : `${clientesComDados}/${META_CLIENTES}`
             }
             hint={
               clientesComDados == null
@@ -101,8 +108,8 @@ export function HomeResumo({
           <KpiLinha
             icone={<CalendarCheck />}
             rotulo="Reuniões agendadas"
-            valor={`${agendados}/15`}
-            hint="meta de 15"
+            valor={`${agendados}/${META_REUNIOES}`}
+            hint={`meta de ${META_REUNIOES}`}
           />
           <KpiLinha
             icone={<Coins />}

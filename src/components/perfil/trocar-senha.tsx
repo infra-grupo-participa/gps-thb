@@ -9,6 +9,13 @@ import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 
 /**
+ * Mínimo de caracteres da senha — o mesmo do cadastro, do onboarding e das
+ * RPCs de senha do admin. Era 6 aqui: a mesma conta tinha duas regras, e o
+ * texto do erro é literalmente o mesmo em todas as telas.
+ */
+import { SENHA_MINIMO } from "@/lib/senha-regras";
+
+/**
  * Troca de senha do próprio usuário logado.
  *
  * Existe porque `/auth/redefinir` só era alcançável pelo link do e-mail de
@@ -34,10 +41,10 @@ export function TrocarSenha() {
     e.preventDefault();
     setErro(null);
 
-    // Mesmo mínimo do `/auth/redefinir`, para não haver duas regras diferentes
-    // na mesma conta.
-    if (senha.length < 6) {
-      setErro("A senha deve ter ao menos 6 caracteres.");
+    // Mesmo mínimo do `/auth/redefinir`, do cadastro e do onboarding — não
+    // pode haver duas regras diferentes na mesma conta.
+    if (senha.length < SENHA_MINIMO) {
+      setErro(`A senha precisa ter ao menos ${SENHA_MINIMO} caracteres.`);
       return;
     }
     if (senha !== confirma) {
@@ -92,6 +99,8 @@ export function TrocarSenha() {
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               autoComplete="new-password"
+              placeholder={`Mínimo de ${SENHA_MINIMO} caracteres`}
+              minLength={SENHA_MINIMO}
             />
           </div>
 
@@ -102,6 +111,7 @@ export function TrocarSenha() {
               value={confirma}
               onChange={(e) => setConfirma(e.target.value)}
               autoComplete="new-password"
+              minLength={SENHA_MINIMO}
             />
           </div>
 

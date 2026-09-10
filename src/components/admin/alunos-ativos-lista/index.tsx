@@ -34,9 +34,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Users } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, RotateCw, Search, Users } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { LoteDeAcesso } from "./lote-acesso";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
@@ -65,6 +67,7 @@ export function AlunosAtivosLista({
   alunos,
   atendimentoPorAluno,
   total,
+  erro = null,
   carregarMaisHref,
   carregarMaisQtd,
 }: {
@@ -76,6 +79,13 @@ export function AlunosAtivosLista({
   atendimentoPorAluno: Record<string, AtendimentoDoAluno>;
   /** Total de ambientes no GPS (`total_ambientes` da RPC), não o do lote. */
   total: number;
+  /**
+   * 🔴 A leitura FALHOU (`getAlunosGps` devolve a frase). Lista vazia por
+   * falha e lista vazia por base vazia desenhavam a MESMA tela — "Nenhum aluno
+   * no programa ainda", com convite para criar o primeiro acesso. Com a frase
+   * aqui, a tela diz que não conseguiu ler, e não que não há ninguém.
+   */
+  erro?: string | null;
   /** URL do próximo lote, ou `null` quando tudo já está na tela. */
   carregarMaisHref: string | null;
   /** Quantos ambientes o próximo lote acrescenta. Só vale com o href acima. */
@@ -184,6 +194,9 @@ export function AlunosAtivosLista({
 
   const buscando = estado.termo.trim().length > 0;
   const filtrosAtivos = [...estado.filtros].map(fraseDoFiltro);
+
+  // A FALHA vem antes do vazio: só é "base vazia" o que o banco confirmou.
+  if (erro) return <FalhaAoCarregar erro={erro} />;
 
   if (alunos.length === 0) {
     return (
@@ -330,5 +343,43 @@ export function AlunosAtivosLista({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * A tela de falha DESTA aba.
+ *
+ * 🔑 Não é o `ErroPainel` de `ui/`: aquele é a tela inteira de erro do portal
+ * — emite o próprio `<main id="conteudo">` e ocupa `min-h-screen`. Aqui ele
+ * ficaria DENTRO do `<main id="conteudo">` de `/admin`, duplicando o id que é
+ * alvo do skip link e empurrando a aba para a altura da janela. O que importa
+ * do padrão dele está mantido: chip vermelho, título que não mente, caminho de
+ * volta — e `role="alert"`, porque a aba troca sem recarregar a página.
+ */
+function FalhaAoCarregar({ erro }: { erro: string }) {
+  const router = useRouter();
+  return (
+    <Card elevacao="raised" role="alert" className="[--card-spacing:--spacing(10)]">
+      <CardContent className="grid justify-items-center gap-4 text-center">
+        <span
+          aria-hidden
+          className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive [&>svg]:size-6"
+        >
+          <AlertTriangle />
+        </span>
+        <div className="grid max-w-[52ch] gap-1.5">
+          <p className="font-heading titulo-h2 text-foreground">
+            Não foi possível carregar a lista de alunos
+          </p>
+          <p className="corpo text-muted-foreground">
+            {erro} Ninguém foi removido do programa — é a leitura que falhou.
+            Tente de novo; se insistir, avise o time técnico.
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => router.refresh()}>
+          <RotateCw aria-hidden /> Tentar de novo
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

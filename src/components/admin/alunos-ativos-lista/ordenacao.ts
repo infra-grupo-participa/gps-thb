@@ -30,8 +30,8 @@ const fmtDiaIso = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-/** Número do dia (epoch/86400s) no fuso de Brasília. */
-export function diaLocal(data: Date): number {
+/** Número do dia (epoch/86400s) no fuso de Brasília. Interna ao módulo. */
+function diaLocal(data: Date): number {
   const [ano, mes, dia] = fmtDiaIso.format(data).split("-").map(Number);
   return Date.UTC(ano, mes - 1, dia) / 86_400_000;
 }
@@ -40,7 +40,7 @@ export function diaLocal(data: Date): number {
  * Dias de calendário entre `iso` e `agora`, em Brasília. Conta DIA, não 24h:
  * um acesso às 23h de ontem é "ontem", nunca "hoje".
  */
-export function diasDesde(iso: string, agora: number): number {
+function diasDesde(iso: string, agora: number): number {
   return diaLocal(new Date(agora)) - diaLocal(new Date(iso));
 }
 

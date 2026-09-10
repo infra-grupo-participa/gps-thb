@@ -38,6 +38,13 @@ export function SolicitacaoCard({
   const [recusando, setRecusando] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [erroRecusa, setErroRecusa] = useState<string | null>(null);
+  /**
+   * A frase que a action devolveu na APROVAÇÃO, já traduzida em português
+   * (ex.: "este login já participa de outro ambiente — remova em Gerenciar
+   * acesso"). Trocá-la por "Erro ao aprovar solicitação." apagava a única
+   * instrução que dizia ao admin o que fazer.
+   */
+  const [erroAprovar, setErroAprovar] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   async function buscar(e: React.FormEvent) {
@@ -53,9 +60,11 @@ export function SolicitacaoCard({
 
   function aprovar() {
     if (!selecionado) {
+      setErroAprovar("Selecione o aluno correspondente antes de aprovar.");
       toast.error("Selecione o aluno correspondente antes de aprovar.");
       return;
     }
+    setErroAprovar(null);
     startTransition(async () => {
       const res = await aprovarSolicitacao(
         solicitacao.id,
@@ -63,7 +72,8 @@ export function SolicitacaoCard({
         selecionado.id,
       );
       if (res.erro) {
-        toast.error("Erro ao aprovar solicitação.");
+        setErroAprovar(res.erro);
+        toast.error(res.erro);
         return;
       }
       toast.success("Acesso liberado.");
@@ -90,8 +100,9 @@ export function SolicitacaoCard({
         texto === "" ? undefined : texto,
       );
       if (res.erro) {
-        setErroRecusa("Erro ao recusar solicitação.");
-        toast.error("Erro ao recusar solicitação.");
+        // A frase vem traduzida da action; a genérica escondia o motivo real.
+        setErroRecusa(res.erro);
+        toast.error(res.erro);
         return;
       }
       setRecusando(false);
@@ -202,6 +213,12 @@ export function SolicitacaoCard({
             </div>
           ) : null}
         </div>
+
+        {/* Sempre montado, mesmo vazio: região viva que nasce junto com o
+            texto não é anunciada por parte dos leitores de tela. */}
+        <p role="alert" className="text-sm text-destructive empty:hidden">
+          {erroAprovar}
+        </p>
 
         <div className="flex justify-end gap-2">
           <Button

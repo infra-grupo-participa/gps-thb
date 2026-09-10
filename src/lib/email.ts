@@ -10,7 +10,14 @@ import "server-only";
  *
  * Nenhuma função aqui lança: falha de e-mail nunca deve bloquear a criação do
  * acesso. Sempre retornam { ok, erro? }.
+ *
+ * 🔑 Falha vai para `logErro`/`logAviso` (`src/lib/log.ts`), nunca `console.*`
+ * avulso: uma linha JSON por evento é o que permite contar quantos e-mails a
+ * Resend recusou na Hostinger, e o helper redige e-mail e CPF do texto do erro
+ * antes de emitir — o corpo de erro da Resend cita o destinatário.
  */
+
+import { logAviso, logErro } from "@/lib/log";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -45,12 +52,12 @@ export async function enviar({
 }: EnviarParams): Promise<ResultadoEmail> {
   const chave = process.env.RESEND_API_KEY;
   if (!chave) {
-    console.warn("[email] RESEND_API_KEY ausente — e-mail não enviado.");
+    logAviso("email.enviar", "RESEND_API_KEY ausente", { enviado: false });
     return { ok: false, erro: "RESEND_API_KEY não configurada." };
   }
   const destinatarios = (Array.isArray(para) ? para : [para]).filter(Boolean);
   if (!destinatarios.length) {
-    console.warn("[email] sem destinatário — e-mail não enviado.");
+    logAviso("email.enviar", "sem destinatário", { enviado: false });
     return { ok: false, erro: "Sem destinatário." };
   }
 
@@ -76,12 +83,17 @@ export async function enviar({
 
     if (!resp.ok) {
       const detalhe = await resp.text().catch(() => "");
-      console.error("[email] Resend respondeu", resp.status, detalhe);
+      // `logErro` redige e-mail e sequências longas de dígitos do texto antes
+      // de emitir — o corpo de erro da Resend cita o destinatário.
+      logErro("email.enviar", { code: `resend_${resp.status}`, message: detalhe }, {
+        status: resp.status,
+        destinatarios: destinatarios.length,
+      });
       return { ok: false, erro: `Resend ${resp.status}` };
     }
     return { ok: true };
   } catch (e) {
-    console.error("[email] Falha ao chamar a Resend:", e);
+    logErro("email.enviar", e, { destinatarios: destinatarios.length });
     return { ok: false, erro: "Falha de rede ao enviar o e-mail." };
   }
 }

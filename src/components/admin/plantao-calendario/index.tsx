@@ -71,6 +71,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { CardSlot } from "./card-slot";
 import { DialogoCancelamento } from "./dialogo-cancelamento";
 import { DialogoInscritos } from "./dialogo-inscritos";
@@ -113,6 +114,9 @@ export function PlantaoCalendario({
   const [modo, setModo] = useState<ModoDialog>("lista");
   const [inscritosAbertos, setInscritosAbertos] = useState<SlotAdmin | null>(null);
   const [cancelando, setCancelando] = useState<SlotAdmin | null>(null);
+  /** O plantão cuja REMOÇÃO está sendo confirmada. `null` = nada aberto. */
+  const [removendo, setRemovendo] = useState<SlotAdmin | null>(null);
+  const [erroRemover, setErroRemover] = useState<string | null>(null);
   /** Texto do `aria-live` do diálogo do dia (troca de mentora, criação, cancelamento). */
   const [aviso, setAviso] = useState("");
   /** Slot com ação em voo — o rótulo de carregamento sai só no card certo. */
@@ -165,14 +169,19 @@ export function PlantaoCalendario({
     });
   }
 
-  function remover(slot: SlotAdmin) {
-    if (
-      !window.confirm(
-        `Remover o plantão de ${faixaHorario(slot.horaInicio, slot.duracaoMin)} com ${slot.mentoraNome}?`,
-      )
-    ) {
-      return;
-    }
+  /**
+   * 🔴 Remover é DELETE, e a FK das inscrições é `on delete cascade`
+   * (`20260901000001_gps_plantao_estrutura.sql`): junto com o plantão vão as
+   * inscrições canceladas dele — com `presenca_em`, `nps_nota` e
+   * `nps_comentario`. Quem quer tirar o plantão da agenda sem perder isso usa
+   * "Cancelar plantão", que mantém o registro e avisa os inscritos.
+   *
+   * O `window.confirm` que estava aqui não dizia nada disso.
+   */
+  function confirmarRemocao() {
+    const slot = removendo;
+    if (!slot) return;
+    setErroRemover(null);
     setSlotEmAcao(slot.slotId);
     startTransition(async () => {
       const res = await removerSlot(slot.slotId);
@@ -180,12 +189,19 @@ export function PlantaoCalendario({
       if (!res.ok) {
         toast.error(res.erro);
         setAviso(res.erro);
+        setErroRemover(res.erro);
         return;
       }
+      setRemovendo(null);
       toast.success("Plantão removido.");
       setAviso("Plantão removido.");
       router.refresh();
     });
+  }
+
+  function remover(slot: SlotAdmin) {
+    setErroRemover(null);
+    setRemovendo(slot);
   }
 
   /**
@@ -391,6 +407,35 @@ export function PlantaoCalendario({
         totalInscritosPorSlot={totalInscritosPorSlot}
         setInscritosAbertos={setInscritosAbertos}
       />
+
+      {removendo ? (
+        <DialogoConfirmacao
+          aberto
+          titulo="Remover este plantão da agenda?"
+          descricao={`${rotuloData(removendo.data)} · ${faixaHorario(removendo.horaInicio, removendo.duracaoMin)} · ${removendo.mentoraNome}`}
+          consequencia={
+            <>
+              O plantão é <strong>apagado</strong>, não arquivado: somem junto
+              as <strong>presenças e as respostas de NPS</strong> das inscrições
+              deste plantão, inclusive as já canceladas. Não dá para desfazer.
+              <br />
+              <br />
+              Para tirar da agenda <em>mantendo</em> o registro e avisando quem
+              se inscreveu, use <strong>&ldquo;Cancelar plantão&rdquo;</strong>.
+            </>
+          }
+          rotuloConfirmar="Remover plantão"
+          rotuloConfirmando="Removendo…"
+          confirmando={slotEmAcao === removendo.slotId && pending}
+          erro={erroRemover}
+          onConfirmar={confirmarRemocao}
+          onCancelar={() => {
+            if (pending) return;
+            setRemovendo(null);
+            setErroRemover(null);
+          }}
+        />
+      ) : null}
 
       {cancelando ? (
         <DialogoCancelamento

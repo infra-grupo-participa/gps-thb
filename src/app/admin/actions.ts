@@ -3,7 +3,8 @@
 import { emailParaIlike, emailValido } from "@/lib/texto";
 import { LOTE_ACESSOS_MAXIMO, LOTE_PAUSA_MS } from "@/lib/acessos-lote";
 
-import { randomBytes } from "crypto";
+import { gerarSenhaTemporaria } from "@/lib/senha-temporaria";
+import { SENHA_MINIMO } from "@/lib/senha-regras";
 import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
@@ -20,10 +21,9 @@ import {
 import { PLANOS_ALUNO } from "@/lib/types";
 import type { Aluno, NovoAlunoInput, PlanoAluno, Turma } from "@/lib/types";
 
-function gerarSenha(): string {
-  // Senha temporária legível (ex.: Gps-3f9a2b).
-  return "Gps-" + randomBytes(4).toString("hex");
-}
+// A senha temporária vem de `@/lib/senha-temporaria` (`Thb-7f3a-2b9c`). O
+// gerador local produzia `Gps-3f9a2b` e ia por e-mail e WhatsApp ao aluno —
+// "GPS" é nome interno e não aparece para o usuário desde 09/07/2026.
 
 export interface AlunoBusca extends Aluno {
   documento: string | null;
@@ -36,6 +36,35 @@ function norm(s: string | null | undefined): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
+}
+
+/**
+ * Saneia UMA palavra antes de ela entrar no `.or()` do PostgREST.
+ *
+ * 🔒 O `.or()` recebe uma STRING de filtros separada por vírgula, com
+ * parênteses agrupando e aspas citando valor: `nome.ilike.%joão%`. Interpolar
+ * o que o admin digitou sem tirar esses metacaracteres é injeção de FILTRO —
+ * um termo com vírgula (`a,documento.not.is.null`) acrescenta um ramo ao OR e
+ * varre `thb_alunos` (a base inteira, compartilhada com o sip) por um critério
+ * que a tela nunca ofereceu. Hoje só admin chega aqui, mas "só admin" não é
+ * argumento para deixar o parâmetro aberto.
+ *
+ * ESCOLHA: saneamento na fronteira, não RPC nova. É a menor mudança segura —
+ * uma RPC exigiria migração aplicada pelo João e reescreveria a busca inteira
+ * (ranqueamento em SQL) por um defeito que uma allowlist de caracteres fecha.
+ *
+ * O que sai: `,` `(` `)` `"` `\` `*` (metacaractere do PostgREST), `%` e `_`
+ * (curingas do `ilike` — `_` casa qualquer caractere e alargava a busca em
+ * silêncio) e controle. O que fica: letra, acento, dígito, espaço, `.`, `@`,
+ * `-`, `'` — o que existe em nome e e-mail de verdade. Teto de 40 caracteres:
+ * termo maior que isso não é busca, é payload.
+ */
+function saneParaFiltro(v: string): string {
+  return v
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .replace(/[,()"\\*%_]/g, "")
+    .trim()
+    .slice(0, 40);
 }
 
 /**
@@ -55,7 +84,14 @@ export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
   const supabase = await createClient();
 
   // Palavras do texto + o bloco de dígitos (CPF/CNPJ/telefone).
-  const palavras = q.split(/\s+/).filter((t) => t.length >= 2);
+  // ⚠️ `saneParaFiltro` roda ANTES de qualquer interpolação no `.or()`; o
+  // ranqueamento abaixo usa as MESMAS palavras saneadas, para a ordem da lista
+  // refletir o que o banco realmente casou.
+  const palavras = q
+    .split(/\s+/)
+    .map(saneParaFiltro)
+    .filter((t) => t.length >= 2);
+  // `soDigitos` já devolve só `[0-9]`: nada a sanear.
   const digitos = soDigitos(q);
 
   // OR amplo: qualquer palavra em qualquer campo (redundante de propósito).
@@ -66,7 +102,9 @@ export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
   if (digitos.length >= 3) {
     filtros.push(`documento.ilike.%${digitos}%`, `telefone.ilike.%${digitos}%`);
   }
-  if (filtros.length === 0) filtros.push(`nome.ilike.%${q}%`);
+  // Termo que sobrou vazio depois do saneamento (só metacaractere, p. ex.
+  // `,,,`) não vira consulta: devolver [] é mais honesto do que varrer a base.
+  if (filtros.length === 0) return [];
 
   const { data } = await supabase
     .from("thb_alunos")
@@ -156,7 +194,11 @@ export async function cadastrarAluno(
   const documento = dados.documento?.trim() ?? "";
 
   if (nome.length < 3) return { erro: "Informe o nome completo do aluno." };
-  if (!/^\S+@\S+\.\S+$/.test(email)) return { erro: "E-mail inválido." };
+  // `emailValido` (`src/lib/texto.ts`) é a regra ÚNICA de e-mail do projeto —
+  // a mesma que barra CR/LF e vírgula (vetor de injeção de cabeçalho) nas
+  // listas de destinatário. A regex escrita à mão aqui aceitava
+  // "a@b.c\nBcc: x@y.z" e era uma segunda verdade sobre a mesma pergunta.
+  if (!emailValido(email)) return { erro: "E-mail inválido." };
   if (documento && !documentoValido(documento)) {
     return { erro: "CPF/CNPJ inválido — confira os dígitos." };
   }
@@ -528,7 +570,7 @@ export async function criarAcessoAluno(
   }
   if (!email) return { erro: "Este aluno não tem e-mail. Informe um e-mail." };
 
-  const senha = opts?.senha?.trim() || gerarSenha();
+  const senha = opts?.senha?.trim() || gerarSenhaTemporaria();
 
   // Cliente isolado (sem persistir sessão) para não trocar o login do admin.
   const sb = createStatelessClient(
@@ -551,10 +593,15 @@ export async function criarAcessoAluno(
   });
 
   if (error) {
+    // Classificação por `code`/`status` do GoTrue — nunca pelo texto da
+    // mensagem, que muda de versão para versão e é a regra da casa desde
+    // 09/09. O teste por mensagem sobrou só como fallback para o servidor de
+    // auth que não manda `code` (e aí `status` também costuma faltar).
+    const codigo = error.code ?? null;
     if (
-      error.code === "user_already_exists" ||
+      codigo === "user_already_exists" ||
       error.status === 422 ||
-      /already/i.test(error.message)
+      (!codigo && /already/i.test(error.message ?? ""))
     ) {
       // A conta já existe (tipicamente lead do Workbook — o auth.users é
       // compartilhado). O gatilho do GPS só roda em INSERT, então esse login
@@ -618,15 +665,32 @@ export async function criarAcessoAluno(
     // GoTrue, não Postgres: `traduzirErroBanco` não serve aqui. As duas causas
     // reais (senha fraca e limite de envio) precisam chegar ao admin com o que
     // fazer; o resto vira frase genérica, com o detalhe no log.
-    logErro("criarAcessoAluno.signUp", error, { code: error.code ?? null });
-    if (error.code === "weak_password" || /password/i.test(error.message)) {
-      return { erro: "Senha fraca: use ao menos 6 caracteres." };
+    logErro("criarAcessoAluno.signUp", error, { code: codigo });
+    if (codigo === "weak_password") {
+      return { erro: `Senha fraca: use ao menos ${SENHA_MINIMO} caracteres.` };
     }
-    if (error.status === 429 || /rate limit/i.test(error.message)) {
+    if (
+      error.status === 429 ||
+      codigo === "over_request_rate_limit" ||
+      codigo === "over_email_send_rate_limit"
+    ) {
       return {
         erro:
           "Limite de envios atingido. Tente de novo em alguns minutos.",
       };
+    }
+    // Fallback por mensagem SÓ sem `code` (GoTrue antigo). Documentado de
+    // propósito: é o único ponto do arquivo que ainda olha `error.message`.
+    if (!codigo) {
+      const msg = error.message ?? "";
+      if (/password/i.test(msg)) {
+        return { erro: `Senha fraca: use ao menos ${SENHA_MINIMO} caracteres.` };
+      }
+      if (/rate limit/i.test(msg)) {
+        return {
+          erro: "Limite de envios atingido. Tente de novo em alguns minutos.",
+        };
+      }
     }
     return { erro: "Não foi possível criar o acesso agora. Tente de novo." };
   }
@@ -683,24 +747,11 @@ export async function salvarPastaDriveUrl(alunoId: string, url: string) {
   return {};
 }
 
-/**
- * Exclui o AMBIENTE INTEIRO do GPS: apaga o vínculo de todos os membros
- * (titular + sócios) — incluindo os logins deles em `auth.users` — e todo o
- * progresso/clientes. Não é "tirar 1 login": ver `admin_excluir_membro` para
- * remover só um sócio. Usa a mesma função SECURITY DEFINER de
- * `excluirAcessoAluno` (`gps.admin_excluir_acesso`), que já cobre este caso.
- */
-export async function removerAlunoGps(alunoId: string) {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
-  const supabase = await createClient();
-  const { error } = await supabase
-    .schema("gps")
-    .rpc("admin_excluir_acesso", { p_aluno_id: alunoId });
-
-  if (error) return { erro: traduzirErroBanco("removerAlunoGps", error) };
-  revalidatePath("/admin");
-  return {};
-}
+// `removerAlunoGps` foi APAGADA (war-room 10/09): 0 chamadores e cópia literal
+// de `excluirAcessoAluno` (`src/app/admin/senha-actions.ts`) — as duas batiam
+// na MESMA RPC `gps.admin_excluir_acesso`. Server Action exportada é endpoint
+// HTTP: uma que apaga ambiente inteiro sem nenhuma tela por trás é superfície
+// de ataque sem contrapartida. Quem exclui ambiente é "Gerenciar acesso".
 
 // ─────────────────────────────────────────────────────────────────────────
 // Criar acesso EM LOTE — C.2 da mega feature (10/09/2026)
@@ -714,7 +765,7 @@ export async function removerAlunoGps(alunoId: string) {
  * trocou) e foi abandonado.
  *
  * **A intenção passa inteira**: cada pessoa recebe uma senha temporária
- * INDIVIDUAL (`gerarSenha()`, que já existe), o e-mail de credenciais sai como
+ * INDIVIDUAL (`gerarSenhaTemporaria()`, de `@/lib/senha-temporaria`), o e-mail de credenciais sai como
  * sempre e o portal pede uma senha própria no primeiro acesso (a marca
  * `gps_senha_temp_em`, migração ...208). Ninguém fica de fora.
  *

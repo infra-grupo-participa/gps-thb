@@ -15,12 +15,10 @@
 export { Barras } from "./barras";
 export { BarraEmpilhada } from "./barra-empilhada";
 export { Rosca } from "./rosca";
-export { Linha, type SerieLinha } from "./linha";
+export { Linha } from "./linha";
 export { Funil } from "./funil";
-export { LegendaValores } from "./legenda-valores";
-export {
-  COR_DO_TOM,
-  type FormatarValor,
-  type PontoGrafico,
-  type TomGrafico,
-} from "./tipos";
+// ⚠️ Só o que ALGUÉM importa daqui. `LegendaValores`, `COR_DO_TOM`,
+// `SerieLinha`, `FormatarValor` e `PontoGrafico` saíram do barril: os usos
+// reais importam direto de `./legenda-valores` e `./tipos`, e reexport que
+// ninguém consome é superfície morta que o próximo leitor confunde com API.
+export { type TomGrafico } from "./tipos";

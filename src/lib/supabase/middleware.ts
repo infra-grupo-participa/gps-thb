@@ -1,5 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+// `@/lib/nav` só importa TIPOS (`import type`) e exporta funções puras: nada
+// dele vai parar no bundle do proxy além do próprio validador.
+import { destinoInterno } from "@/lib/nav";
 
 /**
  * Atualiza a sessão do Supabase a cada requisição e protege rotas.
@@ -69,10 +72,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Já logado abrindo `/login?redirect=/clientes`: honra o destino do link em
+  // vez de jogar em "/". `destinoInterno()` é o MESMO validador do formulário
+  // de login (`src/lib/nav.ts`) — `//evil.com`, `/\evil.com` e esquema no meio
+  // do caminho caem em "/", então o parâmetro não vira open redirect.
+  // `new URL(destino, request.url)` preserva query e hash do destino.
   if (user && pathname === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    const destino = destinoInterno(request.nextUrl.searchParams.get("redirect"));
+    return NextResponse.redirect(new URL(destino, request.url));
   }
 
   return supabaseResponse;

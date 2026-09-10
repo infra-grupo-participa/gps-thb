@@ -1,5 +1,6 @@
 import { FolderOpen, ExternalLink } from "lucide-react";
 import { embedPastaDrive } from "@/lib/pasta";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -58,13 +59,18 @@ export function PastaView({
             </p>
           </div>
         </div>
+        {/* ⚠️ CONTRASTE — era um botão escrito à mão com `bg-primary`
+            (#FF6300) e texto branco: **2,98:1**, reprova o WCAG 1.4.3 na ação
+            principal da tela. `buttonVariants()` usa `marca-acao` (#C74600,
+            4,88:1 medido) e traz junto o foco por outline, que o botão à mão
+            também não tinha. */}
         <a
           href={pastaUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+          className={buttonVariants()}
         >
-          Abrir no Drive <ExternalLink className="size-4" />
+          Abrir no Drive <ExternalLink aria-hidden />
         </a>
       </CardHeader>
       <CardContent className="grid gap-3">

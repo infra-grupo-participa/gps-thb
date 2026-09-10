@@ -14,7 +14,9 @@
  *   ./alunos-actions.ts     carga do lote do Acelera, revogar e reativar acesso
  *   ./config-actions.ts     o interruptor de inscrições (`gps.config`)
  *   ./inscritos-actions.ts  marcar presença, editar nome, cancelar e
- *                           inscrever pelo painel (lista de inscritos)
+ *                           inscrever pelo painel (lista de inscritos) —
+ *                           importado DIRETO pelos componentes, sem passar
+ *                           por este barril
  *
  * 🔑 Cada arquivo de destino tem o seu próprio `"use server"` — é lá que a
  * action é DEFINIDA e é de lá que sai o id que o cliente invoca.
@@ -57,9 +59,8 @@ export {
 
 export { definirInscricoesAbertas } from "./config-actions";
 
-export {
-  marcarPresencaInscrito,
-  editarNomeInscricao,
-  cancelarInscricaoPeloAdmin,
-  inscreverAlunoNoSlot,
-} from "./inscritos-actions";
+// ⚠️ `./inscritos-actions` NÃO é reexportado aqui (war-room 10/09): os dois
+// consumidores reais — `plantao-inscritos/index.tsx` e
+// `plantao-inscritos/inscrever-form.tsx` — importam direto do arquivo de
+// origem. O barril duplicava quatro nomes que ninguém pegava por aqui, e cada
+// reexporte de Server Action é uma referência a mais para o cliente invocar.

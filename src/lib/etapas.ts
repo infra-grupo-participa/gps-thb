@@ -58,8 +58,10 @@ export interface OverrideLiberacao {
 /** Overrides do ambiente, indexados pelo número da etapa. */
 export type OverridesLiberacao = Record<number, OverrideLiberacao>;
 
-/** Esta etapa está liberada PARA ESTE ALUNO? `coalesce(override, global)`. */
-export function etapaLiberadaPara(
+/** Esta etapa está liberada PARA ESTE ALUNO? `coalesce(override, global)`.
+ *  INTERNA: o único consumidor é `etapasComLiberacaoDoAluno`, logo abaixo —
+ *  exportá-la oferecia uma segunda porta para a MESMA regra de liberação. */
+function etapaLiberadaPara(
   etapa: Pick<Etapa, "id" | "liberada">,
   overrides: OverridesLiberacao,
 ): boolean {

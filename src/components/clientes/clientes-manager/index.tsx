@@ -29,7 +29,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LayoutGrid, List as ListIcon, Users } from "lucide-react";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
-import { META_CLIENTES, resumoHonorarios } from "@/lib/etapa1";
+import {
+  META_CLIENTES,
+  calcularMetricasEtapa1,
+  resumoHonorarios,
+} from "@/lib/etapa1";
 import {
   criarCliente,
   definirClienteEquipe,
@@ -102,8 +106,6 @@ export function ClientesManager({
   const [novoAberto, setNovoAberto] = useState(false);
   const [novaFase, setNovaFase] = useState<FaseCliente>("prospeccao");
   const [novoGrau, setNovoGrau] = useState<string>("");
-  /** Id do cliente criado cujo patch de fase/vínculo falhou (ver `criarComFaseEGrau`). */
-  const [criadoSemPatch, setCriadoSemPatch] = useState<string | null>(null);
   const [erroDialogo, setErroDialogo] = useState<string | null>(null);
   /**
    * Falha de escrita FORA de diálogo (fase e estrela são um clique só). Fica na
@@ -114,7 +116,17 @@ export function ClientesManager({
   const [pending, startTransition] = useTransition();
 
   const fichaHref = (id: string) => `${basePath}/clientes/${id}`;
-  const preenchidos = clientes.filter((c) => c.nome.trim() !== "").length;
+  // PL3 — "um número, uma verdade": home, Etapa 01 e esta aba mostram
+  // `comDados` (nome + telefone + nível), que é o que a tarefa 1 cobra;
+  // `preenchidos` (só nome) vai como DETALHE. Enquanto esta tela contava só o
+  // nome, o aluno lia "30 de 30" aqui com o passo 2 travado na Etapa 01.
+  // A régua vem de `calcularMetricasEtapa1`, a mesma função das outras duas
+  // telas — `{}` porque só os números derivados da LISTA interessam aqui
+  // (o mapa de tarefas manuais não muda `preenchidos`/`comDados`).
+  const { preenchidos, comDados } = useMemo(
+    () => calcularMetricasEtapa1(clientes, {}),
+    [clientes],
+  );
 
   // Tudo em memória, sobre os ≤ 30 clientes já carregados: nenhuma ida nova ao
   // banco para contar, somar ou filtrar por fase. A meta usa `clientes` (a
@@ -155,7 +167,6 @@ export function ClientesManager({
   // ---- Ações ----
   function abrirNovo() {
     setErroDialogo(null);
-    setCriadoSemPatch(null);
     setNovaFase("prospeccao");
     setNovoGrau("");
     setNovoAberto(true);
@@ -304,12 +315,16 @@ export function ClientesManager({
           titulo="Meus clientes"
           descricao={
             <>
-              {preenchidos} de {META_CLIENTES} preenchidos · gerencie o contato e
-              os documentos.
+              {comDados} de {META_CLIENTES} com dados · cadastre, controle o
+              contato e anexe o contrato assinado.
               {/* Rodapé honesto do KPI: sem ele, quem tem 3 clientes REAIS (um
                   deles em execução) lê "3/30" como fracasso. A meta de 30 é da
-                  tarefa 1 da Etapa 01; a aba é a central de todos. */}
+                  tarefa 1 da Etapa 01; a aba é a central de todos.
+                  🔴 O fichário de documentos por cliente saiu da UI em 07/2026:
+                  o documento vive no Drive. Aqui se anexa UM arquivo — o
+                  contrato assinado. */}
               <span className="mt-1 block text-xs text-muted-foreground">
+                {preenchidos} com nome · {comDados} com nome, telefone e nível.
                 A meta de {META_CLIENTES} é da Etapa 01; clientes em andamento e
                 em execução contam aqui também.
               </span>
@@ -517,14 +532,12 @@ export function ClientesManager({
           grau={novoGrau}
           pending={pending}
           erro={erroDialogo}
-          abrirFichaHref={criadoSemPatch ? fichaHref(criadoSemPatch) : null}
           onFase={setNovaFase}
           onGrau={setNovoGrau}
           onCriar={criarComFaseEGrau}
           onCancelar={() => {
             setNovoAberto(false);
             setErroDialogo(null);
-            setCriadoSemPatch(null);
           }}
         />
       ) : null}

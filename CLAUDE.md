@@ -378,9 +378,11 @@ de vagas**; botão revela o link do Zoom **de 1h antes a 1h depois** e isso **re
 presença**; NPS depois da sessão.
 
 **Regras de prazo (do calendário oficial do Acelera):**
-- **Inscrição até as 12:00 do dia ANTERIOR** (cut-off, fuso America/Sao_Paulo).
-  Antes dava para entrar até o minuto do início — e o aviso de véspera da
-  mentora sai de manhã, então a lista dela podia crescer depois de enviada.
+- ~~Inscrição até as 12:00 do dia ANTERIOR~~ — **regra REMOVIDA em 08/09 (migração
+  `…046`)**: a inscrição vale **até o início do plantão**. O aviso da mentora sai de manhã
+  com a lista daquele momento; quem entra depois é alcançado pelo e-mail "começou agora"
+  (`…174`). ⚠️ Auditor D (10/09) achou copy e doc ainda falando em 12:00 — corrigidos; não
+  reintroduzir o cut-off sem decisão do Marcio.
 - **O e-mail ao aluno sai 1 HORA ANTES**, já com o link da sala — e é o
   ÚNICO e-mail. Inscrever-se não dispara nada. O e-mail no ato não podia
   levar o link (revelar grava presença), então era aviso sem ação.
@@ -1339,8 +1341,11 @@ arquiteto (§A–K), contratos, bloco de conferência e vetores de pentest estã
   **Não entra em `comDados`** (reabriria a tarefa 1 de quem já a concluiu).
 - **@menção → Slack sem tirar o texto do perímetro.** `gps.nota_mencoes` (gravada, nunca
   reparseada), mencionáveis = `perfis` ativos **dev/admin** (19; o gestor não lê o Diário),
-  revalidação e **teto de 10 no banco** (`registrar_mencoes`). Payload do Slack = "<Autor>
-  mencionou você no diário de <Aluno> · link" — **nunca** o texto, o tipo, o cliente ou contato.
+  revalidação e **teto de 10 no banco** (`registrar_mencoes`). ⚠️ **Payload do Slack revisto em
+  10/09 por decisão do João**: leva autor · mencionados · aluno · **trecho de 300 caracteres da
+  nota** · link direto para o Diário (ver "🔧 Feedback de produção"); o desenho original ("nunca o
+  texto") foi substituído com o custo LGPD registrado no cabeçalho de `src/lib/slack.ts` — o canal
+  tem de ser privado da equipe que já lê o Diário.
   Segredo em **env `SLACK_WEBHOOK_MENCOES`** (nunca em `gps.config`: a policy só-admin deixa 16
   admins lerem `resend_api_key` pela REST — achado V11); interruptor `gps.config.slack_mencoes_ativo`
   (nasce `false`); falha nunca bloqueia a nota. Depende do João: URL/canal (B-W1).
@@ -1405,6 +1410,89 @@ tinha identidade para responder.
 documentos necessários (passo 7 está genérico e opcional); B-W1 URL/canal do Slack (feature
 desligada); B-R1 retenção do contrato e botão de expurgo; B-K1 aplicar a `…211`; validação
 logada (roteiro §H.7 do plano).
+
+### 🔧 Feedback de produção + war-room (2026-09-10, `49f7252`, `a2135e0` e ciclo 1)
+
+Depois da mega feature o João usou o produto em produção e devolveu uma rodada de ajustes; em
+seguida abriu o **war-room** (auditoria de tudo, ciclos de correção até a apresentação de 11/09;
+plano e achados em `tmp/squad/war-room.md`). O que passou a valer:
+
+- **`/admin` em 4 abas** — Visão geral (dashboard) · Alunos · Solicitações · Etapas. Estado da aba
+  e dos filtros na URL (`painel-url.ts` força `aba=ativos` quando há filtro), a volta ao card sai
+  do `sessionStorage` com validade de 10 min (`ancora.ts`). Dashboard **números primeiro**; o card
+  de fechamento virou dois números lado a lado com link cada um.
+- **Financeiro = faturado × meta AURUM.** O próximo nível chama-se **AURUM** (não "Áureo", não
+  "Ouro"). **Não existe bônus** na tela nem no código (a marca de R$ 250 mil e a constante
+  `BONUS_HONORARIOS` saíram; só comentários em `etapa1.ts`/`barra-marcos.tsx` registram que
+  existiu — o Marcio nunca definiu o que era). Copy amigável, sem texto de sistema (`cs.contatos_hm`, "RPC", "view")
+  para o aluno; a home mostra o faturado.
+- **Contrato do cliente é ANEXO, não link** (migração `…214`): 5 colunas `contrato_*` em
+  `etapa1_clientes` (path no bucket `gps-onboarding`, mime, tamanho, nome, `em`), RPCs
+  `cliente_definir_contrato`/`cliente_remover_contrato` (MIME/tamanho lidos de
+  `storage.objects.metadata`), componente `clientes/contrato-anexo.tsx`; `contrato_url` fica
+  congelado para histórico. Trigger `trg_etapa1_clientes_contrato_travado` protege o anexo do
+  cliente confirmado — a guarda é `gp_is_admin() or current_user = 'postgres'`. 🔴 **Nunca**
+  `current_user <> session_user` como guarda de trigger: sob PostgREST a sessão é `authenticator`
+  e a comparação abre a porta.
+- **Favorito é escolha única do aluno** (migração `…215`): a trigger recusa com 42501 que o
+  aluno desmarque ou apague o cliente `acompanhado_equipe` ("Para trocar o cliente que a equipe
+  acompanha, abra um chamado no Suporte."). A UI avisa ANTES de favoritar (caixa de certeza) e
+  só a equipe troca (ficha no modo assistência / `definirClienteEquipe`, que confere o alvo antes
+  de desmarcar). Novo cliente escolhe a **fase** no diálogo (`criarCliente(alunoId, { fase,
+  grau_relacao })`, uma chamada só).
+- **`admin_status_acesso` sem login** (migração `…213`): `select … into v_u` sem `if` — para
+  ambiente sem `user_id` o record ficava "not assigned" (55000) e a Central/Gerenciar acesso
+  caíam justamente para quem não consegue entrar ("Não foi possível conferir o ambiente para
+  Paula Maria").
+- **Diagnóstico de chamados separa aberto × respondido** (migração `…216`):
+  `chamados_abertos` só fica `ok=false` quando a equipe está devendo resposta; só `respondido`
+  vira `ok=null` com "A equipe já respondeu — o chamado aguarda o aluno."
+- **@menção com visual de WhatsApp** (`texto-com-mencoes.tsx`: negrito + `text-accent-foreground`
+  a partir das menções GRAVADAS, nunca parse livre) e **Slack em modo bot** (`src/lib/slack.ts`):
+  `SLACK_BOT_TOKEN` + `SLACK_CANAL_MENCOES` (canal `C0C0QPMDFML`) postam via `chat.postMessage`
+  com `<@U…>` real resolvido por `users.lookupByEmail`; fallback `SLACK_WEBHOOK_MENCOES`. A
+  mensagem leva **autor · mencionados · aluno · trecho de 300 caracteres · link direto para
+  `/admin/aluno/<id>/diario`** (decisão do João; o custo LGPD está no cabeçalho do arquivo —
+  canal privado da equipe). Manifest do app "Portal THB" em `docs/slack/manifest.json`; a
+  criação pelo Slack CLI (`slackcli`, alias porque o Slack desktop ocupa `slack`) depende do
+  login com ticket + código de desafio. **Segredos só no painel da Hostinger.**
+- **Conta de teste do onboarding**: `onboarding.teste@programa.timeholdingbrasil.com.br` (aluno
+  titular, sem dado real). Reset = apagar respostas/clientes/progresso/eventos do ambiente e
+  redefinir a senha com `gps_senha_temp_em` (SQL como admin JWT; objetos do Storage **não** saem
+  por SQL — `storage.protect_delete`).
+- **War-room ciclo 1** (auditores A aluno · B admin · C backend → fixers F1/F2/F3): open redirect
+  no `/auth/confirm` fechado com `destinoInterno()` e erro visível em `/esqueci-senha?erro=link`;
+  `buscarAlunos` saneia `,()"\*%_` antes do `.or()`; `definirSenhaAluno` ganhou a guarda
+  cross-sistema (mesmo shape de `definirSenhaMembro`); senha temporária `Thb-…` única em
+  `src/lib/senha-temporaria.ts` (crypto); adoção de login só depois de `DialogoConfirmacao`
+  nomeando os portais; `window.confirm` **não existe mais** no repo; toasts só em sucesso;
+  `etapas-controle` sem otimismo; `FalhaAoCarregar` na lista do painel (não duplica
+  `<main id="conteudo">`); `TudoEmDiaCard`; `InputSenha` no cadastro com mínimo 8 no servidor;
+  login `?motivo=inatividade`; badge de chamados com definição única (`contarChamadosDoBadge`,
+  zero consulta nova); `erros.ts` +25 frases; `.env.example` com as 3 envs do Slack.
+- **Ciclo 2 (auditores D Plantão · E Suporte/Diário/Central/Acesso) + Fable:**
+  - **`src/lib/senha-regras.ts` é o único lugar do mínimo de senha** (`SENHA_MINIMO = 8`,
+    `MSG_SENHA_MINIMO`). Cadastro, redefinir, perfil, passo 0 do onboarding e as frases do admin
+    importam de lá; o servidor do `/cadastro` aceitava 6. `rg "const SENHA_MINIMO" src` → 1.
+  - **`admin_excluir_acesso` não aborta mais** quando o login tem FK em outro portal (migração
+    `…217`): preserva o login, limpa o ambiente e devolve `login_preservado_motivo`; a tela mostra
+    aviso âmbar. Antes, um RAISE dizia "o ambiente foi limpo" desfazendo a limpeza.
+  - **Adicionar sócio tem a guarda cross-sistema** (`adicionarSocioAluno` → `precisaConfirmar` +
+    portais, `DialogoConfirmacao` antes de repetir) — a RPC troca a senha de conta preexistente. A
+    guarda nos 3 caminhos (`definirSenhaAluno`/`definirSenhaMembro`/`adicionarSocioAluno`)
+    **falha fechada**: erro na RPC de programas devolve `{ erro }`, nunca segue.
+  - **Ficha do cliente não trava o salvar por "0 problemas"** — medido: 355 de 879 clientes (39
+    ambientes) estão assim; virou aviso âmbar no grupo (`problemasEmFalta`), a ficha salva. A
+    cobrança do problema é da tarefa 1.1.
+  - Plantão público: foco por `foco-visivel` no calendário e no NPS (o `ring` é zerado pelo
+    `globals.css`); os 2 últimos `window.confirm` viraram confirmação em dois cliques no card;
+    copy do cut-off alinhada (não existe mais desde a `…046`); e-mail TS da sala com o link da
+    monitoria (paridade com o e-mail do banco).
+  - 🔴 **Pendência D3 (ClickUp):** `p_ip_hash` das 3 RPCs públicas do Plantão vem do cliente —
+    quem chama a REST direto com a anon key forja o balde de rate limit. Fechar exige um segredo
+    só do servidor (`PLANTAO_SERVIDOR_TOKEN` na Hostinger + `gps.config`), com default seguro.
+  - Conta de teste do onboarding: **`onboarding.teste@programa.timeholdingbrasil.com.br`** /
+    `Holding#Teste2026` (resetada ao estado de primeiro acesso em 10/09 à noite).
 
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 
@@ -1738,6 +1826,11 @@ limita à própria linha. Já estava resolvido; o documento é que não tinha si
       honorários + contrato quando em execução, tour), trava do favorito pela equipe, grau de
       relação, @menção no Diário (Slack desligado até a URL), dashboard executivo com gráficos SVG,
       painel com estado na URL e volta ao card, lote de acesso. Ver "🚀 Mega feature".
+- [x] **Feedback de produção + war-room ciclo 1 (2026-09-10, `49f7252`, `a2135e0`, migrações
+      `…213`–`…216`):** `/admin` em 4 abas com estado na URL, Financeiro AURUM sem bônus,
+      contrato do cliente como anexo, favorito único (troca só pela equipe), @menção com visual
+      de WhatsApp + Slack bot, conta de teste do onboarding; ciclo 1 do war-room (auditores
+      A/B/C → F1/F2/F3). Ver "🔧 Feedback de produção + war-room".
 - [ ] **Decisões da mega feature (João):** texto/valor do saldo do programa (B-S1); lista de
       documentos do onboarding (B-D1); webhook/canal do Slack (B-W1); retenção do contrato (B-R1);
       aplicar `…211` (B-K1). Passe logado do roteiro §H.7 do plano.
@@ -1810,7 +1903,18 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-09-09 (tarde) — **war-room do Plantão** (`18e2f16`
+_Última atualização: 2026-09-10 — **feedback de produção + war-room** (`49f7252`, `a2135e0`
+e o ciclo 1; migrações `…213`–`…216`). `/admin` em 4 abas com estado na URL; Financeiro focado
+em faturado × meta **AURUM** sem bônus; contrato do cliente como **anexo** (bucket
+`gps-onboarding`); favorito como escolha única do aluno (troca só pela equipe, via chamado);
+`admin_status_acesso` sem quebrar para ambiente sem login; @menção com visual de WhatsApp e
+Slack em modo bot (autor · aluno · trecho · link); conta de teste do onboarding entregue. O
+war-room (auditores A/B/C → fixers F1/F2/F3) fechou open redirect no `/auth/confirm`, filtro
+injetável em `buscarAlunos`, guarda cross-sistema em `definirSenhaAluno`, adoção de login sem
+confirmação, `window.confirm`, otimismo em `etapas-controle` e ~40 itens de copy/a11y. **Aberto:
+B-S1, B-D1, B-R1, B-K1, login do Slack CLI (código de desafio do João), CSP/LiteSpeed.**_
+
+_Anterior: 2026-09-09 (tarde) — **war-room do Plantão** (`18e2f16`
 a `48fc5b9`; migrações `…170`–`…175`). O produto foi usado pela primeira vez (23
 inscritos, 17 no plantão daquela tarde) e a entrega de e-mail não existia: rota
 500, cron inexistente, `alter role` recusado pelo Supabase e chave Resend

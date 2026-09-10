@@ -47,7 +47,10 @@ export default function RootLayout({
             não move o foco — nunca leva a lugar errado. */}
         <a
           href="#conteudo"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-lg focus:outline-none focus:ring-3 focus:ring-ring/50"
+          // ⚠️ CONTRASTE — era `bg-primary` (#FF6300) com branco: **2,98:1**,
+          // justamente no controle que existe para acessibilidade.
+          // `marca-acao` (#C74600) com branco dá **4,88:1**, medido.
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-marca-acao focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white focus:shadow-lg focus:outline-none focus:ring-3 focus:ring-ring/50"
         >
           Pular para o conteúdo
         </a>

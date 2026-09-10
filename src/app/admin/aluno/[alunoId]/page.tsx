@@ -43,7 +43,7 @@ export default async function AdminAlunoInicioPage({
   const base = `/admin/aluno/${alunoId}`;
   const [
     aluno,
-    etapas,
+    { etapas, overrides },
     clientes,
     progressoTodas,
     favorito,
@@ -54,8 +54,13 @@ export default async function AdminAlunoInicioPage({
     // Mesma regra do ambiente do aluno: `coalesce(override, global)`. Sem
     // isto o admin veria a etapa TRAVADA para este aluno como liberada e
     // acompanharia um caminho que não é o dele.
+    // Os overrides seguem vivos: `EtapasOverview` explica "travada/liberada
+    // pela equipe" com o motivo, igual à home do aluno.
     Promise.all([getEtapas(), getEtapasLiberadasPara(alunoId)]).then(
-      ([todas, overrides]) => etapasComLiberacaoDoAluno(todas, overrides),
+      ([todas, overrides]) => ({
+        etapas: etapasComLiberacaoDoAluno(todas, overrides),
+        overrides,
+      }),
     ),
     getClientesEtapa1(alunoId),
     getProgressoAluno(alunoId),
@@ -118,6 +123,7 @@ export default async function AdminAlunoInicioPage({
           etapas={etapas}
           basePath={base}
           pctPorEtapa={pcts}
+          overrides={overrides}
           allowLockedPreview
         />
       </main>

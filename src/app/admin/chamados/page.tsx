@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import {
+  contarChamadosDoBadge,
   getAnexosParaExpurgo,
   getChamadosConfig,
   getFilaChamados,
@@ -23,11 +24,11 @@ export const metadata = { title: "Admin — Chamados" };
  * Suporte do lado da equipe: a fila, o interruptor + lista de avisos e o
  * expurgo de anexos vencidos.
  *
- * 🔑 O badge da aba "Chamados" no header sai daqui, do `length` da fila que a
- * página já carregou — nenhuma consulta a mais. As outras páginas do admin não
- * passam o número de propósito: `contarChamadosAbertosPorAluno()` bate na
- * mesma RPC que `getAtendimentoPorAluno()` já usa em `/admin`, e chamar as
- * duas seria uma ida ao banco pelo mesmo dado.
+ * 🔑 O badge da aba "Chamados" no header sai daqui, da fila que a página já
+ * carregou — nenhuma consulta a mais. A CONTA é `contarChamadosDoBadge`
+ * (`src/lib/chamados-data.ts`), a mesma que `/admin` usa sobre o Map de
+ * `getAtendimentoPorAluno()`: uma definição só (não-fechados) para o mesmo
+ * badge, cada tela alimentando-a com a fonte que já tem na mão.
  *
  * Três leituras em paralelo, todas com guarda de admin própria dentro de
  * `chamados-data.ts` (defesa em profundidade — a fronteira é a RLS).
@@ -50,7 +51,10 @@ export default async function AdminChamadosPage({
     getAnexosParaExpurgo(),
   ]);
 
-  const aguardandoEquipe = fila.filter((c) => c.status === "aberto").length;
+  // A definição do badge mora em `contarChamadosDoBadge` e vale para as DUAS
+  // telas do admin: NÃO-FECHADOS. Antes daqui saía só `status === "aberto"`,
+  // enquanto `/admin` somava os não-fechados — o mesmo badge, dois números.
+  const chamadosBadge = contarChamadosDoBadge({ fila });
 
   return (
     <>
@@ -59,7 +63,7 @@ export default async function AdminChamadosPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={adminNavItems({ chamadosAbertos: aguardandoEquipe })}
+        navItems={adminNavItems({ chamadosAbertos: chamadosBadge })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader

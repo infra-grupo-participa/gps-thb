@@ -191,7 +191,7 @@ export function AnexoOnboarding({
         </Button>
         {cheio ? (
           <span className="corpo-sm text-muted-foreground">
-            Limite de {maximo} arquivos.
+            Limite de {maximo} {maximo === 1 ? "arquivo" : "arquivos"}.
           </span>
         ) : null}
       </div>

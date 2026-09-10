@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Lock } from "lucide-react";
 import type { Etapa } from "@/lib/types";
-import { conteudoEtapa } from "@/lib/etapas";
+import { conteudoEtapa, type OverridesLiberacao } from "@/lib/etapas";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -31,11 +31,19 @@ function passosDaEtapa(etapaId: number, pct: number) {
 /**
  * Visão geral das 6 etapas. Etapas liberadas são clicáveis; as bloqueadas
  * aparecem como "Em breve" (ou clicáveis para preview, no modo admin).
+ *
+ * 🔑 `overrides` (`gps.etapa_liberacao_aluno`) NÃO decide o que abre — `etapas`
+ * já chega com `liberada` resolvida por `etapasComLiberacaoDoAluno`. Ele serve
+ * só para a tela DIZER A VERDADE sobre o motivo: a etapa travada só para este
+ * aluno aparecia como "Em breve · Libera conforme sua turma avança", quando na
+ * verdade a equipe a travou e escreveu um motivo (obrigatório, 3..300, na
+ * Central de resolução) que nunca chegava a ele.
  */
 export function EtapasOverview({
   etapas,
   basePath,
   pctPorEtapa = {},
+  overrides = {},
   allowLockedPreview = false,
   dense = false,
 }: {
@@ -43,6 +51,12 @@ export function EtapasOverview({
   /** "" para aluno; "/admin/aluno/<id>" para admin. */
   basePath: string;
   pctPorEtapa?: Record<number, number>;
+  /**
+   * O que a EQUIPE decidiu para este ambiente, por etapa
+   * (`getEtapasLiberadasPara`). Opcional: sem ele o card volta a ser o de
+   * antes, sem inventar explicação nenhuma.
+   */
+  overrides?: OverridesLiberacao;
   allowLockedPreview?: boolean;
   /** Layout compacto (2 colunas) para caber dentro de uma coluna de conteúdo. */
   dense?: boolean;
@@ -56,6 +70,14 @@ export function EtapasOverview({
     >
       {etapas.map((etapa) => {
         const liberada = etapa.liberada;
+        const override = overrides[etapa.id];
+        // Travada SÓ PARA ELE: não é a turma, é a equipe — e há motivo escrito.
+        const travadaPelaEquipe = override?.liberada === false;
+        // Liberada só para ele. Não se consulta o interruptor global aqui (o
+        // card recebe a liberação já resolvida): a linha de override só existe
+        // porque alguém da equipe a criou para este ambiente, então a frase é
+        // verdadeira nos dois casos.
+        const liberadaPelaEquipe = override?.liberada === true;
         const clicavel = liberada || allowLockedPreview;
         const href = `${basePath}/etapa/${etapa.id}`;
         // A barra aparece SEMPRE na etapa liberada (era só com `pct != null`):
@@ -91,11 +113,20 @@ export function EtapasOverview({
                 >
                   {etapa.ordem}
                 </IconeChip>
-                {liberada ? (
+                {travadaPelaEquipe ? (
+                  // `warning`, não `neutral`: "Em breve" é espera normal;
+                  // isto é uma decisão tomada sobre ESTE aluno, e ele precisa
+                  // distinguir as duas num muro de 6 cards iguais.
+                  <Badge variant="warning" icone={Lock}>
+                    Travada pela equipe
+                  </Badge>
+                ) : liberada ? (
                   // Era `secondary` — o MESMO cinza de "sem login" e de "2
                   // pessoas". A etapa liberada é a única coisa acionável de um
                   // muro de 6 cards; agora ela se acha em um segundo.
-                  <Badge variant="success">Disponível</Badge>
+                  <Badge variant="success">
+                    {liberadaPelaEquipe ? "Liberada para você" : "Disponível"}
+                  </Badge>
                 ) : (
                   <Badge variant="neutral">Em breve</Badge>
                 )}
@@ -128,11 +159,25 @@ export function EtapasOverview({
                 </div>
               ) : null}
 
+              {/* O motivo que a Central OBRIGA a equipe a escrever aparece
+                  aqui — antes ele morria no banco. Fica acima do "Abrir →"
+                  porque na prévia do admin a etapa travada continua clicável. */}
+              {travadaPelaEquipe || liberadaPelaEquipe ? (
+                <p className="text-xs text-muted-foreground">
+                  {liberadaPelaEquipe ? "Liberada para você pela equipe." : null}
+                  {liberadaPelaEquipe && override?.motivo ? " " : null}
+                  {override?.motivo ??
+                    (travadaPelaEquipe
+                      ? "A equipe travou esta etapa para você."
+                      : null)}
+                </p>
+              ) : null}
+
               {clicavel ? (
                 <div className="flex items-center gap-1 text-xs font-medium text-accent-foreground">
                   Abrir <ArrowRight className="size-3" aria-hidden />
                 </div>
-              ) : (
+              ) : travadaPelaEquipe ? null : (
                 // Microcopy de expectativa VERDADEIRA: `gps.etapas` não tem
                 // campo de previsão, então não existe data a prometer. Ocupa
                 // o mesmo lugar do "Abrir →" para os cards ficarem alinhados.

@@ -178,6 +178,20 @@ export interface AlunoGps {
    */
   classe: ClasseAluno;
   /**
+   * O aluno está numa fase avançada SEM ter as 30 fichas completas.
+   *
+   * 🔑 Os 5 cards são FUNIL DE ATENÇÃO, não cobrança de etapa cumprida
+   * (decisão do Marcio, 10/09/2026): quem tem cliente contratado aparece em
+   * Execução mesmo com a lista pela metade, porque é quem a equipe mais
+   * precisa olhar. Esconder essa pessoa na Inicial faria sumir justamente
+   * quem merece atenção.
+   *
+   * O que NÃO pode sumir junto é a dívida: sem este selo, a equipe olharia
+   * o card e não saberia que a base está incompleta — foi essa cegueira que
+   * deixou 14 pessoas na Captação sem terem listado (medido em 10/09).
+   */
+  listaIncompleta: boolean;
+  /**
    * `num` das tarefas da Etapa 01 já concluídas.
    *
    * A RPC sempre trouxe (`tarefas_concluidas`), mas o valor virava só o
@@ -237,6 +251,7 @@ interface LinhaPainelAlunos {
   em_fechamento?: number | null;
   apto_ao_saldo?: boolean | null;
   classe?: string | null;
+  lista_incompleta?: boolean | null;
   /**
    * As duas colunas da migração ...234. Opcionais no tipo pelo mesmo motivo
    * das três acima: banco ainda sem a migração devolve `undefined`, e o
@@ -440,6 +455,7 @@ export async function getAlunosGps(opts?: {
         ? (l.classe as ClasseAluno)
         : "inicial",
       tarefasConcluidas: l.tarefas_concluidas ?? [],
+      listaIncompleta: l.lista_incompleta ?? false,
       favorito: mapearFavorito(l.favorito_nome, l.favorito_fase),
     };
   });

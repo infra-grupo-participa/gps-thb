@@ -102,6 +102,8 @@ export function AlunoCard({
   ultimoAcesso,
   onboardingStatus,
   aptoAoSaldo,
+  classe,
+  listaIncompleta,
   favorito,
   atendimentoDe,
   agora,
@@ -202,6 +204,23 @@ export function AlunoCard({
             {pendencias > 0 ? (
               <Badge variant="danger" className="text-[10px]">
                 {pendencias} {pendencias === 1 ? "pendência" : "pendências"}
+              </Badge>
+            ) : null}
+            {/* 🔑 O SELO DA LISTA INCOMPLETA (10/09/2026).
+                Os 5 cards são funil de ATENÇÃO: quem tem cliente contratado
+                aparece em Execução mesmo com a lista pela metade, porque é
+                quem a equipe mais precisa olhar. O que não pode sumir junto
+                é a dívida — sem este selo a equipe veria a fase avançada e
+                não saberia que a base está incompleta.
+                Só aparece FORA da Inicial: lá dentro, todo mundo está
+                montando a lista e o selo seria ruído em 111 cartões. */}
+            {listaIncompleta && classe !== "inicial" ? (
+              <Badge
+                variant="warning"
+                className="text-[10px]"
+                title={`Está numa fase avançada, mas tem ${clientesComDados} de ${META_CLIENTES} fichas completas (nome e telefone).`}
+              >
+                {clientesComDados}/{META_CLIENTES} fichas
               </Badge>
             ) : null}
             {/* PL5 — `chamadosAbertos` já vinha na RPC de atendimento e não

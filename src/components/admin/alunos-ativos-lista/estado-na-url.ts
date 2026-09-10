@@ -92,13 +92,16 @@ export const ROTULO_CLASSE: Record<ClasseAluno, string> = {
 
 /** Uma linha explicando o que separa cada classe — a tela não adivinha. */
 export const AJUDA_CLASSE: Record<ClasseAluno, string> = {
-  inicial: "Ainda montando a lista — saem daqui com os 30 completos",
-  // 🔑 A regra mudou em 10/09/2026 (decisão do Marcio): os 30 são a ÚNICA
-  // porta de saída da Inicial. Antes era `listou os 30 OU tem reunião
-  // marcada`, e um único cliente com data preenchida bastava — medido, 14
-  // dos 19 aqui estavam sem ter os 30. Um rótulo que descreve a regra
-  // antiga é pior que rótulo nenhum: a equipe cobraria a coisa errada.
-  captacao: "Já listaram os 30, sem contrato fechado",
+  // 🔑 OS CARDS SÃO FUNIL DE ATENÇÃO, não cobrança de etapa cumprida
+  // (decisão do Marcio, 10/09/2026): *"se ele já tem alguém avançado, faz
+  // sentido listar ele mais avançado também, para termos uma atenção maior
+  // com ele em específico"*.
+  //
+  // O aluno aparece no ponto MAIS AVANÇADO que a evidência mostra. Os 30
+  // não travam a fase — viram o selo "N/30 fichas" no cartão, para a equipe
+  // ver a dívida sem que a pessoa suma da fase em que precisa de atenção.
+  inicial: "Ainda montando a lista de clientes",
+  captacao: "Reunião marcada ou lista dos 30 pronta, sem contrato fechado",
   execucao: "Cliente contratado com honorários pactuados",
   orientacao: "Holding entregue, em acompanhamento",
   finalizado: "Bateram a meta de R$ 150 mil",

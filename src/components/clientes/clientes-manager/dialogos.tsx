@@ -39,8 +39,8 @@ export function DialogoExcluirCliente({
   descricao={excluindo.nome || "Cliente sem nome"}
   consequencia={
     <>
-      Apaga nome, telefone, registro do contato, perda pela inércia,
-      honorários e link do contrato de{" "}
+      Apaga nome, telefone, registro do contato, honorários e link do
+      contrato de{" "}
       <strong>{excluindo.nome || "este cliente"}</strong>.{" "}
       <strong>Não dá para desfazer.</strong>
       {excluindo.acompanhado_equipe ? (

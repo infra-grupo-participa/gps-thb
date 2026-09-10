@@ -15,7 +15,6 @@ import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import { formatarDataSoDia } from "@/lib/datas";
 import { mascaraTelefone } from "@/lib/masks";
-import { brlOuTraco } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -80,7 +79,8 @@ export function ClientesTabela({
           <TableHead>Nome</TableHead>
           <TableHead>Vínculo</TableHead>
           <TableHead>Telefone</TableHead>
-          <TableHead className="text-right">Perda inércia</TableHead>
+          {/* Coluna "Perda inércia" REMOVIDA por decisão do Marcio
+              (10/09/2026) — o conceito saiu do sistema. */}
           <TableHead>Fase</TableHead>
           <TableHead>Reunião</TableHead>
           <TableHead className="text-right">Ações</TableHead>
@@ -128,9 +128,6 @@ export function ClientesTabela({
                   {c.telefone ? mascaraTelefone(c.telefone) : "—"}
                   {wpp ? <WhatsappLink href={wpp} /> : null}
                 </div>
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {brlOuTraco(c.perda_inercia)}
               </TableCell>
               <TableCell>
                 <Select

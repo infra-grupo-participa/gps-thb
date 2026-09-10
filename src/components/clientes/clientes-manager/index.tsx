@@ -274,9 +274,9 @@ export function ClientesManager({
   }
 
   /**
-   * PL9 — `removerCliente` faz DELETE: vão junto nome, telefone, perda pela
-   * inércia, registro do contato, honorários e link do contrato. O botão fica
-   * encostado em "Abrir ficha", e não havia confirmação nenhuma.
+   * PL9 — `removerCliente` faz DELETE: vão junto nome, telefone, registro do
+   * contato, honorários e link do contrato. O botão fica encostado em "Abrir
+   * ficha", e não havia confirmação nenhuma.
    */
   function excluir(cliente: ClienteEtapa1) {
     setErroLista(null);

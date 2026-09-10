@@ -1,10 +1,9 @@
-import { TrendingUp, Users, CalendarCheck, Coins } from "lucide-react";
+import { TrendingUp, Users, CalendarCheck } from "lucide-react";
 import {
   META_CLIENTES,
   META_REUNIOES,
   type ResumoHonorarios,
 } from "@/lib/etapa1";
-import { brl } from "@/lib/moeda";
 import { MetaHonorarios } from "@/components/etapa1/meta-honorarios";
 import { Card, CardContent } from "@/components/ui/card";
 import { KpiLinha } from "@/components/ui/kpi-card";
@@ -21,9 +20,12 @@ import { Separator } from "@/components/ui/separator";
  *
  * 🎨 Onda B (B5): as três linhas viram grade — 2 colunas onde o card ocupa a
  * largura da página (celular e tablet, depois da subida do painel para o topo)
- * e 1 coluna na barra lateral do desktop, que tem 350 px. "Perda pela inércia"
- * ficou empilhada: o maior número da tela saía em corpo pequeno, com o rótulo
- * quebrado em duas linhas encostando nele.
+ * e 1 coluna na barra lateral do desktop, que tem 350 px.
+ *
+ * ⚠️ O KPI "Perda pela inércia" (soma de `perda_inercia` dos clientes) SAIU
+ * daqui por decisão do Marcio (10/09/2026) — o conceito saiu do sistema por
+ * inteiro. A fileira de KPIs ficou com dois cards em vez de três; não
+ * substituir por outro número.
  */
 export function HomeResumo({
   progressoGeral,
@@ -32,7 +34,6 @@ export function HomeResumo({
   clientes,
   clientesComDados,
   agendados,
-  perdaTotal,
   honorarios,
 }: {
   progressoGeral: number;
@@ -49,16 +50,17 @@ export function HomeResumo({
   /** `preenchidos`: clientes com nome. É a lista, não o que a tarefa 1 cobra. */
   clientes: number;
   /**
-   * PL3 — `comDados`: nome + telefone + nível, que é o que a tarefa 1 da Etapa
-   * 01 exige. Quando presente, é ELE que vira o número do KPI e `clientes` cai
-   * para o detalhe — senão o aluno lê "30/30" com o passo 2 travado.
+   * PL3 — `comDados`: nome + telefone, que é o que a tarefa 1 da Etapa 01
+   * exige (o nível de relacionamento fazia parte desta conta até 10/09/2026
+   * — saiu do sistema por decisão do Marcio). Quando presente, é ELE que
+   * vira o número do KPI e `clientes` cai para o detalhe — senão o aluno lê
+   * "30/30" com o passo 2 travado.
    *
    * Opcional porque `src/app/page.tsx` ainda passa só `preenchidos`; sem o
    * valor, o card fica exatamente como estava (nada é inventado).
    */
   clientesComDados?: number;
   agendados: number;
-  perdaTotal: number;
   /** Meta de faturamento do ambiente (B8) — calculada em `resumoHonorarios`. */
   honorarios: ResumoHonorarios;
 }) {
@@ -102,7 +104,7 @@ export function HomeResumo({
             hint={
               clientesComDados == null
                 ? "da sua lista"
-                : `${clientes} listados · ${clientesComDados} com nome, telefone e nível`
+                : `${clientes} listados · ${clientesComDados} com nome e telefone`
             }
           />
           <KpiLinha
@@ -110,14 +112,6 @@ export function HomeResumo({
             rotulo="Reuniões agendadas"
             valor={`${agendados}/${META_REUNIOES}`}
             hint={`meta de ${META_REUNIOES}`}
-          />
-          <KpiLinha
-            icone={<Coins />}
-            rotulo="Perda pela inércia"
-            valor={perdaTotal > 0 ? brl(perdaTotal) : "—"}
-            hint="soma dos clientes"
-            empilhado
-            destaque
           />
         </div>
       </CardContent>

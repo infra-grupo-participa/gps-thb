@@ -286,7 +286,6 @@ export default async function HomePage() {
                 clientes={m1.preenchidos}
                 clientesComDados={m1.comDados}
                 agendados={m1.agendados}
-                perdaTotal={m1.perdaTotal}
                 honorarios={honorarios}
               />
             </div>

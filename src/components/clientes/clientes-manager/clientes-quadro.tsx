@@ -124,11 +124,8 @@ export function Kanban({
                         <GrauChip grau={c.grau_relacao} />
                         <MarcaRecusou cliente={c} className="" />
                       </div>
-                      {c.perda_inercia != null ? (
-                        <div className="mt-1 text-xs tabular-nums text-muted-foreground">
-                          {brl(c.perda_inercia)}
-                        </div>
-                      ) : null}
+                      {/* "Perda pela inércia" (bloco abaixo dos chips)
+                          REMOVIDA por decisão do Marcio (10/09/2026). */}
                       {/* Honorários no card da coluna "Contratados" — o número
                           que a equipe procura fica onde o cliente está.
                           `null` NUNCA vira R$ 0,00: quem não informou não

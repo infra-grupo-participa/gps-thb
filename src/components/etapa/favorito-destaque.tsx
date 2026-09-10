@@ -70,11 +70,8 @@ export function FavoritoDestaque({
                     ) : null}
                   </span>
                 ) : null}
-                {cliente.perda_inercia != null ? (
-                  <span className="tabular-nums">
-                    Perda: {brl(cliente.perda_inercia)}
-                  </span>
-                ) : null}
+                {/* "Perda: R$ ..." (perda pela inércia) REMOVIDA por decisão
+                    do Marcio (10/09/2026) — o conceito saiu do sistema. */}
                 {/* Honorários só quando existem. `null` NÃO vira R$ 0,00:
                     dizer "R$ 0,00" a quem ainda não registrou nada é afirmar
                     um faturamento que o portal não conhece. */}

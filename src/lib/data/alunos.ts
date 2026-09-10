@@ -404,7 +404,6 @@ export async function getAlunosGps(opts?: {
       {
         preenchidos: l.clientes_preenchidos,
         comDados: l.clientes_com_dados,
-        comPerda: l.clientes_com_perda,
         agendados: l.agendados,
       },
       manual,

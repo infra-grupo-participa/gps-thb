@@ -170,9 +170,8 @@ export function ordenarClientes(
       case "nome":
         copia.sort((a, b) => (a.nome || "").localeCompare(b.nome || ""));
         break;
-      case "perda":
-        copia.sort((a, b) => (b.perda_inercia ?? 0) - (a.perda_inercia ?? 0));
-        break;
+      // "perda" (maior perda pela inércia) REMOVIDA por decisão do Marcio
+      // (10/09/2026) — o conceito saiu do sistema.
       case "reuniao":
         copia.sort((a, b) =>
           (a.data_reuniao_preliminar ?? "9999").localeCompare(

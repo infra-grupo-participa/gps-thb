@@ -6,8 +6,7 @@
  * 🎨 Onda B (B8/B.10): item de lista no padrão único do portal — identidade à
  * esquerda, métrica à direita, ação destrutiva FORA da linha de leitura. Antes
  * "Excluir" vinha escrito, em vermelho, com o mesmo peso de "Ficha": a ação
- * que apaga nome, telefone, perda pela inércia e contrato era a mais visível
- * do card.
+ * que apaga nome, telefone e contrato era a mais visível do card.
  */
 
 import Link from "next/link";
@@ -16,7 +15,6 @@ import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import { formatarDataSoDia } from "@/lib/datas";
 import { mascaraTelefone } from "@/lib/masks";
-import { brl } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -64,28 +62,23 @@ export function ClienteCardLista({
         c.acompanhado_equipe && "border-primary/50 bg-accent/50",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-start gap-2">
-          <Estrela
-            cliente={c}
-            modo={modo}
-            onToggle={onEquipe}
-            className="mt-0.5"
-          />
-          <Link
-            href={fichaHref(c.id)}
-            className="foco-visivel rounded-sm font-medium text-balance hover:text-accent-foreground hover:underline"
-          >
-            {c.nome || "Sem nome"}
-          </Link>
-          <GrauChip grau={c.grau_relacao} className="mt-0.5" />
-          <MarcaRecusou cliente={c} />
-        </div>
-        {c.perda_inercia != null ? (
-          <span className="numero shrink-0 text-sm font-semibold text-muted-foreground">
-            {brl(c.perda_inercia)}
-          </span>
-        ) : null}
+      {/* Coluna de "Perda pela inércia" à direita do nome REMOVIDA por
+          decisão do Marcio (10/09/2026) — o conceito saiu do sistema. */}
+      <div className="flex min-w-0 items-start gap-2">
+        <Estrela
+          cliente={c}
+          modo={modo}
+          onToggle={onEquipe}
+          className="mt-0.5"
+        />
+        <Link
+          href={fichaHref(c.id)}
+          className="foco-visivel rounded-sm font-medium text-balance hover:text-accent-foreground hover:underline"
+        >
+          {c.nome || "Sem nome"}
+        </Link>
+        <GrauChip grau={c.grau_relacao} className="mt-0.5" />
+        <MarcaRecusou cliente={c} />
       </div>
 
       <div className="mt-2 flex items-center gap-2 corpo-sm text-muted-foreground">

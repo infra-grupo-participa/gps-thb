@@ -41,9 +41,13 @@ export type PatchCliente = Partial<
     ClienteEtapa1,
     | "nome"
     | "telefone"
-    | "nivel_relacionamento"
+    // 🔴 `nivel_relacionamento` e `perda_inercia` SAÍRAM daqui em 10/09/2026
+    // (decisão do Marcio). Tirar da allowlist é o que CONGELA de verdade: o
+    // tipo abaixo só vale em compilação, mas Server Action é endpoint HTTP e
+    // uma chamada forjada mandaria a coluna direto. Sem esta remoção, o
+    // congelamento seria só promessa. As colunas continuam no banco com o
+    // dado histórico; nenhum caminho de escrita as toca.
     | "problemas"
-    | "perda_inercia"
     | "registro_contato"
     | "mensagem_padrao_enviada"
     | "estudo_caso_enviado"
@@ -68,9 +72,7 @@ export type PatchCliente = Partial<
 const CHAVES_PATCH_CLIENTE: ReadonlySet<string> = new Set([
   "nome",
   "telefone",
-  "nivel_relacionamento",
   "problemas",
-  "perda_inercia",
   "registro_contato",
   "mensagem_padrao_enviada",
   "estudo_caso_enviado",

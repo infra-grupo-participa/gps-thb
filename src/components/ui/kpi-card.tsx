@@ -157,8 +157,8 @@ export function KpiCard({
  * Mesma informação em uma LINHA, para quando vários números dividem um card
  * só (a coluna de apoio da home). Absorve o `Linha` interno de `home-resumo`.
  *
- * O rótulo ganhou `text-balance` e o valor não quebra: "Perda pela inércia"
- * quebrava em duas linhas e encostava no número.
+ * O rótulo ganhou `text-balance` e o valor não quebra: rótulos longos
+ * quebravam em duas linhas e encostavam no número.
  */
 export function KpiLinha({
   icone,
@@ -176,10 +176,10 @@ export function KpiLinha({
   /**
    * Número EMBAIXO do rótulo, em `numero-lg`, em vez de à direita.
    *
-   * Existe para o número longo numa coluna estreita: "Perda pela inércia"
-   * (R$ 2.955.000,00 — o maior número da home) dividia 350 px com o próprio
-   * rótulo, que quebrava em duas linhas e encostava no valor. Empilhado, o
-   * número ganha a largura inteira e o rótulo cabe em uma linha.
+   * Existe para o número longo numa coluna estreita: um valor grande em
+   * reais dividia 350 px com o próprio rótulo, que quebrava em duas linhas
+   * e encostava no valor. Empilhado, o número ganha a largura inteira e o
+   * rótulo cabe em uma linha.
    */
   empilhado?: boolean;
 }) {

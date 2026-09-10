@@ -6,14 +6,12 @@ import { toast } from "sonner";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
 import {
   PROBLEMAS_7,
-  NIVEIS_RELACIONAMENTO,
   FASES_CLIENTE,
   GRAUS_RELACAO_UI,
   PERFIS_DISC,
   META_HONORARIOS,
 } from "@/lib/etapa1";
 import {
-  mascaraMoeda,
   mascaraTelefone,
   moedaParaNumero,
   numeroParaMoeda,
@@ -90,10 +88,8 @@ export function ClienteFicha({
   const [telefone, setTelefone] = useState(
     cliente.telefone ? mascaraTelefone(cliente.telefone) : "",
   );
-  const [nivel, setNivel] = useState(cliente.nivel_relacionamento ?? "");
   const [grau, setGrau] = useState<string>(cliente.grau_relacao ?? "");
   const [problemas, setProblemas] = useState<string[]>(cliente.problemas ?? []);
-  const [perda, setPerda] = useState(numeroParaMoeda(cliente.perda_inercia));
   const [fase, setFase] = useState<FaseCliente>(
     cliente.fase ?? "prospeccao",
   );
@@ -181,21 +177,19 @@ export function ClienteFicha({
    *
    * 🔑 A ficha tem 1.000 px de rolagem e o "Salvar" morava no fim dela, sem
    * barra fixa e sem nenhum sinal de que algo tinha mudado: dava para digitar
-   * a perda pela inércia de um cliente, rolar para cima, trocar de aba e
-   * perder tudo em silêncio. A comparação é contra o `cliente` que veio do
-   * servidor — a mesma origem dos `useState` iniciais —, campo a campo e na
-   * MESMA normalização que `salvar()` envia (`trim`, `|| null`, máscara de
-   * telefone). Se divergir, a barra mente nos dois sentidos.
+   * um campo, rolar para cima, trocar de aba e perder tudo em silêncio. A
+   * comparação é contra o `cliente` que veio do servidor — a mesma origem
+   * dos `useState` iniciais —, campo a campo e na MESMA normalização que
+   * `salvar()` envia (`trim`, `|| null`, máscara de telefone). Se divergir,
+   * a barra mente nos dois sentidos.
    */
   const alterado =
     nome.trim() !== (cliente.nome ?? "").trim() ||
     (telefone.trim() || null) !==
       (cliente.telefone ? mascaraTelefone(cliente.telefone) : null) ||
-    (nivel || null) !== (cliente.nivel_relacionamento ?? null) ||
     (grau || null) !== (cliente.grau_relacao ?? null) ||
     problemas.length !== (cliente.problemas ?? []).length ||
     problemas.some((p) => !(cliente.problemas ?? []).includes(p)) ||
-    perda !== numeroParaMoeda(cliente.perda_inercia) ||
     fase !== (cliente.fase ?? "prospeccao") ||
     (dataReuniao || null) !== (cliente.data_reuniao_preliminar ?? null) ||
     (disc || null) !== (cliente.perfil_disc ?? null) ||
@@ -293,13 +287,10 @@ export function ClienteFicha({
       const res = await atualizarCliente(cliente.id, alunoId, {
         nome: nome.trim(),
         telefone: telefone.trim() || null,
-        nivel_relacionamento:
-          (nivel as ClienteEtapa1["nivel_relacionamento"]) || null,
         // `""` (campo esvaziado) vira `null` = NÃO INFORMADO. A action repete
         // esta normalização — aqui é para o `alterado` acima não mentir.
         grau_relacao: (grau as GrauRelacao) || null,
         problemas,
-        perda_inercia: moedaParaNumero(perda),
         // `status` congelou na migração 20260909000060 (é o caminho de volta):
         // nenhum caminho de escrita da aplicação pode tocar nele.
         fase,
@@ -380,45 +371,24 @@ export function ClienteFicha({
             </div>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="f-tel">Telefone</Label>
-              <div className="relative">
-                <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="f-tel"
-                  inputMode="tel"
-                  value={telefone}
-                  onChange={(e) => setTelefone(mascaraTelefone(e.target.value))}
-                  placeholder="(00) 00000-0000"
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="f-nivel">Nível de relacionamento</Label>
-              <Select value={nivel} onValueChange={(v) => setNivel(v ?? "")}>
-                <SelectTrigger id="f-nivel">
-                  <SelectValue placeholder="Selecione">
-                    {(v: string) =>
-                      NIVEIS_RELACIONAMENTO.find((n) => n.id === v)?.rotulo ?? v
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {NIVEIS_RELACIONAMENTO.map((n) => (
-                    <SelectItem key={n.id} value={n.id}>
-                      {n.rotulo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="grid gap-2">
+            <Label htmlFor="f-tel">Telefone</Label>
+            <div className="relative">
+              <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="f-tel"
+                inputMode="tel"
+                value={telefone}
+                onChange={(e) => setTelefone(mascaraTelefone(e.target.value))}
+                placeholder="(00) 00000-0000"
+                className="pl-9"
+              />
             </div>
           </div>
 
-          {/* GRAU DE RELAÇÃO — ao lado do nível, e não no lugar dele: nível é
-              TEMPERATURA (frio/morno/quente), grau é TIPO DE VÍNCULO. Existe
-              parente frio e lead quente; são dois eixos (§B.6). */}
+          {/* GRAU DE RELAÇÃO — o campo "Nível de relacionamento" (quente/
+              morno/frio) que existia ao lado deste foi REMOVIDO por decisão
+              do Marcio (10/09/2026); grau é TIPO DE VÍNCULO e continua. */}
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="f-grau">Grau de relação</Label>
@@ -497,17 +467,9 @@ export function ClienteFicha({
             ) : null}
           </fieldset>
 
-          <div className="grid gap-5 sm:grid-cols-3">
-            <div className="grid gap-2">
-              <Label htmlFor="f-perda">Perda pela inércia</Label>
-              <Input
-                id="f-perda"
-                inputMode="numeric"
-                value={perda}
-                onChange={(e) => setPerda(mascaraMoeda(e.target.value))}
-                placeholder="R$ 0,00"
-              />
-            </div>
+          {/* "Perda pela inércia" (campo + coluna do grid) REMOVIDO por
+              decisão do Marcio (10/09/2026); grid passou de 3 para 2 col. */}
+          <div className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="f-fase">Fase</Label>
               <Select

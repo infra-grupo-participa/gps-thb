@@ -1,7 +1,11 @@
 import type { GrauRelacao } from "@/lib/types";
 
-/** Ordem da LISTA de clientes (o quadro não ordena — a coluna é a ordem). */
-export type Ordenacao = "recentes" | "nome" | "perda" | "reuniao";
+/**
+ * Ordem da LISTA de clientes (o quadro não ordena — a coluna é a ordem).
+ * A opção "perda" (maior perda pela inércia) saiu por decisão do Marcio
+ * (10/09/2026) — o conceito saiu do sistema.
+ */
+export type Ordenacao = "recentes" | "nome" | "reuniao";
 
 /**
  * Valor do filtro de grau de relação.
@@ -20,6 +24,5 @@ export type FiltroGrau = GrauRelacao | "nao_informado";
 export const ROTULO_ORDENACAO: Record<Ordenacao, string> = {
   recentes: "mais recentes",
   nome: "nome",
-  perda: "maior perda",
   reuniao: "data da reunião",
 };

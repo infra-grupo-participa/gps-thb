@@ -110,6 +110,18 @@ export interface Ambiente {
   atualizado_em: string;
 }
 
+/**
+ * @deprecated CONGELADO em 10/09/2026 por decisão do Marcio: o quente/morno/
+ * frio saiu do sistema em definitivo, junto com a perda pela inércia.
+ *
+ * A coluna `nivel_relacionamento` continua no banco com os 595 valores já
+ * gravados (219 frio, 206 morno, 175 quente) — some da tela, não do
+ * histórico, no mesmo padrão de `StatusCliente`. Nenhum caminho de escrita
+ * da aplicação a toca; nenhuma tela a lê.
+ *
+ * ⚠️ Ela SAIU da conta de "ficha completa" (`comDados` em `etapa1.ts`), que
+ *    é o que decide a trava dos 30. Hoje ficha completa = nome + telefone.
+ */
 export type NivelRelacionamento = "frio" | "morno" | "quente";
 
 /**
@@ -138,9 +150,17 @@ export type PerfilDisc = "D" | "I" | "S" | "C";
 /**
  * TIPO DE VÍNCULO do aluno com o cliente (migração 20260910000202).
  *
- * ⚠️ Eixo ORTOGONAL a `NivelRelacionamento`, que é TEMPERATURA — existe
- * parente frio e lead quente. Não substitui nem renomeia aquele campo: os 664
- * valores de `nivel_relacionamento` respondem outra pergunta.
+ * ⚠️ NÃO herdou o papel de `NivelRelacionamento` (congelado em 10/09/2026).
+ *    São perguntas diferentes: aquele era TEMPERATURA (quão perto de fechar),
+ *    este é TIPO DE VÍNCULO (como você conhece a pessoa) — existe parente
+ *    frio e lead quente. Não há de-para honesto entre os dois, então os 595
+ *    valores antigos NÃO foram convertidos: isso seria inventar o vínculo de
+ *    595 pessoas reais.
+ *
+ * 🔑 E por isso ele também NÃO entrou na conta de "ficha completa": medido em
+ *    10/09, 595 clientes tinham nível e só 27 tinham grau — exigi-lo zeraria
+ *    os 5 ambientes que já bateram os 30. É obrigatório ao CRIAR cliente
+ *    novo; não retroage.
  *
  * `null` = não informado, o estado de nascimento das ~878 linhas. A UI **nunca**
  * pode exibir `null` como "Lead": o padrão não pode ser um palpite sobre a vida
@@ -161,8 +181,14 @@ export interface ClienteEtapa1 {
   aluno_id: string;
   nome: string;
   telefone: string | null;
+  /** @deprecated Congelado em 10/09/2026 — some da tela, fica no banco. */
   nivel_relacionamento: NivelRelacionamento | null;
   problemas: string[];
+  /**
+   * @deprecated CONGELADO em 10/09/2026 por decisão do Marcio: a perda pela
+   * inércia saiu do sistema — ficha, criação de cliente, tarefa 1.2 e KPI.
+   * A coluna fica no banco com os 101 valores gravados. Não escrever.
+   */
   perda_inercia: number | null;
   registro_contato: string | null;
   mensagem_padrao_enviada: boolean;

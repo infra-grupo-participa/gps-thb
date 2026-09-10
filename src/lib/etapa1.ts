@@ -235,7 +235,10 @@ export interface TarefaDef {
 export const TAREFAS_ETAPA1: TarefaDef[] = [
   {
     num: 1,
-    codigo: "1.1",
+    // 🔑 SEM `codigo` (10/09/2026): era "1.1" porque existia uma "1.2"
+    // (identificar a perda pela inércia). A 1.2 foi ABOLIDA por decisão do
+    // Marcio, e um "1.1" sozinho não faz sentido — o passo volta a ser o 1.
+    // `TarefaItem` cai para `num` quando `codigo` é ausente.
     titulo: "Listar 30 clientes potenciais",
     descricao:
       "Liste 30 possíveis clientes do seu círculo de relacionamento que tenham pelo menos um dos sete problemas. Preencha os dados de cada um — nome, telefone, nível de relacionamento, registro do contato e a data da reunião preliminar.",
@@ -246,15 +249,15 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
       url: "https://drive.google.com/file/d/18rwgOgYjjPXkaxL6qOr-nAZ29sol5v7g/view?usp=drive_link",
     },
   },
-  {
-    num: 2,
-    codigo: "1.2",
-    titulo: "Identificar a perda pela inércia",
-    descricao:
-      "Para cada um dos 30, identifique quanto ele perde por permanecer inerte e registre o valor na ficha do cliente.",
-    automatica: true,
-    apontaClientes: true,
-  },
+  // 🔴 A TAREFA `num: 2` ("Identificar a perda pela inércia", exibida como
+  // "1.2") FOI ABOLIDA em 10/09/2026, por decisão do Marcio: a perda pela
+  // inércia saiu do sistema inteiro — ficha, criação de cliente e tarefa.
+  //
+  // ⚠️ O `num: 2` fica APOSENTADO. `num` é a identidade estável referenciada
+  //    por `gps.progresso`; ela era AUTOMÁTICA (nunca gravou linha manual),
+  //    então não há histórico a preservar — mas o número não se reaproveita,
+  //    pela mesma regra do `num: 4` (a antiga "mensagem de estudo de caso").
+  //    **Não usar o 2 para outra coisa.**
   // 🔴 AS DUAS TAREFAS DE MENSAGEM VIRARAM UMA (10/09/2026).
   //
   // "Enviar mensagem padrão" (num 3) e "Enviar mensagem de estudo de caso"
@@ -329,10 +332,8 @@ import type { ClienteEtapa1 } from "@/lib/types";
 
 export interface MetricasEtapa1 {
   preenchidos: number;
-  comPerda: number;
   comDados: number;
   agendados: number;
-  perdaTotal: number;
   totalTarefas: number;
   totalConcluidas: number;
   pct: number;
@@ -340,7 +341,7 @@ export interface MetricasEtapa1 {
 }
 
 /**
- * As quatro contagens de cliente de que a Etapa 01 depende. Existe para que a
+ * As três contagens de cliente de que a Etapa 01 depende. Existe para que a
  * regra de conclusão/`pct` possa ser calculada SEM as linhas de cliente — é o
  * que permite ao painel do admin agregar no banco (`gps.admin_painel_alunos()`,
  * migração 20260909000050) em vez de trazer a base inteira para o Node.
@@ -348,7 +349,6 @@ export interface MetricasEtapa1 {
 export interface ContagensEtapa1 {
   preenchidos: number;
   comDados: number;
-  comPerda: number;
   agendados: number;
 }
 
@@ -371,10 +371,10 @@ export function resumoEtapa1(
   const tarefaConcluida = (num: number): boolean => {
     switch (num) {
       case 1:
-        // "Listar 30 clientes" agora inclui preencher os dados essenciais.
+        // "Listar 30 clientes" inclui preencher os dados essenciais: nome e
+        // telefone (o nível de relacionamento saiu em 10/09/2026).
         return c.preenchidos >= META_CLIENTES && c.comDados >= META_CLIENTES;
-      case 2:
-        return c.comPerda >= META_CLIENTES;
+      // O `case 2` (perda pela inércia) saiu com a tarefa. Ver o catálogo.
       default:
         return Boolean(manual[num]);
     }
@@ -402,10 +402,20 @@ export function calcularMetricasEtapa1(
   manual: Record<number, boolean>,
 ): MetricasEtapa1 {
   const preenchidos = clientes.filter((c) => c.nome.trim() !== "").length;
-  const comPerda = clientes.filter((c) => c.perda_inercia != null).length;
-  const comDados = clientes.filter(
-    (c) => c.nome.trim() && c.telefone && c.nivel_relacionamento,
-  ).length;
+  // 🔴 FICHA COMPLETA = NOME + TELEFONE (decisão do Marcio, 10/09/2026).
+  //
+  // O `nivel_relacionamento` (quente/morno/frio) SAIU do sistema junto com a
+  // perda pela inércia. Ele fazia parte desta conta, e é a conta que decide
+  // a trava dos 30 — a porta de saída da fase Inicial.
+  //
+  // ⚠️ O `grau_relacao` (parente/amigo/indicação…) NÃO entrou no lugar dele.
+  //    Medido em 10/09: 595 clientes tinham nível preenchido e só 27 tinham
+  //    grau. Exigir grau ZERARIA os 5 ambientes que já bateram os 30 e
+  //    obrigaria 60 ambientes a revisitar fichas para reinformar algo que
+  //    já haviam informado. O grau continua obrigatório na CRIAÇÃO de
+  //    cliente novo — só não retroage sobre quem cadastrou antes de ele
+  //    existir.
+  const comDados = clientes.filter((c) => c.nome.trim() && c.telefone).length;
   // EVIDÊNCIA, não `status` (congelado na migração 20260909000060) e não
   // `fase` (que o aluno edita arrastando o card no quadro — arrastar para
   // "Fechamento" não é uma reunião agendada). Mesmo critério do painel do
@@ -414,24 +424,9 @@ export function calcularMetricasEtapa1(
   const agendados = clientes.filter(
     (c) => c.data_reuniao_preliminar != null || c.aderiu_reuniao,
   ).length;
-  const perdaTotal = clientes.reduce(
-    (soma, c) => soma + (c.perda_inercia ?? 0),
-    0,
-  );
+  const resumo = resumoEtapa1({ preenchidos, comDados, agendados }, manual);
 
-  const resumo = resumoEtapa1(
-    { preenchidos, comDados, comPerda, agendados },
-    manual,
-  );
-
-  return {
-    preenchidos,
-    comPerda,
-    comDados,
-    agendados,
-    perdaTotal,
-    ...resumo,
-  };
+  return { preenchidos, comDados, agendados, ...resumo };
 }
 
 /**
@@ -450,8 +445,8 @@ export function calcularMetricasEtapa1(
  * `resumoHonorarios(clientes)`. Existir separado permite que a aba Financeiro
  * leia do banco só estes 4 campos (`getClientesHonorarios`) em vez das 20
  * colunas da ficha — o egress do Supabase tem teto DA ORGANIZAÇÃO, dividido
- * com o sip, e `registro_contato`/`perda_inercia` são dado de terceiro que não
- * tem por que trafegar até uma tela de dinheiro.
+ * com o sip, e `registro_contato` é dado de terceiro que não tem por que
+ * trafegar até uma tela de dinheiro.
  */
 export interface ClienteHonorarios {
   id: string;
@@ -632,14 +627,13 @@ export function faltaParaContar(clientes: ClienteEtapa1[]): {
   /** A frase pronta, ou `null` quando não há nada a dizer. */
   frase: string | null;
 } {
-  const incompletos = clientes.filter(
-    (c) => !(c.nome.trim() && c.telefone && c.nivel_relacionamento),
-  );
+  // Espelha `comDados` acima: nome + telefone. Se as duas contas divergirem,
+  // a tela diz "faltam N" e não sabe dizer o que falta.
+  const incompletos = clientes.filter((c) => !(c.nome.trim() && c.telefone));
   if (incompletos.length === 0) return { incompletos: 0, frase: null };
 
   const semNome = incompletos.filter((c) => !c.nome.trim()).length;
   const semTel = incompletos.filter((c) => !c.telefone).length;
-  const semNivel = incompletos.filter((c) => !c.nivel_relacionamento).length;
 
   const n = incompletos.length;
   const plural = n === 1 ? "cliente" : "clientes";
@@ -647,16 +641,9 @@ export function faltaParaContar(clientes: ClienteEtapa1[]): {
   // Um campo só faltando em todos: a frase pode ser específica, e é a que
   // resolve o caso real. Mais de um campo: a frase genérica, senão ela
   // viraria uma lista que ninguém lê.
-  const soNivel = semNivel === n && semNome === 0 && semTel === 0;
-  const soTel = semTel === n && semNome === 0 && semNivel === 0;
-  const soNome = semNome === n && semTel === 0 && semNivel === 0;
+  const soTel = semTel === n && semNome === 0;
+  const soNome = semNome === n && semTel === 0;
 
-  if (soNivel) {
-    return {
-      incompletos: n,
-      frase: `${n} ${plural} sem o nível de relacionamento. Preencha para eles contarem aqui.`,
-    };
-  }
   if (soTel) {
     return {
       incompletos: n,
@@ -671,6 +658,6 @@ export function faltaParaContar(clientes: ClienteEtapa1[]): {
   }
   return {
     incompletos: n,
-    frase: `${n} ${plural} ainda sem nome, telefone ou nível de relacionamento.`,
+    frase: `${n} ${plural} ainda sem nome ou telefone.`,
   };
 }

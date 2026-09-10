@@ -8,7 +8,6 @@ import {
   Check,
   ListChecks,
   Lock,
-  TrendingDown,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -25,7 +24,6 @@ import {
   calcularMetricasEtapa1,
 } from "@/lib/etapa1";
 import { calcularEnfases } from "@/lib/enfase";
-import { brl } from "@/lib/moeda";
 import {
   definirEnfaseTarefa,
   marcarTarefa,
@@ -84,7 +82,6 @@ export function Etapa1Guide({
     preenchidos,
     comDados,
     agendados,
-    perdaTotal,
     totalConcluidas,
     pct: progressoPct,
     tarefaConcluida,
@@ -163,11 +160,11 @@ export function Etapa1Guide({
     // (`--gap-secao`, 24 no celular / 32 no desktop), não de um `gap-6` por tela.
     <div className="ritmo-secao">
       {/* Progresso — 2x2 no celular (era 1x4: os quatro cards de largura
-          total comiam ~480 px de rolagem antes do primeiro passo). O da perda
-          fica com as duas colunas porque o número é longo: "R$ 2.955.000,00"
-          em 30 px não cabe em 171 px, e encolher a fonte só dele quebraria a
-          escala. */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          total comiam ~480 px de rolagem antes do primeiro passo). Desde a
+          remoção do KPI de perda pela inércia (10/09/2026) restam 3 cards;
+          "Reuniões agendadas" ocupa as duas colunas no celular para não
+          sobrar buraco na grade. */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
         {/* Estes 4 números usavam um `MetricCard` PRÓPRIO, escrito neste
             arquivo (sem ícone, rótulo em caixa alta), enquanto o `/admin`
             usava o `KpiCard` do design system (com chip laranja). Eram dois
@@ -179,10 +176,14 @@ export function Etapa1Guide({
           meta={progressoPct}
           hint={`${totalConcluidas} de ${TAREFAS_ETAPA1.length} tarefas`}
         />
-        {/* PL3 — a tarefa 1 exige nome + telefone + nível (`comDados`), e era
+        {/* PL3 — a tarefa 1 exige nome + telefone (`comDados`), e era
             `preenchidos` (só o nome) que aparecia aqui: o aluno lia "30/30" ao
-            lado de um cadeado dizendo "faltam N clientes com nome, telefone e
-            nível". Um número, uma verdade — o outro vira detalhe. */}
+            lado de um cadeado dizendo "faltam N clientes com nome e
+            telefone". Um número, uma verdade — o outro vira detalhe.
+            ⚠️ `comDados` exigia nome + telefone + nível de relacionamento
+            até 10/09/2026; o nível saiu do sistema por decisão do Marcio e a
+            conta (em `src/lib/etapa1.ts`) passou a ser só nome + telefone —
+            os textos abaixo foram atualizados junto. */}
         <KpiCard
           icone={<Users />}
           rotulo="Clientes com os dados"
@@ -191,27 +192,25 @@ export function Etapa1Guide({
           hint={
             // 🔑 Quando há cliente incompleto, o hint diz QUAL campo falta —
             // não só o número. O caso que motivou (medido em 10/09/2026): um
-            // aluno com 51 clientes cadastrados, nome e telefone em todos e
-            // nível em nenhum, lia "0 de 30" ao lado de 51 nomes na lista.
-            // O critério não mudou; a explicação sim.
+            // aluno com 51 clientes cadastrados e nome preenchido em todos,
+            // mas telefone faltando em parte deles, lia "0 de 30" ao lado de
+            // 51 nomes na lista. O critério não mudou; a explicação sim.
             faltam?.frase ??
-            `${preenchidos} listados · ${comDados} com nome, telefone e nível`
+            `${preenchidos} listados · ${comDados} com nome e telefone`
           }
         />
+        {/* Era grid de 4 colunas no desktop. O 4º card ("Perda pela inércia
+            (total)") SAIU por decisão do Marcio (10/09/2026) — o conceito
+            saiu do sistema por inteiro. Fileira ficou com 3 cards; não
+            substituir por outro número inventado. */}
         <KpiCard
+          className="col-span-2 lg:col-span-1"
           icone={<CalendarCheck />}
           rotulo="Reuniões agendadas"
           valor={`${agendados}/${META_REUNIOES}`}
           meta={(agendados / META_REUNIOES) * 100}
           hint="meta de 15 reuniões"
           destaque={agendados >= META_REUNIOES}
-        />
-        <KpiCard
-          className="col-span-2 lg:col-span-1"
-          icone={<TrendingDown />}
-          rotulo="Perda pela inércia (total)"
-          valor={perdaTotal > 0 ? brl(perdaTotal) : "—"}
-          hint="soma dos seus clientes"
         />
       </div>
 
@@ -372,7 +371,7 @@ export function Etapa1Guide({
                     }
                     detalheBloqueio={
                       travadoPorTarefa
-                        ? `Faltam ${faltam} cliente(s) com nome, telefone e nível de relacionamento preenchidos.`
+                        ? `Faltam ${faltam} cliente(s) com nome e telefone preenchidos.`
                         : undefined
                     }
                   />

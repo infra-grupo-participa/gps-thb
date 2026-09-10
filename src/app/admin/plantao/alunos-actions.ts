@@ -82,7 +82,14 @@ export async function liberarAlunoPlantao(dados: {
   nome: string;
   documento?: string;
   telefone?: string;
-}): Promise<ResultadoAcao & { reativado?: boolean }> {
+  /**
+   * O admin já viu o aviso e quer liberar mesmo assim alguém que está no
+   * Programa. Sem isto a RPC recusa com P0003 e nada é gravado.
+   */
+  confirmarMesmoNoPrograma?: boolean;
+}): Promise<
+  ResultadoAcao & { reativado?: boolean; precisaConfirmar?: boolean }
+> {
   if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
 
   const email = dados.email.trim();
@@ -96,8 +103,16 @@ export async function liberarAlunoPlantao(dados: {
     p_nome: nome,
     p_documento: dados.documento?.trim() || null,
     p_telefone: dados.telefone?.trim() || null,
+    p_confirmar_mesmo_no_programa: dados.confirmarMesmoNoPrograma ?? false,
   });
   if (error) {
+    // P0003 = a pessoa está no Programa. Não é erro: é uma confirmação que
+    // falta. Liberar aqui grava `bloqueio_excecao`, que blinda a pessoa
+    // contra a reconciliação automática PARA SEMPRE — por isso a equipe
+    // precisa dizer que quer isso, com o fato na tela.
+    if (error.code === "P0003") {
+      return { ok: false, erro: error.message, precisaConfirmar: true };
+    }
     return { ok: false, erro: traduzirErroBanco("admin/liberarAlunoPlantao", error, { email }) };
   }
 

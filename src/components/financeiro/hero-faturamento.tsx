@@ -13,7 +13,12 @@ import type { ProgressoFaturamento } from "@/lib/financeiro";
  * A peça FORTE da aba Financeiro: **quanto o aluno já faturou na mentoria**.
  *
  * A aba abre com o progresso dele, não com o que ele deve. R$ 150.000 em
- * honorários contratados é o **AURUM** (ouro em latim) — o objetivo do
+ * 🔴 O NOME "AURUM" NÃO APARECE PARA O ALUNO (decisão do Marcio, 10/09/2026):
+ * *"não coloca nada indicando que ele chegou no Aurum não, só coloca que ele
+ * atingiu a meta de 150k"*. A tela fala em META, e só. O nome interno do
+ * nível fica no código e nas conversas da equipe.
+ *
+ * O marco de R$ 150.000 em honorários contratados é o objetivo do
  * programa. Uma meta, um número, uma barra: é a tela inteira em três linhas.
  *
  * 🔴 **Com 0 contratados o número NÃO aparece.** "R$ 0 de R$ 150.000" com a
@@ -50,7 +55,7 @@ export function HeroFaturamento({
   } = progresso;
 
   const hrefClientes = `${basePath}/clientes`;
-  const chegouNoAurum = nivelAtual === "aureo";
+  const bateuAMeta = nivelAtual === "aureo";
   // Quantos contratados de fato somam para o número exibido. Dizer
   // "honorários de 4 clientes" quando 1 deles está sem valor atribuiria ao
   // número uma origem que ele não tem — e é justamente o cliente que o aviso
@@ -58,7 +63,9 @@ export function HeroFaturamento({
   const comValor = Math.max(0, contratados - contratadosSemValor);
 
   // Um marco só, no fim da trilha: o AURUM.
-  const marcos = [{ valor: meta, rotulo: "AURUM", atingido: chegouNoAurum }];
+  // Sem rótulo no marco: a barra já mostra o valor, e "AURUM" não é
+  // vocabulário do aluno.
+  const marcos = [{ valor: meta, rotulo: "Meta", atingido: bateuAMeta }];
 
   return (
     <Card className="ring-primary/20">
@@ -66,12 +73,12 @@ export function HeroFaturamento({
         {/* `Secao`, não o `uppercase tracking-wide` que a Onda A tirou de 15
             telas: rótulo tracked-out acima de tudo é o tell mais conhecido de
             UI gerada. O troféu continua à direita (`acao`), e continua sendo
-            o `IconeChip` — é ele que acende em `marca-solida` no AURUM. */}
+            o `IconeChip` — é ele que acende em `marca-solida` na meta. */}
         <Secao
           titulo={faturado === null ? "Seu faturamento" : "Você já faturou"}
           descricao="Honorários dos clientes que você fechou no programa."
           acao={
-            <IconeChip destaque={chegouNoAurum}>
+            <IconeChip destaque={bateuAMeta}>
               <Trophy />
             </IconeChip>
           }
@@ -114,7 +121,7 @@ export function HeroFaturamento({
                 {brlInteiro(meta)}
               </span>
               <span className="text-muted-foreground">
-                · o AURUM, a meta do programa
+                · a meta do programa
               </span>
             </p>
 
@@ -137,10 +144,10 @@ export function HeroFaturamento({
               >
                 {brlInteiro(faturado)}
               </span>
-              {chegouNoAurum ? (
+              {bateuAMeta ? (
                 <Badge className="bg-accent text-accent-foreground">
                   <Trophy aria-hidden />
-                  AURUM
+                  Meta atingida
                 </Badge>
               ) : (
                 <span className="text-lg text-muted-foreground tabular-nums">
@@ -150,11 +157,10 @@ export function HeroFaturamento({
             </div>
 
             <p className="text-base text-pretty">
-              {chegouNoAurum ? (
+              {bateuAMeta ? (
                 <>
-                  Você chegou ao{" "}
-                  <span className="font-medium">AURUM</span>. Meta de{" "}
-                  {brlInteiro(meta)} alcançada.
+                  Você atingiu a meta de{" "}
+                  <span className="font-medium">{brlInteiro(meta)}</span>.
                 </>
               ) : (
                 <>
@@ -165,7 +171,7 @@ export function HeroFaturamento({
                   >
                     {faltaParaMeta === null ? "—" : brlInteiro(faltaParaMeta)}
                   </span>{" "}
-                  para o AURUM.
+                  para a meta.
                 </>
               )}
             </p>
@@ -176,17 +182,17 @@ export function HeroFaturamento({
               marcos={marcos}
               rotuloAcessivel="Faturamento na mentoria"
               textoAcessivel={
-                chegouNoAurum
-                  ? `${brlInteiro(faturado)}; AURUM alcançado.`
-                  : `${brlInteiro(faturado)} de ${brlInteiro(meta)} até o AURUM.`
+                bateuAMeta
+                  ? `${brlInteiro(faturado)}; meta alcançada.`
+                  : `${brlInteiro(faturado)} de ${brlInteiro(meta)}.`
               }
             />
 
             <p className="text-xs text-muted-foreground">
-              {/* "100% da meta" ao lado de "Você chegou ao AURUM" é a mesma
+              {/* "100% da meta" ao lado de "Você atingiu a meta" é a mesma
                   informação duas vezes — e o teto de 100 faria 260 mil ler
-                  como 100%, igual a 150 mil. No AURUM o percentual sai. */}
-              {chegouNoAurum || pctMeta === null ? null : (
+                  como 100%, igual a 150 mil. Batida a meta, o percentual sai. */}
+              {bateuAMeta || pctMeta === null ? null : (
                 <>{pctMeta}% da meta · </>
               )}
               honorários de {comValor}{" "}

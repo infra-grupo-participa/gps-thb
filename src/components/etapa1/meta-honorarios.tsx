@@ -16,7 +16,10 @@ import { cn } from "@/lib/utils";
  * Barra da meta de faturamento do ambiente (B8): soma de `valor_honorarios`
  * dos clientes em `fase='contratado'`, programa inteiro, valor CONTRATADO.
  *
- * A régua é UMA: R$ 150.000 é o **AURUM**, o objetivo do programa. O desenho é
+ * 🔴 O NOME "AURUM" NÃO APARECE PARA O ALUNO (decisão do Marcio, 10/09/2026):
+ * a tela fala em META, e só. O nome interno do nível fica no código.
+ *
+ * A régua é UMA: R$ 150.000, o objetivo do programa. O desenho é
  * o mesmo da aba Financeiro, pelo mesmo componente (`BarraMarcos`), para que a
  * home e a aba não mostrem duas réguas diferentes do mesmo número.
  *
@@ -45,9 +48,9 @@ export function MetaHonorarios({
 }) {
   const { total, contratados, contratadosSemValor, pct } = resumo;
 
-  const chegouNoAurum = total !== null && total >= META_HONORARIOS;
+  const bateuAMeta = total !== null && total >= META_HONORARIOS;
   const marcos = [
-    { valor: META_HONORARIOS, rotulo: "AURUM", atingido: chegouNoAurum },
+    { valor: META_HONORARIOS, rotulo: "Meta", atingido: bateuAMeta },
   ];
 
   return (
@@ -66,7 +69,9 @@ export function MetaHonorarios({
               {brlInteiro(total)}
             </span>{" "}
             <span className="text-muted-foreground">
-              {chegouNoAurum ? "· AURUM" : `de ${brlInteiro(META_HONORARIOS)}`}
+              {bateuAMeta
+                ? "· meta atingida"
+                : `de ${brlInteiro(META_HONORARIOS)}`}
             </span>
           </span>
         ) : (
@@ -85,22 +90,22 @@ export function MetaHonorarios({
             marcos={marcos}
             rotuloAcessivel="Meta de faturamento"
             textoAcessivel={
-              chegouNoAurum
-                ? `${brlInteiro(total)}; AURUM alcançado.`
-                : `${brlInteiro(total)} de ${brlInteiro(META_HONORARIOS)} até o AURUM.`
+              bateuAMeta
+                ? `${brlInteiro(total)}; meta alcançada.`
+                : `${brlInteiro(total)} de ${brlInteiro(META_HONORARIOS)}.`
             }
           />
-          {/* Uma linha só embaixo da barra: quanto falta para o AURUM. */}
+          {/* Uma linha só embaixo da barra: quanto falta para a meta. */}
           <p className="mt-1.5 text-xs text-muted-foreground">
-            {chegouNoAurum ? (
-              <>Você chegou ao AURUM.</>
+            {bateuAMeta ? (
+              <>Você atingiu a meta.</>
             ) : (
               <>
                 Faltam{" "}
                 <span className="tabular-nums">
                   {brlInteiro(META_HONORARIOS - total)}
                 </span>{" "}
-                para o AURUM · {pct}% da meta
+                para a meta · {pct}%
               </>
             )}
             {contratadosSemValor > 0 ? (
@@ -120,7 +125,7 @@ export function MetaHonorarios({
           {contratados === 0 ? (
             <>
               Nenhum cliente contratado ainda. A meta de{" "}
-              {brlInteiro(META_HONORARIOS)} — o AURUM — começa a contar quando
+              {brlInteiro(META_HONORARIOS)} começa a contar quando
               você mover um cliente para Contratado.
             </>
           ) : (

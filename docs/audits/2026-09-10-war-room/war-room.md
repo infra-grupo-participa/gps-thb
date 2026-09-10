@@ -1191,3 +1191,296 @@ F-1: **concordo com o orquestrador** — mover o favorito de fase não troca *qu
 RISCO RESIDUAL: (1) payload RSC do onboarding em toda página do aluno concluído (acima); (2) `219` no caminho CONFIRMADO com e-mail que já é o TITULAR do mesmo ambiente rebaixa o papel para `socio` (`on conflict … set papel='socio'`) — pré-existente desde a `…118`, só o admin confirmando chega lá; (3) se o gatilho de signup casar um cadastro DIFERENTE do escolhido na tela, `pessoa_aluno_id` fica o do gatilho (`coalesce`) e o retorno diz o da tela; (4) `chamados_email_equipe` continua vazio em produção — o toast agora é honesto, mas ninguém é avisado por e-mail até o João preencher em `/admin/chamados`.
 
 CONTA DE TESTE: senha final **`Holding#Teste2026x`**; onboarding concluído (cliente "Cliente Ficticio Fable C3", execução, R$ 12.345, contrato + documento PNG 1×1), 1 chamado "teste Fable c3 — pode fechar" (`3f7411e0-…`). Resetar como de praxe. Servidor 3991 derrubado por mim.
+
+## Orquestrador — ciclo 4 (fechamento a pedido do João: "só termina, dá uma polidinha")
+
+- `…220` aplicada e provada em rollback: e-mail do próprio titular → 22023, zero escrita, titular continua titular (membros 172→172, users 11050→11050); e-mail novo → pessoa final = a escolhida na tela, retorno bate, 0 ambiente órfão. Assinatura única, anon=f. `erros.ts` ganhou a frase.
+- Tempos das RPCs do admin (JWT real): `admin_painel_alunos(200,0)` 56 ms · `admin_dashboard()` 41 ms · `admin_painel_atendimento()` 19 ms · `admin_diagnostico_ambiente` 307 ms.
+- Dashboard reconciliado contra contagens diretas: 159 ambientes · 879 clientes (842/37/0) · 0 onboarding concluído · honorários null — bate.
+- Resíduo de teste no banco: 0 logins `exemplo.invalid`, 0 chamados de prova, 0 ambientes sem membro; só "João teste" em `etapa1_clientes` (é do próprio João, não dos agentes).
+- Em andamento: pentest do diff dos ciclos 1–3 e Auditor G (copy/a11y/e-mails). Aplico só o que for rápido; o resto vai para o ClickUp.
+
+## Auditor G — admin: copy · a11y · e-mails (ciclo 4)
+
+Só leitura, sem credencial de admin de teste — auditoria por leitura de código + renderização
+isolada dos 3 e-mails (`src/lib/email.ts`, `email-plantao.ts`, `email-chamados.ts`) chamando as
+funções REAIS (stub só em `fetch`/`RESEND_API_KEY`, zero produto tocado) e captura em
+`tmp/squad/emails-G/*.png` (600 px, Playwright). Não repito o que o Auditor B/E já achou no admin
+(central/diário/acesso/plantão já cobertos nos ciclos 1–2); foco no que ficou de fora do escopo
+deles (`diario-*`/`trilha-*`, ficaram fora do F2 de propósito) e nos e-mails, que nenhum auditor
+tinha renderizado ainda.
+
+### 🔴 bloqueia apresentação
+
+**G-1 — Os 4 e-mails do Plantão em TypeScript ainda saem com a marca ERRADA (Time Holding
+Brasil/GPS) — a decisão do Marcio de 09/09 (migração `20260909000173_gps_plantao_email_marca_acelera.sql`)
+rebatizou isso para Acelera Holding só no lado do banco, e o caminho TS ficou pra trás.**
+`src/lib/email-plantao.ts:53-77` (`enviarPlantaoNps`), `:98-155` (`enviarPlantaoCancelamento`),
+`:169-241` (`enviarPlantaoAvisoMentora`), `:263-318` (`enviarPlantaoSala`) — as 4 chamam
+`layout()`/`botao()` de `email.ts` sem trocar nada. Renderizado e comprovado:
+`tmp/squad/emails-G/5-plantao-cancelamento.png` mostra cabeçalho laranja "Programa de
+Implementação Assistida / Time Holding Brasil" e o rodapé "Você recebeu este e-mail porque faz
+parte do Programa de Implementação Assistida" — para um comprador do Acelera que pode nunca ter
+ouvido falar do GPS. A migração `…173` já documenta a correção completa (cabeçalho `#180B00`,
+logo `/logo-acelera-email.png`, laranja `#ED6D05`, copy "plantão de dúvidas do Acelera Holding",
+remetente "Acelera Holding") — é o spec pronto, só falta aplicar no TS.
+**Exposição real hoje:** `enviarPlantaoCancelamento` é chamada por `cancelarSlot`
+(`src/app/admin/plantao/slots-actions.ts:627`) — ação viva, qualquer cancelamento manual de slot
+dispara esse e-mail errado agora. As outras 3 só disparam por `/api/plantao/manutencao`, que está
+em 500 em produção (`PLANTAO_MANUTENCAO_SEGREDO` nunca setado, ver CLAUDE.md) — sem exposição
+hoje, mas precisam do mesmo conserto antes de reativar a rota (senão volta o mesmo erro que a
+migração já resolveu uma vez do outro lado).
+Texto atual (rodapé, `email.ts:136`): "Você recebeu este e-mail porque faz parte do Programa de
+Implementação Assistida do Time Holding Brasil." → proposto para os 4 e-mails do Plantão: copiar
+literalmente o texto/cores/logo que `…173` já usa no e-mail equivalente do banco.
+Destino: backend-engineer (fazer `email-plantao.ts` compartilhar a mesma marca Acelera do SQL, ou
+extrair para uma segunda `layout()`/`botao()` com o tema Acelera importável dos dois lados).
+
+### 🟡 corrigir hoje
+
+**G-2 — Botão e link de e-mail reprovam contraste AA (mesma classe de bug que o app já corrigiu em
+`text-primary`).** `LARANJA = "#EA580C"` (`src/lib/email.ts:33`), usado em texto branco no botão
+(`:122-124` header, `:150-154` `botao()`) e como cor de link (`:201`, `:256`, `:296`): branco
+sobre `#EA580C` = **3,56:1** (abaixo de 4,5:1; o botão tem 15px bold, não chega ao limiar de
+"texto grande" que aceitaria 3:1) e o link laranja sobre branco tem a mesma razão. Medido com a
+fórmula de luminância relativa do WCAG. É idêntico ao achado já corrigido no app (`text-primary`
+#FF6300 = 2,98:1 → `text-accent-foreground` = 5,76:1) — só que o e-mail tem constante própria e
+ficou fora daquela auditoria. Afeta os 9 e-mails (todos usam `botao()`/`layout()`).
+Destino: backend-engineer — usar um tom mais escuro no `LARANJA` do e-mail (ex. o mesmo #C74600
+já validado no produto) ou manter #EA580C só no fundo do botão e aceitar que o link do "copie e
+cole" precisa de outra cor de texto.
+
+**G-3 — Formatação de data reimplementada fora de `datas.ts`, contrariando a regra da casa
+("datas.ts é o único formatador de data").** `src/lib/email-plantao.ts:31-40`
+(`dataLongaBrasilia`, `toLocaleDateString` direto) e `src/components/admin/trilha-item.tsx`… não,
+**`src/components/admin/trilha-do-aluno.tsx:16-22`** (`tituloDoDia`, `toLocaleDateString` direto)
+e `:25-28` (`diaLocalDoItem`, `Intl.DateTimeFormat` direto) — nenhum bug hoje (saída em pt-BR
+correta, fuso fixo em `FUSO`), mas é o mesmo padrão que já causou "um dia a menos" antes (seção
+(b) do CLAUDE.md) quando a formatação de data morava em vários lugares. Nenhum dos dois arquivos
+importa `formatarData`/`formatarDataHora` para o formato longo porque ele não existe lá ainda.
+Destino: backend-engineer/frontend-engineer — mover para `datas.ts` como `formatarDataLonga`.
+
+**G-4 — Paleta crua fora dos tokens semânticos em `diario-*`/`trilha-*` (ficou fora do F2 do
+ciclo 1 de propósito — escopo excluía essas duas pastas).** `src/components/admin/trilha-item.tsx:66-67`
+(`faixaPorAtor`: `border-l-amber-500` para "equipe", `border-l-sky-500` para "sistema"), `:247`
+(repete `border-l-amber-500`), `:287` (`text-emerald-700`, "Baixa dada por…"), `:306-307`
+(`border-l-sky-500` + `text-sky-600` no `ShieldAlert`); `src/components/admin/diario-timeline.tsx:63`
+(`text-emerald-700`, mesma frase "Baixa dada por…"). Nunca entraram no `contraste-B.mjs` (só 8
+telas medidas na Onda B). Proposto: `text-sucesso-foreground` no lugar de `text-emerald-700` (já
+é o par certo, 5,91:1 medido); as faixas por ator (aluno/equipe/sistema) são categoria, não
+status — se for para manter 3 cores distintas, criar 3 variáveis próprias em vez de classe
+Tailwind crua, para dar pra medir contraste depois.
+Destino: frontend-engineer.
+
+### 🔵 depois
+
+**G-5 — `loading.tsx` ausente em duas rotas pesadas do admin.** `src/app/admin/plantao/page.tsx`
+(3 fetches em `Promise.all` + N+1 de listas de inscritos por slot) e
+`src/app/admin/chamados/[chamadoId]/page.tsx` (chamado + aluno em série, incluindo
+`generateMetadata` chamando a mesma RPC de novo). A regra da casa ("Carregamento e erro", seção
+(a) do CLAUDE.md) pede esqueleto nas rotas pesadas, nunca spinner nem tela anterior congelada.
+Destino: frontend-engineer.
+
+### Confirmado OK
+
+- As 3 pendências do F2 do ciclo 1 fecharam: `app/admin/page.tsx:166` (`erro=pagina.erro ?? null`)
+  e `:191` (`totalAmbientes={totalAlunos}`) já estão escritas; `trilha-do-aluno.tsx:111` já usa
+  `AvisoInline` (não é mais `amber-*` cru) — o item 14 do Auditor B está 6/6 fechado hoje, não 5/6.
+- Nenhum "GPS" visível em nenhum dos 9 e-mails renderizados; `esc()` presente em toda variável
+  interpolada nos 3 arquivos (`nome`, `senha`, `para`, `assunto`, `motivo`, `zoomUrl`/href) —
+  conferido lendo os 3 arquivos inteiros, não só o grep.
+  `enviarChamadoAbertoParaEquipe`/`RespondidoParaAluno` deliberadamente NÃO levam o texto da
+  mensagem (comentário no topo do arquivo bate com o LGPD do Diário) — confirmado no HTML gerado.
+- Nenhum botão só-ícone sem `aria-label` nos arquivos varridos (`plantao-calendario/card-slot.tsx`,
+  `plantao-inscritos/linha.tsx`, `trilha-item.tsx`, `aluno-card.tsx`, `gerenciar-acesso/*`,
+  `dashboard/*`, `chamados-fila.tsx`, `solicitacao-card.tsx`, `previa-aluno.tsx`, `central/*`).
+- Nenhum `null`/`undefined`/`NaN`/texto de sistema (nome de tabela, "RPC") vazando pra JSX no
+  escopo lido; nenhum `R$ 0,00` hardcoded fora de comentário; `window.confirm` e `dark:` em 0
+  ocorrências; `text-primary` como texto em 0 (só decorativo, `plantao-calendario/grade-mes.tsx:111`,
+  permitido pela regra da casa).
+- `text-primary` do e-mail não existe — `LARANJA` é constante própria do e-mail (ver G-2), não
+  reaproveita a variável CSS do app (então a correção de contraste do app não "vazou" pro e-mail
+  nem pra pior nem pra melhor).
+
+### E-mails renderizados (`tmp/squad/emails-G/*.png`, 600 px)
+
+1. `1-credenciais-sem-confirmar.png` — `enviarCredenciaisAcesso` (sem confirmação pendente)
+2. `2-credenciais-precisa-confirmar.png` — `enviarCredenciaisAcesso` (com aviso de confirmar e-mail)
+3. `3-acesso-liberado.png` — `enviarAcessoLiberado`
+4. `4-plantao-nps.png` — `enviarPlantaoNps` (marca errada, ver G-1)
+5. `5-plantao-cancelamento.png` — `enviarPlantaoCancelamento` (marca errada, ver G-1 — exposição real)
+6. `6-plantao-aviso-mentora.png` — `enviarPlantaoAvisoMentora` (marca errada, ver G-1)
+7. `7-plantao-sala.png` — `enviarPlantaoSala` (marca errada, ver G-1)
+8. `8-chamado-aberto-equipe.png` — `enviarChamadoAbertoParaEquipe`
+9. `9-chamado-respondido-aluno.png` — `enviarChamadoRespondidoParaAluno`
+
+**Resumo:** 1 bloqueante (G-1, marca errada do Plantão em produção via `cancelarSlot`), 3 amarelos
+(G-2 contraste do botão/link em todos os e-mails; G-3 data fora de `datas.ts`; G-4 paleta crua em
+`diario-*`/`trilha-*`), 1 azul (G-5 `loading.tsx`). Nada de novo em `central/`, `gerenciar-acesso/`,
+`dashboard/`, `chamados-*` além do que B/E já fecharam — 6/6 do item 14 do Auditor B confirmado
+fechado. Prioridade para amanhã: G-1 antes de qualquer demo que cancele um slot do Plantão na
+frente de alguém.
+
+## Pentest — diff dos ciclos 1-3 (ciclo 4)
+
+Escopo: git diff a2135e0..HEAD (548004f, ef864e9, 9935a08), sem MCP Supabase (achados de banco
+verificados por leitura de migracao + roteiro SQL em rollback quando aplicavel, nao executados
+por mim). Nao repito o que os auditores A-F e os vereditos do Fable (ciclos 1-3) ja julgaram - so
+reabro se discordasse, e nao discordo de nada do que esta registrado. Cobri os 10 vetores
+exigidos; achados abaixo sao o que sobrou depois de verificar cada um contra o codigo atual
+(HEAD).
+
+### BAIXO — mrkdwn do Slack nao escapa asterisco/underline/til/crase (CWE-116, OWASP A03)
+**Onde:** `src/lib/slack.ts:90-92` (`esc()`), usado em `dados.aluno`/`m.nome` (nome do aluno e de
+quem foi mencionado).
+**Impacto:** `esc()` so neutraliza `&`, `<`, `>` — o suficiente para impedir forjar `<@Uxxxx>`
+(mencao falsa) ou `<https://x|texto>` (link falso), que sao os vetores realmente perigosos do
+mrkdwn. Nao escapa `*` `_` `~` `` ` ``. Se `thb_alunos.nome` (dado que pode ter entrado por
+autocadastro ou cadastro manual, nao e texto da equipe) contiver esses caracteres, a mensagem no
+canal privado da equipe pode sair com negrito/italico/tachado quebrado ou um bloco de codigo que
+engole o resto da linha — nao e injecao de mrkdwn com efeito (sem forjar mencao real nem link), e
+corrupcao de leitura dentro do proprio canal da equipe.
+**Reproducao:** cadastrar/editar um aluno com nome contendo uma crase solta ou um asterisco no
+inicio do nome, fazer uma mencao no Diario dele, ver a mensagem no Slack com a formatacao
+vazando para o resto do texto (autor, trecho da nota, link).
+**Evidencia:** esc() faz s.replace de & < > apenas.
+**Remediacao:**
+  - backend-engineer: em `src/lib/slack.ts:90-92`, escapar tambem `*` `_` `~` `` ` `` (mrkdwn do
+    Slack aceita escape por barra invertida) nos campos que vem de dado de terceiro
+    (`dados.aluno`, `m.nome`); `dados.autor` e `dados.texto` sao texto que a propria equipe
+    escreveu e podem continuar como estao (a equipe ja usa `*negrito*` de proposito no Diario).
+**Referencias:** OWASP A03:2021 (Injection, format-string/markup class), CWE-116 (Improper
+Encoding of Output).
+
+### INFO — senha temporaria com 32 bits de entropia
+**Onde:** `src/lib/senha-temporaria.ts:28-31`.
+**Nota:** `randomBytes(4)` = 32 bits. E senha de PRIMEIRO acesso com troca obrigatoria no passo 0
+do onboarding (nao protege nada permanente) e o gerador e CSPRNG correto (`crypto.randomBytes`,
+sem vies de modulo, `Math.random` explicitamente proibido no comentario) — nao e uma
+vulnerabilidade em si. Registro so porque o vetor pedia medir a entropia: 32 bits e baixo para um
+segredo que trafega por e-mail/WhatsApp (o canal de entrega e o elo mais fraco de qualquer
+forma). Sem acesso ao painel do GoTrue, nao da para confirmar se ha limite de tentativas de login
+por e-mail — se nao houver, uma senha de 32 bits combinada com e-mails conhecidos (a base de
+alunos nao e secreta) e um espaco pequeno o bastante para justificar rate limit explicito no
+login, nao so na senha.
+**Remediacao:** confirmar com o Joao/Supabase se o rate limit de login (GoTrue) esta ativo por
+identidade; se a resposta for "nao sei", vale subir para 6 bytes (48 bits) sem custo de ditado
+por telefone (formato Thb-xxxx-xxxxxx, ainda hexadecimal).
+
+### INFO — criarAcessoAluno: "adotar login" sem trava de default (defesa em profundidade)
+**Onde:** `src/app/admin/actions.ts:525-547` (comentario linhas 533-536) e uso em `:630`.
+**Nota, nao achado exploravel hoje:** o comentario diz "default true", mas a funcao nao tem
+`= true` de fato — o teste e `opts?.permitirAdocao === false`; qualquer chamada que NAO passe
+`permitirAdocao` (`undefined`) cai no ramo de adocao direta sem `DialogoConfirmacao`. Hoje os
+DOIS chamadores (`criar-acesso.tsx:148`, `admin/actions.ts:845`) sempre passam o campo
+explicitamente, entao nao ha caminho vivo ate esse comportamento — mas e o inverso da convencao
+que o proprio projeto adota em `alunoNavItems`/`assistenciaNavItems` (opts e OBRIGATORIO e SEM
+valor padrao, de proposito). Isso e friccao de UX, nao fronteira de seguranca (quem chama ja e
+admin, ja pode trocar a senha de qualquer forma via `admin_definir_senha`), mas um terceiro
+chamador futuro que esqueca o campo herdaria "adota sem perguntar" em silencio.
+**Remediacao:** backend-engineer — trocar o tipo de `permitirAdocao` de opcional para
+obrigatorio em `opts`, forcando toda chamada nova a decidir.
+
+### Verificado e OK (prova dos 10 vetores pedidos, nao e achado)
+1. **Open redirect / `?erro=`/`?motivo=`** (auth/confirm, destinoInterno, middleware.ts). Fuzzed
+   destinoInterno() com 19 payloads (`//evil.com`, barra-invertida+evil.com, `%2f`, `%5c`, duplo
+   encode, tab/CR/LF, unicode fullwidth barra U+FF0F, `%2e%2e`, `javascript:`, esquema embutido)
+   — todos ou caem em "/" ou, quando sobrevivem (ex.: fullwidth+evil.com), o `new URL(next,
+   origin)` do chamador (auth/confirm/route.ts:46, middleware.ts:82) resolve como caminho no
+   MESMO origin (percent-encoda o caractere, nao interpreta como separador de host) — confirmado
+   com node reproduzindo a funcao + `new URL()`. `erro=link` e `motivo=inatividade` sao
+   comparados por igualdade estrita a um literal e nunca interpolados no HTML — sem XSS
+   refletido.
+2. **buscarAlunos/saneParaFiltro.** Remove virgula, parenteses, aspas, barra, asterisco,
+   porcento, underline + controle antes do `.or()`; testei unicode fullwidth dos mesmos
+   caracteres — PostgREST so reconhece os operadores ASCII, entao fullwidth nao quebra a sintaxe
+   do filtro (nao e bypass, e caractere de busca inofensivo). criarAcessoAluno: 422 decidido por
+   code, nunca por status (ciclo 3), adocao so com `permitirAdocao:true` vindo do 2o clique do
+   DialogoConfirmacao (criar-acesso.tsx:144-184, :345, :488) — sem chamador vivo que puxe o ramo
+   default (ver INFO acima). cadastrarAluno: e-mail via emailValido unico do projeto, documento
+   via digito verificador, duplicata checada por aluno_por_documento (mesma normalizacao do
+   gatilho) antes do e-mail.
+3. **senha-actions.ts — guarda cross-sistema.** `confirmarOutrosSistemas:true` vindo direto do
+   cliente na PRIMEIRA chamada (pulando o passo de diagnostico) nao e escalada de privilegio:
+   quem chama ja passou por ehAdmin() e ja tem autoridade para admin_definir_senha/
+   admin_definir_senha_membro/admin_adicionar_socio de qualquer jeito — a confirmacao e friccao
+   de UX (nomeia os sistemas ANTES de agir), nao uma fronteira que um chamador nao-admin pudesse
+   atravessar. Falha FECHADA confirmada: erroProg (erro ao consultar admin_programas_do_email)
+   retorna { erro } sem seguir, nos 3 caminhos. P0003 de admin_adicionar_socio nao vaza
+   e-mail/detalhe (programas vazio, loginExistente true). excluirAcessoAluno/
+   login_preservado_motivo: lido por completo, begin/exception when foreign_key_violation
+   isolado do delete do titular, sem DDL.
+4. **Migracoes 213-219.** gp_is_admin() (ou coalesce(gp_is_admin(),false) nas guardas de
+   trigger) e a primeira checagem em toda funcao nova lida; search_path vazio nas 7; revoke from
+   public,anon seguido de grant to authenticated em todas; conferi por assinatura unica (sem
+   sobrecarga) nas migracoes 218 para 219 (drop function antes de recriar, documentado linha a
+   linha no proprio SQL). Trigger de contrato (214) usa
+   `coalesce(gp_is_admin(),false) or current_user = postgres` — NUNCA `current_user <>
+   session_user` (o projeto ja registrou por que: authenticator faz set role, os dois sempre
+   diferem, a guarda ficaria sempre aberta). P0003 da 218/219 e levantado ANTES de qualquer
+   update em auth.users ou insert — so duas leituras (equipe / outro ambiente) acontecem antes,
+   e sao recusas definitivas, nao dados sensiveis novos. **A 219 (on conflict por user_id) NAO
+   permite "roubar" membro de outro ambiente**: o ramo em que o login ja existe ja recusa em
+   23505 quando o aluno_id existente e diferente do ambiente pedido, ANTES de chegar no
+   P0003/no insert — o on conflict novo so entra em jogo no ramo de e-mail NOVO, onde o ambiente
+   do gatilho so pode ser um ambiente que o PROPRIO gatilho de signup acabou de criar/casar para
+   ESTE user recem-gerado (nao pode ser ambiente de terceiro pre-existente com dono diferente).
+   O delete em gps.ambientes que segue so atinge linha criada na MESMA transacao e sem membro —
+   nao apaga ambiente alheio com historico.
+5. **chamados/actions.ts.** equipeAvisada e boolean puro (nunca o endereco) nas 3 saidas.
+   avisarEquipe/chamados_email_fallback (184): RPC SECURITY DEFINER sem guarda de admin (correto
+   — quem chama e o aluno) que expoe SO a chave chamados_email_fallback, nunca a tabela
+   gps.config inteira (que guarda resend_api_key); authenticated executa a funcao, nao le a
+   tabela. nomeDeArquivoSeguro remove barra, barra-invertida e todo controle, corta em 120 — sem
+   filtro de RTLO (U+202E) mas o nome e so exibicao/download=, o MIME/extensao real do arquivo
+   servido vem do mapa MIME-para-extensao (derivado do MIME real, nao do nome), entao RTLO no
+   nome nao troca o tipo do arquivo que o navegador recebe.
+6. **onboarding-gate.tsx + portal-lazy.tsx — dado de outra sessao sobrevivendo na mesma aba.**
+   Testei o caminho completo: LogoutButton.sair() (src/components/logout-button.tsx:60) SEMPRE
+   termina em `window.location.assign("/login")` — reload completo, zera todo useState do React
+   (inclusive o congelado/precisa congelados em portal-lazy.tsx:67-76). Para o cenario sem
+   logout explicito (sessao expira/token invalido no meio do uso): OnboardingGate reavalia a
+   CADA navegacao (e Server Component), e a Guarda 1 (cookie ausente) ou a Guarda 2 (ctx nulo ou
+   papel diferente de aluno) devolve null assim que a sessao para de bater — e ir para null
+   troca o TIPO do no na arvore (de OnboardingPortalLazy para nada), o que desmonta a instancia
+   anterior e descarta o useState congelado; um login seguinte (de outra pessoa) monta uma
+   instancia NOVA com dados do novo contexto. Nao encontrei um caminho em que a troca de
+   identidade aconteca sem passar por esse colapso para null. Middleware
+   (proxy.ts/middleware.ts:68-73) redireciona toda rota protegida sem usuario para /login, e
+   usuario JA logado que abre /login e redirecionado para dentro (nao ve o formulario) — nao ha
+   caminho de UI normal para "logar como outra pessoa" sem passar pelo logout (hard reload).
+   Risco residual: e protecao EMERGENTE (efeito colateral do design dos guards), nao um teste
+   dedicado a este cenario — vale um teste de regressao explicito (ver Remediacao), nao uma
+   correcao agora.
+7. **minha-inscricao-card.tsx.** revelarLink/cancelar exigem clique em estado "entrar" ou
+   "cancelar" primeiro (estado local `pedindo`), com texto da consequencia e botao nomeado antes
+   de chamar a action — nenhuma das duas dispara no primeiro clique. `p_ip_hash` client-side
+   continua sendo o D3 conhecido do ClickUp; nao reaberto aqui.
+8. Ver achado BAIXO acima (unico ponto novo).
+9. Ver achado INFO acima (unico ponto novo).
+10. **Headers/CSP (next.config.ts).** nosniff, HSTS (includeSubDomains, sem preload — ja
+    justificado, dominio compartilhado), Permissions-Policy e poweredByHeader:false intactos em
+    todas as rotas; frame-ancestors do /p/* e Referrer-Policy mantidos como documentado (o
+    alcance largo do *.hotmart.com e o LiteSpeed sobrescrevendo CSP em producao ja sao
+    pendencias conhecidas — nao eram objeto desta rodada).
+
+### Fora de escopo desta auditoria (para o Joao, nao para os agentes)
+`supabase/migrations/20260910000220_gps_admin_adicionar_socio_titular_e_pessoa.sql` esta
+UNTRACKED (fora de a2135e0..HEAD, trabalho do orquestrador ja em cima do ciclo 3/4 antes do meu
+pentest). Nao entra neste relatorio — pede uma passada propria quando for commitada.
+
+### Resumo
+- Critico: 0 | Alto: 0 | Medio: 0 | Baixo: 1 | Info: 2
+- **Nenhum finding critico/alto pendente.**
+- Prioridade unica (baixa severidade, nao bloqueia): escapar asterisco/underline/til/crase em
+  src/lib/slack.ts:90-92 para os campos de dado de terceiro (nome do aluno/mencionado).
+- Os outros dois (INFO) sao hardening opcional — nao exigem acao antes da apresentacao de 11/09.
+
+## Orquestrador — disposição do ciclo 4 (Auditor G + pentest) e FECHAMENTO
+
+- **G-1 (🔴) CORRIGIDO** — `layout()` de `src/lib/email.ts` ganhou `marca: "acelera"` (cabeçalho escuro `#180b00` + `/logo-acelera-email.png` + rodapé "exclusivo de quem faz parte do Acelera Holding"), `botao(href, rotulo, cor)` e `remetente(nome)` (mesmo endereço verificado, nome "Acelera Holding"). `email-plantao.ts` usa os três nos 4 e-mails (o de cancelamento é o que dispara hoje por `cancelarSlot`). Paridade com a migração `…173`.
+- **G-2 (🟡) CORRIGIDO** — `LARANJA` dos e-mails passou de `#EA580C` (3,56:1) para `#C74600` (4,88:1, o `--color-marca-acao`).
+- **G-4 (🟡) CORRIGIDO** — `trilha-item.tsx` e `diario-timeline.tsx` sem paleta crua (`atencao/neutro/sucesso-foreground`).
+- **G-3 / G-5 (🟡/🔵) → ClickUp** — formatador de data fora de `datas.ts` (2 sites) e `loading.tsx` faltando em `/admin/plantao` e `/admin/chamados/[id]`: arrumação, sem risco para a apresentação.
+- **Pentest do diff dos ciclos 1–3: 0 crítico · 0 alto · 0 médio · 1 baixo · 2 info.** BAIXO (`slack.ts` `esc()` não escapa `*_~` — cosmético no mrkdwn) e INFOs (32 bits na senha temporária de uso único; `permitirAdocao` opcional em `criarAcessoAluno`) → ClickUp. `…220` ficou fora do diff auditado (foi aplicada depois); provas em rollback acima.
+- Fechamento a pedido do João ("só termina, dá uma polidinha"): sem ciclo novo depois deste.

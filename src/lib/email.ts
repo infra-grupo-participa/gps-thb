@@ -30,7 +30,13 @@ const APP_URL = (
   "https://programa.timeholdingbrasil.com.br"
 ).replace(/\/+$/, "");
 
-const LARANJA = "#EA580C";
+// #C74600 é o `--color-marca-acao` do portal: branco sobre ele dá 4,88:1
+// (WCAG AA). O #EA580C antigo dava 3,56:1 — reprovado como texto de botão
+// (Auditor G, war-room 10/09).
+const LARANJA = "#C74600";
+/** Laranja da marca Acelera Holding (migração …173) — só nos e-mails do Plantão. */
+export const LARANJA_ACELERA = "#ED6D05";
+export type MarcaEmail = "thb" | "acelera";
 
 export interface ResultadoEmail {
   ok: boolean;
@@ -42,6 +48,19 @@ interface EnviarParams {
   assunto: string;
   html: string;
   texto: string;
+  /** Remetente alternativo (só o NOME muda — o endereço é sempre o do domínio verificado). */
+  de?: string;
+}
+
+/**
+ * Mesmo endereço do `FROM` (o único domínio verificado na Resend), com outro
+ * nome de exibição — "Acelera Holding <acesso@programa.…>". Trocar o DOMÍNIO
+ * sem verificá-lo na Resend derrubaria todo o envio (migração …173).
+ */
+export function remetente(nome: string): string {
+  const m = FROM.match(/<([^>]+)>/);
+  const endereco = m ? m[1] : FROM;
+  return `${nome} <${endereco}>`;
 }
 
 export async function enviar({
@@ -49,6 +68,7 @@ export async function enviar({
   assunto,
   html,
   texto,
+  de,
 }: EnviarParams): Promise<ResultadoEmail> {
   const chave = process.env.RESEND_API_KEY;
   if (!chave) {
@@ -73,7 +93,7 @@ export async function enviar({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: FROM,
+        from: de ?? FROM,
         to: destinatarios,
         subject: assunto,
         html,
@@ -107,9 +127,37 @@ export function esc(v: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Casca HTML comum (cabeçalho laranja + rodapé) para todos os e-mails. */
-export function layout(opts: { preheader: string; titulo: string; corpo: string }): string {
-  const { preheader, titulo, corpo } = opts;
+/**
+ * Casca HTML comum (cabeçalho + rodapé) para todos os e-mails.
+ *
+ * `marca: "acelera"` = os e-mails do Plantão de Dúvidas, que é produto do
+ * **Acelera Holding** (decisão do Marcio, 09/09 — migração …173 já fazia isso
+ * no e-mail que sai do banco; o caminho TypeScript ficou com a marca do THB
+ * até o Auditor G pegar em 10/09). Cabeçalho ESCURO porque a logo do Acelera
+ * é branco→prata e some sobre branco e sobre laranja; PNG porque Gmail e
+ * Outlook não renderizam SVG.
+ */
+export function layout(opts: {
+  preheader: string;
+  titulo: string;
+  corpo: string;
+  marca?: MarcaEmail;
+}): string {
+  const { preheader, titulo, corpo, marca = "thb" } = opts;
+  const cabecalho =
+    marca === "acelera"
+      ? `<td style="background:#180b00;padding:18px 28px;">
+                <img src="${APP_URL}/logo-acelera-email.png" width="240" height="auto" alt="Acelera Holding" style="display:block;max-width:240px;height:auto;border:0;">
+                <div style="color:#d6d3d1;font-size:12px;margin-top:8px;">Plantão de Dúvidas</div>
+              </td>`
+      : `<td style="background:${LARANJA};padding:20px 28px;">
+                <div style="color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:.3px;">Programa de Implementação Assistida</div>
+                <div style="color:#ffe4d1;font-size:12px;margin-top:2px;">Time Holding Brasil</div>
+              </td>`;
+  const rodape =
+    marca === "acelera"
+      ? "Você recebeu este e-mail porque se inscreveu no plantão de dúvidas, exclusivo de quem faz parte do Acelera Holding."
+      : "Você recebeu este e-mail porque faz parte do Programa de Implementação Assistida do Time Holding Brasil.";
   return `<!doctype html>
 <html lang="pt-BR">
   <body style="margin:0;padding:0;background:#f5f5f4;font-family:Arial,Helvetica,sans-serif;color:#1c1917;">
@@ -119,10 +167,7 @@ export function layout(opts: { preheader: string; titulo: string; corpo: string 
         <td align="center">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e5e4;">
             <tr>
-              <td style="background:${LARANJA};padding:20px 28px;">
-                <div style="color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:.3px;">Programa de Implementação Assistida</div>
-                <div style="color:#ffe4d1;font-size:12px;margin-top:2px;">Time Holding Brasil</div>
-              </td>
+              ${cabecalho}
             </tr>
             <tr>
               <td style="padding:28px;">
@@ -133,7 +178,7 @@ export function layout(opts: { preheader: string; titulo: string; corpo: string 
             <tr>
               <td style="padding:18px 28px;border-top:1px solid #e7e5e4;background:#fafaf9;">
                 <div style="font-size:12px;color:#78716c;line-height:1.5;">
-                  Você recebeu este e-mail porque faz parte do Programa de Implementação Assistida do Time Holding Brasil.
+                  ${rodape}
                   Se não reconhece este acesso, ignore esta mensagem.
                 </div>
               </td>
@@ -146,9 +191,9 @@ export function layout(opts: { preheader: string; titulo: string; corpo: string 
 </html>`;
 }
 
-export function botao(href: string, rotulo: string): string {
+export function botao(href: string, rotulo: string, cor: string = LARANJA): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 20px;">
-    <tr><td style="border-radius:8px;background:${LARANJA};">
+    <tr><td style="border-radius:8px;background:${cor};">
       <a href="${esc(href)}" style="display:inline-block;padding:12px 22px;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;border-radius:8px;">${esc(rotulo)}</a>
     </td></tr>
   </table>`;

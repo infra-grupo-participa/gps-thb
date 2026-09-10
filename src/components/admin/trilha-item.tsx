@@ -63,8 +63,8 @@ function contextoDaNota(
 /** Classe da faixa esquerda por origem do item — a mesma lógica das 3 variantes de evento/macro. */
 function faixaPorAtor(ator: "aluno" | "equipe" | "sistema"): string {
   if (ator === "aluno") return "border-l-primary";
-  if (ator === "equipe") return "border-l-amber-500";
-  return "border-l-sky-500";
+  if (ator === "equipe") return "border-l-atencao-foreground";
+  return "border-l-neutro-foreground";
 }
 
 /** Botão que abre o diálogo de registrar nota vinculada a um evento específico. */
@@ -244,7 +244,7 @@ function ItemNota({ item }: { item: ItemTrilha & { variante: "nota" } }) {
 
   return (
     <div
-      className={`grid gap-1.5 border-l-2 border-l-amber-500 py-2 pl-3 ${
+      className={`grid gap-1.5 border-l-2 border-l-atencao-foreground py-2 pl-3 ${
         pendenciaAberta ? "rounded-r-md bg-destructive/5" : ""
       }`}
     >
@@ -284,7 +284,7 @@ function ItemNota({ item }: { item: ItemTrilha & { variante: "nota" } }) {
         <span>{nota.autor_nome ?? "Equipe"}</span>
         {pendenciaAberta ? <DiarioBaixaButton notaId={nota.id} /> : null}
         {pendenciaResolvida ? (
-          <span className="inline-flex items-center gap-1 text-emerald-700">
+          <span className="inline-flex items-center gap-1 text-sucesso-foreground">
             <CheckCircle2 className="size-3.5" />
             Baixa dada por {nota.resolvido_por_nome ?? "equipe"} em{" "}
             {formatarDataHora(nota.resolvido_em as string)}
@@ -303,8 +303,8 @@ function ItemAcaoAdministrativa({
   const { acao } = item;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-l-2 border-l-sky-500 py-1.5 pl-3 text-sm">
-      <ShieldAlert className="size-3.5 shrink-0 text-sky-600" />
+    <div className="flex flex-wrap items-center gap-2 border-l-2 border-l-neutro-foreground py-1.5 pl-3 text-sm">
+      <ShieldAlert className="size-3.5 shrink-0 text-neutro-foreground" />
       <Badge variant="outline" className="shrink-0 text-[10px]">
         Equipe
       </Badge>

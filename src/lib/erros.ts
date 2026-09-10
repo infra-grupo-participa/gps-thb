@@ -96,6 +96,9 @@ const FRASES_DO_BANCO: Record<string, string> = {
     "Este e-mail já tem login no grupo. Confirme para trocar a senha dessa conta e adicioná-la como sócio.",
   "Este ambiente não tem titular — crie o acesso do titular primeiro.":
     "Este ambiente não tem titular — crie o acesso do titular primeiro.",
+  // ...220: sem esta chave o 22023 cairia em "Algum dado enviado está fora do formato".
+  "Este e-mail é do titular deste ambiente — o sócio precisa de um e-mail próprio.":
+    "Este e-mail é do titular deste ambiente — o sócio precisa de um e-mail próprio.",
   "Esta conta é da equipe — não pode virar sócio de um ambiente.":
     "Esta conta é da equipe — não pode virar sócio de um ambiente.",
   "Este e-mail já pertence a outro ambiente do GPS. Remova o acesso anterior antes.":

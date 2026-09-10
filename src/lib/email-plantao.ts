@@ -11,7 +11,18 @@ import "server-only";
  * lança: falha de e-mail nunca bloqueia a inscrição nem o registro de NPS.
  */
 
-import { enviar, esc, layout, botao, type ResultadoEmail } from "@/lib/email";
+import {
+  LARANJA_ACELERA,
+  botao,
+  enviar,
+  esc,
+  layout,
+  remetente,
+  type ResultadoEmail,
+} from "@/lib/email";
+
+/** Os e-mails do Plantão saem como Acelera Holding (migração …173), no mesmo endereço verificado. */
+const DE_ACELERA = remetente("Acelera Holding");
 import { horaCurta } from "@/lib/plantao";
 
 const APP_URL = (
@@ -56,7 +67,7 @@ export async function enviarPlantaoNps(params: {
       Como foi o seu plantão de dúvidas com <strong>${esc(mentoraNome)}</strong>?
       Sua avaliação ajuda a melhorar os próximos encontros.
     </p>
-    ${botao(portalUrl, "Avaliar o plantão")}`;
+    ${botao(portalUrl, "Avaliar o plantão", LARANJA_ACELERA)}`;
 
   const texto = [
     ola,
@@ -66,9 +77,11 @@ export async function enviarPlantaoNps(params: {
   ].join("\n");
 
   return enviar({
+    de: DE_ACELERA,
     para,
     assunto: "Como foi o seu plantão de dúvidas?",
     html: layout({
+      marca: "acelera",
       preheader: "Conte pra gente como foi o seu plantão.",
       titulo: "Sua opinião sobre o plantão",
       corpo,
@@ -121,7 +134,7 @@ export async function enviarPlantaoCancelamento(params: {
     </p>
     ${
       motivoLimpo
-        ? `<p style="margin:0 0 16px;padding:12px 16px;background:#faf9f8;border-left:3px solid #F97316;font-size:15px;line-height:1.6;">
+        ? `<p style="margin:0 0 16px;padding:12px 16px;background:#faf9f8;border-left:3px solid #ED6D05;font-size:15px;line-height:1.6;">
       ${esc(motivoLimpo)}
     </p>`
         : ""
@@ -130,7 +143,7 @@ export async function enviarPlantaoCancelamento(params: {
       Você já pode escolher outro dia no calendário — as demais datas seguem
       abertas.
     </p>
-    ${botao(portalUrl, "Escolher outro dia")}`;
+    ${botao(portalUrl, "Escolher outro dia", LARANJA_ACELERA)}`;
 
   const texto = [
     ola,
@@ -143,9 +156,11 @@ export async function enviarPlantaoCancelamento(params: {
   ].join("\n");
 
   return enviar({
+    de: DE_ACELERA,
     para,
     assunto: `Plantão cancelado — ${hora} com ${mentoraNome}`,
     html: layout({
+      marca: "acelera",
       preheader: `O plantão de ${hora} com ${mentoraNome} foi cancelado. Escolha outro dia.`,
       titulo: "Seu plantão foi cancelado",
       corpo,
@@ -213,7 +228,7 @@ export async function enviarPlantaoAvisoMentora(params: {
       </tr>
       ${linhas}
     </table>
-    ${botao(painelUrl, "Abrir o painel do plantão")}`;
+    ${botao(painelUrl, "Abrir o painel do plantão", LARANJA_ACELERA)}`;
 
   const texto = [
     `Olá, ${primeiroNome}!`,
@@ -229,9 +244,11 @@ export async function enviarPlantaoAvisoMentora(params: {
   ].join("\n");
 
   return enviar({
+    de: DE_ACELERA,
     para,
     assunto: `Amanhã, ${hora}: seu plantão com ${qtd} ${qtd === 1 ? "inscrito" : "inscritos"}`,
     html: layout({
+      marca: "acelera",
       preheader: `${qtd} ${qtd === 1 ? "pessoa inscrita" : "pessoas inscritas"} no seu plantão de amanhã.`,
       titulo: "Seu plantão é amanhã",
       corpo,
@@ -285,12 +302,12 @@ export async function enviarPlantaoSala(params: {
     </p>
     ${
       linkSeguro
-        ? `${botao(linkSeguro, "Entrar na sala")}
+        ? `${botao(linkSeguro, "Entrar na sala", LARANJA_ACELERA)}
     <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6560;">
       Se o botão não funcionar, copie este endereço:<br>
       <span style="word-break:break-all;">${esc(linkSeguro)}</span>
     </p>`
-        : `${botao(portalUrl, "Abrir o plantão")}`
+        : `${botao(portalUrl, "Abrir o plantão", LARANJA_ACELERA)}`
     }
     <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6560;">
       Problemas para entrar? <a href="${MONITORIA_URL}" style="color:#9a3412;font-weight:bold;">Fale com a monitoria</a>.
@@ -306,9 +323,11 @@ export async function enviarPlantaoSala(params: {
   ].join("\n");
 
   return enviar({
+    de: DE_ACELERA,
     para,
     assunto: `Seu plantão começa em 1 hora — ${hora} com ${mentoraNome}`,
     html: layout({
+      marca: "acelera",
       preheader: `Seu plantão com ${mentoraNome} começa em 1 hora.`,
       titulo: "Seu plantão é daqui a pouco",
       corpo,

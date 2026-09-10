@@ -1512,6 +1512,13 @@ plano e achados em `tmp/squad/war-room.md`). O que passou a valer:
   - Mover o cliente favorito de fase (inclusive de volta a Prospecção) **não é** trocar o favorito:
     a `…215` trava desmarcar/apagar; a `…203` trava voltar a prospecção **só** quando a equipe
     confirmou. Se o Marcio quiser travar a fase do favorito não confirmado, é uma linha na trigger.
+  - **`…220`**: `admin_adicionar_socio` recusa o e-mail do próprio titular do ambiente (22023 — a
+    219 o rebaixaria a sócio) e a pessoa escolhida na tela vence a que o gatilho casou.
+  - **E-mails do Plantão saem como Acelera Holding também no caminho TypeScript**
+    (`layout({ marca: "acelera" })`, `botao(…, LARANJA_ACELERA)`, `remetente("Acelera Holding")`
+    — mesmo endereço verificado). O laranja dos e-mails do THB é `#C74600` (AA); `#EA580C`
+    reprovava. Pentest do diff dos ciclos 1–3: 0 crítico/alto/médio (1 baixo cosmético no
+    `esc()` do Slack, 2 info).
   - Conta de teste do onboarding: **`onboarding.teste@programa.timeholdingbrasil.com.br`** /
     `Holding#Teste2026` (resetada ao estado de primeiro acesso em 10/09 à noite). Para resetar por
     SQL, gravar as claims do admin **antes** dos deletes: a trigger `…215` recusa apagar o favorito

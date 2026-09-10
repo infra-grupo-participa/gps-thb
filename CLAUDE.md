@@ -1299,6 +1299,103 @@ ar**. O `Referrer-Policy` passa. Ou seja, a pendência 5/6 ("fechar o
 `*.hotmart.com`") é mais grave do que registrado: hoje **qualquer** site
 embeda a página. Não é resolvível por código — precisa de config no hPanel.
 
+### 🚀 Mega feature de 10/09/2026 — Onboarding · Cadastro do cliente · Dashboard executivo
+
+Pedido do João (literal em `docs/audits/2026-09-10-onboarding/mega-onboarding.md` §0): onboarding
+para **todos os alunos, sem exceção**, no primeiro acesso (acesso garantido, pop-up com o
+questionário do "cliente 1", apresentação do sistema); cadastro do cliente (favorito travado pela
+equipe, grau de relação, central de todos os clientes); Diário com @menção → Slack; painel do
+admin com **dashboard executivo** (macro → micro) e persistência de filtro/rolagem. Concepção do
+arquiteto (§A–K), contratos, bloco de conferência e vetores de pentest estão no mesmo arquivo.
+
+**Decisões que mudam o produto (não reabrir sem ler o §I do plano):**
+- **O onboarding é da PESSOA** (`pessoa_aluno_id`), o efeito colateral (cliente 1) é do AMBIENTE.
+  O sócio também responde e também vê o tour; se o ambiente já tem favorito, o cliente dele nasce
+  **sem** roubar a estrela e a tela diz isso.
+- **"Senha padrão" única NÃO existe** (`auth.users` é de 7 sistemas): lote de acesso com senha
+  temporária **individual** (`criarAcessosEmLote`, teto 20/clique, pausa 150 ms — a Resend limita
+  10 req/s; relatório **por pessoa**), **sem adoção de login preexistente** (`permitirAdocao:false`
+  — adotar troca a senha da pessoa nos outros portais; esses voltam como "precisa de decisão" e
+  se resolvem um a um em Gerenciar acesso). Troca obrigatória no 1º acesso = **passo 0** do
+  onboarding, marcada por `auth.users.raw_user_meta_data.gps_senha_temp_em` (MERGE, gravada
+  pelas 3 RPCs de senha desde a `…208`; é **UX, não fronteira** — o próprio usuário pode limpar).
+- **Nenhuma fase nova de cliente.** As 3 respostas mapeiam em `fechamento`/`fechamento`/
+  `contratado`; a granularidade fica em `onboarding_respostas.fase_cliente1`; **"execução em
+  andamento" = derivado `apto_ao_saldo`** (contratado + `valor_honorarios` + anexo
+  `contrato_honorarios`). É **sinal para a equipe** (chip "Contrato de honorários enviado" +
+  filtro), **nunca cobrança** e **nenhuma tela escreve valor em reais** até o João dar o texto
+  dos "15k" (B-S1).
+- **Favorito: dois conceitos, dois campos.** `acompanhado_equipe` continua sendo a escolha do
+  aluno; `acompanhamento_confirmado_em/_por` (`…203`) é a equipe dizendo "estamos acompanhando".
+  Confirmado ⇒ trigger `trg_etapa1_clientes_acompanhamento_travado` recusa com **42501** que o
+  aluno desmarque a estrela, apague o cliente ou volte a fase para prospecção — o resto da ficha
+  continua livre. Backfill zero (os 25 favoritos seguem livres). A tela **não oferece** o botão
+  que falharia (estrela some dos outros cards; "Excluir" some; "Prospecção" sai do select).
+  `admin_confirmar_acompanhamento` exige que o cliente já seja a estrela; `admin_liberar_…` **não**
+  desmarca. Casa da escrita: a ficha no modo assistência; a Central só linka.
+- **Grau de relação** (`etapa1_clientes.grau_relacao`, 6 valores fechados: parente · amigo ·
+  conhecido · indicação · cliente atual · lead) é **tipo de vínculo**, ortogonal a
+  `nivel_relacionamento` (temperatura). `null` = "Não informado" — **nunca** exibir como "Lead".
+  **Não entra em `comDados`** (reabriria a tarefa 1 de quem já a concluiu).
+- **@menção → Slack sem tirar o texto do perímetro.** `gps.nota_mencoes` (gravada, nunca
+  reparseada), mencionáveis = `perfis` ativos **dev/admin** (19; o gestor não lê o Diário),
+  revalidação e **teto de 10 no banco** (`registrar_mencoes`). Payload do Slack = "<Autor>
+  mencionou você no diário de <Aluno> · link" — **nunca** o texto, o tipo, o cliente ou contato.
+  Segredo em **env `SLACK_WEBHOOK_MENCOES`** (nunca em `gps.config`: a policy só-admin deixa 16
+  admins lerem `resend_api_key` pela REST — achado V11); interruptor `gps.config.slack_mencoes_ativo`
+  (nasce `false`); falha nunca bloqueia a nota. Depende do João: URL/canal (B-W1).
+- **Dashboard = 1 RPC** (`gps.admin_dashboard()`, 7 blocos agregados, zero PII, variação do mês
+  comparada com **o mesmo dia** do mês anterior — a tela escreve "até o dia N") + 2 cards
+  calculados em TS sobre o que `/admin` já carrega. **Gráficos em SVG próprio**
+  (`src/components/ui/graficos/`: barras, empilhada, rosca, linha, funil — Server Components,
+  0 KB de JS, `role="img"` + `aria-label` + tabela de valores visível; `recharts` custaria ~100 KB
+  na rota mais usada). Os **4 KPIs antigos saíram** (o dashboard os absorve com variação e
+  clique). Estado vazio é resultado com instrução. Rosca só até 4 fatias (os tokens quentes não
+  separam 6 categorias: ΔE 2,7 em deuteranopia); grau de relação vai em barras.
+- **Persistência do painel**: busca/ordem/filtros/aba/lote na **URL** (`?aba=&q=&ordem=&f=a,b&mais=`,
+  allowlist fechada em `estado-na-url.ts`), e "de qual card eu saí" em
+  `sessionStorage["gps.admin.painel.ultimoAluno"]` (âncora por `alunoId`, nunca por pixel;
+  aluno fora da lista filtrada = não rola). Nada de preferência de UI no banco.
+- **Contrato assinado no bucket `gps-onboarding`** (privado, 5 MB, png/jpeg/webp/pdf, path
+  `<ambiente>/<uuid>.<ext>`, MIME/tamanho lidos de `storage.objects.metadata` pela RPC, **todo
+  link com `download=`**). É **prova**, não fichário: o documento do cliente continua no Drive
+  (decisão de 07/2026). Leem admin + membros do ambiente; só o aluno escreve; `remover_anexo`
+  tira a **linha** (o byte fica até o expurgo do admin — B-R1).
+
+**Banco (migrações `…200`–`…210`, aplicadas e conferidas em rollback — bloco B0–B9 no plano):**
+`gps.pessoa_atual()` (irmã de `aluno_atual()`); `gps.onboarding_respostas` (PK `pessoa_aluno_id`,
+retomável por `passo_atual`, `concluido_em`; guarda `cliente_nome/_telefone/_grau_relacao` até a
+conclusão criar o cliente; `authenticated` só SELECT — toda escrita por RPC) +
+`gps.onboarding_anexos`; RPCs `onboarding_meu` (só lê), `onboarding_salvar_passo` (allowlist de 8
+chaves, `passo_atual` só avança, "captação" limpa a fase), `onboarding_registrar_anexo`,
+`onboarding_remover_anexo`, **`onboarding_concluir` (atômica: execução em andamento ⇒ honorários
+E contrato; cria o cliente 1 pelo mapa; favorita só se não há favorito; não duplica os eventos da
+trigger de captura)**, `admin_onboarding_do_aluno`; `gps.nota_mencoes` + `admin_mencionaveis` +
+`registrar_mencoes`; `admin_confirmar/liberar_acompanhamento`; `admin_registrar_lote_de_acessos`;
+`admin_dashboard`; `admin_painel_alunos` v3 (+`onboarding_status` do titular, `em_fechamento`,
+`apto_ao_saldo`); `idx_aluno_eventos_ocorrido_em` (group-by por dia saiu de Seq Scan 24,7 ms
+para Index Only 0,57 ms). Catálogos: `acessos_log.acao` 15 valores; `aluno_eventos.tipo` 24
+(`onboarding_iniciado/concluido`, `favorito_confirmado/liberado_pela_equipe`), entidade
+`onboarding`. **`…211` (`gps.segredos`) está escrita e NÃO aplicada** — mexe no caminho de e-mail
+do Plantão que roda por cron; decisão do João (B-K1).
+
+**Frontend:** `src/components/onboarding/**` (`OnboardingPortal`, 10 passos, copy literal do
+João; gate do passo 4 desabilita **com a razão escrita**; tour itera `navDoAluno(ctx)` — 7 telas
+para titular, 6 para sócio; conclui ao sair do passo 7, o tour é pulável e se revê em `/perfil`)
+montado por `OnboardingGate` no layout raiz **só para `papel === "aluno"`** (nunca admin, prévia
+ou `/p/*`); `/perfil` com "Suas respostas do início"; `src/components/admin/dashboard/**`;
+`alunos-ativos-lista/{estado-na-url,filtros,ancora,lote-acesso}`; Clientes com grau, trava
+explicada e copy da "central de todos os clientes"; `diario-mencoes.tsx`; Central com o bloco
+"Questionário inicial" (anexos por URL assinada em `resolver/anexo-actions.ts`).
+⚠️ **Módulo `"use server"` só exporta função async**: `export const LOTE_ACESSOS_MAXIMO` dentro de
+`admin/actions.ts` zerava os exports do módulo e derrubava `/admin` com 500 — `tsc` não pega, só
+o build. A constante vive em `src/lib/acessos-lote.ts`.
+
+**Pendências desta feature com o João:** B-S1 texto/valor do saldo ("15k"); B-D1 lista dos
+documentos necessários (passo 7 está genérico e opcional); B-W1 URL/canal do Slack (feature
+desligada); B-R1 retenção do contrato e botão de expurgo; B-K1 aplicar a `…211`; validação
+logada (roteiro §H.7 do plano).
+
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 
 **Decisão do Marcio.** O motivo é **operacional, não técnico**: o fluxo não estava fluindo e
@@ -1377,6 +1474,8 @@ O que foi **removido** (código):
 - Admin espelha em `/admin/aluno/[id]`, `.../etapa/[n]`, `.../clientes`, `.../clientes/[id]`,
   `.../materiais`, `.../diario`, `.../financeiro`, `.../chamados` e **`.../resolver`** (Central de
   resolução, só admin).
+- `/perfil` também mostra as respostas do onboarding; o portal do onboarding não é rota — é um
+  diálogo montado pelo layout raiz para o aluno até ele concluir.
 - `/admin` — lista de alunos no GPS + "Adicionar aluno" (busca em `thb_alunos`). Header do admin
   tem só a aba **Alunos** (`adminNavItems` em `src/lib/nav.ts`) desde a remoção do agendamento.
 - `/admin/aluno/[alunoId]` — admin dentro do ambiente do aluno (modo assistência, editável).
@@ -1624,6 +1723,14 @@ limita à própria linha. Já estava resolvido; o documento é que não tinha si
 - [x] **Redesign "Trilha" (2026-09-09, `cfe4938` + `17c3a88`)** — tokens quentes, tipografia com
       salto, 4 pares semânticos, botão primário AA, 17 telas; 0 falhas de contraste medidas.
       Ver "🎨 Redesign".
+- [x] **Mega feature de 10/09/2026** (`af7c79a` + `70c5427`, migrações `…200`–`…210`): onboarding
+      de 10 passos para todos os alunos (senha temporária individual + troca obrigatória, cliente 1,
+      honorários + contrato quando em execução, tour), trava do favorito pela equipe, grau de
+      relação, @menção no Diário (Slack desligado até a URL), dashboard executivo com gráficos SVG,
+      painel com estado na URL e volta ao card, lote de acesso. Ver "🚀 Mega feature".
+- [ ] **Decisões da mega feature (João):** texto/valor do saldo do programa (B-S1); lista de
+      documentos do onboarding (B-D1); webhook/canal do Slack (B-W1); retenção do contrato (B-R1);
+      aplicar `…211` (B-K1). Passe logado do roteiro §H.7 do plano.
 - [ ] **Validar logado** o roteiro de 15 passos da rodada final **+** a Central: abrir
       `/admin/aluno/<id>/resolver` num ambiente com problema e num 100% verde; teclado (Tab pelo
       `<details>`, Esc no diálogo, foco de volta ao gatilho); um erro real de action no diálogo;

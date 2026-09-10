@@ -1,40 +1,42 @@
+import { cn } from "@/lib/utils";
 import {
   COR_DO_TOM,
-  caminhoBarra,
-  escala,
-  larguraTexto,
+  fracaoDoTeto,
+  pctDe,
+  tetoDaSerie,
   type FormatarValor,
   type PontoGrafico,
   type TomGrafico,
 } from "./tipos";
 import { LegendaValores } from "./legenda-valores";
 
-const L = 320; // largura do viewBox — o SVG escala sozinho no card
-const TOPO = 18; // respiro do rótulo direto acima da coluna mais alta
-const BASE = 82; // linha de base (vertical)
-const Y_ROTULO = 96;
-
 /**
- * Barras — série de UMA cor, comparação de magnitude.
+ * Barras — série de UMA cor, comparação de magnitude. **HTML, sem SVG.**
  *
  * Duas orientações, um conceito só:
  *
- * - `"vertical"` (padrão) para **sequência**: os 12 meses de entrada, as 4
- *   faixas de progresso. O eixo horizontal é o tempo/a ordem, e o rótulo curto
- *   ("set", "50–99%") cabe embaixo da coluna.
- * - `"horizontal"` para **categoria nominal** com nome longo: os 6 graus de
- *   relação. Cada linha é nome + número em TEXTO, com a barra como apoio —
- *   nome escrito é o canal de identidade que a cor não dá (ver `tipos.ts`).
- *   É por isso que categoria nominal aqui NUNCA vira rosca: 6 fatias quentes
- *   não se separam, 6 linhas rotuladas se leem sem esforço. Este modo não usa
- *   SVG (a razão está no corpo) e por isso ignora `mostrarLegenda`: a lista JÁ
- *   é a tabela de valores.
+ * - `"vertical"` (padrão) para **sequência**: os meses de entrada no programa.
+ *   O eixo horizontal é o tempo, o rótulo curto ("set") cabe embaixo da coluna
+ *   e o valor vai **em cima de cada barra** — pedido do João de 11/09: "quero
+ *   ver os números, não adivinhar a altura".
+ * - `"horizontal"` para **categoria nominal** com nome longo: as faixas de
+ *   progresso, os graus de relação. Cada linha é nome + número (+ % do todo)
+ *   em TEXTO, com a barra como apoio — nome escrito é o canal de identidade
+ *   que a cor não dá (ver `tipos.ts`). É por isso que categoria nominal aqui
+ *   NUNCA vira rosca: 6 fatias quentes não se separam, 6 linhas rotuladas se
+ *   leem sem esforço.
+ *
+ * 🔑 A altura da área de plotagem é **prop, em pixels** (`altura`, 200 por
+ * padrão). Antes ela saía da razão do `viewBox` × largura do card: num card
+ * de três colunas as colunas mediam ~60 px e o gráfico virava enfeite. Agora
+ * o card manda na altura, e o texto não depende dela.
+ *
+ * ♿ No modo vertical o conjunto é `role="img"` com o resumo em número — é
+ * geometria, e o `aria-label` é o canal de quem não vê o desenho. No modo
+ * horizontal **não há** `role="img"`: cada linha já é nome + número em texto,
+ * que é a forma mais acessível possível, e a barra é decoração (`aria-hidden`).
  *
  * Server Component, zero JS.
- *
- * No modo vertical, sem gradeado de propósito: a regra é "rótulo direto antes
- * de grade", e a legenda abaixo carrega **todos** os valores — grade seria
- * tinta que não é dado. Fica a linha de base, que é o zero.
  */
 export function Barras({
   dados,
@@ -44,137 +46,143 @@ export function Barras({
   formatar = String,
   mostrarLegenda = true,
   colunasLegenda = 1,
+  altura = 200,
+  total,
 }: {
   dados: PontoGrafico[];
-  /** Frase com os números — vira o `aria-label` do gráfico. Obrigatória. */
+  /** Frase com os números — vira o `aria-label` do gráfico vertical. */
   resumo: string;
   tom?: TomGrafico;
   orientacao?: "vertical" | "horizontal";
   formatar?: FormatarValor;
   mostrarLegenda?: boolean;
-  /** `2` para série longa (os 12 meses) — ver `LegendaValores`. */
+  /** `2` para série longa (12 meses) — ver `LegendaValores`. */
   colunasLegenda?: 1 | 2;
+  /** Altura MÍNIMA da área de plotagem, em px. Só no modo vertical. */
+  altura?: number;
+  /**
+   * Denominador do `%` de cada linha, no modo horizontal. Sem ele a linha
+   * mostra só o número — "% de quanto" tem de ser uma decisão de quem chama,
+   * nunca um palpite do gráfico.
+   */
+  total?: number;
 }) {
   if (dados.length === 0) return null;
+  const teto = tetoDaSerie(dados.map((d) => d.valor));
 
   if (orientacao === "horizontal") {
-    // 🔑 O modo horizontal é HTML, não SVG — e a razão foi MEDIDA. Texto dentro
-    // de `viewBox` encolhe junto com a largura: os 6 rótulos de grau de relação
-    // saíam a ~6 px num viewport de 390 px, ilegíveis. Em HTML o rótulo é texto
-    // de verdade, na escala tipográfica da casa, e não encolhe nunca.
-    //
-    // Por isso aqui também não existe `role="img"` nem `aria-label`: cada linha
-    // já é nome + número em texto, que é a forma mais acessível possível. A
-    // barra é decoração da linha (`aria-hidden`), no molde da `BarraMeta` do
-    // `KpiCard`.
-    const teto = Math.max(1, ...dados.map((d) => d.valor));
     return (
-      <ul className="grid gap-2">
-        {dados.map((d, i) => (
-          <li key={`${d.rotulo}-${i}`} className="grid gap-1">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="min-w-0 corpo-sm text-muted-foreground">
-                {d.rotulo}
-              </span>
-              <span className="numero shrink-0 corpo-sm font-semibold">
-                {formatar(d.valor)}
-              </span>
-            </div>
-            <div
-              aria-hidden
-              className="h-2 w-full overflow-hidden rounded-full bg-superficie-afundada inset-ring inset-ring-black/5"
-            >
+      <ul className="grid gap-2.5">
+        {dados.map((d, i) => {
+          const pct = total !== undefined ? pctDe(d.valor, total) : null;
+          return (
+            <li key={`${d.rotulo}-${i}`} className="grid gap-1">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0 corpo-sm text-muted-foreground">
+                  {d.rotulo}
+                </span>
+                <span className="numero shrink-0 font-semibold whitespace-nowrap">
+                  {formatar(d.valor)}
+                  {pct !== null ? (
+                    <span className="ml-1.5 corpo-sm font-normal text-muted-foreground">
+                      {pct}%
+                    </span>
+                  ) : null}
+                </span>
+              </div>
               <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${(Math.max(0, d.valor) / teto) * 100}%`,
-                  backgroundColor: COR_DO_TOM[d.tom ?? tom],
-                }}
-              />
-            </div>
-          </li>
-        ))}
+                aria-hidden
+                className="h-2.5 w-full overflow-hidden rounded-full bg-superficie-afundada inset-ring inset-ring-black/5"
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${fracaoDoTeto(d.valor, teto)}%`,
+                    backgroundColor: COR_DO_TOM[d.tom ?? tom],
+                  }}
+                />
+              </div>
+            </li>
+          );
+        })}
       </ul>
     );
   }
 
-  const alturaDe = escala(
-    dados.map((d) => d.valor),
-    BASE - TOPO,
-  );
-  const banda = L / dados.length;
-  const largura = Math.max(4, Math.min(24, banda - 6));
-  const pico = dados.reduce((a, b) => (b.valor > a.valor ? b : a));
-  const ultimo = dados[dados.length - 1];
-
   return (
-    <div className="grid gap-3">
-      <svg
-        viewBox={`0 0 ${L} 104`}
-        role="img"
-        aria-label={resumo}
-        className="h-auto w-full"
-      >
-        <line
-          x1="0"
-          y1={BASE + 0.5}
-          x2={L}
-          y2={BASE + 0.5}
-          stroke="var(--color-borda-fina)"
-          strokeWidth="1"
-        />
-        {dados.map((d, i) => {
-          const alt = alturaDe(d.valor);
-          const x = i * banda + (banda - largura) / 2;
-          // Rótulo direto só no PICO e no ÚLTIMO (o mês corrente): número em
-          // cima de toda coluna vira ruído e ninguém lê.
-          const rotular = d === pico || d === ultimo;
-          const texto = formatar(d.valor);
-          return (
-            <g key={`${d.rotulo}-${i}`}>
-              <title>{`${d.rotulo}: ${texto}`}</title>
-              {alt > 0 ? (
-                <path
-                  d={caminhoBarra(x, BASE - alt, largura, alt, "cima")}
-                  fill={COR_DO_TOM[d.tom ?? tom]}
-                />
-              ) : (
-                // Zero é resultado: um traço de 2 px na linha de base diz
-                // "medimos e deu zero". Sem ele, o mês vazio some e parece
-                // que o dado não chegou.
-                <rect
-                  x={x}
-                  y={BASE - 2}
-                  width={largura}
-                  height={2}
-                  fill="var(--color-borda-forte)"
-                />
-              )}
-              {rotular && larguraTexto(texto, 10) <= banda ? (
-                <text
-                  x={x + largura / 2}
-                  y={BASE - alt - 5}
-                  textAnchor="middle"
-                  fontSize="10"
-                  fontWeight="600"
-                  fill="var(--foreground)"
+    // `h-full` + `flex-1` na área de plotagem: num par de cards lado a lado, o
+    // mais alto define a linha da grade, e sem isso as colunas ficavam com a
+    // altura fixa e o resto do card virava vão em branco (medido em 11/09).
+    // `altura` passa a ser o PISO, não o teto.
+    <div className="flex h-full flex-col gap-3">
+      {/* `pt-6` reserva o espaço do rótulo da coluna mais alta, que fica ACIMA
+          dos 100% da área de plotagem. Sem ele, o número do pico é cortado. */}
+      <div role="img" aria-label={resumo} className="flex flex-1 flex-col pt-6">
+        <div
+          className="relative flex flex-1 items-end gap-1.5"
+          style={{ minHeight: `${altura}px` }}
+        >
+          {/* Gradeado leve: duas linhas de referência e a base, que é o zero.
+              Nada de rótulo no eixo Y — cada coluna já traz o próprio número,
+              e valor repetido em dois lugares é tinta que não é dado. */}
+          {[100, 50].map((p) => (
+            <span
+              key={p}
+              aria-hidden
+              className="absolute inset-x-0 border-t border-borda-fina"
+              style={{ bottom: `${p}%` }}
+            />
+          ))}
+          <span
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 border-t border-borda-forte"
+          />
+          {dados.map((d, i) => {
+            const f = fracaoDoTeto(d.valor, teto);
+            const texto = formatar(d.valor);
+            return (
+              <div
+                key={`${d.rotulo}-${i}`}
+                className="relative h-full min-w-0 flex-1"
+                title={`${d.rotulo}: ${texto}`}
+              >
+                <span
+                  className="numero absolute inset-x-0 text-center corpo-sm font-semibold"
+                  style={{ bottom: `calc(${f}% + 6px)` }}
                 >
                   {texto}
-                </text>
-              ) : null}
-              <text
-                x={x + largura / 2}
-                y={Y_ROTULO}
-                textAnchor="middle"
-                fontSize="9"
-                fill="var(--muted-foreground)"
-              >
-                {d.rotulo}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+                </span>
+                {/* Zero é resultado: o `minHeight` de 2 px deixa um traço na
+                    linha de base dizendo "medimos e deu zero". Sem ele, o mês
+                    vazio some e parece que o dado não chegou. */}
+                <div
+                  className={cn(
+                    "absolute inset-x-0 bottom-0 mx-auto w-full max-w-16 rounded-t-md",
+                  )}
+                  style={{
+                    height: `${f}%`,
+                    minHeight: "2px",
+                    backgroundColor:
+                      d.valor > 0
+                        ? COR_DO_TOM[d.tom ?? tom]
+                        : "var(--color-borda-forte)",
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-2 flex gap-1.5">
+          {dados.map((d, i) => (
+            <span
+              key={`${d.rotulo}-${i}`}
+              className="min-w-0 flex-1 truncate text-center corpo-sm text-muted-foreground"
+            >
+              {d.rotulo}
+            </span>
+          ))}
+        </div>
+      </div>
       {mostrarLegenda ? (
         <LegendaValores
           linhas={dados}

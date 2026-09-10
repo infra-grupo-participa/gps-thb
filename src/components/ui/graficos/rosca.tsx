@@ -1,12 +1,8 @@
-import {
-  COR_DO_TOM,
-  type FormatarValor,
-  type PontoGrafico,
-} from "./tipos";
+import { COR_DO_TOM, type FormatarValor, type PontoGrafico } from "./tipos";
 import { LegendaValores } from "./legenda-valores";
 
 const R = 42; // raio da linha média do anel
-const ESPESSURA = 14;
+const ESPESSURA = 16;
 const VAO_GRAUS = 3; // o vão entre fatias, em graus do círculo
 
 /**
@@ -22,8 +18,10 @@ const VAO_GRAUS = 3; // o vão entre fatias, em graus do círculo
  * total é zero. O vão de 3° entre fatias é o mesmo mecanismo da barra
  * empilhada — separação por superfície, nunca por contorno.
  *
- * O miolo carrega o número macro: é o dado que o card lidera, e sem ele a
- * rosca seria uma forma bonita pedindo que alguém procure a legenda.
+ * 🔑 **O miolo é HTML sobreposto, não `<text>` do SVG.** Dentro do `viewBox`
+ * o número encolhia junto com o card; aqui ele é `numero-lg` de verdade, na
+ * escala tipográfica da casa, e o `tamanho` do anel é prop em pixels — foi o
+ * "gráfico que não aparece" do diagnóstico de 11/09.
  */
 export function Rosca({
   fatias,
@@ -32,14 +30,18 @@ export function Rosca({
   centroRotulo,
   formatar = String,
   mostrarLegenda = true,
+  tamanho = 168,
 }: {
   fatias: (PontoGrafico & { tom: NonNullable<PontoGrafico["tom"]> })[];
+  /** Frase com os números — vira o `aria-label` do anel. Obrigatória. */
   resumo: string;
   /** Número grande no miolo. Sem ele o anel não diz nada sozinho. */
   centroValor: string;
   centroRotulo?: string;
   formatar?: FormatarValor;
   mostrarLegenda?: boolean;
+  /** Diâmetro do anel, em px. */
+  tamanho?: number;
 }) {
   const total = fatias.reduce((s, f) => s + Math.max(0, f.valor), 0);
   const visiveis = fatias.filter((f) => f.valor > 0);
@@ -56,25 +58,28 @@ export function Rosca({
   });
 
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-      <svg
-        viewBox="0 0 100 100"
-        role="img"
-        aria-label={resumo}
-        className="size-26 shrink-0"
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+      <div
+        className="relative shrink-0"
+        style={{ width: `${tamanho}px`, height: `${tamanho}px` }}
       >
-        {/* Trilho — é ele que faz "ninguém respondeu ainda" ler como zero em
-            vez de gráfico que não carregou. */}
-        <circle
-          cx="50"
-          cy="50"
-          r={R}
-          fill="none"
-          stroke="var(--color-superficie-afundada)"
-          strokeWidth={ESPESSURA}
-        />
-        {arcos.map(({ f, desenhado, inicio }) => {
-          return (
+        <svg
+          viewBox="0 0 100 100"
+          role="img"
+          aria-label={resumo}
+          className="size-full"
+        >
+          {/* Trilho — é ele que faz "ninguém respondeu ainda" ler como zero em
+              vez de gráfico que não carregou. */}
+          <circle
+            cx="50"
+            cy="50"
+            r={R}
+            fill="none"
+            stroke="var(--color-superficie-afundada)"
+            strokeWidth={ESPESSURA}
+          />
+          {arcos.map(({ f, desenhado, inicio }) => (
             <circle
               key={f.rotulo}
               cx="50"
@@ -93,36 +98,22 @@ export function Rosca({
             >
               <title>{`${f.rotulo}: ${formatar(f.valor)}`}</title>
             </circle>
-          );
-        })}
-        <text
-          x="50"
-          y="50"
-          textAnchor="middle"
-          dominantBaseline="central"
-          fontSize="20"
-          fontWeight="600"
-          fill="var(--foreground)"
-          className="numero"
+          ))}
+        </svg>
+        <div
+          aria-hidden
+          className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 text-center"
         >
-          {centroValor}
-        </text>
-        {centroRotulo ? (
-          <text
-            x="50"
-            y="66"
-            textAnchor="middle"
-            fontSize="8"
-            fill="var(--muted-foreground)"
-          >
-            {centroRotulo}
-          </text>
-        ) : null}
-      </svg>
+          <span className="numero-lg leading-none">{centroValor}</span>
+          {centroRotulo ? (
+            <span className="corpo-sm text-muted-foreground">{centroRotulo}</span>
+          ) : null}
+        </div>
+      </div>
       {mostrarLegenda ? (
-        <div className="min-w-[9rem] flex-1">
+        <div className="min-w-[11rem] flex-1">
           <LegendaValores
-              linhas={fatias}
+            linhas={fatias}
             formatar={formatar}
             total={total || undefined}
           />

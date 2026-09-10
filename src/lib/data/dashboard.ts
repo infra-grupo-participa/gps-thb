@@ -159,7 +159,14 @@ export async function getDashboard(): Promise<Dashboard | null> {
     return null;
   }
 
-  const d = (data ?? {}) as Record<string, unknown>;
+  return mapearDashboard((data ?? {}) as Record<string, unknown>);
+}
+
+/**
+ * Do jsonb da RPC para `Dashboard`. Pura (sem sessão, sem rede) — é o que
+ * permite renderizar a Visão geral com um retrato do dado fora do `/admin`.
+ */
+export function mapearDashboard(d: Record<string, unknown>): Dashboard {
   const ref = (d.referencia ?? {}) as Record<string, unknown>;
   const pro = (d.programa ?? {}) as Record<string, unknown>;
   const ace = (d.acesso ?? {}) as Record<string, unknown>;

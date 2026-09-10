@@ -1520,9 +1520,41 @@ plano e achados em `tmp/squad/war-room.md`). O que passou a valer:
     reprovava. Pentest do diff dos ciclos 1–3: 0 crítico/alto/médio (1 baixo cosmético no
     `esc()` do Slack, 2 info).
   - Conta de teste do onboarding: **`onboarding.teste@programa.timeholdingbrasil.com.br`** /
-    `Holding#Teste2026` (resetada ao estado de primeiro acesso em 10/09 à noite). Para resetar por
+    (senha: ver ClickUp 86akg41bd ou o brain — NÃO fica no repo público) (resetada ao estado de primeiro acesso em 10/09 à noite). Para resetar por
     SQL, gravar as claims do admin **antes** dos deletes: a trigger `…215` recusa apagar o favorito
     mesmo como `postgres` sem JWT.
+
+### 📊 Redesign da Visão geral do `/admin` (2026-09-11, madrugada)
+
+Pedido do João: "está com uma visão muito crua… foco em KPIs, gráficos de barras, linhas e
+pizza, visão pragmática da situação geral do pessoal". Diagnóstico: os SVGs usavam `viewBox` +
+`h-auto w-full`, então a altura era a razão do viewBox × a largura da coluna (barras de 60 px,
+linha de 40 px, rosca invisível) e o texto encolhia junto; três caixas âmbar de estado vazio
+dominavam; 9 cards iguais sem hierarquia; `acesso.ativos30d`/`semAcesso30d` vinham da RPC e
+não apareciam.
+
+**Estrutura nova** (`src/components/admin/dashboard/`, `index.tsx` com ~100 linhas):
+- **A — `faixa-kpis.tsx` + `kpi-tile.tsx`**: 6 tiles (no programa · já entraram · ativos 30 d ·
+  clientes · em fechamento · Etapa 01 concluída), número grande + percentual + 1 linha de
+  contexto + link. `grid-cols-2` no celular, 6 no `xl`.
+- **B — `graficos.tsx`**: 6 cards grandes em 2 colunas — barras por mês (valor em cima de
+  toda coluna, gridlines), linha dos 30 dias (área + eixo Y + dias esparsos + valor do último
+  dia), funil (n · % · **taxa de passagem** entre fases), rosca do acesso (centro "86%"),
+  barras do progresso da Etapa 01 (n · %), onboarding (rosca quando há resposta; "0 de 172 ·
+  0%" + trilho vazio quando não há).
+- **C — `fila.tsx`**: "Esperando a equipe" como 4 linhas-link com número grande (não se
+  somam) e "Grau de relação" (2 fatias informado × não informado + linhas por grau; 7 tons
+  quentes não se separam — ΔE 2,7). "Clientes contratados" só vira card quando > 0.
+- **Gráficos (`src/components/ui/graficos/`) viraram HTML-first com altura em pixels**; SVG só no
+  arco da rosca e no traçado da linha (`preserveAspectRatio="none"` + `vector-effect:
+  non-scaling-stroke`). `pctDe` devolve `null` com denominador 0 (nunca `0%`/`NaN`). Continuam
+  Server Components, **0 KB de JS**, `role="img"` + `aria-label` com a série em número.
+- `mapearDashboard()` (`src/lib/data/dashboard.ts`) é pura: permite renderizar a Visão geral
+  com um retrato do dado fora do `/admin` (a rota de prévia **não** fica no repo — ver
+  `CONTINUAR-AQUI.md`).
+- Medido na prévia com o dado real: 1366 px lê-se em ~2 rolagens, gráficos com 303/190/168 px
+  úteis, 139 nós de texto e 0 falha de contraste, 18 focáveis com nome, 0 overflow em 1024/390.
+  ⚠️ **Não validado logado em `/admin`** (sem credencial de admin de teste).
 
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 

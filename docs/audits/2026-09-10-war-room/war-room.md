@@ -849,7 +849,7 @@ Item a item do pedido: (1) ok; (2) ok — `criarLogin(false)` primeiro, `precisa
 - [F1] `src/app/cadastro/actions.ts:38` — `senha.length < 6` passa a 8, com a MESMA frase das telas ("A senha precisa ter ao menos 8 caracteres."). E `src/app/admin/actions.ts:669` e `:686` — "Senha fraca: use ao menos 6 caracteres." passa a 8 (as RPCs de senha do banco exigem 8 desde `gps_admin_gestao_de_acesso`).
 - [F1] criar **`src/lib/senha-regras.ts`** (módulo puro, sem `crypto`, importável por client component) com `export const SENHA_MINIMO = 8` e usá-lo nos dois arquivos acima.
 - [F3] trocar as 3 cópias locais `const SENHA_MINIMO = 8` (`src/app/cadastro/cadastro-form.tsx:24`, `src/components/perfil/trocar-senha.tsx:16`, `src/app/auth/redefinir/redefinir-form.tsx:14`) e o `8` de `src/components/onboarding/travas.ts:32` pelo import de `@/lib/senha-regras`. Uma regra, uma casa.
-- [orquestrador] resetar a conta `teste.onboarding@…` (você tem o MCP; o subagente não) para `Holding#Teste2026` + `gps_senha_temp_em`, e rodar `node <scratchpad>/passe-aluno.mjs` (já escrito; servidor de pé na 3991). Ele: loga, lê "Passo X de Y" no passo 0, **troca a senha para `Holding#Teste2026x`** (registrar), lê a barra de novo (esperado "Passo 2 de 10", não "de 9"), dá F5 (esperado: passo 0 some), testa `/login?redirect=…` logado e abre `/`, `/clientes`, `/etapa/1`, `/materiais`, `/financeiro`, `/chamados`, `/perfil` em 1366 e 390 com contagem de erro de console e overflow, capturas em `shots-ciclo1/`. Para NÃO trocar a senha: 4º argumento `nao`. A saída colada aqui é a prova que falta para UX.
+- [orquestrador] resetar a conta `teste.onboarding@…` (você tem o MCP; o subagente não) para (senha: ver ClickUp 86akg41bd ou o brain — NÃO fica no repo público) + `gps_senha_temp_em`, e rodar `node <scratchpad>/passe-aluno.mjs` (já escrito; servidor de pé na 3991). Ele: loga, lê "Passo X de Y" no passo 0, **troca a senha para (senha: ver ClickUp 86akg41bd ou o brain — NÃO fica no repo público)** (registrar), lê a barra de novo (esperado "Passo 2 de 10", não "de 9"), dá F5 (esperado: passo 0 some), testa `/login?redirect=…` logado e abre `/`, `/clientes`, `/etapa/1`, `/materiais`, `/financeiro`, `/chamados`, `/perfil` em 1366 e 390 com contagem de erro de console e overflow, capturas em `shots-ciclo1/`. Para NÃO trocar a senha: 4º argumento `nao`. A saída colada aqui é a prova que falta para UX.
 - [orquestrador] `npm run build` de novo antes do push (o build atual não tem `minha-inscricao-card.tsx`).
 
 ### RESSALVAS (não bloqueiam; o João lê)
@@ -892,7 +892,7 @@ Diff final: **76 arquivos, +2074/−512** (5 novos: `plantao-abas.tsx`, `tudo-em
 ## Orquestrador — resposta ao veredito do Fable (ciclo 1)
 
 - **Solidificação (SENHA_MINIMO)** — `src/lib/senha-regras.ts` novo (`SENHA_MINIMO = 8`, `MSG_SENHA_MINIMO`, sem crypto). Importado em `cadastro-form.tsx`, `perfil/trocar-senha.tsx`, `auth/redefinir/redefinir-form.tsx`, `onboarding/travas.ts`; servidor `cadastro/actions.ts` passou de 6 para `SENHA_MINIMO`; as 2 frases "6 caracteres" de `admin/actions.ts` usam a constante. `rg "const SENHA_MINIMO" src` → só `senha-regras.ts`.
-- **UX (passe do aluno)** — a credencial era `onboarding.teste@…` (o orquestrador tinha invertido o e-mail no relatório; corrigido no CLAUDE.md e no roteiro). Conta resetada e `passe-aluno.mjs` rodado (saída abaixo): passo 0 "Passo 1 de 10" → após trocar a senha "Passo 2 de 10" (contador estável) → F5 "Passo 1 de 9" (passo 0 sumiu); `?redirect=` com `//evil.com`, `/%2f/evil.com`, `/login` caem em `/`; `/clientes` honrado; 7 telas × 2 viewports: 0 erro de console, 0 overflow. Conta resetada de novo depois (senha `Holding#Teste2026`, respostas/clientes/progresso/eventos zerados, `gps_senha_temp_em` gravado).
+- **UX (passe do aluno)** — a credencial era `onboarding.teste@…` (o orquestrador tinha invertido o e-mail no relatório; corrigido no CLAUDE.md e no roteiro). Conta resetada e `passe-aluno.mjs` rodado (saída abaixo): passo 0 "Passo 1 de 10" → após trocar a senha "Passo 2 de 10" (contador estável) → F5 "Passo 1 de 9" (passo 0 sumiu); `?redirect=` com `//evil.com`, `/%2f/evil.com`, `/login` caem em `/`; `/clientes` honrado; 7 telas × 2 viewports: 0 erro de console, 0 overflow. Conta resetada de novo depois (senha (senha: ver ClickUp 86akg41bd ou o brain — NÃO fica no repo público), respostas/clientes/progresso/eventos zerados, `gps_senha_temp_em` gravado).
 - **Riscos residuais do Fable** — (a) guarda cross-sistema agora FALHA FECHADA nos 3 caminhos (`error` da RPC → `{ erro }`, `senha-actions.ts`); (b) ficha: 355 de 879 clientes (39 ambientes) têm 0 problema — a trava de salvar virou aviso âmbar no grupo, a ficha salva (`cliente-ficha.tsx`); (c) `excluir-ambiente.tsx` diz que login com registro em outro portal é preservado.
 - `tsc` 0 · `eslint` 0 · rebuild em andamento (`build-ciclo1b.log`).
 
@@ -916,7 +916,7 @@ ERROS: nenhum · PASSE_EXIT=0
 | UX | APROVADO | passe do aluno com a conta certa (`onboarding.teste@…`): eu mesmo re-rodei no rebuild (sem trocar senha) — passo 0 "Crie a sua senha · Passo 1 de 10", 14/14 telas (7 rotas × 1366/390) com 0 erro de console e 0 overflow; a troca de senha e o F5 ("Passo 2 de 10" → "Passo 1 de 9") ficam com a saída do orquestrador; ficha não trava mais o salvar por 0 problema (355/879 clientes), virou aviso âmbar; copy do excluir-ambiente diz que o login com registro em outro portal é preservado |
 | Otimização | APROVADO (ressalva) | +1 módulo puro no lugar de 5 cópias; restam 7 literais `8` corretos mas soltos (`senha-actions.ts:116,228,390`, `onboarding/actions.ts:418`, `onboarding/index.tsx:236`, `gerenciar-acesso/painel.tsx:365`, `senha-de-membro.tsx:76`) — mesmo valor, não é trava; item de arrumação para o ciclo 2 |
 
-VERIFICADO (por mim, sobre o rebuild `BUILD_ID` 01:15:21 > `senha-regras.ts` 01:11:54): `npx tsc --noEmit` → 0 · `npm run lint` → 0 · `grep window.confirm src` fora de comentário → 0 · `next start -p 3991` → `/login` 200 · `mede-bundle.mjs` → /login 236, /cadastro 237, /esqueci-senha 236, /p/plantao 285 · `passe-publico.mjs` 12/12 ok, 0 erro · `passe-aluno.mjs onboarding.teste@… Holding#Teste2026 x nao` → saída acima; conta NÃO alterada por mim. Diff final: 81 arquivos, +2128/−530 (5 novos).
+VERIFICADO (por mim, sobre o rebuild `BUILD_ID` 01:15:21 > `senha-regras.ts` 01:11:54): `npx tsc --noEmit` → 0 · `npm run lint` → 0 · `grep window.confirm src` fora de comentário → 0 · `next start -p 3991` → `/login` 200 · `mede-bundle.mjs` → /login 236, /cadastro 237, /esqueci-senha 236, /p/plantao 285 · `passe-publico.mjs` 12/12 ok, 0 erro · `passe-aluno.mjs onboarding.teste@… (senha fora do repo) x nao` → saída acima; conta NÃO alterada por mim. Diff final: 81 arquivos, +2128/−530 (5 novos).
 
 RISCO RESIDUAL: (1) `/p/plantao` — `calendario-mes.tsx`/`nps-form.tsx`/`minha-inscricao-card.tsx` novos só por tsc/lint + carga da rota; sem clique testado em iframe; (2) as 7 cópias do `8` acima; (3) conta preexistente SEM papel em portal nenhum passa por `adicionarSocioAluno` sem confirmação (a RPC troca a senha dela do mesmo jeito); (4) `error.status === 422` ainda é lido como "já existe" em `admin/actions.ts:602` (pré-existente). O servidor `next start` da 3991 ficou de pé.
 
@@ -1143,7 +1143,7 @@ Não bloqueia nada — registro por transparência, não peço correção.
 
 ### Estado em que deixei a conta de teste
 
-- **Senha atual:** `Holding#Teste2026x` (troquei de `Holding#Teste2026` durante o passo 0 do
+- **Senha atual:** (senha: ver ClickUp 86akg41bd ou o brain — NÃO fica no repo público) (troquei de (senha: ver ClickUp 86akg41bd ou o brain — NÃO fica no repo público) durante o passo 0 do
   onboarding, como o orquestrador autorizou).
 - **Onboarding:** concluído (10 passos respondidos com dados fictícios: origem "já tenho o
   cliente", fase "Croqui Estrutural já apresentado e aguardando a execução" — não "Execução em
@@ -1168,7 +1168,7 @@ achado que, sozinho, mais contradiz o que a tela promete ao aluno.
 - **F-2 (🟡) CORRIGIDO** — causa confirmada: `concluir()` revalida o layout; `OnboardingGate` re-renderizava com `status: "concluido"`, devolvia `null` e desmontava o portal antes do tour. Agora o gate sempre rende `OnboardingPortalLazy` para o aluno com pessoa, e o wrapper decide UMA vez na montagem (`precisa`) e congela os `dados` daquela montagem — o tour segue; quem já concluiu nunca dispara o `import()` do chunk (`portal-lazy.tsx`, `onboarding-gate.tsx`). `soTour` (Rever a apresentação) preservado.
 - **F-3 (🔵) CORRIGIDO** — `gps.config.chamados_email_equipe` está VAZIO em produção (conferido via MCP). `avisarEquipe` devolve se o e-mail SAIU; `abrirChamado` devolve `equipeAvisada`; o toast diz "A equipe foi avisada por e-mail" só nesse caso e, senão, "Ele já aparece na fila da equipe" (`chamados-tipos.ts`, `chamados/actions.ts`, `chamado-novo-dialog.tsx`). Preencher os destinatários em `/admin/chamados` continua pendência do João.
 - **F-4** nota, sem ação.
-- Conta de teste resetada ao primeiro acesso (senha `Holding#Teste2026`; respostas/clientes/chamados/eventos zerados).
+- Conta de teste resetada ao primeiro acesso (senha (senha: ver ClickUp 86akg41bd ou o brain — NÃO fica no repo público); respostas/clientes/chamados/eventos zerados).
 
 ## Fable — veredito do ciclo 3
 
@@ -1190,7 +1190,7 @@ F-1: **concordo com o orquestrador** — mover o favorito de fase não troca *qu
 
 RISCO RESIDUAL: (1) payload RSC do onboarding em toda página do aluno concluído (acima); (2) `219` no caminho CONFIRMADO com e-mail que já é o TITULAR do mesmo ambiente rebaixa o papel para `socio` (`on conflict … set papel='socio'`) — pré-existente desde a `…118`, só o admin confirmando chega lá; (3) se o gatilho de signup casar um cadastro DIFERENTE do escolhido na tela, `pessoa_aluno_id` fica o do gatilho (`coalesce`) e o retorno diz o da tela; (4) `chamados_email_equipe` continua vazio em produção — o toast agora é honesto, mas ninguém é avisado por e-mail até o João preencher em `/admin/chamados`.
 
-CONTA DE TESTE: senha final **`Holding#Teste2026x`**; onboarding concluído (cliente "Cliente Ficticio Fable C3", execução, R$ 12.345, contrato + documento PNG 1×1), 1 chamado "teste Fable c3 — pode fechar" (`3f7411e0-…`). Resetar como de praxe. Servidor 3991 derrubado por mim.
+CONTA DE TESTE: senha final **(senha: ver ClickUp 86akg41bd ou o brain — NÃO fica no repo público)**; onboarding concluído (cliente "Cliente Ficticio Fable C3", execução, R$ 12.345, contrato + documento PNG 1×1), 1 chamado "teste Fable c3 — pode fechar" (`3f7411e0-…`). Resetar como de praxe. Servidor 3991 derrubado por mim.
 
 ## Orquestrador — ciclo 4 (fechamento a pedido do João: "só termina, dá uma polidinha")
 
@@ -1484,3 +1484,26 @@ pentest). Nao entra neste relatorio — pede uma passada propria quando for comm
 - **G-3 / G-5 (🟡/🔵) → ClickUp** — formatador de data fora de `datas.ts` (2 sites) e `loading.tsx` faltando em `/admin/plantao` e `/admin/chamados/[id]`: arrumação, sem risco para a apresentação.
 - **Pentest do diff dos ciclos 1–3: 0 crítico · 0 alto · 0 médio · 1 baixo · 2 info.** BAIXO (`slack.ts` `esc()` não escapa `*_~` — cosmético no mrkdwn) e INFOs (32 bits na senha temporária de uso único; `permitirAdocao` opcional em `criarAcessoAluno`) → ClickUp. `…220` ficou fora do diff auditado (foi aplicada depois); provas em rollback acima.
 - Fechamento a pedido do João ("só termina, dá uma polidinha"): sem ciclo novo depois deste.
+
+## Redesign do dashboard (11/09)
+
+Pedido do João: *"a visualização está muito crua, com cards estranhos; quero gráficos, barras, linhas e pizzas, foco em KPIs e em números"*. A Visão geral saiu de **9 cards iguais em grade 3×3** para **A) faixa de 6 KPIs → B) 6 gráficos grandes → C) fila e base → D) rodapé**.
+
+**A raiz técnica do "cru" era proporção, não escolha de gráfico.** Os desenhos eram SVG com `viewBox` e `h-auto w-full`: a altura era a razão do `viewBox` × a largura da coluna (colunas de 60 px, linha de 40 px, rosca invisível) e **o texto encolhia junto** (rótulos a ~8 px). Os gráficos viraram **HTML-first com altura em pixels**; sobrou SVG só no arco da rosca e no traçado da linha (`preserveAspectRatio="none"` + `vector-effect="non-scaling-stroke"`), com eixos, miolo e rótulos em HTML **por cima**. Continua Server Component, **0 KB de JS**, sem dependência nova.
+
+Por arquivo:
+- `ui/graficos/tipos.ts` — `pctDe` (denominador 0 → **`null`**, nunca `0%` nem `NaN`), `fracaoDoTeto`, `tetoDaSerie`; saíram `caminhoBarra`/`escala`/`larguraTexto` (só serviam ao SVG).
+- `ui/graficos/barras.tsx` — vertical virou HTML: **valor em cima de TODA coluna**, 2 gridlines + linha de base, prop `altura` (piso; a área cresce com `flex-1` até a altura da linha da grade). Horizontal ganhou `%` por linha (`total`).
+- `ui/graficos/linha.tsx` — **área preenchida** sob a série de alunos, eixo Y com 3 valores, rótulos de dia esparsos (1 a cada ~5, penúltimo descartado quando cola no último, metade some abaixo do `sm`), marcador + valor do último dia com máscara na cor do card.
+- `ui/graficos/funil.tsx` — HTML; cada etapa com `n` **e** `%` do total, e a **taxa de passagem** entre etapas ("4% passam de prospecção para fechamento"), que antes era uma coluna de `%` sem dono.
+- `ui/graficos/rosca.tsx` — prop `tamanho` (168 px), anel mais grosso, **miolo em HTML** (`numero-lg`, não `<text>`).
+- `ui/graficos/barra-empilhada.tsx` — HTML, vão de 2 px por `border-right` na cor do card (não `gap`, que estouraria os 100%).
+- `admin/dashboard/kpi-tile.tsx` (novo) — tile da faixa A: rótulo (`min-h-8`, para os 6 números compartilharem a linha de base) · número · `%` · 1 linha de contexto · link. Sem `IconeChip`.
+- `admin/dashboard/faixa-kpis.tsx` · `graficos.tsx` · `fila.tsx` (novos) — as seções A, B e C; `index.tsx` caiu de **548 → 101 linhas**.
+- `card-dashboard.tsx` — `variante="grafico"` (macro em 24 px, o desenho é o protagonista) e **`valor` opcional** (a fila não tem macro: somar pendência com chamado inventa um total).
+
+Decisões de conteúdo: entraram `acesso.ativos30d` (94 · 59%) e `semAcesso30d` (43), que a RPC já devolvia e ninguém mostrava; as **3 caixas âmbar de estado vazio saíram** — vazio virou número ("0 de 172 · 0%" + trilho vazio + uma linha); "Clientes contratados" só ganha card quando **> 0** (hoje é o tile 5 da faixa). `href` só com valores da allowlist (`ordem=clientes` conferido em `ORDENS`), `aba=ativos` em todos, nenhum valor de saldo do programa (B-S1).
+
+Medido (prévia `/p/previa-dash`, `antes-1366.png` → `final-1366.png`, `final-alto-1366.png`, `final-md-1024.png`, `final-390.png` / `final-alto-390.png`): **1366 → 1.98 rolagens** (era 3+); altura útil dos gráficos **303 / 190 / 168 px** (era 60 / 40 / 0); **0 overflow** em 390/1024/1366; **0 erro de console**; **139 nós de texto, 0 falha de contraste**; 18 focáveis, **0 sem nome acessível**, 3 `role="img"` todos com `aria-label`. `npx tsc --noEmit` e `npx eslint src/components/admin/dashboard src/components/ui/graficos` → **exit 0**.
+
+Ficou de fora: (1) o "Grau de relação" com dado usa **barra empilhada de 2 fatias** (informado × não informado) + linhas rotuladas por grau, e não uma empilhada de 7 — 7 tons quentes não se separam (ΔE 2,7 em deuteranopia, conta em `ui/graficos/tipos.ts`); (2) o skip link "Pular para o conteúdo" do layout raiz aparece **sem outline de foco** na medição — é pré-existente e fora do escopo desta frente; (3) validação logada em `/admin` (sem credencial de admin de teste na máquina) — a prévia usa o retrato real do dado.

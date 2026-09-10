@@ -13,10 +13,10 @@ export interface ParDoCard {
 }
 
 /**
- * A moldura de UM card do dashboard — a anatomia é fixa nos nove:
+ * A moldura de UM card do dashboard — a anatomia é fixa:
  *
  *   rótulo · chip           ← o que é
- *   NÚMERO MACRO · variação ← o dado que o card lidera
+ *   NÚMERO MACRO · variação ← o dado que o card lidera (opcional)
  *   pares rótulo · valor    ← a repartição do macro, EM NÚMERO
  *   gráfico + legenda       ← a forma do mesmo dado
  *   → link para a lista     ← o que fazer depois de ver
@@ -42,6 +42,7 @@ export function CardDashboard({
   valor,
   valorDescricao,
   destaque = false,
+  variante = "kpi",
   variacao,
   contexto,
   pares,
@@ -53,17 +54,25 @@ export function CardDashboard({
   icone: React.ReactNode;
   rotulo: string;
   /**
-   * O número macro, já formatado.
+   * O número macro, já formatado. Aceita nó, e não só texto — quando for nó,
+   * mande também `valorDescricao`, que é o que o leitor de tela anuncia.
    *
-   * Aceita nó, e não só texto, para o caso em que somar seria mentir: o card
-   * "Esperando a equipe" mostra DOIS números lado a lado (pendências ·
-   * chamados), porque são unidades diferentes. Quando for nó, mande também
-   * `valorDescricao` — é o que o leitor de tela anuncia.
+   * **Opcional.** O card "Esperando a equipe" não tem macro: ele é uma fila de
+   * quatro números de unidades diferentes (pendência do Diário, chamado, falta
+   * de nota, falta de acesso), e somar produziria um total que não existe em
+   * lugar nenhum. Card sem macro começa direto no conteúdo.
    */
-  valor: React.ReactNode;
+  valor?: React.ReactNode;
   /** Texto para leitor de tela quando `valor` é abreviado ("R$ 42 mil"). */
   valorDescricao?: string;
   destaque?: boolean;
+  /**
+   * `"grafico"` derruba o número macro de 30 px para 24 e deixa o desenho ser
+   * a peça principal do card. Na faixa de KPIs o número é o assunto; num card
+   * de gráfico ele é a escala do desenho, e dois protagonistas do mesmo
+   * tamanho foi metade do "está cru" de 11/09.
+   */
+  variante?: "kpi" | "grafico";
   /** `<VariacaoDoMes>`, quando o card tem comparação com o mês anterior. */
   variacao?: React.ReactNode;
   /**
@@ -87,9 +96,14 @@ export function CardDashboard({
           <IconeChip destaque={destaque}>{icone}</IconeChip>
         </div>
 
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        {valor !== undefined ? (
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span
-            className={cn("numero-lg", destaque && "text-accent-foreground")}
+            className={cn(
+              "numero-lg",
+              variante === "grafico" && "text-2xl",
+              destaque && "text-accent-foreground",
+            )}
           >
             {valorDescricao ? (
               <>
@@ -102,6 +116,7 @@ export function CardDashboard({
           </span>
           {variacao}
         </div>
+        ) : null}
 
         {contexto ? (
           <p className="corpo-sm text-muted-foreground">{contexto}</p>
@@ -126,7 +141,18 @@ export function CardDashboard({
           </dl>
         ) : null}
 
-        {children ? <div className="mt-0.5">{children}</div> : null}
+        {children ? (
+          <div
+            className={cn(
+              // `flex-1` no card de gráfico: quem tem gráfico elástico (as
+              // colunas) cresce até a altura da linha da grade em vez de
+              // deixar vão entre o desenho e o link.
+              variante === "grafico" ? "mt-1.5 min-h-0 flex-1" : "mt-0.5",
+            )}
+          >
+            {children}
+          </div>
+        ) : null}
 
         <div className="mt-auto pt-1">
           {link ? (

@@ -1,126 +1,81 @@
 import {
   COR_DO_TOM,
   COR_SUPERFICIE,
-  caminhoBarra,
-  larguraTexto,
+  pctDe,
   type FormatarValor,
   type PontoGrafico,
 } from "./tipos";
 import { LegendaValores } from "./legenda-valores";
 
-const L = 320;
-const ALTURA = 22; // ≤ 24 px, a espessura máxima de marca da casa
-const VAO = 2; // o vão na cor da superfície que separa dois segmentos
+/** Abaixo disto o número não cabe dentro do segmento e fica só na legenda. */
+const PCT_MINIMO_PARA_ROTULO = 14;
 
 /**
  * Uma barra horizontal repartida — parte-e-todo de UM conjunto pequeno
- * ("139 com login · 19 sem login · 3 nunca entraram" dentro dos 158).
+ * ("842 em prospecção · 37 em fechamento" dentro dos 879). **HTML, sem SVG.**
  *
  * 🔑 O que separa dois segmentos é um **vão de 2 px na cor da superfície**, e
  * não um contorno: contorno é tinta que não é dado, e com os tons quentes da
  * casa (que ficam a ΔE 2,7 um do outro na deuteranopia) é o vão que faz a
- * fronteira existir. Rótulo direto entra **só quando mede que cabe** — texto
- * cortado pela própria marca é pior do que texto ausente, e o valor nunca se
- * perde: a legenda abaixo tem todos.
+ * fronteira existir. Ele sai de um `border-right` na cor do card, e não de um
+ * `gap` — `gap` somaria pixels aos 100% e cortaria o último segmento.
+ *
+ * O número entra dentro do segmento **só quando o segmento tem ≥ 14% do
+ * todo**; abaixo disso ele não caberia e fica na legenda, que traz todos.
+ * Texto cortado pela própria marca é pior do que texto ausente.
+ *
+ * ♿ Sem `role="img"`: a legenda logo abaixo é uma lista de `rótulo · número ·
+ * %` em texto de verdade, que é a leitura completa.
  */
 export function BarraEmpilhada({
   segmentos,
-  resumo,
   formatar = String,
   mostrarLegenda = true,
+  altura = 24,
 }: {
   /** Cada segmento PRECISA de tom — é o que o diferencia do vizinho. */
   segmentos: (PontoGrafico & { tom: NonNullable<PontoGrafico["tom"]> })[];
-  resumo: string;
   formatar?: FormatarValor;
   mostrarLegenda?: boolean;
+  /** Altura da barra em px. */
+  altura?: number;
 }) {
   const total = segmentos.reduce((s, x) => s + Math.max(0, x.valor), 0);
   const visiveis = segmentos.filter((s) => s.valor > 0);
 
-  // Todo o espaço dos vãos sai da largura útil, senão a barra estoura o
-  // viewBox e o último segmento é cortado pelo `preserveAspectRatio`.
-  const util = L - VAO * Math.max(0, visiveis.length - 1);
-
-  // A posição de cada segmento é CALCULADA, não acumulada numa variável: um
-  // `let` mutado durante o render é reprovado pelo compilador do React (e, com
-  // renderização parcial, produziria posições diferentes entre passadas).
-  const pecas = visiveis.map((s, i) => {
-    const largura = (Math.max(0, s.valor) / total) * util;
-    const inicio = visiveis
-      .slice(0, i)
-      .reduce((acc, a) => acc + (Math.max(0, a.valor) / total) * util + VAO, 0);
-    return { s, largura, inicio, primeiro: i === 0, ultimo: i === visiveis.length - 1 };
-  });
-
   return (
     <div className="grid gap-3">
-      <svg
-        viewBox={`0 0 ${L} ${ALTURA}`}
-        role="img"
-        aria-label={resumo}
-        className="h-auto w-full"
+      <div
+        aria-hidden
+        className="flex w-full overflow-hidden rounded-md bg-superficie-afundada inset-ring inset-ring-black/5"
+        style={{ height: `${altura}px` }}
       >
-        {total === 0 ? (
-          <rect
-            x="0"
-            y="0"
-            width={L}
-            height={ALTURA}
-            rx="4"
-            fill="var(--color-superficie-afundada)"
-          />
-        ) : null}
-        {pecas.map(({ s, largura: w, inicio, primeiro, ultimo }) => {
+        {visiveis.map((s, i) => {
+          const pct = pctDe(s.valor, total) ?? 0;
           const texto = formatar(s.valor);
-          const cabe = larguraTexto(texto, 11) + 12 <= w;
           return (
-            <g key={s.rotulo}>
-              {/* `<title>` PRIMEIRO: é assim que o navegador o adota como
-                  dica nativa do grupo (e é o único "tooltip" possível num
-                  componente sem JavaScript). */}
-              <title>{`${s.rotulo}: ${texto}`}</title>
-              {/* Só as pontas EXTERNAS são arredondadas (as pontas do dado);
-                  as internas ficam retas, encostadas no vão. */}
-              {primeiro && ultimo ? (
-                <rect
-                  x={inicio}
-                  y={0}
-                  width={w}
-                  height={ALTURA}
-                  rx={4}
-                  fill={COR_DO_TOM[s.tom]}
-                />
-              ) : (
-                <path
-                  d={
-                    primeiro
-                      ? `M${inicio + 4},0H${inicio + w}V${ALTURA}H${inicio + 4}A4,4 0 0 1 ${inicio},${ALTURA - 4}V4A4,4 0 0 1 ${inicio + 4},0Z`
-                      : ultimo
-                        ? caminhoBarra(inicio, 0, w, ALTURA, "direita")
-                        : `M${inicio},0H${inicio + w}V${ALTURA}H${inicio}Z`
-                  }
-                  fill={COR_DO_TOM[s.tom]}
-                />
-              )}
-              {cabe ? (
+            <div
+              key={s.rotulo}
+              title={`${s.rotulo}: ${texto}`}
+              className="flex items-center justify-center overflow-hidden"
+              style={{
+                width: `${(Math.max(0, s.valor) / total) * 100}%`,
+                backgroundColor: COR_DO_TOM[s.tom],
+                borderRight:
+                  i < visiveis.length - 1 ? `2px solid ${COR_SUPERFICIE}` : undefined,
+              }}
+            >
+              {pct >= PCT_MINIMO_PARA_ROTULO ? (
                 // Dentro de marca preenchida o texto é branco — os cinco tons
                 // são escuros (≥ 4,8:1 com branco, medidos em `globals.css`).
-                <text
-                  x={inicio + w / 2}
-                  y={ALTURA / 2 + 4}
-                  textAnchor="middle"
-                  fontSize="11"
-                  fontWeight="600"
-                  fill={COR_SUPERFICIE}
-                >
+                <span className="numero corpo-sm font-semibold text-white">
                   {texto}
-                </text>
+                </span>
               ) : null}
-            </g>
+            </div>
           );
         })}
-      </svg>
+      </div>
       {mostrarLegenda ? (
         <LegendaValores
           linhas={segmentos}

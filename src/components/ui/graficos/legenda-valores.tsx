@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { COR_DO_TOM, type FormatarValor, type PontoGrafico } from "./tipos";
+import { COR_DO_TOM, pctDe, type FormatarValor, type PontoGrafico } from "./tipos";
 
 /**
  * A legenda numérica que acompanha **todo** gráfico do portal: uma linha por
@@ -49,11 +49,7 @@ export function LegendaValores({
         // `pct` explícito manda (o funil calcula a conversão da etapa
         // anterior); sem ele, a fatia do total da série.
         const pct =
-          l.pct !== undefined
-            ? l.pct
-            : total && total > 0
-              ? Math.round((l.valor / total) * 100)
-              : null;
+          l.pct !== undefined ? l.pct : total ? pctDe(l.valor, total) : null;
         return (
           <li
             key={l.rotulo}

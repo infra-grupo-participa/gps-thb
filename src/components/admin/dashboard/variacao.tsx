@@ -20,12 +20,20 @@ export function VariacaoDoMes({
   variacao,
   mesAtual,
   mesAnterior,
+  mesAnteriorCurto,
   substantivo,
   subirEBom = true,
 }: {
   variacao: VariacaoMes;
   mesAtual: string;
   mesAnterior: string;
+  /**
+   * "ago" no lugar de "agosto" na linha visível — os tiles da faixa de KPIs
+   * têm ~140 px de texto e o nome inteiro empurrava a nota para três linhas.
+   * O `title` continua com o mês por extenso: encurtar não pode custar a
+   * frase que impede a comparação de mentir.
+   */
+  mesAnteriorCurto?: string;
   /** O que está sendo contado, no plural ("entradas", "conclusões"). */
   substantivo: string;
   subirEBom?: boolean;
@@ -53,7 +61,7 @@ export function VariacaoDoMes({
       {/* A nota que impede a comparação de mentir, em texto pequeno: o
           número manda, mas "até o dia N" não pode sumir. */}
       <span className="text-[11px] font-normal text-muted-foreground">
-        vs. {mesAnterior}, até dia {variacao.ateODia}
+        vs. {mesAnteriorCurto ?? mesAnterior}, até dia {variacao.ateODia}
       </span>
     </span>
   );

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Compass } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { OnboardingPortal } from "@/components/onboarding";
+import { OnboardingPortalLazy } from "@/components/onboarding/portal-lazy";
 import type { OnboardingActions } from "@/components/onboarding/tipos";
 import type { MeuOnboarding } from "@/lib/types";
 
@@ -46,7 +46,9 @@ const ACOES_INERTES: OnboardingActions = {
  * soltar custa um clique — desde que o clique exista, e ele mora aqui.
  *
  * O portal só é montado depois do clique: enquanto ninguém pede, nem o diálogo
- * nem o `Dialog` do Base UI entram na página do perfil.
+ * nem o `Dialog` do Base UI entram na página do perfil — e, por `portal-lazy`,
+ * o JS dele também não entra no primeiro lote do `/perfil`. Rever a
+ * apresentação é o evento raro da tela; o padrão é o de `CriarAcesso`.
  */
 export function ReverApresentacao({
   dados,
@@ -74,7 +76,7 @@ export function ReverApresentacao({
         Rever a apresentação
       </Button>
       {aberto ? (
-        <OnboardingPortal
+        <OnboardingPortalLazy
           key={vez}
           soTour
           dados={dados}

@@ -148,7 +148,10 @@ export async function salvarPassoOnboarding(
   for (const [k, v] of Object.entries(dados ?? {})) {
     if (CHAVES_PATCH_ONBOARDING.has(k)) limpo[k] = v;
   }
-  if (Object.keys(limpo).length === 0) return { erro: "Nada para salvar." };
+  // `{}` é válido: os passos 1 ("Vamos começar") e 7→8 só avançam
+  // `passo_atual`, sem dado novo — a RPC aceita objeto vazio e apenas move o
+  // ponteiro da retomada. Uma guarda "Nada para salvar" aqui prendia TODO
+  // aluno no passo 1 (achado do Fable, 10/09/2026).
 
   if (
     "origem_cliente1" in limpo &&

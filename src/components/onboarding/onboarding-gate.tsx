@@ -11,7 +11,7 @@ import {
   salvarPassoOnboarding,
   trocarSenhaObrigatoria,
 } from "@/app/onboarding/actions";
-import { OnboardingPortal } from "./index";
+import { OnboardingPortalLazy } from "./portal-lazy";
 
 /**
  * O portão do questionário inicial — **um lugar só, no `layout.tsx` da raiz**.
@@ -30,9 +30,18 @@ import { OnboardingPortal } from "./index";
  * `loading.tsx` e `error.tsx` incluídos, no meio de uma rodada com outro
  * agente escrevendo em `src/components/clientes/**` e nas páginas de clientes.
  * O ganho seria não montar este componente em `/login`, `/p/*` e `/admin` —
- * e é exatamente esse custo que as duas guardas abaixo zeram.
+ * e é exatamente esse custo que as guardas abaixo zeram.
  *
- * ## As duas guardas, na ordem
+ * ⚠️ **Guarda de servidor não é guarda de bundle.** Devolver `null` poupa
+ * render e rede, mas o `import` estático de um client component entra no
+ * `page_client-reference-manifest.js` de **toda** rota — o portal (14 KB gzip,
+ * com o diálogo do Base UI, as máscaras e os 10 passos) foi parar no primeiro
+ * lote de JS do `/login`, que subiu de 236 para 260 KB (o aceite é ≤ 245), e
+ * de `/p/plantao`, que não tem login nenhum. Por isso o portal entra por
+ * **`next/dynamic`** (`./portal-lazy`), no mesmo padrão de `CriarAcesso` e
+ * `GerenciarAcesso`: o que fica estático aqui é um wrapper de 3 linhas.
+ *
+ * ## As guardas, na ordem
  *
  * 1. **Sem cookie de sessão do Supabase, sai na hora.** É o caso de
  *    `/p/plantao` — rota PÚBLICA, embedada em iframe na Hotmart, sem login. Ler
@@ -52,11 +61,21 @@ import { OnboardingPortal } from "./index";
  *
  * ## O que ele NÃO faz
  *
- * - **Não abre para quem já concluiu.** `getMeuOnboarding()` devolve
- *   `status: "concluido"` e o portão devolve `null` — sem montar diálogo, sem
- *   carregar o JS do questionário. É também o estado que a leitura assume
- *   quando a RPC falha, para o pop-up jamais reaparecer sobre quem já
- *   respondeu.
+ * - **Não abre para quem já concluiu** — salvo se houver **senha temporária
+ *   pendente**. `getMeuOnboarding()` devolve `status: "concluido"` e o portão
+ *   devolve `null`, sem montar diálogo e sem carregar o JS do questionário. É
+ *   também o estado que a leitura assume quando a RPC falha, para o pop-up
+ *   jamais reaparecer sobre quem já respondeu. A **exceção** é
+ *   `precisaTrocarSenha`: quem recebeu senha temporária nova por "Reenviar
+ *   acesso" já respondeu o questionário, mas ainda precisa criar a própria
+ *   senha — para essa pessoa o portal abre **só no passo 0**, e a checagem da
+ *   flag vem ANTES da saída por "concluído" de propósito (a ordem inversa
+ *   engolia o passo 0 dela).
+ * - **Não abre para quem não tem pessoa vinculada.** Sem `pessoaAlunoId` toda
+ *   Server Action do questionário recusa com *"Seu cadastro ainda não está
+ *   vinculado ao programa"* — montar o pop-up ali seria prender a pessoa num
+ *   diálogo em que nenhum botão funciona, e do qual o passo 0 nem deixa sair.
+ *   Quem resolve é a equipe, em "Vincular pessoa" na Central.
  * - **Não busca o próximo passo.** A tela final oferece "Ir para o meu próximo
  *   passo" quando recebe `proximoPasso`, e calcular isso exige `getEtapas`,
  *   `getClientesEtapa1` e `getProgressoAluno` — três consultas que rodariam em
@@ -81,11 +100,21 @@ export async function OnboardingGate() {
   const ctx = await getContextoSessao();
   if (!ctx || ctx.papel !== "aluno") return null;
 
+  // Guarda 3 — sem pessoa vinculada não há questionário. `exigirAluno()` das
+  // actions recusa TUDO nesse estado, então o pop-up montaria só para devolver
+  // "Seu cadastro ainda não está vinculado…" a cada clique, sem saída (o passo
+  // 0 não tem "Continuar depois"). A Central resolve o vínculo.
+  if (!ctx.pessoaAlunoId) return null;
+
   const dados = await getMeuOnboarding();
-  if (!dados || dados.status === "concluido") return null;
+  if (!dados) return null;
+  // 🔑 A senha temporária vem ANTES do "já concluiu": quem respondeu tudo e
+  // depois recebeu acesso novo por "Reenviar acesso" precisa do passo 0 — e
+  // só dele. O portal cuida de não reabrir as perguntas (`soSenha`).
+  if (dados.status === "concluido" && !dados.precisaTrocarSenha) return null;
 
   return (
-    <OnboardingPortal
+    <OnboardingPortalLazy
       dados={dados}
       // O tour itera as abas REAIS desta pessoa (o sócio não vê Financeiro),
       // nunca uma lista fixa.

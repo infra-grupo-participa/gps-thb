@@ -17,6 +17,10 @@ export function razaoParaTravar(entrada: {
   passo: number;
   senha: string;
   senha2: string;
+  /** A resposta do passo 2 — `null` enquanto ninguém escolheu. */
+  origem: string | null;
+  /** A resposta do passo 3 — `null` enquanto ninguém escolheu. */
+  fase: string | null;
   nome: string;
   /** A fase escolhida é "execução em andamento"? */
   execucao: boolean;
@@ -32,6 +36,17 @@ export function razaoParaTravar(entrada: {
       return "As duas senhas precisam ser iguais.";
     }
     return "";
+  }
+  // 🔴 Passos 2 e 3: a escolha é OBRIGATÓRIA e o servidor recusa sem ela
+  // (`origem_cliente1`/`fase_cliente1` na allowlist da RPC, mais o CHECK da
+  // coluna). Sem estas duas linhas o "Continuar" ficava clicável e devolvia o
+  // erro do banco — exatamente o "clicar e falhar" que este arquivo existe
+  // para não ter. As frases são as mesmas que o servidor devolveria.
+  if (passo === 2 && !entrada.origem) {
+    return "Escolha de onde virá o seu cliente 1.";
+  }
+  if (passo === 3 && !entrada.fase) {
+    return "Informe em que fase você está com este cliente.";
   }
   if (passo === 3 && entrada.nome.trim().length < 2) {
     return "Escreva o nome do cliente para continuar.";

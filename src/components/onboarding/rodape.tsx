@@ -12,6 +12,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 export function Rodape(p: {
   passo: number;
   soTour: boolean;
+  /** Só o passo da senha (questionário já concluído, senha temporária nova). */
+  soSenha: boolean;
   podeFechar: boolean;
   salvando: boolean;
   razaoTravado: string;
@@ -88,8 +90,8 @@ export function Rodape(p: {
             </Link>
           ) : (
             <Button onClick={p.onFechar}>
-              {p.soTour ? null : <Sparkles aria-hidden />}
-              {p.soTour ? "Fechar" : "Começar"}
+              {p.soTour || p.soSenha ? null : <Sparkles aria-hidden />}
+              {p.soTour ? "Fechar" : p.soSenha ? "Continuar" : "Começar"}
             </Button>
           )
         ) : (

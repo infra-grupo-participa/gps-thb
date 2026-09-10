@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao, ehAdmin } from "@/lib/auth";
 import { logErro } from "@/lib/log";
@@ -119,7 +120,7 @@ const MEU_ONBOARDING_VAZIO: Omit<MeuOnboarding, "precisaTrocarSenha"> = {
  * **zero consulta**, o metadata já vem do `getUser()` que a sessão memoizada
  * faz uma vez por requisição.
  */
-export async function getMeuOnboarding(): Promise<MeuOnboarding | null> {
+async function getMeuOnboardingSemCache(): Promise<MeuOnboarding | null> {
   const ctx = await getContextoSessao();
   if (!ctx || ctx.papel !== "aluno") return null;
 
@@ -266,3 +267,10 @@ export async function urlDoAnexoOnboarding(
   }
   return data.signedUrl;
 }
+
+/**
+ * Memoizada por requisição (`cache()` do React, o mesmo mecanismo de
+ * `getContextoSessao`): o `OnboardingGate` do layout e a página `/perfil`
+ * chamam na mesma renderização — sem isto seriam duas idas à RPC por request.
+ */
+export const getMeuOnboarding = cache(getMeuOnboardingSemCache);

@@ -96,10 +96,28 @@ export function OnboardingPortal({
   // foi digitado no 3.
   const r = dados.respostas;
 
+  /**
+   * Questionário JÁ concluído + senha temporária nova (o "Reenviar acesso" da
+   * equipe). A pessoa não tem nada a responder de novo — o que falta é ela
+   * criar a própria senha. O caminho é **só o passo 0**, e nenhuma pergunta
+   * reabre.
+   */
+  const soSenha =
+    !soTour && dados.status === "concluido" && dados.precisaTrocarSenha;
+
   const [aberto, setAberto] = useState(true);
-  const [passo, setPasso] = useState(() =>
-    soTour ? 8 : dados.precisaTrocarSenha ? 0 : Math.max(1, dados.passoAtual),
-  );
+  const [passo, setPasso] = useState(() => {
+    if (soTour) return 8;
+    if (dados.precisaTrocarSenha) return 0;
+    // 🔴 Retomada: 8 e 9 são a APRESENTAÇÃO, e a apresentação só existe depois
+    // de `concluir()`. Um `passo_atual >= 8` com o questionário em aberto é uma
+    // conclusão que falhou (ou uma linha gravada pela versão que carimbava o 8
+    // antes de concluir). Retomar ali levaria a pessoa direto ao tour e ao
+    // "Pronto" sem nunca ter entregado as respostas — e do 8 não há "Voltar".
+    // Volta ao 7, o último passo que ainda tem "Continuar".
+    if (dados.status !== "concluido" && dados.passoAtual >= 8) return 7;
+    return Math.max(1, dados.passoAtual);
+  });
   const [indiceTour, setIndiceTour] = useState(0);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -140,13 +158,16 @@ export function OnboardingPortal({
    */
   const sequencia = useMemo(() => {
     if (soTour) return [8, 9];
+    // Senha temporária sobre questionário concluído: a senha e o aviso de que
+    // deu certo. Nada de reabrir perguntas que a pessoa já respondeu.
+    if (soSenha) return [0, 9];
     const passos: number[] = [];
     if (dados.precisaTrocarSenha) passos.push(0);
     passos.push(1, 2);
     if (origem !== "captacao") passos.push(3, 4);
     passos.push(5, 6, 7, 8, 9);
     return passos;
-  }, [dados.precisaTrocarSenha, origem, soTour]);
+  }, [dados.precisaTrocarSenha, origem, soTour, soSenha]);
 
   const posicao = Math.max(0, sequencia.indexOf(passo));
   const podeFechar = passo >= 1;
@@ -172,23 +193,37 @@ export function OnboardingPortal({
     setSalvando(true);
     setErro(null);
     const destino = proximo();
-    const r = await actions.salvarPasso(destino, dadosDoPasso);
-    if (r.erro) {
-      setSalvando(false);
-      setErro(r.erro);
-      return;
-    }
-    // Sair do passo 7 é entregar as respostas: conclui ANTES da apresentação.
+
+    // 🔴 Sair do passo 7 é ENTREGAR as respostas, e quem entrega é
+    // `concluir()` — não o ponteiro da retomada. A ordem importa e já mordeu:
+    // gravar `passo_atual = 8` ANTES prendia quem falhasse em `concluir()` na
+    // apresentação, que não tem "Voltar" e termina em "Pronto"; o pop-up
+    // reabriria no 8 para sempre, sem nunca ter entregado nada.
+    //
+    // 🔑 Depois de concluído o banco RECUSA `onboarding_salvar_passo` (22023),
+    // então o 8 e o 9 não são gravados: a apresentação vive só aqui, como
+    // estado de tela. Fechar no meio dela não perde resposta nenhuma, e
+    // "Rever a apresentação" no `/perfil` a devolve inteira.
     if (passo === 7) {
       const c = await actions.concluir();
+      setSalvando(false);
       if (c.erro) {
-        setSalvando(false);
+        // Fica no 7, com a frase do servidor no `role="alert"` abaixo. O
+        // "Continuar" volta a ficar clicável para tentar de novo.
         setErro(c.erro);
         return;
       }
       setFavoritado(c.favoritado ?? null);
+      irPara(destino);
+      return;
     }
+
+    const res = await actions.salvarPasso(destino, dadosDoPasso);
     setSalvando(false);
+    if (res.erro) {
+      setErro(res.erro);
+      return;
+    }
     irPara(destino);
   }
 
@@ -196,13 +231,15 @@ export function OnboardingPortal({
     if (senha.length < 8 || senha !== senha2) return;
     setSalvando(true);
     setErro(null);
-    const r = await actions.trocarSenha(senha);
+    const res = await actions.trocarSenha(senha);
     setSalvando(false);
-    if (r.erro) {
-      setErro(r.erro);
+    if (res.erro) {
+      setErro(res.erro);
       return;
     }
-    irPara(1);
+    // Quem só veio trocar a senha vai para o aviso final; quem está no
+    // questionário segue para a primeira pergunta.
+    irPara(soSenha ? 9 : 1);
   }
 
   /** A razão pela qual o "Continuar" está travado. Vazio = pode seguir. */
@@ -210,6 +247,8 @@ export function OnboardingPortal({
     passo,
     senha,
     senha2,
+    origem,
+    fase,
     nome,
     execucao,
     valorHonorarios,
@@ -342,7 +381,9 @@ export function OnboardingPortal({
                 <span>
                   {soTour
                     ? "É isso. Você pode rever esta apresentação quando quiser, no Perfil."
-                    : "Pronto. A equipe já recebeu as suas respostas."}
+                    : soSenha
+                      ? "Senha alterada. Ela vale para todos os portais do grupo."
+                      : "Pronto. A equipe já recebeu as suas respostas."}
                 </span>
               </p>
               {favoritado === true ? (
@@ -377,6 +418,7 @@ export function OnboardingPortal({
         <Rodape
           passo={passo}
           soTour={soTour}
+          soSenha={soSenha}
           podeFechar={podeFechar}
           salvando={salvando}
           razaoTravado={razaoTravado}

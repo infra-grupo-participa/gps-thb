@@ -90,8 +90,12 @@ export async function notificarMencao(
   // Texto montado aqui, num lugar só, para nenhum chamador conseguir injetar
   // conteúdo da nota. `quantidade` entra como número, nunca como lista de
   // nomes — a lista já está na tela de quem tem acesso.
+  // mrkdwn do Slack trata `<`, `>` e `&` como marcação (link, menção): um
+  // nome com `<` viraria link. Escapar é o que a própria doc do Slack manda.
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const texto =
-    `${dados.autor} mencionou você no diário de ${dados.aluno} · ${dados.url}` +
+    `${esc(dados.autor)} mencionou você no diário de ${esc(dados.aluno)} · ${dados.url}` +
     (dados.quantidade > 1 ? ` (${dados.quantidade} pessoas mencionadas)` : "");
 
   const controlador = new AbortController();

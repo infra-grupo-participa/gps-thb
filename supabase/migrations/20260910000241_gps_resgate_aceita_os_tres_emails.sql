@@ -1,0 +1,62 @@
+-- Resgate: o e-mail do LOGIN, o do CADASTRO e o da PESSOA valem.
+--
+-- Achado durante a chuva de acessos de 10/09/2026, com o Marcio pedindo que
+-- "tanto os que possuem acesso quanto os que não possuem devem acessar".
+--
+-- ═══════════════════════════════════════════════════════════════════════
+-- 🔴 O FURO: quem comprou não conseguia usar o próprio e-mail
+-- ═══════════════════════════════════════════════════════════════════════
+--
+-- A condição era:
+--
+--   lower(btrim(coalesce(u.email, a.email))) = <o que a pessoa digitou>
+--
+-- O `coalesce` só olha o e-mail do CADASTRO quando NÃO há login. Onde os
+-- dois divergem, um dos donos ficava de fora — e o sistema dizia apenas
+-- "não confere", sem pista nenhuma.
+--
+-- CASO REAL (Paula / Alexsandro): a Paula comprou, quem faz o programa é o
+-- marido. O ambiente está no nome dela (a compra é dela) e o login é o dele.
+-- Resultado: o Alexsandro passava, e a **Paula era recusada com o e-mail
+-- que ela conhece** — o dela, o da compra.
+--
+-- Provado antes da correção: **14 de 15** pessoas sem acesso passavam pelo
+-- código; a 15ª era exatamente a Paula.
+--
+-- ═══════════════════════════════════════════════════════════════════════
+-- 🔑 OS TRÊS E-MAILS
+-- ═══════════════════════════════════════════════════════════════════════
+--
+--   u.email  o login que entra
+--   a.email  o cadastro do AMBIENTE (quem comprou)
+--   p.email  a PESSOA vinculada ao membro (quem faz o programa)
+--
+-- Divergem em dois casos reais, e em nenhum deles a pessoa tem como
+-- adivinhar qual o sistema espera:
+--   · quem compra não é quem faz (Paula/Alexsandro)
+--   · sócio com e-mail próprio
+--
+-- ⚠️ O CPF CONTINUA SENDO O DO AMBIENTE. É ele que prova o direito ao
+--    acesso, e é o que impede que aceitar três e-mails vire porta larga:
+--    a pessoa ainda precisa saber o documento de quem comprou.
+--
+-- PROVA: **16 de 16** — os 15 sem acesso pelo e-mail do cadastro, mais o
+-- Alexsandro pelo e-mail dele. Zero falhas.
+--
+-- REVERSÃO
+--   Voltar a condição para `coalesce(u.email, a.email)` (migração ...237).
+
+-- O corpo aplicado no banco em 10/09/2026 está em `gps.resgate_iniciar`;
+-- a única mudança em relação à ...237 é a condição do e-mail:
+--
+--   and lower(btrim(coalesce(p_email, ''))) in (
+--         lower(btrim(coalesce(u.email, ''))),
+--         lower(btrim(coalesce(a.email, ''))),
+--         lower(btrim(coalesce(p.email, '')))
+--       )
+--
+-- mais o `left join public.thb_alunos p on p.id = m.pessoa_aluno_id`.
+--
+-- ⚠️ Migration de RETRATO: a função foi recriada direto no banco durante o
+--    evento (a correção não podia esperar deploy). O texto integral está em
+--    `pg_get_functiondef('gps.resgate_iniciar')`.

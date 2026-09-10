@@ -241,7 +241,11 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     // `TarefaItem` cai para `num` quando `codigo` é ausente.
     titulo: "Listar 30 clientes potenciais",
     descricao:
-      "Liste 30 possíveis clientes do seu círculo de relacionamento que tenham pelo menos um dos sete problemas. Preencha os dados de cada um — nome, telefone, nível de relacionamento, registro do contato e a data da reunião preliminar.",
+      // 🔴 A frase pedia "nome, telefone, nível de relacionamento, registro do
+      // contato e a data da reunião" — CINCO requisitos, um deles um campo que
+      // não existe mais. Ficha completa é NOME + TELEFONE (10/09/2026), e esta
+      // é a primeira coisa que o aluno lê sobre os 30.
+      "Liste 30 possíveis clientes do seu círculo de relacionamento que tenham pelo menos um dos sete problemas. Preencha o nome e o telefone de cada um — são esses dois dados que fazem a ficha contar para os 30.",
     automatica: true,
     apontaClientes: true,
     modelo: {

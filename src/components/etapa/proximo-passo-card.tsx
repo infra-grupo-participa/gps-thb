@@ -38,6 +38,20 @@ export function ProximoPassoCard({
   // cliente que a equipe vai acompanhar") se resolvem na aba Clientes.
   const bloqueio = passo.bloqueio;
 
+  // 🔴 A TAREFA 1 ACONTECE NA ABA CLIENTES, NÃO NA ETAPA (10/09/2026).
+  //
+  // MEDIDO: **57 alunos entraram no portal e cadastraram ZERO clientes** — o
+  // maior buraco isolado do funil de uso. O card mais forte da home mandava
+  // todos eles para `/etapa/1`, que é tela de LEITURA: dali ainda faltavam
+  // dois cliques até o botão de adicionar.
+  //
+  // O ramo de `bloqueio` abaixo já levava direto a Clientes, mas só dispara
+  // quando TODAS as tarefas estão travadas — nunca para quem tem 0 clientes,
+  // porque a tarefa 1 está sempre liberada.
+  //
+  // `tarefaNum === 1` é a listagem dos 30, e ela só se cumpre na aba Clientes.
+  const vaiParaClientes = !bloqueio && passo.tarefaNum === 1;
+
   if (bloqueio) {
     return (
       <Link
@@ -79,7 +93,11 @@ export function ProximoPassoCard({
 
   return (
     <Link
-      href={`${basePath}/etapa/${passo.etapa}`}
+      href={
+        vaiParaClientes
+          ? `${basePath}/clientes`
+          : `${basePath}/etapa/${passo.etapa}`
+      }
       className="group flex min-w-0 flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border border-primary/30 bg-card px-5 py-5 shadow-(--shadow-raised) transition-[box-shadow,transform,border-color] duration-150 ease-out hover:-translate-y-px hover:border-primary/60 hover:shadow-(--shadow-hover)"
     >
       <div
@@ -96,13 +114,17 @@ export function ProximoPassoCard({
           {passo.codigo}. {passo.titulo}
         </div>
         <div className="corpo-sm text-muted-foreground">
-          Etapa {String(passo.etapa).padStart(2, "0")} — {passo.etapaNome}
+          {vaiParaClientes
+            ? "Os 30 clientes se cadastram na aba Clientes — é de lá que a Etapa 01 anda."
+            : `Etapa ${String(passo.etapa).padStart(2, "0")} — ${passo.etapaNome}`}
         </div>
       </div>
       <span
         className={`${buttonVariants({ variant: "default" })} ml-auto shrink-0`}
       >
-        Continuar
+        {/* "Continuar" para quem nunca começou é uma promessa falsa: não há
+            de onde continuar. Quem vai para Clientes recebe o verbo da ação. */}
+        {vaiParaClientes ? "Cadastrar clientes" : "Continuar"}
         <ArrowRight
           aria-hidden
           className="transition group-hover:translate-x-0.5"

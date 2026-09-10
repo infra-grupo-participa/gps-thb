@@ -27,6 +27,18 @@ export function alunoNavItems(
   return [
     { href: basePath || "/", label: "Início", icon: "inicio", exact: true },
     { href: `${basePath}/clientes`, label: "Clientes", icon: "clientes" },
+    // 🔴 SUPORTE EM 3º, NÃO EM 7º (10/09/2026).
+    //
+    // MEDIDO: **zero chamados abertos** com 104 alunos travados no funil. A
+    // aba era a 7ª de 8, dentro de um `overflow-x-auto` — no celular ela
+    // nascia FORA DA TELA. O aluno travado teria de rolar a barra para
+    // descobrir que existe um canal de ajuda.
+    //
+    // O comentário mais abaixo já dizia que "esconder o canal de suporte
+    // deixaria o aluno sem saber que ele existe"; a posição contradizia o
+    // princípio. Aqui ela cai na primeira dobra, ao lado da aba onde o aluno
+    // trava (Clientes).
+    { href: `${basePath}/chamados`, label: "Suporte", icon: "suporte" },
     { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta" },
     { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" },
     // 🎧 Plantão de Dúvidas — aba do aluno do PROGRAMA dentro do sistema
@@ -80,7 +92,6 @@ export function alunoNavItems(
     // dentro da página e com texto — nunca a presença da aba: esconder o
     // canal de suporte deixaria o aluno sem saber que ele existe, que é
     // exatamente o defeito que esta fase corrige.
-    { href: `${basePath}/chamados`, label: "Suporte", icon: "suporte" },
     { href: `${basePath}/perfil`, label: "Perfil", icon: "perfil" },
   ];
 }

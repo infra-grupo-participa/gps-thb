@@ -211,8 +211,22 @@ function revalidar(alunoId: string) {
  */
 export async function criarCliente(
   alunoId: string,
-  inicial?: { fase?: FaseCliente; grau_relacao?: string | null },
+  inicial?: { nome?: string; fase?: FaseCliente; grau_relacao?: string | null },
 ) {
+  // 🔴 O NOME É OBRIGATÓRIO AQUI, não só no diálogo (10/09/2026).
+  //
+  // Server Action é endpoint HTTP: desabilitar o botão impede o clique, não a
+  // chamada. E o custo de não validar está medido — **21 fichas sem nome, em
+  // 18 ambientes**, a mais antiga de 15/07, uma delas já em "contratado".
+  // Elas nasciam porque a ficha era criada no banco ANTES de a pessoa digitar
+  // qualquer coisa; quem fechava a aba deixava o fantasma na lista.
+  //
+  // Ficha sem nome não conta para os 30 (ficha completa = nome + telefone),
+  // então o fantasma ainda atrapalhava a trava da fase Inicial.
+  const nome = (inicial?.nome ?? "").trim();
+  if (!nome) return { erro: "Informe o nome do cliente." };
+  if (nome.length > 200) return { erro: "O nome é longo demais (máximo 200 caracteres)." };
+
   const fasesValidas: readonly string[] = ["prospeccao", "fechamento", "contratado"];
   const fase = inicial?.fase ?? "prospeccao";
   if (!fasesValidas.includes(fase)) return { erro: "Fase inválida." };
@@ -235,7 +249,7 @@ export async function criarCliente(
   const { data, error } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
-    .insert({ aluno_id: alunoId, ordem: proximaOrdem, fase, grau_relacao: grau })
+    .insert({ aluno_id: alunoId, nome, ordem: proximaOrdem, fase, grau_relacao: grau })
     .select("id")
     .single();
 

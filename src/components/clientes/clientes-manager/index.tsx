@@ -27,7 +27,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { LayoutGrid, List as ListIcon, Users } from "lucide-react";
+import Link from "next/link";
+import { LayoutGrid, List as ListIcon, Plus, Users } from "lucide-react";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
 import {
   META_CLIENTES,
@@ -104,6 +105,7 @@ export function ClientesManager({
   const [escolhendo, setEscolhendo] = useState<ClienteEtapa1 | null>(null);
   /** Diálogo "Novo cliente" aberto? Fase e grau nascem no padrão. */
   const [novoAberto, setNovoAberto] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
   const [novaFase, setNovaFase] = useState<FaseCliente>("prospeccao");
   const [novoGrau, setNovoGrau] = useState<string>("");
   const [erroDialogo, setErroDialogo] = useState<string | null>(null);
@@ -167,6 +169,7 @@ export function ClientesManager({
   // ---- Ações ----
   function abrirNovo() {
     setErroDialogo(null);
+    setNovoNome("");
     setNovaFase("prospeccao");
     setNovoGrau("");
     setNovoAberto(true);
@@ -177,6 +180,7 @@ export function ClientesManager({
     setErroDialogo(null);
     startTransition(async () => {
       const res = await criarCliente(alunoId, {
+        nome: novoNome,
         fase: novaFase,
         grau_relacao: (novoGrau as GrauRelacao) || null,
       });
@@ -324,7 +328,7 @@ export function ClientesManager({
                   o documento vive no Drive. Aqui se anexa UM arquivo — o
                   contrato assinado. */}
               <span className="mt-1 block text-xs text-muted-foreground">
-                {preenchidos} com nome · {comDados} com nome, telefone e nível.
+                {preenchidos} com nome · {comDados} com nome e telefone.
                 A meta de {META_CLIENTES} é da Etapa 01; clientes em andamento e
                 em execução contam aqui também.
               </span>
@@ -459,9 +463,36 @@ export function ClientesManager({
 
       <CardContent>
         {clientes.length === 0 ? (
-          <div className="rounded-lg border border-dashed bg-superficie-afundada p-8 text-center text-sm text-muted-foreground">
-            Nenhum cliente ainda. Clique em{" "}
-            <span className="font-medium">Adicionar</span> para começar.
+          /* 🔴 A TELA ONDE 57 ALUNOS PARAM (medido em 10/09/2026).
+             O texto anterior — "Nenhum cliente ainda. Clique em Adicionar
+             para começar." — mandava procurar um botão, não dizia a meta,
+             não dizia o critério e não era clicável. Agora diz o que fazer,
+             quantos, com quê, e o próprio bloco abre o diálogo. */
+          <div className="grid gap-4 rounded-lg border border-dashed bg-superficie-afundada p-8 text-center">
+            <div className="grid gap-1.5">
+              <p className="font-heading titulo-h2">
+                Comece pela sua lista de 30
+              </p>
+              <p className="corpo-sm text-muted-foreground">
+                São {META_CLIENTES} pessoas do seu círculo de relacionamento.
+                Basta <strong>nome e telefone</strong> para cada uma contar — o
+                resto você preenche depois, quando souber.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Button onClick={abrirNovo}>
+                <Plus aria-hidden /> Cadastrar o primeiro cliente
+              </Button>
+              {/* Zero chamados abertos com 104 alunos travados: ninguém acha
+                  o caminho de pedir ajuda. Aqui ele fica ao lado de quem
+                  travou, não escondido na 7ª aba do header. */}
+              <Link
+                href={`${basePath}/chamados`}
+                className="corpo-sm text-muted-foreground underline-offset-4 hover:text-accent-foreground hover:underline"
+              >
+                Travou? Fale com a equipe
+              </Link>
+            </div>
           </div>
         ) : view === "quadro" ? (
           <Kanban
@@ -528,6 +559,8 @@ export function ClientesManager({
       {/* "Novo cliente" — fase e grau ANTES de abrir a ficha. */}
       {novoAberto ? (
         <DialogoNovoCliente
+          nome={novoNome}
+          onNome={setNovoNome}
           fase={novaFase}
           grau={novoGrau}
           pending={pending}

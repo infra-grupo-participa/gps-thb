@@ -312,7 +312,14 @@ export function ClienteFicha({
         return;
       }
       setTentouSalvar(false);
-      toast.success("Ficha salva.");
+      // Salvar sem telefone dizia "Ficha salva." — sucesso absoluto para algo
+      // que não conta para os 30. Mesmo padrão do aviso âmbar de problemas:
+      // avisa sem travar.
+      toast.success(
+        telefone.trim()
+          ? "Ficha salva."
+          : "Ficha salva — falta o telefone para ela contar para os 30.",
+      );
     });
   }
 
@@ -382,8 +389,19 @@ export function ClienteFicha({
                 onChange={(e) => setTelefone(mascaraTelefone(e.target.value))}
                 placeholder="(00) 00000-0000"
                 className="pl-9"
+                aria-describedby="f-tel-ajuda"
               />
             </div>
+            {/* 🔴 MEDIDO EM 10/09/2026: 17 fichas estavam paradas só por falta
+                de telefone — a pessoa digitou o nome, a ficha não conta para
+                os 30 e ela não tinha como saber por quê. O campo vizinho (grau
+                de relação), que NÃO conta, tinha texto de apoio; este, que
+                decide a Etapa 01, não tinha nenhum. */}
+            <p id="f-tel-ajuda" className="corpo-sm text-muted-foreground">
+              {telefone.trim()
+                ? "Com nome e telefone, esta ficha conta para os 30 da Etapa 01."
+                : "Sem o telefone, esta ficha ainda não conta para os 30 da Etapa 01."}
+            </p>
           </div>
 
           {/* GRAU DE RELAÇÃO — o campo "Nível de relacionamento" (quente/
@@ -461,7 +479,7 @@ export function ClienteFicha({
               // marca visual ao lado do campo, para o olho achar onde voltar.
               <p id="f-problemas-erro" className="corpo-sm text-atencao-foreground">
                 Nenhum problema marcado — é o que qualifica um cliente de
-                holding (tarefa 1.1). A ficha salva mesmo assim; marque quando
+                holding (tarefa 1). A ficha salva mesmo assim; marque quando
                 souber.
               </p>
             ) : null}

@@ -2,9 +2,16 @@
 
 /**
  * "Adicionar" cliente — antes um clique que criava uma linha vazia e jogava a
- * pessoa na ficha. Agora pergunta as DUAS coisas que o aluno já sabe no momento
- * em que cadastra e que mudam onde o cliente aparece no portal:
+ * pessoa na ficha. Agora pergunta as TRÊS coisas que o aluno já sabe no momento
+ * em que cadastra:
  *
+ *   · **Nome** — obrigatório. 🔴 MEDIDO EM 10/09/2026: existiam **21 fichas
+ *     sem nome nenhum, em 18 ambientes**, a mais antiga de 15/07 — uma delas
+ *     já marcada como "contratado". Nasciam assim porque o diálogo criava a
+ *     linha no banco e SÓ ENTÃO levava para a ficha: quem fechava a aba nesse
+ *     instante deixava um card fantasma na lista, que ainda por cima não
+ *     conta para os 30 (ficha completa = nome + telefone). Pedir o nome aqui
+ *     é o que impede a ficha de existir vazia.
  *   · **Fase** — em que ponto do negócio ele está (`FASES_CLIENTE`). Quem chega
  *     ao programa com caso em andamento cadastrava tudo em Prospecção e depois
  *     arrastava um por um no quadro.
@@ -23,6 +30,7 @@ import { useId } from "react";
 import type { FaseCliente } from "@/lib/types";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -41,31 +49,37 @@ import {
 } from "@/components/ui/select";
 
 export function DialogoNovoCliente({
+  nome,
   fase,
   grau,
   pending,
   erro,
+  onNome,
   onFase,
   onGrau,
   onCriar,
   onCancelar,
 }: {
+  nome: string;
   fase: FaseCliente;
   /** `""` = não informado. Mesmo contrato do campo da ficha. */
   grau: string;
   pending: boolean;
   erro: string | null;
+  onNome: (v: string) => void;
   onFase: (v: FaseCliente) => void;
   onGrau: (v: string) => void;
   onCriar: () => void;
   onCancelar: () => void;
 }) {
   const uid = useId();
+  const idNome = `${uid}-nome`;
   const idFase = `${uid}-fase`;
   const idFaseAjuda = `${uid}-fase-ajuda`;
   const idGrau = `${uid}-grau`;
   const idGrauAjuda = `${uid}-grau-ajuda`;
 
+  const nomeOk = nome.trim().length > 0;
   const faseAtual = FASES_CLIENTE.find((f) => f.id === fase);
   const grauAtual = GRAUS_RELACAO_UI.find((g) => g.id === grau);
 
@@ -80,12 +94,29 @@ export function DialogoNovoCliente({
         <DialogHeader>
           <DialogTitle>Novo cliente</DialogTitle>
           <DialogDescription>
-            Em que ponto este cliente está e como você o conhece. O nome, o
-            telefone e o resto você preenche na ficha, que abre em seguida.
+            Quem é o cliente e em que ponto ele está. O telefone e o resto você
+            preenche na ficha, que abre em seguida.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
+          {/* 🔑 O NOME VEM PRIMEIRO e é obrigatório. Sem ele a ficha nasce
+              fantasma (21 casos medidos em 10/09) e não conta para os 30. */}
+          <div className="grid gap-2">
+            <Label htmlFor={idNome}>Nome</Label>
+            <Input
+              id={idNome}
+              value={nome}
+              onChange={(e) => onNome(e.target.value)}
+              placeholder="Como você chama esta pessoa"
+              autoFocus
+              // Enter cria, como em qualquer formulário de uma linha só.
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && nomeOk && !pending) onCriar();
+              }}
+            />
+          </div>
+
           <div className="grid gap-2">
             <Label htmlFor={idFase}>Fase</Label>
             <Select
@@ -162,9 +193,12 @@ export function DialogoNovoCliente({
           <Button variant="outline" onClick={onCancelar} disabled={pending}>
             Cancelar
           </Button>
+          {/* Desabilitado sem nome: o botão não oferece o que o servidor vai
+              recusar. A razão fica no texto abaixo do campo, não num toast
+              que só aparece depois do clique. */}
           <Button
             onClick={onCriar}
-            disabled={pending}
+            disabled={pending || !nomeOk}
             aria-busy={pending || undefined}
           >
             {pending ? "Criando…" : "Criar e abrir a ficha"}

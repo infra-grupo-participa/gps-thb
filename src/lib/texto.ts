@@ -69,3 +69,38 @@ export function listaDeEmails(bruto: string, maximo = 10): string[] {
 export function emailParaIlike(email: string): string {
   return email.trim().replace(/[\\%_]/g, (m) => "\\" + m);
 }
+
+/**
+ * O e-mail como a pessoa REALMENTE mandou — pronto para comparar.
+ *
+ * 🔴 POR QUE ISTO EXISTE (10/09/2026). A equipe manda login e senha por
+ * WhatsApp, e o que volta colado traz sujeira invisível: espaço no fim,
+ * espaço não separável (U+00A0, que o WhatsApp insere), marcas de direção de
+ * texto e BOM. Some a isso o teclado do celular, que capitaliza a primeira
+ * letra por padrão.
+ *
+ * Caso real: o Helton recebeu as credenciais, digitou tudo certo e ouviu
+ * "e-mail ou senha inválidos" — a senha estava CORRETA, provada direto no
+ * GoTrue. O GoTrue casa o e-mail em minúsculas; qualquer um desses ruídos
+ * derruba a comparação sem dar pista nenhuma do motivo.
+ *
+ * 🔑 UM LUGAR SÓ. Toda porta por onde um ALUNO digita e-mail passa por aqui:
+ * login, resgate, esqueci a senha, cadastro.
+ */
+export function normalizarEmail(bruto: string): string {
+  return bruto
+    .replace(/[ ​-‍⁠﻿‪-‮]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * A senha como a pessoa mandou. Tira SÓ os invisíveis de formatação.
+ *
+ * ⚠️ NÃO faz `trim()` nem `toLowerCase()`: espaço e maiúscula podem fazer
+ * parte da senha de propósito. O que sai daqui é só o que ninguém digita por
+ * vontade — os mesmos caracteres que o WhatsApp cola junto.
+ */
+export function normalizarSenhaColada(bruto: string): string {
+  return bruto.replace(/[ ​-‍⁠﻿‪-‮]/g, "");
+}

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { normalizarEmail, normalizarSenhaColada } from "@/lib/texto";
 import { documentoValido, soDigitos } from "@/lib/masks";
 import { MSG_SENHA_MINIMO, SENHA_MINIMO } from "@/lib/senha-regras";
 
@@ -15,11 +16,11 @@ export async function cadastrar(
   formData: FormData,
 ): Promise<CadastroState> {
   const nome = String(formData.get("nome") ?? "").trim();
-  const email = String(formData.get("email") ?? "")
-    .trim()
-    .toLowerCase();
+  // Mesmo tratamento do /login: o que vem colado do WhatsApp traz espaço
+  // não separável e invisíveis que derrubam a comparação sem dar pista.
+  const email = normalizarEmail(String(formData.get("email") ?? ""));
   const telefone = String(formData.get("telefone") ?? "").trim();
-  const senha = String(formData.get("senha") ?? "");
+  const senha = normalizarSenhaColada(String(formData.get("senha") ?? ""));
   const documentoRaw = String(formData.get("documento") ?? "");
   const documento = soDigitos(documentoRaw);
 

@@ -14,6 +14,19 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     {},
   );
 
+  // 🔴 O E-MAIL TEM DE SOBREVIVER AO ERRO (10/09/2026).
+  //
+  // Caso real: o Helton recebeu login e senha da equipe, digitou, e relatou
+  // *"quando digito essa senha apaga o e-mail informado e diz senha ou
+  // e-mail não confere"*. A senha estava CERTA — provado direto no GoTrue,
+  // que devolveu token. O que falhava era a tela: sem `defaultValue`, o
+  // React remonta o formulário a cada retorno da action e o campo volta
+  // vazio. A pessoa lê isso como "o sistema apagou o que eu digitei" e
+  // conclui que a senha está errada.
+  //
+  // `state.email` é devolvido pela action SEMPRE que há erro — nunca a
+  // senha, que não volta ao cliente em hipótese nenhuma.
+
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="redirect" value={redirectTo} />
@@ -22,9 +35,19 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
         <Input
           id="email"
           name="email"
-          type="email"
+          // ⚠️ `type="text"`, não `type="email"`: a validação nativa do
+          // navegador REJEITA antes de enviar quando sobra um espaço colado
+          // do WhatsApp ou o teclado do celular capitaliza a primeira letra
+          // — a tela pisca e nada acontece, sem mensagem nenhuma. O servidor
+          // já faz `trim()` e a conferência de verdade é o GoTrue.
+          type="text"
+          inputMode="email"
           autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           placeholder="voce@exemplo.com"
+          defaultValue={state.email ?? ""}
           required
           autoFocus
         />

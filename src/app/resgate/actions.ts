@@ -28,6 +28,7 @@ import { headers } from "next/headers";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 import { traduzirErroBanco } from "@/lib/erros";
+import { normalizarEmail, normalizarSenhaColada } from "@/lib/texto";
 import { SENHA_MINIMO, MSG_SENHA_MINIMO } from "@/lib/senha-regras";
 
 /**
@@ -61,7 +62,9 @@ export async function iniciarResgate(
   form: FormData,
 ): Promise<{ erro?: string; token?: string }> {
   const codigo = String(form.get("codigo") ?? "").trim();
-  const email = String(form.get("email") ?? "").trim();
+  // Quem chega no resgate é quem JÁ não conseguiu entrar — é a última tela
+  // que pode recusar por espaço invisível colado do WhatsApp.
+  const email = normalizarEmail(String(form.get("email") ?? ""));
   const documento = String(form.get("documento") ?? "").trim();
 
   if (!codigo || !email || !documento) {
@@ -94,7 +97,7 @@ export async function concluirResgate(
   form: FormData,
 ): Promise<{ erro?: string; ok?: boolean; email?: string }> {
   const token = String(form.get("token") ?? "");
-  const senha = String(form.get("senha") ?? "");
+  const senha = normalizarSenhaColada(String(form.get("senha") ?? ""));
   const confirmar = String(form.get("confirmar") ?? "");
 
   if (senha.length < SENHA_MINIMO) return { erro: MSG_SENHA_MINIMO };

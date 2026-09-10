@@ -74,7 +74,14 @@ export function EsqueciForm() {
         <Label htmlFor="email">E-mail da conta</Label>
         <Input
           id="email"
-          type="email"
+          // Mesma lição do /login (10/09/2026): `type="email"` rejeita no
+          // navegador, sem mensagem, quando sobra espaço colado do WhatsApp
+          // ou o teclado do celular capitaliza. O servidor normaliza.
+          type="text"
+          inputMode="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="voce@exemplo.com"

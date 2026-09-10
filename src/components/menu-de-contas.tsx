@@ -8,6 +8,26 @@
  * perfil ali, quando a gente clicar no perfil dele, no canto superior
  * direito".
  *
+ * 🔴 SEM BIBLIOTECA DE PROPÓSITO. A primeira versão usava `DropdownMenu`
+ * (Base UI, via shadcn) e o menu simplesmente NÃO ABRIA — o Marcio ficou
+ * sem conseguir sair nem trocar de conta o dia inteiro. A primeira causa
+ * (o gerador do shadcn escreveu `import { cn } from "cn"`, módulo
+ * inexistente) foi corrigida e NÃO BASTOU.
+ *
+ * Depois de esgotar a investigação (estrutura Portal→Positioner→Popup,
+ * conflito de classes `w-*`, CSS global, versão do pacote) sem achar a
+ * causa, a decisão foi REMOVER A DEPENDÊNCIA. Um menu de 3 itens não
+ * justifica portal, âncora e camada de posicionamento — e não justifica,
+ * de jeito nenhum, bloquear o logout.
+ *
+ * ⚠️ NÃO reintroduzir `DropdownMenu` aqui sem antes provar, no navegador,
+ * que ele abre.
+ *
+ * O que tem: Esc fecha (e devolve o foco ao gatilho), clique fora fecha,
+ * `aria-expanded`/`aria-haspopup`, `role="menu"`/`role="menuitem"`.
+ * O que NÃO tem, por escolha: navegação por setas — três itens são
+ * alcançáveis por Tab, e a alternativa era manter o que quebrou.
+ *
  * 🔑 As contas vêm de um cookie `httpOnly` — este componente recebe id,
  * e-mail e nome, NUNCA o refresh token. A troca acontece no servidor.
  *
@@ -16,19 +36,11 @@
  * função: a pessoa clica esperando algo e não encontra nada.
  */
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, LogOut, UserRound, Repeat2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   esquecerContaDoMenu,
   sairDeTodas,
@@ -61,9 +73,40 @@ export function MenuDeContas({
   /** As demais contas guardadas neste navegador. Sem a atual. */
   outrasContas: ContaDoMenu[];
 }) {
+  const [aberto, setAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
   const router = useRouter();
+
+  const caixaRef = useRef<HTMLDivElement>(null);
+  const gatilhoRef = useRef<HTMLButtonElement>(null);
+
+  // Esc fecha e devolve o foco ao gatilho — quem abriu pelo teclado não
+  // pode ficar com o foco perdido no corpo da página.
+  useEffect(() => {
+    if (!aberto) return;
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setAberto(false);
+        gatilhoRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", aoTeclar);
+    return () => document.removeEventListener("keydown", aoTeclar);
+  }, [aberto]);
+
+  // Clique fora fecha.
+  useEffect(() => {
+    if (!aberto) return;
+    function aoClicar(e: MouseEvent) {
+      if (!caixaRef.current?.contains(e.target as Node)) setAberto(false);
+    }
+    document.addEventListener("mousedown", aoClicar);
+    return () => document.removeEventListener("mousedown", aoClicar);
+  }, [aberto]);
+
+  const itemBase =
+    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left corpo-sm transition hover:bg-superficie-afundada focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50";
 
   function trocar(userId: string) {
     setErro(null);
@@ -82,16 +125,22 @@ export function MenuDeContas({
       // `router.replace` (não `push`): a tela anterior era da conta que
       // acabou de sair; deixá-la no histórico faria o "voltar" do navegador
       // mostrar dados de outra conta.
+      setAberto(false);
       router.replace(r?.destino ?? "/");
       router.refresh();
     });
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className="flex min-w-0 items-center gap-2 rounded-lg p-1 pr-2 transition hover:bg-superficie-afundada focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+    <div ref={caixaRef} className="relative">
+      <button
+        ref={gatilhoRef}
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={aberto}
         aria-label="Sua conta"
+        className="flex min-w-0 items-center gap-2 rounded-lg p-1 pr-2 transition hover:bg-superficie-afundada focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-marca-solida text-xs font-bold text-white">
           {iniciais(nome, email ?? "")}
@@ -104,119 +153,140 @@ export function MenuDeContas({
             {email}
           </span>
         </span>
-        <ChevronDown aria-hidden className="size-4 text-muted-foreground" />
-      </DropdownMenuTrigger>
+        <ChevronDown
+          aria-hidden
+          className={
+            "size-4 shrink-0 text-muted-foreground transition-transform " +
+            (aberto ? "rotate-180" : "")
+          }
+        />
+      </button>
 
-      <DropdownMenuContent align="end" className="w-72">
-        <DropdownMenuLabel className="grid gap-0.5">
-          <span className="truncate corpo font-medium">{nome ?? email}</span>
-          <span className="truncate corpo-sm font-normal text-muted-foreground">
-            {email}
-          </span>
-          <Badge variant="secondary" className="mt-1 w-fit">
-            {papelRotulo}
-          </Badge>
-        </DropdownMenuLabel>
-
-        <DropdownMenuSeparator />
-
-        {/* 🔴 "Seu perfil" some para o admin: `/perfil` redireciona quem é
-            admin para `/admin`, então o clique EJETAVA a pessoa da tela em
-            que ela estava — inclusive do ambiente de um aluno em
-            assistência. Item que leva para outro lugar não é item. */}
-        {papelRotulo === "Admin" ? null : (
-          <DropdownMenuItem render={<Link href="/perfil" />}>
-            <UserRound aria-hidden />
-            Seu perfil
-          </DropdownMenuItem>
-        )}
-
-        {outrasContas.length > 0 ? (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="corpo-sm font-normal text-muted-foreground">
-              Trocar de conta
-            </DropdownMenuLabel>
-
-            {outrasContas.map((c) => (
-              <div key={c.userId} className="flex items-center gap-1 pr-1">
-                <DropdownMenuItem
-                  className="min-w-0 flex-1"
-                  disabled={pendente}
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    trocar(c.userId);
-                  }}
-                >
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded bg-superficie-afundada text-[10px] font-bold">
-                    {iniciais(c.nome, c.email)}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate corpo-sm font-medium">
-                      {c.nome ?? c.email}
-                    </span>
-                    {c.nome ? (
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {c.email}
-                      </span>
-                    ) : null}
-                  </span>
-                  <Repeat2
-                    aria-hidden
-                    className="ml-auto size-4 shrink-0 text-muted-foreground"
-                  />
-                </DropdownMenuItem>
-
-                <button
-                  type="button"
-                  aria-label={`Esquecer ${c.email} neste navegador`}
-                  title="Esquecer neste navegador"
-                  disabled={pendente}
-                  className="shrink-0 rounded p-1 text-muted-foreground hover:bg-superficie-afundada hover:text-risco-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                  onClick={() =>
-                    iniciar(async () => {
-                      await esquecerContaDoMenu(c.userId);
-                      router.refresh();
-                    })
-                  }
-                >
-                  <X aria-hidden className="size-3.5" />
-                </button>
-              </div>
-            ))}
-          </>
-        ) : null}
-
-        {erro ? (
-          <p role="alert" className="px-2 py-1.5 corpo-sm text-risco-foreground">
-            {erro}
-          </p>
-        ) : null}
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem
-          disabled={pendente}
-          onSelect={(e) => {
-            e.preventDefault();
-            iniciar(async () => {
-              const r = await sairDeTodas();
-              router.replace(r?.destino ?? "/login");
-              router.refresh();
-            });
-          }}
+      {aberto ? (
+        <div
+          role="menu"
+          aria-label="Sua conta"
+          className="absolute top-full right-0 z-50 mt-2 w-72 rounded-xl border border-borda-fina bg-card p-1.5 shadow-lg"
         >
-          <LogOut aria-hidden />
-          Sair
-        </DropdownMenuItem>
+          <div className="grid gap-0.5 px-2 py-1.5">
+            <span className="truncate corpo font-medium">{nome ?? email}</span>
+            <span className="truncate corpo-sm text-muted-foreground">
+              {email}
+            </span>
+            <Badge variant="secondary" className="mt-1 w-fit">
+              {papelRotulo}
+            </Badge>
+          </div>
 
-        {outrasContas.length > 0 ? (
-          <p className="px-2 pb-1 text-xs text-muted-foreground">
-            Sair encerra esta sessão e esquece as outras contas deste
-            navegador.
-          </p>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <div className="my-1 h-px bg-borda-fina" />
+
+          {/* 🔴 "Seu perfil" some para o admin: `/perfil` redireciona quem é
+              admin para `/admin`, então o clique EJETAVA a pessoa da tela em
+              que ela estava. Item que leva para outro lugar não é item. */}
+          {papelRotulo === "Admin" ? null : (
+            <Link
+              href="/perfil"
+              role="menuitem"
+              className={itemBase}
+              onClick={() => setAberto(false)}
+            >
+              <UserRound aria-hidden className="size-4" />
+              Seu perfil
+            </Link>
+          )}
+
+          {outrasContas.length > 0 ? (
+            <>
+              <div className="my-1 h-px bg-borda-fina" />
+              <p className="px-2 py-1 corpo-sm text-muted-foreground">
+                Trocar de conta
+              </p>
+
+              {outrasContas.map((c) => (
+                <div key={c.userId} className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={pendente}
+                    onClick={() => trocar(c.userId)}
+                    className={itemBase + " min-w-0 flex-1"}
+                  >
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded bg-superficie-afundada text-[10px] font-bold">
+                      {iniciais(c.nome, c.email)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">
+                        {c.nome ?? c.email}
+                      </span>
+                      {c.nome ? (
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {c.email}
+                        </span>
+                      ) : null}
+                    </span>
+                    <Repeat2
+                      aria-hidden
+                      className="size-4 shrink-0 text-muted-foreground"
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label={`Esquecer ${c.email} neste navegador`}
+                    title="Esquecer neste navegador"
+                    disabled={pendente}
+                    className="shrink-0 rounded p-1 text-muted-foreground transition hover:bg-superficie-afundada hover:text-risco-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                    onClick={() =>
+                      iniciar(async () => {
+                        await esquecerContaDoMenu(c.userId);
+                        router.refresh();
+                      })
+                    }
+                  >
+                    <X aria-hidden className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+            </>
+          ) : null}
+
+          {erro ? (
+            <p
+              role="alert"
+              className="px-2 py-1.5 corpo-sm text-risco-foreground"
+            >
+              {erro}
+            </p>
+          ) : null}
+
+          <div className="my-1 h-px bg-borda-fina" />
+
+          <button
+            type="button"
+            role="menuitem"
+            disabled={pendente}
+            className={itemBase}
+            onClick={() =>
+              iniciar(async () => {
+                const r = await sairDeTodas();
+                setAberto(false);
+                router.replace(r?.destino ?? "/login");
+                router.refresh();
+              })
+            }
+          >
+            <LogOut aria-hidden className="size-4" />
+            {pendente ? "Saindo…" : "Sair"}
+          </button>
+
+          {outrasContas.length > 0 ? (
+            <p className="px-2 pt-1 pb-0.5 text-xs text-muted-foreground">
+              Sair encerra esta sessão e esquece as outras contas deste
+              navegador.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }

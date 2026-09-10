@@ -32,6 +32,7 @@ import {
   salvarDataAgendamento,
 } from "@/app/clientes/actions";
 import { TarefaItem } from "@/components/etapa/tarefa-item";
+import { SequenciaMensagens } from "./sequencia-mensagens";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -375,6 +376,20 @@ export function Etapa1Guide({
                         : undefined
                     }
                   />
+
+                  {/* 🔑 Os 3 links da sequência ficam DENTRO da tarefa 3,
+                      não numa seção à parte: a copy é o conteúdo do passo,
+                      e separá-la faria o aluno ler a tarefa e não achar o
+                      texto que ela manda enviar.
+
+                      Passa `bloqueada` para os links seguirem a MESMA trava
+                      dos 30 do passo — botão vivo dentro de tarefa travada
+                      convidaria a mandar mensagem antes da lista pronta. */}
+                  {t.num === 3 ? (
+                    <div className="mt-2 ml-0.5">
+                      <SequenciaMensagens bloqueada={bloqueada} />
+                    </div>
+                  ) : null}
                 </li>
               );
             })}

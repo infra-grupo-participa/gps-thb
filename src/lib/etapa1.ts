@@ -255,20 +255,30 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     automatica: true,
     apontaClientes: true,
   },
+  // 🔴 AS DUAS TAREFAS DE MENSAGEM VIRARAM UMA (10/09/2026).
+  //
+  // "Enviar mensagem padrão" (num 3) e "Enviar mensagem de estudo de caso"
+  // (num 4) foram ABOLIDAS por decisão do Marcio: elas descreviam de memória
+  // um método que o documento oficial (`Método Holding Brasil.md`) define
+  // como **uma sequência de 3 mensagens**, com copy pronta e instruções de
+  // envio próprias. Duas tarefas soltas não davam ao aluno o texto para
+  // mandar — só o mandavam escrever sozinho.
+  //
+  // 🔑 O `num: 3` É REUSADO, NÃO APAGADO. `num` é a identidade estável
+  // referenciada por `gps.progresso`: 3 ambientes já tinham marcado a
+  // tarefa 3 e 3 a tarefa 4 (medido em 10/09). Reusar o 3 faz o progresso
+  // deles continuar valendo para a tarefa que substitui a antiga.
+  //
+  // ⚠️ O `num: 4` fica APOSENTADO — some da tela, mas as 3 linhas antigas
+  //    continuam em `gps.progresso`. `TAREFAS_ETAPA1` é a fonte do que se
+  //    exibe, então linha órfã não aparece; e não se apaga histórico de
+  //    aluno para limpar catálogo. **Não reaproveitar o 4 para outra coisa.**
   {
     num: 3,
     codigo: "2",
-    titulo: "Enviar mensagem padrão",
+    titulo: "Enviar a sequência de 3 mensagens",
     descricao:
-      "Envie a mensagem padrão falando da sua formação técnica e da perda pela inércia.",
-    exigeTarefa: 1,
-  },
-  {
-    num: 4,
-    codigo: "3",
-    titulo: "Enviar mensagem de estudo de caso",
-    descricao:
-      "No dia seguinte, envie outra mensagem com um estudo de caso sobre a dor específica do cliente. Mostre o custo da inércia, faça uma pergunta que estimule a conversa e não ofereça nada — só agende reunião se o cliente pedir.",
+      "Envie a sequência de 3 mensagens para marcar a reunião preliminar: o problema (dia 1), a solução (dia 3) e a urgência com os dois horários (dia 5). O texto de cada uma está pronto abaixo — abra, copie e leia as instruções de envio antes de mandar.",
     exigeTarefa: 1,
   },
   {

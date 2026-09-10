@@ -59,6 +59,20 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
       <Button type="submit" disabled={pending} className="mt-2">
         {pending ? "Entrando..." : "Entrar"}
       </Button>
+
+      {/* 🔑 Abaixo do botão, não ao lado do campo de senha: quem chega aqui
+          tenta entrar PRIMEIRO e só procura ajuda depois de falhar. E fala
+          em "criar a senha", não "redefinir" — 19 dos 137 titulares nunca
+          tiveram login, e para eles não há o que redefinir. */}
+      <p className="text-center text-sm text-muted-foreground">
+        Não consegue entrar?{" "}
+        <Link
+          href="/resgate"
+          className="font-medium text-accent-foreground underline-offset-4 hover:underline"
+        >
+          Crie sua senha com o código da equipe
+        </Link>
+      </p>
     </form>
   );
 }

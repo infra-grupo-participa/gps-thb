@@ -29,6 +29,7 @@ import { KeyRound, LifeBuoy } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import type { StatusOnboarding } from "@/lib/types";
 import { ROTULO_TIPO } from "@/components/admin/diario-labels";
+import { FASES_CLIENTE } from "@/lib/etapa1";
 import { formatarDataHora, formatarData } from "@/lib/datas";
 import { NotaRapida } from "@/components/admin/nota-rapida";
 import { Card, CardContent } from "@/components/ui/card";
@@ -101,6 +102,7 @@ export function AlunoCard({
   ultimoAcesso,
   onboardingStatus,
   aptoAoSaldo,
+  favorito,
   atendimentoDe,
   agora,
   selecao,
@@ -251,6 +253,34 @@ export function AlunoCard({
               <> · nunca entrou</>
             )}
           </div>
+
+          {/* O SUBNOME do favorito (pedido do Marcio, WAR-ROOM 10/09):
+              "bater o olho na lista" e ver quem é o cliente que a equipe
+              acompanha, com a fase dele — sem abrir o ambiente. Só aparece
+              quando o ambiente TEM favorito; a maioria não tem, e não vira
+              "—" nem "sem cliente" (ruído em ~150 cards). Mesmo token de cor
+              da ficha do cliente (`FASES_CLIENTE.cor`, contraste já medido);
+              nunca `text-primary` (2,98:1, reprova AA). */}
+          {favorito ? (
+            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+              <span aria-hidden>↳</span>
+              <span className="truncate">{favorito.nome}</span>
+              {(() => {
+                const fase = FASES_CLIENTE.find((f) => f.id === favorito.fase);
+                return fase ? (
+                  <span
+                    className={
+                      "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold " +
+                      fase.cor
+                    }
+                    title={fase.ajuda}
+                  >
+                    {fase.rotulo}
+                  </span>
+                ) : null;
+              })()}
+            </div>
+          ) : null}
 
           {/* Última nota do Diário — o trecho vem cortado do BANCO
               (`left(texto,140)`); aqui nunca se corta de novo nem se remonta a

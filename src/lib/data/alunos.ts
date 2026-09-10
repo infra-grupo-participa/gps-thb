@@ -6,6 +6,7 @@ import { CLASSES, type ClasseAluno } from "@/lib/types";
 import type {
   Aluno,
   Ambiente,
+  FaseCliente,
   Membro,
   StatusOnboarding,
 } from "@/lib/types";
@@ -185,6 +186,18 @@ export interface AlunoGps {
    * contendo o `num` daquela tarefa. Zero consulta a mais.
    */
   tarefasConcluidas: number[];
+  /**
+   * O cliente `acompanhado_equipe` (o favorito) do ambiente — pedido do
+   * Marcio (WAR-ROOM, 10/09): "bater o olho na lista" e ver quem é o
+   * cliente acompanhado de cada aluno, como um subnome com a fase dele.
+   *
+   * `null` = ambiente SEM favorito (a maioria dos 158) — não vira ruído: a
+   * UI não mostra segunda linha nenhuma nesse caso. Vem da MESMA RPC
+   * (`favorito_nome`/`favorito_fase`, migração ...234, LEFT JOIN LATERAL
+   * sobre o índice único parcial `etapa1_clientes_unico_equipe`) — zero
+   * consulta por aluno.
+   */
+  favorito: { nome: string; fase: FaseCliente } | null;
 }
 
 /**
@@ -224,6 +237,14 @@ interface LinhaPainelAlunos {
   em_fechamento?: number | null;
   apto_ao_saldo?: boolean | null;
   classe?: string | null;
+  /**
+   * As duas colunas da migração ...234. Opcionais no tipo pelo mesmo motivo
+   * das três acima: banco ainda sem a migração devolve `undefined`, e o
+   * fallback (`mapearFavorito`) trata isso como "sem favorito" — o estado
+   * honesto quando a coluna nem existe.
+   */
+  favorito_nome?: string | null;
+  favorito_fase?: string | null;
 }
 
 /**
@@ -233,6 +254,24 @@ interface LinhaPainelAlunos {
  */
 function mapearStatusOnboarding(v: unknown): StatusOnboarding {
   return v === "concluido" || v === "em_andamento" ? v : "nao_iniciado";
+}
+
+/**
+ * `favorito_nome`/`favorito_fase` da RPC → o par que a UI consome, ou
+ * `null`. As DUAS colunas têm de estar presentes e `fase` tem de ser um
+ * valor conhecido — meio-preenchido (nome sem fase, ou fase fora do CHECK)
+ * também vira `null`: é mais honesto não mostrar a segunda linha do que
+ * mostrar uma fase inventada.
+ */
+function mapearFavorito(
+  nome: string | null | undefined,
+  fase: string | null | undefined,
+): { nome: string; fase: FaseCliente } | null {
+  if (!nome || !fase) return null;
+  if (fase !== "prospeccao" && fase !== "fechamento" && fase !== "contratado") {
+    return null;
+  }
+  return { nome, fase };
 }
 
 /**
@@ -402,6 +441,7 @@ export async function getAlunosGps(opts?: {
         ? (l.classe as ClasseAluno)
         : "inicial",
       tarefasConcluidas: l.tarefas_concluidas ?? [],
+      favorito: mapearFavorito(l.favorito_nome, l.favorito_fase),
     };
   });
 

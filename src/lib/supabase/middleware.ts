@@ -6,7 +6,7 @@ import { destinoInterno } from "@/lib/nav";
 
 /**
  * Atualiza a sessão do Supabase a cada requisição e protege rotas.
- * Rotas públicas: /login, /auth/*, assets, /p/* (Plantão de Dúvidas — tem
+ * Rotas públicas: /login, /resgate, /auth/*, assets, /p/* (Plantão de Dúvidas — tem
  * identidade PRÓPRIA, isolada de `auth.users`; ver `src/lib/plantao-tipos.ts`).
  * Todo o resto exige sessão.
  *
@@ -47,6 +47,10 @@ export async function updateSession(request: NextRequest) {
     pathname === "/login" ||
     pathname === "/cadastro" ||
     pathname === "/esqueci-senha" ||
+    // 🔑 O resgate TEM de ser público: quem chega nele é justamente quem não
+    // consegue logar. Se cair na guarda de sessão, o proxy manda para o
+    // `/login` e a tela vira inalcançável para o seu único público.
+    pathname === "/resgate" ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||

@@ -25,9 +25,15 @@ import type { ClasseAluno } from "@/lib/types";
  */
 
 /** `num` das tarefas da Etapa 01 que viram submétrica. */
-const TAREFA_MENSAGEM_PADRAO = 3; // exibida como "2"
-const TAREFA_ESTUDO_DE_CASO = 4; // exibida como "3"
+const TAREFA_SEQUENCIA = 3; // exibida como "2"
 const TAREFA_LIGACAO = 5; // exibida como "4"
+
+// 🔴 A tarefa `num: 4` ("Enviar mensagem de estudo de caso") foi APOSENTADA
+// em 10/09/2026 — as duas tarefas de mensagem viraram a sequência de 3
+// (ver `src/lib/etapa1.ts`). A submétrica que a contava foi REMOVIDA junto:
+// mantê-la mostraria um número congelado nos 3 ambientes que a marcaram
+// antes, que nunca mais subiria — pior que não ter o número, porque parece
+// medida viva.
 
 export interface Submetrica {
   /** Rótulo curto — cabe na linha do card. */
@@ -84,14 +90,9 @@ export function submetricasDaClasse(
     case "captacao":
       return [
         {
-          rotulo: "1ª mensagem",
-          valor: contar(alunos, (a) => fez(a, TAREFA_MENSAGEM_PADRAO)),
-          ajuda: "marcaram a mensagem padrão como enviada",
-        },
-        {
-          rotulo: "2ª mensagem",
-          valor: contar(alunos, (a) => fez(a, TAREFA_ESTUDO_DE_CASO)),
-          ajuda: "marcaram o estudo de caso como enviado",
+          rotulo: "enviaram a sequência",
+          valor: contar(alunos, (a) => fez(a, TAREFA_SEQUENCIA)),
+          ajuda: "marcaram a sequência de 3 mensagens como enviada",
         },
         {
           rotulo: "ligaram",

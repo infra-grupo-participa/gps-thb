@@ -119,10 +119,26 @@ export function InscricaoPainel({
           .
         </p>
       ) : (
-        <p className="rounded-lg border border-dashed bg-muted/40 p-2.5 text-xs text-muted-foreground">
-          Você pode cancelar a qualquer momento até 1 hora antes do início — a
-          partir daí a sala é liberada e o cancelamento não é mais possível.
-        </p>
+        <div className="space-y-2">
+          {/*
+            Prazo de inscrição. A regra vive no banco
+            (`gps.plantao_prazo_inscricao`), e a data da virada em
+            `gps.config.plantao_cutoff_vespera_desde` — este texto precisa
+            acompanhar se a data mudar. Decisão do Marcio em 10/09/2026:
+            esta semana continua valendo até 1h antes; a partir de 14/09
+            volta o cut-off do calendário oficial do Acelera.
+          */}
+          <p className="rounded-lg border border-primary/30 bg-primary/[0.06] p-2.5 text-xs text-foreground">
+            <strong>Prazo de inscrição:</strong> a partir de{" "}
+            <strong>14 de setembro</strong>, as inscrições se encerram às{" "}
+            <strong>12h do dia anterior</strong> ao plantão. Nesta semana, você
+            ainda pode se inscrever até 1 hora antes do início.
+          </p>
+          <p className="rounded-lg border border-dashed bg-muted/40 p-2.5 text-xs text-muted-foreground">
+            Você pode cancelar a qualquer momento até 1 hora antes do início — a
+            partir daí a sala é liberada e o cancelamento não é mais possível.
+          </p>
+        </div>
       )}
       {slots.map((slot) => {
         const ehMinha = slot.minhaInscricao;

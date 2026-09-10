@@ -331,6 +331,11 @@ export function ClienteFicha({
         cliente={cliente}
         alunoId={alunoId}
         admin={admin}
+        /* 🔴 O link "abra um chamado" precisa do contexto: absoluto, ele
+           ejetava o admin do ambiente do aluno (`/chamados` manda admin
+           para `/admin/chamados`). Derivado de `admin` + `alunoId`, que
+           esta ficha já conhece. */
+        basePath={admin ? `/admin/aluno/${alunoId}` : ""}
         fase={faseAtual}
         wpp={wpp}
         acompanhado={acompanhado}

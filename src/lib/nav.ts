@@ -22,7 +22,7 @@ import type { ContextoSessao } from "@/lib/auth";
  */
 export function alunoNavItems(
   basePath: string,
-  opts: { financeiro: boolean },
+  opts: { financeiro: boolean; financeiroEmBreve?: boolean },
 ): NavItem[] {
   return [
     { href: basePath || "/", label: "Início", icon: "inicio", exact: true },
@@ -46,7 +46,10 @@ export function alunoNavItems(
             href: `${basePath}/financeiro`,
             label: "Financeiro",
             icon: "financeiro" as const,
-            emBreve: true,
+            // 🔑 "Em breve" é para o ALUNO. A EQUIPE continua entrando: o
+            // Financeiro do aluno é ferramenta de atendimento, e escondê-lo
+            // deixaria a equipe sem o dado na hora de responder ao aluno.
+            emBreve: opts.financeiroEmBreve !== false,
           },
         ]
       : []),
@@ -118,7 +121,11 @@ export function assistenciaNavItems(
   const base = `/admin/aluno/${alunoId}`;
   const hrefFinanceiro = `${base}/financeiro`;
   return [
-    ...alunoNavItems(base, { financeiro: true }).map((item) =>
+    ...alunoNavItems(base, {
+      financeiro: true,
+      // A equipe entra no Financeiro do aluno; só o aluno vê "em breve".
+      financeiroEmBreve: false,
+    }).map((item) =>
       opts.ambienteCompartilhado && item.href === hrefFinanceiro
         ? { ...item, adminOnly: true }
         : item,

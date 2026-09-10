@@ -31,6 +31,7 @@ export function FichaCabecalho({
   cliente,
   alunoId,
   admin,
+  basePath = "",
   fase,
   wpp,
   acompanhado,
@@ -64,6 +65,8 @@ export function FichaCabecalho({
   pending: boolean;
   onToggleEquipe: () => void;
   aoMudarAcompanhamento: () => void;
+  /** Vazio para o aluno; `/admin/aluno/<id>` no Modo Assistência. */
+  basePath?: string;
 }) {
   return (
     <>
@@ -126,14 +129,16 @@ export function FichaCabecalho({
         <AvisoAcompanhamento
           confirmadoEm={cliente.acompanhamento_confirmado_em as string}
           admin={admin}
+          basePath={basePath}
         />
       ) : escolhidoPeloAluno ? (
-        <AvisoEscolhaFeita />
+        <AvisoEscolhaFeita basePath={basePath} />
       ) : outroNome != null ? (
         <AvisoOutroConfirmado
           nome={outroNome}
           admin={admin}
           confirmado={outroConfirmado}
+          basePath={basePath}
         />
       ) : null}
 

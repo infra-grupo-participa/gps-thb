@@ -120,10 +120,16 @@ export function MenuDeContas({
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem render={<Link href="/perfil" />}>
-          <UserRound aria-hidden />
-          Seu perfil
-        </DropdownMenuItem>
+        {/* 🔴 "Seu perfil" some para o admin: `/perfil` redireciona quem é
+            admin para `/admin`, então o clique EJETAVA a pessoa da tela em
+            que ela estava — inclusive do ambiente de um aluno em
+            assistência. Item que leva para outro lugar não é item. */}
+        {papelRotulo === "Admin" ? null : (
+          <DropdownMenuItem render={<Link href="/perfil" />}>
+            <UserRound aria-hidden />
+            Seu perfil
+          </DropdownMenuItem>
+        )}
 
         {outrasContas.length > 0 ? (
           <>

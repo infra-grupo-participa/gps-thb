@@ -1,0 +1,106 @@
+-- War-room 10/09 — os dois achados MEDIDOS de escala.
+--
+-- ═══════════════════════════════════════════════════════════════════════
+-- 🔴 P1 — RLS reavaliada POR LINHA em 49 policies
+-- ═══════════════════════════════════════════════════════════════════════
+--
+-- `gps.aluno_atual()` e `public.gp_is_admin()` são `STABLE SECURITY
+-- DEFINER` e fazem `select` em `gps.membros` / `public.perfis`. Escritas
+-- CRUAS na policy, elas caem no `Filter` do plano — e o Postgres as executa
+-- **uma vez por linha lida**, não uma vez por query.
+--
+-- MEDIDO em `gps.etapa1_clientes` (aluno com 110 clientes, 791 na tabela),
+-- como `authenticated` com JWT real:
+--
+--   ANTES:  Filter: (aluno_id = gps.aluno_atual() OR gp_is_admin())
+--           Buffers: shared hit=3128   Execution Time: 25,374 ms
+--
+--   DEPOIS: Filter: (aluno_id = (InitPlan 1).col1 OR (InitPlan 2).col1)
+--           Buffers: shared hit=595    Execution Time:  2,235 ms
+--
+--   **11x mais rápido, 5x menos leitura.**
+--
+-- A prova de que era isso: `membros_user_id_idx` acumulava **1.547.664
+-- idx_scan sobre uma tabela de 147 linhas**. Cada linha lida em QUALQUER
+-- tabela com RLS disparava uma busca em `membros`.
+--
+-- 🔑 A SEMÂNTICA NÃO MUDA. As duas funções são `STABLE`: dentro da mesma
+-- transação o valor é o mesmo, então avaliar 1x ou 791x dá o mesmo
+-- resultado. `(select f())` só diz ao planner que ele pode içar a chamada
+-- para um InitPlan.
+--
+-- 🔴 PROVA DE SEGURANÇA (é RLS — errar aqui vaza dado de aluno):
+--
+--   aluno vê os clientes DELE           110
+--   aluno vê clientes de TERCEIRO         0  ✅
+--   aluno vê progresso DELE               1
+--   aluno vê progresso de TERCEIRO        0  ✅
+--   aluno vê notas do Diário              0  ✅ (só-admin, LGPD)
+--   aluno vê aluno_eventos                0  ✅ (só-admin)
+--   admin vê todos os clientes          791  ✅
+--
+-- ⚠️ DÍVIDA CONHECIDA: o `alter policy` foi gerado a partir do texto que
+--    `pg_policies` devolve — e ele NORMALIZA a expressão, devolvendo
+--    `f()` mesmo onde está escrito `(select f())`. O resultado é que
+--    algumas policies ficaram com wrap ANINHADO
+--    (`(select (select (select f())))`).
+--
+--    Isso é COSMÉTICO: o plano continua correto (InitPlan avaliado 1x,
+--    medido acima) e a segurança está provada. Mas o texto está sujo, e
+--    uma próxima passada do mesmo script embrulharia de novo.
+--
+--    Para limpar, o caminho é `pg_get_expr(polqual, polrelid)` de
+--    `pg_policy` (não `pg_policies`) e reescrever a policy inteira. Fica
+--    para depois da apresentação — mexer em 49 policies de RLS sob pressa
+--    é como se erra.
+--
+-- ═══════════════════════════════════════════════════════════════════════
+-- 🔴 P2 — `cs.contatos_hm.aluno_id` sem índice
+-- ═══════════════════════════════════════════════════════════════════════
+--
+-- É a coluna que liga contrato -> aluno do GPS, usada por
+-- `gps.financeiro_do_aluno`, `financeiro_extrato_do_aluno`,
+-- `financeiro_candidatos_do_aluno` e pelo cálculo das 5 classes. Não tinha
+-- índice nenhum: toda abertura do Financeiro varria as 310 linhas.
+--
+-- MEDIDO:
+--   ANTES:  Seq Scan | Rows Removed by Filter: 310 | Buffers 36
+--           Planning 15,258 ms  Execution 0,415 ms
+--   DEPOIS: Index Scan using idx_contatos_hm_aluno_id | Buffers 3
+--           Planning  3,070 ms  Execution 1,327 ms
+--
+-- Parcial (`where aluno_id is not null`) porque só 117 das 310 linhas têm
+-- vínculo — o índice fica menor e serve a toda consulta, que sempre filtra
+-- por um id concreto.
+--
+-- ⚠️ O Planning Time continua dominando (3 ms para 1,3 ms de execução):
+--    `cs.vw_hm_financeiro` tem ~12 SubPlans e 3 níveis de Memoize, e o
+--    planner monta esse plano inteiro a cada chamada. Resolver exige
+--    materializar a view — é do `sistema-grupo-participa-v2`, não deste
+--    repo. Registrado, não resolvido.
+--
+-- REVERSÃO
+--   drop index cs.idx_contatos_hm_aluno_id;
+--   (as policies voltam tirando o `(select ...)`, mas aí o custo por linha
+--    volta junto)
+
+create index if not exists idx_contatos_hm_aluno_id
+  on cs.contatos_hm (aluno_id)
+  where aluno_id is not null;
+
+comment on index cs.idx_contatos_hm_aluno_id is
+  'Vinculo contrato -> aluno do GPS. Sem ele, cada abertura do Financeiro fazia Seq Scan em contatos_hm (310 linhas, medido em 10/09/2026). Parcial: so 117 linhas tem aluno_id.';
+
+-- As 49 policies foram alteradas por `alter policy ... using (...)` a
+-- partir do texto vigente. O padrão aplicado:
+--
+--   aluno_id = gps.aluno_atual()   ->  aluno_id = (select gps.aluno_atual())
+--   gp_is_admin()                  ->  (select public.gp_is_admin())
+--
+-- Conferir o plano a qualquer momento (tem de mostrar InitPlan, não a
+-- chamada crua no Filter):
+--
+--   select set_config('request.jwt.claims',
+--     json_build_object('sub','<user_id de um aluno>','role','authenticated')::text, true);
+--   set local role authenticated;
+--   explain (analyze, buffers) select id from gps.etapa1_clientes;

@@ -47,8 +47,17 @@ const MOTIVO_MAX = 300;
  * usa o valor como texto inicial do campo (prefill, nada mais — quem valida
  * continua sendo `abrirChamado`).
  */
-export const HREF_CHAMADO_TROCA =
-  "/chamados?assunto=Trocar%20cliente%20acompanhado";
+/**
+ * 🔴 Recebe `basePath` porque o link ABSOLUTO ejetava o admin do ambiente:
+ * `/chamados` redireciona quem é admin para `/admin/chamados`, e ele perdia
+ * o aluno, o cliente e o `?assunto=`. No Modo Assistência o destino tem de
+ * ser `/admin/aluno/<id>/chamados`.
+ *
+ * Default vazio = o caminho do aluno, que é o caso mais comum.
+ */
+export function hrefChamadoTroca(basePath = ""): string {
+  return `${basePath}/chamados?assunto=Trocar%20cliente%20acompanhado`;
+}
 
 /** A frase que explica a estrela travada. Repetida em 4 telas, escrita aqui. */
 export const TEXTO_TROCA_POR_CHAMADO =
@@ -57,12 +66,15 @@ export const TEXTO_TROCA_POR_CHAMADO =
 /** O link "abra um chamado", já com o assunto preenchido. */
 export function LinkTrocaPorChamado({
   className = "",
+  basePath = "",
 }: {
   className?: string;
+  /** Vazio para o aluno; `/admin/aluno/<id>` no Modo Assistência. */
+  basePath?: string;
 }) {
   return (
     <Link
-      href={HREF_CHAMADO_TROCA}
+      href={hrefChamadoTroca(basePath)}
       className={
         "inline-flex items-center gap-1 font-medium text-accent-foreground underline underline-offset-4 " +
         className
@@ -82,7 +94,11 @@ export function LinkTrocaPorChamado({
  * recusa (42501) que o aluno desmarque a estrela, marque outro cliente ou
  * apague este. A tela diz o que aconteceu e por onde se troca.
  */
-export function AvisoEscolhaFeita() {
+export function AvisoEscolhaFeita({
+  basePath = "",
+}: {
+  basePath?: string;
+} = {}) {
   return (
     <div className="grid gap-2 rounded-xl border border-borda-fina bg-superficie-afundada p-3.5">
       <p className="corpo-sm">
@@ -92,7 +108,7 @@ export function AvisoEscolhaFeita() {
         contrato assinado, perfil DISC e problemas.
       </p>
       <p className="corpo-sm text-muted-foreground">
-        <LinkTrocaPorChamado /> — a equipe faz a troca com você.
+        <LinkTrocaPorChamado basePath={basePath} /> — a equipe faz a troca com você.
       </p>
     </div>
   );
@@ -115,9 +131,11 @@ export function AvisoEscolhaFeita() {
 export function AvisoAcompanhamento({
   confirmadoEm,
   admin = false,
+  basePath = "",
 }: {
   confirmadoEm: string;
   admin?: boolean;
+  basePath?: string;
 }) {
   return (
     <div className="grid gap-2 rounded-xl border border-sucesso-foreground/25 bg-sucesso p-3.5">
@@ -148,13 +166,13 @@ export function AvisoAcompanhamento({
           </p>
           {/* A MESMA linha que o aluno lê, visível só dentro da prévia. */}
           <p className="hidden corpo-sm text-sucesso-foreground [html[data-previa=aluno]_&]:block">
-            Precisa trocar? <LinkTrocaPorChamado /> — a equipe faz a troca com
+            Precisa trocar? <LinkTrocaPorChamado basePath={basePath} /> — a equipe faz a troca com
             você.
           </p>
         </>
       ) : (
         <p className="corpo-sm text-sucesso-foreground">
-          Precisa trocar? <LinkTrocaPorChamado /> — a equipe faz a troca com
+          Precisa trocar? <LinkTrocaPorChamado basePath={basePath} /> — a equipe faz a troca com
           você.
         </p>
       )}
@@ -174,10 +192,12 @@ export function AvisoOutroConfirmado({
   nome,
   admin = false,
   confirmado = true,
+  basePath = "",
 }: {
   nome: string | null;
   admin?: boolean;
   confirmado?: boolean;
+  basePath?: string;
 }) {
   return (
     <p className="corpo-sm text-muted-foreground">
@@ -188,7 +208,7 @@ export function AvisoOutroConfirmado({
         "A troca é feita na ficha daquele cliente, no Modo Assistência."
       ) : (
         <>
-          <LinkTrocaPorChamado /> — a equipe faz a troca com você.
+          <LinkTrocaPorChamado basePath={basePath} /> — a equipe faz a troca com você.
         </>
       )}
     </p>

@@ -1,0 +1,79 @@
+-- Plantão — a exceção nominal da equipe volta a funcionar.
+--
+-- 🔴 O QUE ESTAVA QUEBRADO (achado em 10/09/2026, algumas horas depois de eu
+--    mesmo ter criado o problema)
+--
+--   As seis travas da migração ...226 conferem a condição de VERDADE — "tem
+--   ambiente no GPS" — ao vivo, em vez de confiar na flag
+--   `bloqueado_por_programa`, que é cache do cron da madrugada. Isso estava
+--   certo e continua.
+--
+--   O que passou despercebido: ao ignorar a flag, elas passaram a ignorar
+--   também `bloqueio_excecao` — a coluna que existe desde 08/09 justamente
+--   para a equipe poder liberar alguém à mão. Ou seja: **a liberação manual
+--   deixou de funcionar para quem tem ambiente no GPS**, que é exatamente o
+--   caso em que ela é necessária.
+--
+--   Medido: desbloquear a flag de 5 pessoas não bastou — `plantao_inscrever`
+--   continuava recusando as duas testadas.
+--
+-- O QUE MOTIVOU O ACHADO
+--   A planilha oficial dos 141 tem 6 linhas duplicadas (a mesma pessoa
+--   repetida). Decisão do Marcio, 10/09: "fds se eles duplicaram, tem o que
+--   fazer não, mantém elas no programa e no acelera, é o jeito".
+--
+--   Para cumprir isso eu precisava desbloqueá-las no Plantão — e aí o furo
+--   apareceu.
+--
+-- A CORREÇÃO
+--   O predicado das quatro RPCs públicas passa de
+--
+--     "não tem ambiente no GPS"
+--   para
+--     "não tem ambiente no GPS **ou** a equipe abriu exceção para este
+--      e-mail"
+--
+--   A exceção entra DENTRO do `not exists`, consultando `plantao_alunos`
+--   pelo e-mail — o único dado garantidamente disponível nas quatro
+--   funções (o alias da tabela varia entre elas).
+--
+-- ⚠️ A EXCLUSIVIDADE NÃO MUDOU. Quem migra para o Programa continua sendo
+--    bloqueado; o cron continua reconciliando. O que volta a existir é o
+--    poder da equipe de abrir exceção NOMINAL — que é o propósito da coluna
+--    `bloqueio_excecao` desde que ela foi criada.
+--
+--    Estado depois: 5 com exceção · 37 ainda bloqueados · 379 elegíveis.
+--
+-- PROVA (rollback, como `anon`):
+--   Eliane (exceção)        -> true
+--   Heber  (exceção)        -> true
+--   bloqueado SEM exceção   -> false
+--
+-- REVERSÃO
+--   Tirar o `and not exists (... pe.bloqueio_excecao)` das quatro funções.
+--   (Mas aí a liberação manual volta a não funcionar — foi o que motivou.)
+
+-- As 4 funções foram alteradas por edição do corpo VIGENTE. O predicado
+-- acrescentado, dentro do `not exists` que já existia:
+--
+--   and not exists (select 1 from gps.plantao_alunos pe
+--                    where pe.email = <email> and pe.bloqueio_excecao)
+--
+--   plantao_inscrever · plantao_revelar_link
+--   plantao_calendario · plantao_minha_inscricao
+--
+-- Corpos completos:
+--   select p.proname, pg_get_functiondef(p.oid) from pg_proc p
+--     join pg_namespace n on n.oid = p.pronamespace
+--    where n.nspname = 'gps' and p.proname in ('plantao_inscrever',
+--          'plantao_revelar_link','plantao_calendario','plantao_minha_inscricao');
+
+-- Exceção aplicada às 5 duplicadas da planilha (dado de pessoa NÃO entra em
+-- migration — fica aqui como registro de auditoria):
+--
+--   update gps.plantao_alunos
+--      set bloqueado_por_programa = false, bloqueio_excecao = true,
+--          atualizado_em = now()
+--    where email in ('elianelpborges@gmail.com','rgerato@terra.com.br',
+--                    'jenisrocha@gmail.com','manuel@dgr.com.br',
+--                    'heber.masp@gmail.com');

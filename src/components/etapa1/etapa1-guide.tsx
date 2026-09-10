@@ -19,6 +19,7 @@ import type {
 } from "@/lib/types";
 import {
   META_CLIENTES,
+  faltaParaContar,
   META_REUNIOES,
   TAREFAS_ETAPA1,
   calcularMetricasEtapa1,
@@ -89,6 +90,12 @@ export function Etapa1Guide({
   } = useMemo(
     () => calcularMetricasEtapa1(clientesIniciais, manual),
     [clientesIniciais, manual],
+  );
+
+  /** O que falta para os já listados contarem. `frase` é null quando nada falta. */
+  const faltam = useMemo(
+    () => faltaParaContar(clientesIniciais),
+    [clientesIniciais],
   );
 
   const enfases = useMemo(
@@ -177,7 +184,15 @@ export function Etapa1Guide({
           rotulo="Clientes com os dados"
           valor={`${comDados}/${META_CLIENTES}`}
           meta={(comDados / META_CLIENTES) * 100}
-          hint={`${preenchidos} listados · ${comDados} com nome, telefone e nível`}
+          hint={
+            // 🔑 Quando há cliente incompleto, o hint diz QUAL campo falta —
+            // não só o número. O caso que motivou (medido em 10/09/2026): um
+            // aluno com 51 clientes cadastrados, nome e telefone em todos e
+            // nível em nenhum, lia "0 de 30" ao lado de 51 nomes na lista.
+            // O critério não mudou; a explicação sim.
+            faltam?.frase ??
+            `${preenchidos} listados · ${comDados} com nome, telefone e nível`
+          }
         />
         <KpiCard
           icone={<CalendarCheck />}

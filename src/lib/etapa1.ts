@@ -599,3 +599,68 @@ export function progressoFaturamento(
     clientes: contratados,
   };
 }
+
+/**
+ * O que falta para os clientes já listados contarem na tarefa 1.
+ *
+ * 🔑 Existe porque o contador sozinho MENTE por omissão. O caso que motivou
+ * (Carlos Ferreira, medido em 10/09/2026): 51 clientes cadastrados, nome e
+ * telefone em todos os 51, nível de relacionamento em NENHUM — a tela dizia
+ * "0 de 30" enquanto ele via 51 nomes na lista, e os passos 2 e 3 ficavam
+ * travados sem explicação acionável.
+ *
+ * O critério NÃO muda (decisão do Marcio: "ele precisa preencher todos os
+ * requisitos básicos para considerarmos que ele tem um cliente completo de
+ * fato"). O que muda é a tela dizer QUAL campo falta, em vez de só o número.
+ *
+ * Medido na base: 11 ambientes e 153 clientes travados SÓ pelo nível — é de
+ * longe o padrão dominante, e é o mais fácil de resolver.
+ */
+export function faltaParaContar(clientes: ClienteEtapa1[]): {
+  /** Quantos clientes existem mas não contam. */
+  incompletos: number;
+  /** A frase pronta, ou `null` quando não há nada a dizer. */
+  frase: string | null;
+} {
+  const incompletos = clientes.filter(
+    (c) => !(c.nome.trim() && c.telefone && c.nivel_relacionamento),
+  );
+  if (incompletos.length === 0) return { incompletos: 0, frase: null };
+
+  const semNome = incompletos.filter((c) => !c.nome.trim()).length;
+  const semTel = incompletos.filter((c) => !c.telefone).length;
+  const semNivel = incompletos.filter((c) => !c.nivel_relacionamento).length;
+
+  const n = incompletos.length;
+  const plural = n === 1 ? "cliente" : "clientes";
+
+  // Um campo só faltando em todos: a frase pode ser específica, e é a que
+  // resolve o caso real. Mais de um campo: a frase genérica, senão ela
+  // viraria uma lista que ninguém lê.
+  const soNivel = semNivel === n && semNome === 0 && semTel === 0;
+  const soTel = semTel === n && semNome === 0 && semNivel === 0;
+  const soNome = semNome === n && semTel === 0 && semNivel === 0;
+
+  if (soNivel) {
+    return {
+      incompletos: n,
+      frase: `${n} ${plural} sem o nível de relacionamento. Preencha para eles contarem aqui.`,
+    };
+  }
+  if (soTel) {
+    return {
+      incompletos: n,
+      frase: `${n} ${plural} sem telefone. Preencha para eles contarem aqui.`,
+    };
+  }
+  if (soNome) {
+    return {
+      incompletos: n,
+      frase: `${n} ${plural} sem nome. Preencha para eles contarem aqui.`,
+    };
+  }
+  return {
+    incompletos: n,
+    frase: `${n} ${plural} ainda sem nome, telefone ou nível de relacionamento.`,
+  };
+}

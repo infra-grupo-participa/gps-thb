@@ -7,12 +7,12 @@
  * links. Cada link vai abrir um pop-up com o conteúdo da mensagem, com um
  * botão, uma funcionalidade para copiar aquilo e as instruções de envio"*.
  *
- * 🔑 O TEXTO É COPIADO COM OS ASTERISCOS. O `*negrito*` do WhatsApp faz
- * parte da mensagem: as instruções mandam negritar trechos específicos
- * ("mais que isso vira panfleto"). Renderizar bonito na tela e copiar sem os
- * asteriscos entregaria ao cliente uma mensagem sem a ênfase desenhada — por
- * isso a tela mostra o texto CRU, do mesmo jeito que vai para a área de
- * transferência. O que se vê é o que se cola.
+ * 🔑 O QUE SE VÊ É O QUE SE COLA. A tela mostra o texto do mesmo jeito que
+ * ele vai para a área de transferência — parágrafos e tudo. Os `*asteriscos*`
+ * ficam à mostra de propósito: são o negrito do WhatsApp, e as instruções
+ * mandam negritar trechos específicos ("mais que isso vira panfleto").
+ * Renderizar bonito aqui e copiar sem eles entregaria ao cliente uma
+ * mensagem sem a ênfase que a equipe desenhou.
  *
  * 🔴 NÃO EXISTE BOTÃO DE COPIAR IMAGEM. O Marcio falou em "copiar a imagem",
  * mas o documento (`Método Holding Brasil.md`) não traz imagem nenhuma — as
@@ -106,7 +106,12 @@ function CorpoDaMensagem({ mensagem }: { mensagem: MensagemDaSequencia }) {
       <div className="grid gap-4">
         <div className="grid gap-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="rotulo text-muted-foreground">A mensagem</span>
+            <span className="rotulo text-muted-foreground">
+              A mensagem
+              <span className="ml-2 font-normal normal-case tabular-nums">
+                {mensagem.texto.length.toLocaleString("pt-BR")} caracteres
+              </span>
+            </span>
             <Button type="button" variant="outline" size="sm" onClick={copiar}>
               {copiado ? (
                 <>
@@ -120,12 +125,24 @@ function CorpoDaMensagem({ mensagem }: { mensagem: MensagemDaSequencia }) {
             </Button>
           </div>
 
-          {/* `whitespace-pre-wrap`: o texto é um bloco só, e as quebras que
-              existirem são as do original. `select-all` para quem preferir
-              copiar à mão. */}
-          <p className="max-h-72 overflow-y-auto rounded-xl border border-borda-fina bg-superficie-afundada p-3 corpo-sm whitespace-pre-wrap select-all">
-            {mensagem.texto}
-          </p>
+          {/* 🔑 UM PARÁGRAFO POR BLOCO, não um paredão.
+
+              A mensagem vai numa ÚNICA mensagem do WhatsApp — a instrução é
+              explícita: "não em quatro balões" — mas com respiro DENTRO.
+              É carta pessoal, e carta pessoal tem parágrafo; o texto
+              corrido de 4 mil caracteres é justamente o que faz a pessoa
+              não ler.
+
+              A quebra dupla vive no próprio texto, então ela vai junto no
+              que se copia. Aqui ela vira espaçamento de verdade, para o
+              aluno conferir na tela o que vai mandar.
+
+              `select-all` para quem preferir copiar à mão. */}
+          <div className="max-h-80 space-y-3 overflow-y-auto rounded-xl border border-borda-fina bg-superficie-afundada p-4 corpo-sm leading-relaxed select-all">
+            {mensagem.texto.split(/\n{2,}/).map((paragrafo, i) => (
+              <p key={i}>{paragrafo}</p>
+            ))}
+          </div>
 
           <p aria-live="polite" className="corpo-sm text-muted-foreground">
             {copiado

@@ -1390,6 +1390,16 @@ explicada e copy da "central de todos os clientes"; `diario-mencoes.tsx`; Centra
 ⚠️ **Módulo `"use server"` só exporta função async**: `export const LOTE_ACESSOS_MAXIMO` dentro de
 `admin/actions.ts` zerava os exports do módulo e derrubava `/admin` com 500 — `tsc` não pega, só
 o build. A constante vive em `src/lib/acessos-lote.ts`.
+**Regras que o Fable cobrou (correções em `f8b8669`):** o portal é carregado por
+**`next/dynamic`** (`onboarding/portal-lazy.tsx`) — montado estaticamente no layout raiz ele ia
+para `/login` e `/p/plantao` (236 → 260 KB gzip); `concluir()` acontece **antes** de avançar ao
+tour (se falhar, o aluno fica no passo 7 com a frase do servidor; retomada com `passo_atual ≥ 8`
+sem concluir volta ao 7); passos 2 e 3 travam o "Continuar" com a razão escrita; o gate devolve
+`null` para membro **sem `pessoa_aluno_id`** (a Central resolve) e mostra só o passo 0 para quem
+já concluiu mas recebeu senha temporária nova; `salvarPassoOnboarding` aceita `{}` (os passos 1 e
+7→8 só avançam o ponteiro — uma guarda "Nada para salvar" prendia todo aluno no passo 1);
+`admin_adicionar_socio` grava `pessoa_aluno_id` do sócio (`…212`) — sem isso o sócio novo não
+tinha identidade para responder.
 
 **Pendências desta feature com o João:** B-S1 texto/valor do saldo ("15k"); B-D1 lista dos
 documentos necessários (passo 7 está genérico e opcional); B-W1 URL/canal do Slack (feature
@@ -1723,7 +1733,7 @@ limita à própria linha. Já estava resolvido; o documento é que não tinha si
 - [x] **Redesign "Trilha" (2026-09-09, `cfe4938` + `17c3a88`)** — tokens quentes, tipografia com
       salto, 4 pares semânticos, botão primário AA, 17 telas; 0 falhas de contraste medidas.
       Ver "🎨 Redesign".
-- [x] **Mega feature de 10/09/2026** (`af7c79a` + `70c5427`, migrações `…200`–`…210`): onboarding
+- [x] **Mega feature de 10/09/2026** (`af7c79a` + `70c5427` + `f8b8669`, migrações `…200`–`…210` e `…212`): onboarding
       de 10 passos para todos os alunos (senha temporária individual + troca obrigatória, cliente 1,
       honorários + contrato quando em execução, tour), trava do favorito pela equipe, grau de
       relação, @menção no Diário (Slack desligado até a URL), dashboard executivo com gráficos SVG,

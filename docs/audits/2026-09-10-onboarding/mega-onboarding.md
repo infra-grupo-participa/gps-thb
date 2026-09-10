@@ -2052,3 +2052,170 @@ sessão real.
 5. **Não toquei** em `src/components/clientes/**`, `admin/diario-form.tsx`, `admin/central/**`,
    `resolver/**`, páginas de clientes, migrations, `src/lib/types.ts` e `src/lib/etapa1.ts`.
 6. **`mocks.ts` não existe no repo** — conferido com `find src -name "mocks.ts*"`: vazio.
+
+## Orquestrador — correções do Fable (backend, 10/09)
+- `src/app/onboarding/actions.ts`: guarda "Nada para salvar" REMOVIDA — `{}` é válido (passos 1 e 7→8 só avançam `passo_atual`; a RPC aceita objeto vazio).
+- `src/lib/slack.ts`: `autor`/`aluno` escapados para mrkdwn (`& < >`).
+- `src/lib/data/onboarding.ts`: `getMeuOnboarding` memoizada por requisição (`cache()`), gate + `/perfil` na mesma renderização = 1 RPC.
+- Migração `…212` (APLICADA): `admin_adicionar_socio` grava `pessoa_aluno_id = p_socio_aluno_id` (corpo vigente + coluna; se a pessoa já for de outro membro, nasce sem e a Central resolve) — causa raiz do sócio novo sem pessoa.
+- tsc/eslint limpos. Restante (4 itens de UI + bundle) com o frontend.
+
+---
+
+## Frontend — correções do Fable
+
+> `frontend-engineer` (Opus) · 10/09/2026 · sobre `main` pós `70c5427`, com as migrations 200–210 aplicadas.
+> As **4 correções obrigatórias**, nada além. **Nenhum commit.** Não toquei em `src/app/onboarding/actions.ts`
+> (o orquestrador está corrigindo a guarda "Nada para salvar" lá) nem em migrations.
+
+### 1. Ordem `concluir()` → passo 8 (o pop-up que reabria para sempre)
+
+**O defeito:** `avancar()` gravava `salvarPasso(8, {})` **antes** de `concluir()`. Se `concluir` falhasse
+(o caso real: "execução em andamento" sem contrato, que a RPC recusa com 22023), o banco já tinha
+`passo_atual = 8` — e o 8 é a apresentação, que não tem "Voltar" e termina em "Pronto". A pessoa
+recarregava, retomava no 8, via o tour, via "Pronto" e o pop-up voltava no acesso seguinte, para
+sempre, **sem nunca ter entregado as respostas**.
+
+| Arquivo:linha | O que passou a valer |
+|---|---|
+| `src/components/onboarding/index.tsx:207-219` | ao sair do 7, chama **`concluir()` primeiro**; erro → `setSalvando(false)` + `setErro(c.erro)` e **fica no 7**; sucesso → `setFavoritado` + `irPara(8)`. `salvarPasso` **não é chamado** nesse trecho |
+| `src/components/onboarding/index.tsx:221-227` | o caminho normal (passos 1–6) segue gravando `salvarPasso(destino)` e só avança sem erro |
+| `src/components/onboarding/index.tsx:109-120` | **retomada**: `status !== "concluido" && passoAtual >= 8` → começa no **7** |
+
+**Nada é gravado para os passos 8 e 9.** Depois de concluído o banco recusa `onboarding_salvar_passo`
+(22023, conferido no B5 do backend), então a apresentação vive só como estado de tela — fechar no meio
+dela não perde resposta, e `/perfil` → "Rever a apresentação" a devolve inteira. O erro de `concluir`
+aparece no `role="alert" aria-live="assertive"` que já existia (`index.tsx:409-413`), com a frase do
+servidor, e o "Continuar" volta a ficar clicável.
+
+### 2. Travas dos passos 2 e 3
+
+`src/components/onboarding/travas.ts:20-23` (a entrada ganhou `origem` e `fase`) e `:45-50`:
+
+```ts
+if (passo === 2 && !entrada.origem) return "Escolha de onde virá o seu cliente 1.";
+if (passo === 3 && !entrada.fase)   return "Informe em que fase você está com este cliente.";
+```
+
+São **as mesmas frases** que `salvarPassoOnboarding` devolveria — antes o "Continuar" ficava clicável e
+falhava no servidor, que é exatamente o "clicar e falhar" que o arquivo existe para não ter. Ligado em
+`index.tsx:249-259` (`razaoParaTravar({ ..., origem, fase, ... })`).
+
+### 3. Gate — membro sem pessoa e senha temporária sobre questionário concluído
+
+| Arquivo:linha | O que mudou |
+|---|---|
+| `src/components/onboarding/onboarding-gate.tsx:103-107` | **Guarda 3**: `if (!ctx.pessoaAlunoId) return null`. Antes o portal montava e **toda** action devolvia *"Seu cadastro ainda não está vinculado ao programa"* em loop — e do passo 0 não há como sair. Quem resolve é "Vincular pessoa", na Central |
+| `src/components/onboarding/onboarding-gate.tsx:110-114` | a saída por concluído virou `status === "concluido" && !dados.precisaTrocarSenha`. A flag é olhada **antes** |
+| `src/components/onboarding/index.tsx:99-106` | `soSenha` = `!soTour && status === "concluido" && precisaTrocarSenha` |
+| `src/components/onboarding/index.tsx:161-170` | `soSenha` ⇒ sequência **`[0, 9]`** — nenhuma pergunta reabre |
+| `src/components/onboarding/index.tsx:240-242` | `trocarSenha()` bem-sucedida vai para o 9 (e não para o 1) quando `soSenha` |
+| `src/components/onboarding/index.tsx:382-386` · `rodape.tsx:15-16,93-94` | o 9 diz *"Senha alterada. Ela vale para todos os portais do grupo."* e o botão é **"Continuar"**, não "Começar" (a pessoa não está começando nada — já respondeu tudo) |
+
+Não mexi em `src/lib/data/onboarding.ts:133-135`: a guarda no gate resolve com uma linha e sem mudar a
+semântica de `getMeuOnboarding()` para o `/perfil` (`RespostasDoInicio` já devolve `null` nesse estado).
+
+### 4. Bundle — o portal saiu de TODAS as rotas
+
+**A causa:** guarda de servidor não é guarda de bundle. O gate devolvia `null` em `/login`, mas o
+`import` estático de um client component entra no `page_client-reference-manifest.js` de **toda** rota.
+
+- ✨ `src/components/onboarding/portal-lazy.tsx` (novo, 43 linhas): `next/dynamic(…, { ssr: false })`
+  sobre `./index`, no padrão de `CriarAcesso`/`GerenciarAcesso`/`ToasterLazy`. O `import type` do
+  componente dá as props (`ComponentProps<typeof OnboardingPortal>`) **sem** criar aresta estática —
+  trocar por `import` normal desfaz tudo em silêncio, e só a medição acusa (está escrito no arquivo).
+- ✏️ `onboarding-gate.tsx:14,117` — monta `<OnboardingPortalLazy>`.
+- ✏️ `src/components/perfil/rever-apresentacao.tsx:7,79` — mesma troca: "Rever a apresentação" é o
+  evento raro do `/perfil`, e o portal já só montava depois do clique.
+
+`ssr: false` não custa experiência: é um diálogo modal — não há conteúdo a hidratar, altura a reservar
+nem layout a deslocar; o chunk baixa assim que a página hidrata.
+
+**Medido** (`node docs/audits/2026-09-09-rodada-final/mede-bundle.mjs http://localhost:3991` e
+`mede-manifest.mjs`, com `next start` sobre `rm -rf .next && npm run build`):
+
+| rota | antes (o número do Fable) | depois | aceite |
+|---|---:|---:|---|
+| `/login` | 260 | **236** | ≤ 245 ✅ (alvo 236) |
+| `/cadastro` | — | 237 | — |
+| `/esqueci-senha` | — | 236 | — |
+| `/p/plantao` | 288 | **284** | volta ao valor da Onda 4 ✅ |
+| `/` (manifest) | ~89 | **75** | ~75 ✅ |
+| `/pasta` (manifest) | ~87 | **73** | ~75 ✅ |
+| `/admin/aluno/[alunoId]` (manifest) | ~90 | **76** | ~75 ✅ |
+| `/perfil` (manifest) | — | 99 | — |
+| `/admin` · `/clientes` · `/chamados` · `/etapa/[n]` | — | 167 · 153 · 114 · 105 | não são alvo da correção |
+
+### 5. Verificação rodada (resultado literal)
+
+```
+$ npx tsc --noEmit
+(sem saída — 0 erro)
+
+$ npm run lint
+> gps-portal@0.1.0 lint
+> eslint
+(sem saída — 0 erro, 0 aviso)
+
+$ rm -rf .next && npm run build
+✓ Compiled successfully in 8.9s
+✓ Generating static pages using 7 workers (21/21) in 527ms
+(35 rotas, todas ƒ dinâmicas; o único Warning é o pré-existente de Cache-Control)
+```
+
+**Chromium (Playwright) sobre `next start -p 3991`** — `tmp/squad/verifica-fable-front.mjs`:
+
+```
+### /login  status=200      [role=dialog]: 0 · scripts: 19 · chunk com "De onde virá o seu cliente 1": nenhum · console: limpo
+### /p/plantao status=200   [role=dialog]: 0 · texto de onboarding: 0 · scripts: 23 · chunk com a pergunta: nenhum · console: limpo
+```
+
+(o único casamento de texto em `/login` é *"Programa de Implementação Assistida"*, que é o **nome do
+produto** no cabeçalho da tela de login, não copy do questionário.)
+
+**Fluxo com as actions stubadas** (`next dev` + harness temporário em `/p/tmp-fable`, **apagado** ao
+fim; roteiros em `tmp/squad/verifica-fable-fluxo.mjs` e `verifica-fable-senha.mjs`):
+
+```
+## (a) 1 → 2 e a trava do passo 2
+  passo 2: "Passo 2 de 9" · pergunta visível: true
+  Continuar desabilitado: true
+  razão escrita: "Escolha de onde virá o seu cliente 1."
+  após escolher: desabilitado false → clique → "Passo 3 de 7" (captação encolhe o caminho) · salvou: [2,5]
+
+## (e) a trava do passo 3
+  Continuar desabilitado: true · razão: "Informe em que fase você está com este cliente."
+
+## (b) erro em concluir() → fica no 7
+  antes : Passo 7 de 9 | { salvou: [], concluiu: 0 }
+  depois: Passo 7 de 9  (título "Programa de Implementação Assistida", NÃO "Conhecendo o portal")
+  role=alert: "Anexe o contrato de honorários assinado para seguir."
+  contadores: { salvou: [], concluiu: 1 }   ← nenhum salvarPasso(8)
+  Continuar clicável de novo: true
+
+## (c) concluir() ok → passo 8
+  título: "Conhecendo o portal" | Passo 8 de 9 · contadores: { salvou: [], concluiu: 1 } · sem alerta
+
+## (d) retomada com passo_atual=8 e questionário em aberto
+  título: "Programa de Implementação Assistida" | Passo 7 de 9 · tem Continuar: 1
+
+## (f) concluído + precisaTrocarSenha → só o passo 0
+  título: "Crie a sua senha" | Passo 1 de 2 · reabre pergunta?: false · botão: "Salvar a senha"
+  após salvar → "Pronto" | Passo 2 de 2 | "Senha alterada. Ela vale para todos os portais do grupo." | botão "Continuar"
+```
+
+**0 erro de console em todas as passagens.** O servidor da 3991 foi derrubado ao fim (`porta 3991: 000`);
+`src/app/p/` voltou a ter só `layout.tsx` e `plantao/`.
+
+### 6. O que NÃO consegui verificar
+
+- **Telas logadas de verdade** — não há credencial de aluno nesta máquina; o fluxo foi exercido com as
+  actions stubadas. O que a stub **não** cobre: a RPC recusando `salvar_passo` depois de concluído
+  (22023 — provado no B5 do backend, não por mim) e a policy do bucket com sessão real.
+- **A retomada real com `passo_atual = 8` no banco.** O cliente devolve essas linhas ao passo 7, mas a
+  linha continua com `passo_atual = 8` gravado (a RPC só avança). Não atrapalha — o clamp roda a cada
+  carregamento e a conclusão bem-sucedida carimba `concluido_em` — mas vale a conferência do
+  orquestrador: `select count(*) from gps.onboarding_respostas where concluido_em is null and passo_atual >= 8;`
+- **`src/app/onboarding/actions.ts`** — não li a versão em edição pelo orquestrador. Se a guarda "Nada
+  para salvar" mudar a assinatura de `salvarPassoOnboarding`, o tipo `OnboardingActions`
+  (`src/components/onboarding/tipos.ts:45`) acompanha.

@@ -55,16 +55,24 @@ O fetch/branch por etapa fica em `EtapaConteudo` (server). Actions de etapa em `
 `update gps.etapas set liberada=true where id=<n>`.
 
 ### Etapa 01 — checklist do aluno (da planilha oficial)
-Os dois primeiros passos são o **mesmo objetivo** (montar a base de clientes) — exibidos como
-**1.1** e **1.2** — e ambos apontam com um indicador visual para a **aba Clientes**, onde o registro
-acontece. O antigo passo 6 ("preencher os dados dos 30") foi **absorvido como contexto do 1.1**.
-- **1.1** Listar **30 clientes potenciais** com ≥1 dos **7 problemas** (dividendos, lucro presumido,
+⚠️ **ATUALIZADO EM 10/09/2026** (duas decisões do Marcio no mesmo dia):
+1. A **perda pela inércia** e o **nível de relacionamento** (quente/morno/frio) saíram do
+   sistema em definitivo. Com eles saiu a tarefa **1.2**, e a numeração 1.1/1.2 voltou a
+   ser simplesmente **1**.
+2. As tarefas "mensagem padrão" e "mensagem de estudo de caso" viraram **uma só**: a
+   sequência de 3 mensagens do `Método Holding Brasil.md`, com a copy pronta em
+   `src/lib/mensagens-etapa1.ts`.
+
+O passo 1 aponta com um indicador visual para a **aba Clientes**, onde o registro acontece.
+O antigo passo 6 ("preencher os dados dos 30") foi **absorvido como contexto dele**.
+- **1** Listar **30 clientes potenciais** com ≥1 dos **7 problemas** (dividendos, lucro presumido,
   aluguéis PF, negócio familiar, patrimônio dependente do fundador, patrimônio em risco, inventário
-  caro) — já preenchendo nome, telefone, nível de relacionamento, registro do contato e a data da
-  reunião preliminar (automática: conclui com 30 preenchidos + dados essenciais).
-- **1.2** Identificar a **perda pela inércia** de cada um dos 30 (automática).
-- **2** Mensagem padrão (formação técnica + perda pela inércia).
-- **3** Mensagem "estudo de caso" (dor específica; estimular conversa; não oferecer nada).
+  caro) — já preenchendo nome, telefone, grau de relação, registro do contato e a data da
+  reunião preliminar. Automática: conclui com **30 fichas completas**, e ficha completa é
+  **nome + telefone** (ver "🔴 Ficha completa" abaixo).
+- **2** A **sequência de 3 mensagens** para marcar a reunião preliminar: problema (dia 1),
+  solução (dia 3), urgência + dois horários (dia 5). Cada uma abre num diálogo com a copy
+  pronta, botão de copiar e as instruções de envio. Só destrava com os 30 listados.
 - **4** Ligação com **2 opções de agenda**. **Meta: 15 reuniões preliminares.**
 - **5** Criar grupos de WhatsApp com quem aderiu à Reunião Preliminar.
 - **6** Entrevista prévia (formulário com **perfil DISC**); identificar tomadores de decisão.
@@ -73,6 +81,49 @@ acontece. O antigo passo 6 ("preencher os dados dos 30") foi **absorvido como co
 
 (No banco os `num` das tarefas manuais ficam estáveis: 3, 4, 5, 7, 8, 9, 10 → exibidos 2..8; a
 tarefa `num=6` foi removida.)
+
+
+### 🔴 Ficha completa, a trava dos 30 e o que saiu (10/09/2026)
+
+**Ficha completa = nome + telefone.** É a conta (`comDados` em
+`src/lib/etapa1.ts`, `clientes_com_dados` na RPC) que decide a **trava da
+fase Inicial**: sem 30 fichas completas, o aluno não sai dela, e **nenhuma
+outra evidência** o tira (nem reunião agendada, nem contrato).
+
+Antes de 10/09 a regra era um `or` — bastava **um** cliente com data de
+reunião preenchida para pular a fase. Medido: **14 de 19** ambientes em
+Captação estavam lá sem ter os 30.
+
+⚠️ **`grau_relacao` NÃO entra na conta**, embora seja obrigatório ao criar
+cliente novo. Medido em 10/09: 595 clientes tinham `nivel_relacionamento` e
+só 27 tinham `grau_relacao`. Exigir o grau zeraria os 5 ambientes que já
+haviam batido os 30 e obrigaria 60 ambientes a revisitar fichas para
+reinformar o que já haviam informado. **Não retroage.**
+
+**Congelados (some da tela, fica no banco — molde do `status`):**
+
+| coluna | linhas preservadas | trava |
+|---|---:|---|
+| `nivel_relacionamento` | 595 | trigger 42501 |
+| `perda_inercia` | 101 | trigger 42501 |
+
+Os dois saíram da **allowlist de runtime** de `PatchCliente`
+(`src/app/clientes/actions.ts`) — é ali que o congelamento vira real, porque
+Server Action é endpoint HTTP e o tipo só vale em compilação.
+
+🔑 **`nivel_relacionamento` NÃO foi convertido em `grau_relacao`**: um é
+TEMPERATURA (quão perto de fechar), o outro é TIPO DE VÍNCULO (como conhece
+a pessoa). Existe parente frio e lead quente — converter seria inventar o
+vínculo de 595 pessoas reais.
+
+**FICA:** `data_reuniao_preliminar` (alimenta `agendados`), `grau_relacao`,
+`fase`, `valor_honorarios`, `contrato_*`, `registro_contato`.
+
+Efeito nas fases (medido depois de aplicar): Captação **5 → 11**, todos com
+no mínimo 30 fichas. Ninguém desceu de fase — a fase é **derivada na
+leitura**, então nada é apagado e quem completar os 30 sobe sozinho.
+
+Migrações `…238` (a trava) e `…239` (o congelamento).
 
 ## Papéis / acesso
 
@@ -393,7 +444,7 @@ mesmo projeto Supabase físico, schemas `cs`/`public` fora de `gps`:**
   sticky) com o painel **`HomeResumo`** (progresso geral + clientes/reuniões/perda num único card).
   Os atalhos Clientes/Pasta/Materiais foram removidos da home (já estão no `NavTabs` do header).
 - **Cliente favoritado** (`FavoritoDestaque`, compartilhado aluno/admin): card **só informativo**
-  do cliente que a equipe acompanha — nome, fase, telefone/WhatsApp, perda pela inércia e
+  do cliente que a equipe acompanha — nome, fase, telefone/WhatsApp e
   "Abrir ficha". É Server Component (sem `"use client"`, sem estado, sem action).
 
 ### 📓 Diário do aluno (2026-09-08)
@@ -1504,7 +1555,8 @@ arquiteto (§A–K), contratos, bloco de conferência e vetores de pentest estã
   desmarca. Casa da escrita: a ficha no modo assistência; a Central só linka.
 - **Grau de relação** (`etapa1_clientes.grau_relacao`, 6 valores fechados: parente · amigo ·
   conhecido · indicação · cliente atual · lead) é **tipo de vínculo**, ortogonal a
-  `nivel_relacionamento` (temperatura). `null` = "Não informado" — **nunca** exibir como "Lead".
+  `nivel_relacionamento` (temperatura), que foi **CONGELADO em 10/09/2026** e não existe mais
+  na UI. `null` = "Não informado" — **nunca** exibir como "Lead".
   **Não entra em `comDados`** (reabriria a tarefa 1 de quem já a concluiu).
 - **@menção → Slack sem tirar o texto do perímetro.** `gps.nota_mencoes` (gravada, nunca
   reparseada), mencionáveis = `perfis` ativos **dev/admin** (19; o gestor não lê o Diário),

@@ -1,6 +1,7 @@
 "use server";
 
 import { emailParaIlike, emailValido } from "@/lib/texto";
+import { LOTE_ACESSOS_MAXIMO, LOTE_PAUSA_MS } from "@/lib/acessos-lote";
 
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
@@ -481,7 +482,27 @@ export async function diagnosticarLoginAluno(
  */
 export async function criarAcessoAluno(
   alunoId: string,
-  opts?: { email?: string; senha?: string },
+  opts?: {
+    email?: string;
+    senha?: string;
+    /**
+     * Quando o e-mail já existe em `auth.users`, adotar o login preexistente?
+     *
+     * 🔴 Default `true` — é o comportamento de sempre, e os chamadores atuais
+     * (o diálogo "Criar acesso", um aluno por vez, com o admin lendo o
+     * resultado) não mudam.
+     *
+     * 🔴 `false` no LOTE, e isso NÃO é detalhe: `gps.admin_adotar_login_existente`
+     * TROCA A SENHA DA PESSOA EM TODOS OS 7 PORTAIS DO GRUPO e derruba as
+     * sessões dela. Fazer isso 19 vezes num clique é derrubar gente de sistemas
+     * que não têm nada a ver com esta feature — a lição "ampliar escopo
+     * compartilhado amplia todo consumidor". Com `false`, a pessoa volta em
+     * "precisa de decisão", com os programas em que o login já é usado, e o
+     * admin resolve uma a uma em Gerenciar acesso, que já confirma nomeando os
+     * sistemas.
+     */
+    permitirAdocao?: boolean;
+  },
 ) {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
 
@@ -547,6 +568,17 @@ export async function criarAcessoAluno(
         ((diag as { programas?: { programa: string }[] })?.programas ?? []).map(
           (p) => p.programa,
         );
+
+      // 🔴 O LOTE PARA AQUI. Adotar troca a senha da pessoa em todos os portais
+      // do grupo; isso exige uma decisão nomeada, uma a uma.
+      if (opts?.permitirAdocao === false) {
+        return {
+          erro:
+            "Este e-mail já tem login no grupo. Resolva em Gerenciar acesso, que confirma antes de trocar a senha nos outros portais.",
+          precisaDecisao: true,
+          programas,
+        };
+      }
 
       const { data: adotado, error: eAdocao } = await supabase
         .schema("gps")
@@ -668,4 +700,136 @@ export async function removerAlunoGps(alunoId: string) {
   if (error) return { erro: traduzirErroBanco("removerAlunoGps", error) };
   revalidatePath("/admin");
   return {};
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Criar acesso EM LOTE — C.2 da mega feature (10/09/2026)
+// ─────────────────────────────────────────────────────────────────────────
+/**
+ * O pedido do João foi "garantir o acesso de todos os alunos (senha padrão para
+ * os que não tiverem acesso)". A **senha padrão não passa** — `auth.users` é
+ * compartilhado por 7 sistemas do grupo, e uma senha igual para 19 pessoas
+ * significa que qualquer uma delas entra na conta das outras enquanto ninguém
+ * trocar. O Plantão já viveu esse modelo (422 pessoas, a mesma senha, ninguém
+ * trocou) e foi abandonado.
+ *
+ * **A intenção passa inteira**: cada pessoa recebe uma senha temporária
+ * INDIVIDUAL (`gerarSenha()`, que já existe), o e-mail de credenciais sai como
+ * sempre e o portal pede uma senha própria no primeiro acesso (a marca
+ * `gps_senha_temp_em`, migração ...208). Ninguém fica de fora.
+ *
+ * 🔴 TETO DE 20 POR CLIQUE E PAUSA DE 150 ms. A Resend limita **10 req/s**, e o
+ * war-room de 09/09 perdeu 11 de 20 e-mails exatamente aqui — com o banco
+ * reportando `succeeded, 20 rows`. A regra da casa: fila com teto exige
+ * conferir `teto × intervalo` contra o tamanho real da fila ANTES de começar.
+ * 20 × 150 ms ≈ 3 s de envio, ~6,7 req/s — abaixo do limite, com folga.
+ *
+ * 🔴 RELATÓRIO POR PESSOA, nunca um "19 acessos criados" agregado. Falha
+ * silenciosa é a pior espécie: ninguém investiga o que diz ter funcionado.
+ *
+ * 🔴 `permitirAdocao: false`: quem já tem login em outro portal do grupo volta
+ * em `precisaDecisao`, com a lista de programas, **sem nada ter sido alterado**.
+ *
+ * Reaproveita `criarAcessoAluno` sem reescrevê-la — em SÉRIE, de propósito:
+ * `Promise.all` daria 20 requisições simultâneas à Resend e ao GoTrue, que é
+ * precisamente o que a pausa existe para evitar.
+ */
+/*
+ * ⚠️ `LOTE_ACESSOS_MAXIMO` e `LOTE_PAUSA_MS` moram em `src/lib/acessos-lote.ts`
+ * e são IMPORTADOS aqui. Um arquivo `"use server"` só pode exportar função
+ * async: com `export const LOTE_ACESSOS_MAXIMO = 20` nesta linha, o módulo
+ * inteiro deixava de expor exports para o cliente e `/admin` respondia 500
+ * ("Export criarAcessosEmLote doesn't exist in target module"). `tsc --noEmit`
+ * passa limpo nesse estado — quem acusa é o bundler.
+ */
+export interface ResultadoAcessoEmLote {
+  alunoId: string;
+  ok: boolean;
+  erro?: string;
+  email?: string;
+  senha?: string;
+  emailEnviado?: boolean;
+  /** Login já existe em outro portal: exige decisão nomeada, uma a uma. */
+  precisaDecisao?: boolean;
+  programas?: string[];
+}
+
+export async function criarAcessosEmLote(alunoIds: string[]): Promise<{
+  erro?: string;
+  resultados: ResultadoAcessoEmLote[];
+}> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão.", resultados: [] };
+
+  const ids = [...new Set(alunoIds ?? [])].filter(
+    (id) => typeof id === "string" && id.length > 0,
+  );
+  if (ids.length === 0) return { erro: "Selecione ao menos um aluno.", resultados: [] };
+  if (ids.length > LOTE_ACESSOS_MAXIMO) {
+    return {
+      erro: `Selecione no máximo ${LOTE_ACESSOS_MAXIMO} alunos por vez — o envio de e-mail tem limite por segundo.`,
+      resultados: [],
+    };
+  }
+
+  const resultados: ResultadoAcessoEmLote[] = [];
+
+  for (let i = 0; i < ids.length; i += 1) {
+    const alunoId = ids[i];
+    // Pausa ENTRE envios (não antes do primeiro): ~6,7 req/s.
+    if (i > 0) await new Promise((r) => setTimeout(r, LOTE_PAUSA_MS));
+
+    try {
+      const r = await criarAcessoAluno(alunoId, { permitirAdocao: false });
+      const erro = (r as { erro?: string }).erro;
+      if (erro) {
+        resultados.push({
+          alunoId,
+          ok: false,
+          erro,
+          precisaDecisao: Boolean((r as { precisaDecisao?: boolean }).precisaDecisao),
+          programas: (r as { programas?: string[] }).programas,
+        });
+      } else {
+        resultados.push({
+          alunoId,
+          ok: true,
+          email: (r as { email?: string }).email,
+          senha: (r as { senha?: string }).senha,
+          emailEnviado: Boolean((r as { emailEnviado?: boolean }).emailEnviado),
+        });
+      }
+    } catch (e) {
+      // Uma pessoa não pode derrubar o lote inteiro: quem falhou aparece
+      // como falha, e as outras 19 seguem.
+      logErro("criarAcessosEmLote", e, { alunoId });
+      resultados.push({
+        alunoId,
+        ok: false,
+        erro: "Não foi possível criar o acesso agora.",
+      });
+    }
+  }
+
+  // Auditoria: UMA linha por clique, com o resumo (a linha por pessoa é a que
+  // cada criação já gera). Escrita por RPC porque `gps.acessos_log` não tem
+  // policy de insert — um `.insert()` daqui voltaria SEM ERRO e sem linha.
+  const criados = resultados.filter((r) => r.ok).length;
+  const decisao = resultados.filter((r) => r.precisaDecisao).length;
+  const supabase = await createClient();
+  const { error: eLog } = await supabase
+    .schema("gps")
+    .rpc("admin_registrar_lote_de_acessos", {
+      p_total: resultados.length,
+      p_criados: criados,
+      p_falhas: resultados.length - criados - decisao,
+      p_precisa_decisao: decisao,
+    });
+  if (eLog) {
+    // O lote FOI feito; só a linha de auditoria falhou. Registra e segue —
+    // desfazer 20 acessos por causa de um log seria pior.
+    logErro("criarAcessosEmLote.log", eLog, { total: resultados.length });
+  }
+
+  revalidatePath("/admin", "layout");
+  return { resultados };
 }

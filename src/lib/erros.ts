@@ -158,6 +158,84 @@ const FRASES_DO_BANCO: Record<string, string> = {
   // --- gps.admin_liberar_aluno_plantao (migração ...175) ---
   "Informe um e-mail válido.": "Informe um e-mail válido.",
   "Informe o nome.": "Informe o nome.",
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Mega feature — onboarding, trava do favorito e menções (migrações
+  // 20260910000200 a ...210). Todas estas frases são `raise exception` NOSSO,
+  // escrito em português. Sem entrada aqui elas cairiam no mapa por SQLSTATE:
+  // o aluno leria "Sem permissão para esta ação" quando tenta desmarcar a
+  // estrela de um cliente acompanhado — e não saberia por quê nem o que fazer.
+  // ══════════════════════════════════════════════════════════════════════
+
+  // trg_etapa1_clientes_acompanhamento_travado (...203) — as 4 recusas da trava
+  "A equipe está acompanhando este cliente — só a equipe pode trocar o cliente acompanhado.":
+    "A equipe está acompanhando este cliente. Para trocar, fale com a equipe pelo Suporte.",
+  "A equipe está acompanhando este cliente — ele não pode ser excluído.":
+    "A equipe está acompanhando este cliente, por isso ele não pode ser excluído. Fale com a equipe pelo Suporte.",
+  "A equipe está acompanhando este cliente — a fase não pode voltar para Prospecção.":
+    "A equipe está acompanhando este cliente, por isso a fase não volta para Prospecção. Fale com a equipe pelo Suporte.",
+  "Só a equipe confirma ou libera o acompanhamento deste cliente.":
+    "Só a equipe confirma ou libera o acompanhamento deste cliente.",
+
+  // gps.admin_confirmar_acompanhamento / gps.admin_liberar_acompanhamento (...203)
+  "Cliente não encontrado.": "Cliente não encontrado.",
+  "Este cliente não é o cliente acompanhado deste aluno. Marque a estrela antes de confirmar.":
+    "Este cliente não é o cliente acompanhado deste aluno. Marque a estrela antes de confirmar.",
+  "A equipe já está acompanhando este cliente.":
+    "A equipe já está acompanhando este cliente.",
+  "A equipe não está acompanhando este cliente.":
+    "A equipe não está acompanhando este cliente.",
+
+  // gps.onboarding_* (...206)
+  "Seu cadastro ainda não está vinculado ao programa. Fale com a equipe.":
+    "Seu cadastro ainda não está vinculado ao programa. Fale com a equipe.",
+  "Você já concluiu o questionário inicial.":
+    "Você já concluiu o questionário inicial.",
+  "Responda o questionário antes de concluir.":
+    "Responda o questionário antes de concluir.",
+  "Responda o questionário antes de anexar.":
+    "Responda o questionário antes de anexar.",
+  "Escolha de onde virá o seu cliente 1.":
+    "Escolha de onde virá o seu cliente 1.",
+  "Informe em que fase você está com este cliente.":
+    "Informe em que fase você está com este cliente.",
+  "Informe o nome do seu cliente 1.": "Informe o nome do seu cliente 1.",
+  "Informe o valor dos honorários pactuados para seguir.":
+    "Informe o valor dos honorários pactuados para seguir.",
+  "Anexe o contrato de honorários assinado para seguir.":
+    "Anexe o contrato de honorários assinado para seguir.",
+  "Informe o valor dos honorários como número.":
+    "Informe o valor dos honorários como número.",
+  "Honorários: valor fora do limite permitido.":
+    "Honorários: valor fora do limite permitido.",
+  "Escolha um grau de relação da lista.":
+    "Escolha um grau de relação da lista.",
+  "O nome do cliente passa de 200 caracteres.":
+    "O nome do cliente passa de 200 caracteres.",
+  "Telefone inválido.": "Telefone inválido.",
+  "A descrição passa de 4.000 caracteres.":
+    "A descrição passa de 4.000 caracteres.",
+  "O texto passa de 4.000 caracteres.": "O texto passa de 4.000 caracteres.",
+  "Nome de arquivo inválido.": "Nome de arquivo inválido.",
+  "Você já anexou 5 documentos.":
+    "Você já anexou 5 documentos. Remova um antes de enviar outro.",
+  "Anexo não encontrado.": "Anexo não encontrado.",
+  "anexo nao encontrado":
+    "O anexo não chegou ao servidor. Envie o arquivo de novo.",
+  "anexo nao pertence a este ambiente":
+    "Não foi possível anexar o arquivo. Tente enviar de novo.",
+  "anexo em caminho invalido":
+    "Não foi possível anexar o arquivo. Tente enviar de novo.",
+  "nao foi possivel validar o anexo":
+    "Não foi possível validar o anexo agora. Tente de novo em instantes.",
+  "formato de anexo nao aceito":
+    "Formato não aceito. Envie PNG, JPG, WEBP ou PDF.",
+  "extensao do anexo nao confere com o tipo do arquivo":
+    "Formato não aceito. Envie PNG, JPG, WEBP ou PDF.",
+  "anexo maior que 5 MB": "Arquivo maior que 5 MB.",
+
+  // gps.registrar_mencoes (...207)
+  "Nota não encontrada.": "Nota não encontrada.",
 };
 
 /**

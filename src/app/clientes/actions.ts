@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { traduzirErroBanco } from "@/lib/erros";
+import { GRAUS_RELACAO } from "@/lib/types";
 import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
 
 /*
@@ -43,6 +44,7 @@ export type PatchCliente = Partial<
     | "perfil_disc"
     | "valor_honorarios"
     | "contrato_url"
+    | "grau_relacao"
   >
 >;
 
@@ -72,7 +74,19 @@ const CHAVES_PATCH_CLIENTE: ReadonlySet<string> = new Set([
   // descartaria os dois em runtime — a feature nasceria morta, sem erro.
   "valor_honorarios",
   "contrato_url",
+  // Grau de relação (migração 20260910000202). Mesma armadilha dos dois acima:
+  // estar só no `Pick` não basta — o tipo some na compilação e o filtro abaixo
+  // descartaria o campo em runtime, e a feature nasceria morta, sem erro.
+  "grau_relacao",
 ]);
+
+/**
+ * ⚠️ `acompanhamento_confirmado_em`/`_por` NÃO entram na allowlist, e não é
+ * esquecimento: quem confirma e libera o acompanhamento é a equipe, por RPC
+ * (`gps.admin_confirmar_acompanhamento`/`_liberar_`). A trigger
+ * `trg_etapa1_clientes_acompanhamento_travado` recusa a escrita de quem não é
+ * admin mesmo pelo PostgREST — a trava é do banco, esta lista é conveniência.
+ */
 
 function filtrarPatch(patch: PatchCliente): PatchCliente {
   const limpo: Record<string, unknown> = {};
@@ -111,6 +125,20 @@ function validarPatch(patch: PatchCliente): {
     } else if (v > 9_999_999_999.99) {
       // Teto do numeric(12,2) da coluna — sem isso o erro vira 22003.
       return { erro: "Honorários: valor acima do limite permitido." };
+    }
+  }
+
+  if ("grau_relacao" in saida) {
+    const v = saida.grau_relacao;
+    if (v === null || v === undefined || v === "") {
+      // Campo esvaziado na tela vira `null` = NÃO INFORMADO, nunca `''` (que
+      // não passa no CHECK e derrubaria o salvamento inteiro da ficha).
+      saida.grau_relacao = null;
+    } else if (
+      typeof v !== "string" ||
+      !(GRAUS_RELACAO as readonly string[]).includes(v)
+    ) {
+      return { erro: "Escolha um grau de relação da lista." };
     }
   }
 
@@ -222,7 +250,22 @@ export async function mudarFaseCliente(
   return atualizarCliente(clienteId, alunoId, { fase });
 }
 
-/** Define (ou remove) o cliente acompanhado pela equipe — no máximo um por aluno. */
+/**
+ * Define (ou remove) o cliente acompanhado pela equipe — no máximo um por aluno.
+ *
+ * 🔴 TRAVA DO FAVORITO (migração 20260910000203): quando o favorito atual está
+ * CONFIRMADO pela equipe (`acompanhamento_confirmado_em` preenchido), o
+ * `update ... acompanhado_equipe = false` abaixo bate na trigger e volta 42501
+ * — e a ação inteira falha, que é o comportamento CERTO. O que esta função
+ * garante é que a frase chegue em português (`traduzirErroBanco` + as 4
+ * entradas em `FRASES_DO_BANCO`), e não um "Sem permissão" cru.
+ *
+ * A UI **não deve oferecer** a estrela nos outros cards enquanto houver
+ * confirmado — botão que sempre falha é pior do que botão ausente. Isso é
+ * tarefa do frontend; aqui é a rede de segurança.
+ *
+ * O admin passa pela trava (é ele quem confirma e libera).
+ */
 export async function definirClienteEquipe(
   clienteId: string,
   alunoId: string,
@@ -251,6 +294,12 @@ export async function definirClienteEquipe(
   return {};
 }
 
+/**
+ * 🔴 Cliente CONFIRMADO pela equipe não é excluído: a trigger
+ * `trg_etapa1_clientes_acompanhamento_travado` recusa o DELETE com 42501, e a
+ * frase traduzida diz por quê e o que fazer ("fale com a equipe pelo Suporte").
+ * A confirmação nomeada da UI continua valendo para todos os outros.
+ */
 export async function removerCliente(clienteId: string, alunoId: string) {
   const supabase = await createClient();
   const { error } = await supabase

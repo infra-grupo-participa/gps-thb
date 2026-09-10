@@ -135,6 +135,27 @@ export type FaseCliente = "prospeccao" | "fechamento" | "contratado";
 
 export type PerfilDisc = "D" | "I" | "S" | "C";
 
+/**
+ * TIPO DE VÍNCULO do aluno com o cliente (migração 20260910000202).
+ *
+ * ⚠️ Eixo ORTOGONAL a `NivelRelacionamento`, que é TEMPERATURA — existe
+ * parente frio e lead quente. Não substitui nem renomeia aquele campo: os 664
+ * valores de `nivel_relacionamento` respondem outra pergunta.
+ *
+ * `null` = não informado, o estado de nascimento das ~878 linhas. A UI **nunca**
+ * pode exibir `null` como "Lead": o padrão não pode ser um palpite sobre a vida
+ * de um terceiro.
+ */
+export const GRAUS_RELACAO = [
+  "parente",
+  "amigo",
+  "conhecido",
+  "indicacao",
+  "cliente_atual",
+  "lead",
+] as const;
+export type GrauRelacao = (typeof GRAUS_RELACAO)[number];
+
 export interface ClienteEtapa1 {
   id: string;
   aluno_id: string;
@@ -174,6 +195,27 @@ export interface ClienteEtapa1 {
    * continua fora do GPS. O CHECK do banco exige `https://` sem espaço.
    */
   contrato_url: string | null;
+  /**
+   * Tipo de vínculo com o cliente (migração 20260910000202). `null` = não
+   * informado — **nunca** exibir como "Lead".
+   *
+   * ⚠️ NÃO entra na regra de `comDados` (`src/lib/etapa1.ts`): acrescentá-lo
+   * reabriria a tarefa 1 de quem já a concluiu.
+   */
+  grau_relacao: GrauRelacao | null;
+  /**
+   * `null` = o ALUNO é dono da estrela (comportamento de sempre). PREENCHIDO =
+   * a EQUIPE confirmou que está acompanhando este cliente, e o banco passa a
+   * recusar (42501) desmarcar a estrela, apagar o cliente e voltar a fase para
+   * `prospeccao` — trigger `trg_etapa1_clientes_acompanhamento_travado`
+   * (migração 20260910000203). O resto da ficha continua livre.
+   *
+   * Só `gps.admin_confirmar_acompanhamento`/`gps.admin_liberar_acompanhamento`
+   * escrevem aqui: `PatchCliente` não tem o campo e a trigger recusa a escrita
+   * de quem não é admin, mesmo pelo PostgREST.
+   */
+  acompanhamento_confirmado_em: string | null;
+  acompanhamento_confirmado_por: string | null;
 }
 
 export type StatusSolicitacao = "pendente" | "aprovada" | "recusada";
@@ -274,6 +316,12 @@ export interface AlunoNotaComAutor extends AlunoNota {
    * do texto para exibir "sobre: <rótulo>", não do evento inteiro.
    */
   eventoContexto: { rotulo: string; tipo: TipoEvento } | null;
+  /**
+   * Quem foi mencionado com `@` na nota (`gps.nota_mencoes`, migração
+   * `...207`), resolvido na leitura com o nome de `public.perfis`. Sempre
+   * array (vazio = ninguém). Só nome e id: e-mail não entra na tela.
+   */
+  mencoes: { id: string; nome: string | null }[];
 }
 
 /** Resumo do diário para cards/listas (última nota + pendências em aberto). */
@@ -322,6 +370,15 @@ export const TIPOS_EVENTO = [
   // precisa contar é a DIREÇÃO — é ela que muda o produto para a pessoa.
   "etapa_liberada_pela_equipe",
   "etapa_travada_pela_equipe",
+  // Mega feature (migração ...201). `onboarding_iniciado`/`onboarding_concluido`
+  // vêm de `gps.onboarding_salvar_passo`/`gps.onboarding_concluir`.
+  // ⚠️ `favorito_confirmado_pela_equipe` NÃO é `cliente_favoritado`: aquele é o
+  // aluno mexendo na estrela, este é a equipe ACEITANDO acompanhar (o segundo
+  // conceito que o boolean misturava).
+  "onboarding_iniciado",
+  "onboarding_concluido",
+  "favorito_confirmado_pela_equipe",
+  "favorito_liberado_pela_equipe",
 ] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 
@@ -330,7 +387,10 @@ export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 // `gps.aluno_eventos`. Viraram união de literais — o mesmo tipo, sem a
 // constante em runtime. Só `AtorEvento` é usado fora daqui
 // (`diario-labels.ts`); os outros dois ficam locais.
-type EntidadeEvento = "cliente" | "tarefa" | "conta" | "etapa";
+// `onboarding` entrou na migração ...201 e vem SEMPRE com `entidade_id` null:
+// a PK de `gps.onboarding_respostas` é a PESSOA e `aluno_eventos.aluno_id` é o
+// AMBIENTE — a pessoa vai no `detalhe`.
+type EntidadeEvento = "cliente" | "tarefa" | "conta" | "etapa" | "onboarding";
 export type AtorEvento = "aluno" | "equipe" | "sistema";
 type OrigemEvento = "app" | "backfill";
 
@@ -401,3 +461,123 @@ export type ItemTrilha =
       ocorrido_em: string;
       acao: AcaoAdministrativa;
     };
+
+// ─────────────────────────────────────────────────────────────────────────
+// Onboarding — o questionário inicial (migrações 20260910000204 a ...206).
+//
+// 🔑 É DA PESSOA, não do ambiente. A chave é `pessoa_aluno_id`
+// (`gps.membros.pessoa_aluno_id` = `public.thb_alunos.id`), a mesma identidade
+// que a Central estabeleceu: são 13 sócios em 13 ambientes, e com a chave no
+// ambiente o sócio nunca seria perguntado nem veria o tour.
+//
+// ⚠️ O EFEITO COLATERAL (o cliente 1) É DO AMBIENTE: num ambiente que já tem
+// favorito, o cliente é criado **sem** favoritar — `ambienteJaTemFavorito`
+// existe para a tela dizer isso ANTES, e não depois.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** "1. Quero que façamos desde a captação" | "2. Eu já tenho esse cliente". */
+export const ORIGENS_CLIENTE1 = ["captacao", "ja_tenho"] as const;
+export type OrigemCliente1 = (typeof ORIGENS_CLIENTE1)[number];
+
+/**
+ * As três respostas literais do João sobre a fase da implementação.
+ *
+ * ⚠️ NÃO são fases de cliente (decisão C-1: nenhuma fase nova). Elas mapeiam
+ * para `FaseCliente` em `FASES_CLIENTE1_UI` (`src/lib/etapa1.ts`) e no
+ * `gps.onboarding_concluir()`; a granularidade original fica guardada em
+ * `gps.onboarding_respostas.fase_cliente1`, que é o retrato do dia 0.
+ */
+export const FASES_CLIENTE1 = [
+  "viabilidade_feita",
+  "croqui_apresentado",
+  "execucao_andamento",
+] as const;
+export type FaseCliente1 = (typeof FASES_CLIENTE1)[number];
+
+export type StatusOnboarding = "nao_iniciado" | "em_andamento" | "concluido";
+
+export type TipoAnexoOnboarding = "contrato_honorarios" | "documento";
+
+export interface OnboardingAnexo {
+  id: string;
+  tipo: TipoAnexoOnboarding;
+  nome: string;
+  mime: string;
+  tamanho: number;
+  /**
+   * `<ambiente_aluno_id>/<uuid>.<ext>` no bucket privado `gps-onboarding`.
+   * 🔴 Todo link montado a partir disto sai com `download=`, NUNCA inline: o
+   * MIME vem do que o cliente declarou no PUT, e servir inline é o vetor.
+   */
+  path: string;
+  criadoEm: string;
+}
+
+/** As respostas em si — o que a pessoa já preencheu, para a tela retomar. */
+export interface RespostasOnboarding {
+  origemCliente1: OrigemCliente1 | null;
+  faseCliente1: FaseCliente1 | null;
+  valorHonorarios: number | null;
+  clienteNome: string | null;
+  clienteTelefone: string | null;
+  clienteGrauRelacao: GrauRelacao | null;
+  descricaoCaso: string | null;
+  ajudaPronta: string | null;
+  /** O cliente que a conclusão criou. `null` enquanto não concluiu. */
+  clienteId: string | null;
+  iniciadoEm: string | null;
+  concluidoEm: string | null;
+}
+
+export interface MeuOnboarding {
+  status: StatusOnboarding;
+  versao: number;
+  passoAtual: number;
+  /**
+   * Vem de `ctx.user.user_metadata.gps_senha_temp_em` — **zero consulta**: o
+   * metadata já chega no `getUser()` que a sessão memoizada faz uma vez por
+   * requisição.
+   *
+   * ⚠️ É UX, não fronteira de segurança: o próprio usuário pode limpar o
+   * metadata pelo GoTrue e pular o passo. Está escrito de propósito, em vez de
+   * fingir que é trava — e a marca não concede nada.
+   */
+  precisaTrocarSenha: boolean;
+  respostas: RespostasOnboarding;
+  anexos: OnboardingAnexo[];
+  /** O ambiente já tem favorito? Decide o texto do passo 3 (o cliente entra sem a estrela). */
+  ambienteJaTemFavorito: boolean;
+}
+
+/** O que a EQUIPE vê, por pessoa do ambiente (`gps.admin_onboarding_do_aluno`). */
+export interface OnboardingDaPessoa {
+  membroId: string;
+  pessoaAlunoId: string | null;
+  papel: PapelMembro;
+  nome: string | null;
+  status: StatusOnboarding;
+  versao: number | null;
+  passoAtual: number | null;
+  iniciadoEm: string | null;
+  concluidoEm: string | null;
+  origemCliente1: OrigemCliente1 | null;
+  faseCliente1: FaseCliente1 | null;
+  valorHonorarios: number | null;
+  clienteId: string | null;
+  clienteNome: string | null;
+  descricaoCaso: string | null;
+  ajudaPronta: string | null;
+  anexos: OnboardingAnexo[];
+}
+
+/**
+ * Teto de anexos do passo 7 ("Anexo de documentos necessários"). O contrato de
+ * honorários NÃO conta aqui — ele é único por pessoa, por índice parcial.
+ * Imposto no banco (`gps.onboarding_registrar_anexo`); esta constante existe
+ * para a tela dizer o número sem repeti-lo.
+ *
+ * ⚠️ B-D1 (pendente do João): enquanto a lista de "documentos necessários" não
+ * vier, o passo 7 é GENÉRICO e OPCIONAL — "se já tiver algum documento do caso,
+ * anexe aqui". Sem a lista, não dá para torná-lo obrigatório.
+ */
+export const MAX_DOCUMENTOS_ONBOARDING = 5;

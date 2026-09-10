@@ -80,3 +80,29 @@ export type {
 } from "@/lib/data/diario";
 
 export { getMinhaSolicitacao, getSolicitacoes } from "@/lib/data/solicitacoes";
+
+export {
+  getMeuOnboarding,
+  getOnboardingDoAluno,
+  urlDoAnexoOnboarding,
+} from "@/lib/data/onboarding";
+
+export {
+  getDashboard,
+  faixasDeTrilha,
+  resumoAtendimento,
+} from "@/lib/data/dashboard";
+export type {
+  Dashboard,
+  DashboardAcesso,
+  DashboardAtividadeDia,
+  DashboardClientes,
+  DashboardGrauRelacao,
+  DashboardHonorarios,
+  DashboardOnboarding,
+  DashboardPrograma,
+  DashboardReferencia,
+  FaixaDeTrilha,
+  FaixaTrilha,
+  ResumoAtendimento,
+} from "@/lib/data/dashboard";

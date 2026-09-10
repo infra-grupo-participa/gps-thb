@@ -181,8 +181,10 @@ export async function enviarCredenciaisAcesso(params: {
     </table>
     ${avisoConfirmar}
     ${botao(loginUrl, "Acessar o portal")}
+    <p style="margin:0 0 16px;font-size:14px;line-height:1.6;">
+      Na primeira entrada o portal vai pedir que você crie a sua própria senha.
+    </p>
     <p style="margin:0;font-size:13px;line-height:1.6;color:#78716c;">
-      Por segurança, recomendamos trocar a senha após o primeiro acesso.
       Se o botão não funcionar, copie e cole este endereço no navegador:<br />
       <a href="${esc(loginUrl)}" style="color:${LARANJA};">${esc(loginUrl)}</a>
     </p>`;
@@ -200,7 +202,7 @@ export async function enviarCredenciaisAcesso(params: {
       : "",
     `Acesse: ${loginUrl}`,
     "",
-    "Por segurança, troque a senha após o primeiro acesso.",
+    "Na primeira entrada o portal vai pedir que você crie a sua própria senha.",
   ]
     .filter(Boolean)
     .join("\n");

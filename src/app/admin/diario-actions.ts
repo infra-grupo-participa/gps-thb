@@ -15,7 +15,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getContextoSessao } from "@/lib/auth";
+import { getContextoSessao, ehAdmin } from "@/lib/auth";
+import { logErro } from "@/lib/log";
+import { notificarMencao } from "@/lib/slack";
 import {
   TIPOS_NOTA,
   ORIGENS_NOTA,
@@ -24,6 +26,14 @@ import {
   type OrigemNota,
   type VozNota,
 } from "@/lib/types";
+
+const APP_URL = (
+  process.env.NEXT_PUBLIC_APP_URL ||
+  "https://programa.timeholdingbrasil.com.br"
+).replace(/\/+$/, "");
+
+/** Uma nota não vira disparo em massa. O banco aplica o mesmo teto. */
+const MAX_MENCOES = 10;
 
 function revalidar(alunoId: string) {
   revalidatePath(`/admin/aluno/${alunoId}`, "layout");
@@ -38,6 +48,37 @@ export interface RegistrarNotaInput {
   texto: string;
   /** Liga a nota a um evento do log (gps.aluno_eventos) — ex.: comentário em cima de "Listou 15 clientes". */
   eventoId?: string;
+  /**
+   * Ids de `public.perfis` mencionados (@).
+   *
+   * 🔴 O cliente ESCOLHE destinatário; nunca AUTORIZA. Cada id é revalidado no
+   * BANCO (`gps.registrar_mencoes`) contra `ativo` + cargo dev/admin, e o que
+   * não passar é descartado — a menção não cria leitor novo para um Diário que
+   * é só-admin por LGPD. Teto de 10 aqui e no banco.
+   */
+  mencoes?: string[];
+}
+
+/** Só admin. Devolve id e NOME — **nunca** e-mail (vai parar no payload do cliente). */
+export async function listarMencionaveis(): Promise<
+  { id: string; nome: string }[]
+> {
+  if (!(await ehAdmin())) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.schema("gps").rpc("admin_mencionaveis");
+
+  if (error) {
+    logErro("listarMencionaveis", error, {
+      rpc: "gps.admin_mencionaveis",
+      efeito: "o autocompletar de @ fica vazio; a nota continua funcionando",
+    });
+    return [];
+  }
+  return ((data ?? []) as { id: string; nome: string | null }[]).map((p) => ({
+    id: p.id,
+    nome: p.nome ?? "Sem nome",
+  }));
 }
 
 export type ResultadoDiarioAcao =
@@ -91,20 +132,112 @@ export async function registrarNota(
     }
   }
 
-  const { error } = await supabase.schema("gps").from("aluno_notas").insert({
-    aluno_id: input.alunoId,
-    autor_id: ctx.user.id,
-    voz: input.voz,
-    tipo: input.tipo,
-    origem: input.origem,
-    texto,
-    evento_id: input.eventoId ?? null,
-  });
+  // `.select("id")`: sem o id da nota não há como gravar a menção, e um insert
+  // que não devolve linha é o mesmo caso de `salvarPerfilAluno` — sucesso
+  // aparente sem gravação.
+  const { data: nota, error } = await supabase
+    .schema("gps")
+    .from("aluno_notas")
+    .insert({
+      aluno_id: input.alunoId,
+      autor_id: ctx.user.id,
+      voz: input.voz,
+      tipo: input.tipo,
+      origem: input.origem,
+      texto,
+      evento_id: input.eventoId ?? null,
+    })
+    .select("id")
+    .maybeSingle();
 
   if (error) return { ok: false, erro: "Não foi possível salvar a nota." };
 
+  const notaId = (nota as { id?: string } | null)?.id ?? null;
+
+  // 🔑 A NOTA JÁ ESTÁ GRAVADA. Daqui para baixo, nada pode desfazê-la: menção
+  // e Slack são subproduto. Qualquer falha vira `logErro` e a action continua
+  // devolvendo `ok: true` — a alternativa seria a equipe perder o texto que
+  // escreveu porque um webhook caiu.
+  const mencoes = [...new Set(input.mencoes ?? [])]
+    .filter((id) => typeof id === "string" && id.length > 0)
+    .slice(0, MAX_MENCOES);
+
+  if (notaId && mencoes.length > 0) {
+    await registrarEAvisar(notaId, input.alunoId, ctx.perfil?.nome ?? null, mencoes);
+  }
+
   revalidar(input.alunoId);
   return { ok: true };
+}
+
+/**
+ * Grava as menções (revalidadas no banco) e tenta o aviso no Slack.
+ * Nunca lança; nunca desfaz a nota.
+ */
+async function registrarEAvisar(
+  notaId: string,
+  alunoId: string,
+  autorNome: string | null,
+  mencoes: string[],
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.schema("gps").rpc("registrar_mencoes", {
+    p_nota_id: notaId,
+    p_perfis: mencoes,
+  });
+
+  if (error) {
+    logErro("registrarNota.mencoes", error, {
+      rpc: "gps.registrar_mencoes",
+      efeito: "a nota FOI gravada; as mencoes nao",
+    });
+    return;
+  }
+
+  const quantidade = Number(
+    (data as { quantidade?: number } | null)?.quantidade ?? 0,
+  );
+  // Zero válidos (todos inativos, gestor, ou id que nem é perfil): não há a
+  // quem avisar, e não é erro.
+  if (quantidade < 1) return;
+
+  // ── Interruptor `gps.config.slack_mencoes_ativo` ──
+  // Lido só AGORA, e não no topo: sem menção válida não se paga a consulta.
+  // O admin lê `gps.config` pela policy `gps_config_admin` — nenhuma RPC nova.
+  // ⚠️ O SEGREDO (a URL do webhook) NÃO está aqui: mora na env
+  // `SLACK_WEBHOOK_MENCOES`, fora do alcance da REST (C-7).
+  const { data: cfg } = await supabase
+    .schema("gps")
+    .from("config")
+    .select("valor")
+    .eq("chave", "slack_mencoes_ativo")
+    .maybeSingle();
+  const ativo = (cfg as { valor?: string } | null)?.valor === "true";
+
+  // O NOME DO ALUNO — e nada mais do ambiente. Uma consulta, e só quando há
+  // alguém para avisar e o canal está ligado.
+  let alunoNome = "um aluno";
+  if (ativo) {
+    const { data: aluno } = await supabase
+      .from("thb_alunos")
+      .select("nome")
+      .eq("id", alunoId)
+      .maybeSingle();
+    alunoNome = (aluno as { nome?: string | null } | null)?.nome ?? "um aluno";
+  }
+
+  // 🔴 O payload NUNCA carrega o texto da nota, o tipo, a origem, o nome do
+  // cliente do aluno, e-mail ou telefone. Ver `src/lib/slack.ts`.
+  await notificarMencao(
+    {
+      autor: autorNome ?? "Alguém da equipe",
+      aluno: alunoNome,
+      url: `${APP_URL}/admin/aluno/${alunoId}/diario`,
+      quantidade,
+    },
+    ativo,
+  );
 }
 
 /**

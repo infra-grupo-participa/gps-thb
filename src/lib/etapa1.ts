@@ -4,6 +4,8 @@
 import type {
   NivelRelacionamento,
   FaseCliente,
+  FaseCliente1,
+  GrauRelacao,
   PerfilDisc,
 } from "@/lib/types";
 
@@ -111,6 +113,93 @@ export const FASES_CLIENTE: {
     coluna: "Contratados",
     ajuda: "Contrato fechado — segue para a execução.",
     cor: "bg-sucesso text-sucesso-foreground",
+  },
+];
+
+/**
+ * Rótulos do GRAU DE RELAÇÃO (migração 20260910000202), no molde de
+ * `FASES_CLIENTE`. Espelha o CHECK `chk_etapa1_clientes_grau_relacao` — os dois
+ * têm de ter os mesmos 6 valores.
+ *
+ * ⚠️ É outro eixo, não substitui `NIVEIS_RELACIONAMENTO` (temperatura). E
+ * `null` nunca vira um destes rótulos na tela: a ausência de resposta sobre um
+ * terceiro se diz "não informado".
+ */
+export const GRAUS_RELACAO_UI: {
+  id: GrauRelacao;
+  rotulo: string;
+  /** Uma linha explicando quando escolher — o vocabulário do programa. */
+  ajuda: string;
+}[] = [
+  {
+    id: "parente",
+    rotulo: "Parente",
+    ajuda: "Família — pai, mãe, irmão, tio, primo.",
+  },
+  {
+    id: "amigo",
+    rotulo: "Amigo",
+    ajuda: "Relação pessoal próxima, fora da família.",
+  },
+  {
+    id: "conhecido",
+    rotulo: "Conhecido",
+    ajuda: "Já se falaram, mas não é próximo.",
+  },
+  {
+    id: "indicacao",
+    rotulo: "Indicação",
+    ajuda: "Chegou por alguém que confia em você.",
+  },
+  {
+    id: "cliente_atual",
+    rotulo: "Cliente atual",
+    ajuda: "Já é seu cliente em outro serviço.",
+  },
+  {
+    id: "lead",
+    rotulo: "Lead",
+    ajuda: "Veio da captação — ainda não te conhece.",
+  },
+];
+
+/**
+ * As TRÊS respostas do passo 3 do onboarding e a fase de cliente que cada uma
+ * produz. **O mapa mora aqui e em `gps.onboarding_concluir()`** — um lugar por
+ * camada, e os dois dizem o mesmo. Se um dia divergirem, quem manda é o banco.
+ *
+ * 🔑 Decisão C-1: NENHUMA 4ª fase de cliente. `contratado` já significa
+ * "contrato fechado, segue para a execução" (é o texto de ajuda de
+ * `FASES_CLIENTE`), e criar valor novo em cima de **0 linhas contratadas** e do
+ * backfill de 08/09 seria desenhar sobre hipótese. A granularidade que se
+ * perderia fica guardada em `gps.onboarding_respostas.fase_cliente1`, que é o
+ * retrato do dia 0; o que a equipe precisa é o derivado `apto_ao_saldo`.
+ */
+export const FASES_CLIENTE1_UI: {
+  id: FaseCliente1;
+  /** Copy LITERAL do João — não reescrever. */
+  rotulo: string;
+  faseCliente: FaseCliente;
+  /** Esta resposta exige honorários + contrato assinado para avançar? */
+  exigeContrato: boolean;
+}[] = [
+  {
+    id: "viabilidade_feita",
+    rotulo: "Sessão de viabilidade já realizada e Croqui estrutural a apresentar",
+    faseCliente: "fechamento",
+    exigeContrato: false,
+  },
+  {
+    id: "croqui_apresentado",
+    rotulo: "Croqui Estrutural já apresentado e aguardando a execução",
+    faseCliente: "fechamento",
+    exigeContrato: false,
+  },
+  {
+    id: "execucao_andamento",
+    rotulo: "Execução em andamento",
+    faseCliente: "contratado",
+    exigeContrato: true,
   },
 ];
 

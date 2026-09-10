@@ -63,6 +63,12 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   entrou_no_programa: "Entrou no programa",
   etapa_liberada_pela_equipe: "Etapa liberada pela equipe",
   etapa_travada_pela_equipe: "Etapa travada pela equipe",
+  // Mega feature (migração ...201). "Questionário inicial" e não "onboarding":
+  // o portal não fala em inglês com o aluno nem com a equipe.
+  onboarding_iniciado: "Começou o questionário inicial",
+  onboarding_concluido: "Concluiu o questionário inicial",
+  favorito_confirmado_pela_equipe: "A equipe assumiu o acompanhamento deste cliente",
+  favorito_liberado_pela_equipe: "A equipe liberou o cliente acompanhado",
 };
 
 export const ROTULO_ATOR: Record<AtorEvento, string> = {
@@ -91,6 +97,10 @@ const ROTULO_ACAO_ADMIN: Record<string, string> = {
   membro_movido: "Membro movido de ambiente",
   financeiro_vinculado: "Contrato financeiro vinculado",
   financeiro_desvinculado: "Contrato financeiro desvinculado",
+  // Mega feature (migração ...200)
+  favorito_confirmado: "Acompanhamento do cliente confirmado pela equipe",
+  favorito_liberado: "Acompanhamento do cliente liberado pela equipe",
+  acessos_criados_em_lote: "Acessos criados em lote",
 };
 
 /** Rótulo legível de uma ação administrativa, com fallback para o código cru. */

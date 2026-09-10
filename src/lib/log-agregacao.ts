@@ -193,6 +193,15 @@ const ROTULO_MACRO_POR_TIPO: Partial<
   tarefa_reaberta: (n) => `Reabriu ${n} tarefas`,
   etapa_liberada_pela_equipe: (n) => `Liberou ${n} etapas para este aluno`,
   etapa_travada_pela_equipe: (n) => `Travou ${n} etapas para este aluno`,
+  // Mega feature (migração ...201). `onboarding_iniciado`/`onboarding_concluido`
+  // ficam FORA de propósito: são no máximo um por pessoa e nunca formam rajada
+  // — agregá-los ("Concluiu 1 questionário") só pioraria a leitura. O Partial
+  // deste Record é exatamente o que permite deixá-los de fora sem quebrar o
+  // build; eles caem no rótulo de evento solto de `ROTULO_TIPO_EVENTO`.
+  favorito_confirmado_pela_equipe: (n) =>
+    `A equipe assumiu o acompanhamento de ${n} clientes`,
+  favorito_liberado_pela_equipe: (n) =>
+    `A equipe liberou ${n} clientes acompanhados`,
 };
 
 // Nota sobre achado menor do `fable-orchestrator`: o `rotulo` de

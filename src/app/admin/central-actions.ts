@@ -325,3 +325,92 @@ export async function desvincularFinanceiro(
   const d = (data ?? {}) as Record<string, unknown>;
   return { vinculadoPeloPortal: Boolean(d.vinculado_pelo_portal) };
 }
+
+// ── acompanhamento do cliente pela equipe (migração ...203) ────────────────
+
+/**
+ * A EQUIPE assume o acompanhamento do cliente favoritado. A partir daí o aluno
+ * não troca a estrela, não apaga o cliente e não volta a fase para
+ * `prospeccao` — quem recusa é a trigger
+ * `trg_etapa1_clientes_acompanhamento_travado`, com 42501 e frase própria.
+ *
+ * 🔑 CASA DE ORIGEM: a ficha do cliente no Modo Assistência — é onde o admin já
+ * está olhando o cliente. A Central mostra a linha de diagnóstico com LINK para
+ * a ficha: a regra é "nenhuma segunda porta para escrita que já existe".
+ *
+ * `alunoId` serve para revalidar as rotas certas, nunca como credencial — quem
+ * autoriza é o `gp_is_admin()` da RPC.
+ */
+export async function confirmarAcompanhamento(
+  clienteId: string,
+  alunoId: string,
+  motivo: string,
+): Promise<Resultado<{ clienteId: string }>> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!clienteId) return { erro: "Cliente não informado." };
+  const texto = motivo.trim();
+  if (texto.length < 3) {
+    return { erro: "Escreva o motivo — a trilha deste aluno vai registrar." };
+  }
+  if (texto.length > 300) return { erro: "O motivo passa de 300 caracteres." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("admin_confirmar_acompanhamento", {
+      p_cliente_id: clienteId,
+      p_motivo: texto,
+    });
+  if (error) {
+    return {
+      erro: traduzirErroBanco("central/confirmarAcompanhamento", error, {
+        alunoId,
+      }),
+    };
+  }
+
+  revalidar(alunoId);
+  revalidatePath("/clientes", "layout");
+  const d = (data ?? {}) as Record<string, unknown>;
+  return { clienteId: String(d.cliente_id ?? clienteId) };
+}
+
+/**
+ * Devolve ao ALUNO o direito de trocar o cliente acompanhado.
+ *
+ * ⚠️ NÃO desmarca a estrela: liberar é devolver a escolha, não desfazê-la —
+ * desmarcar aqui travaria os passos 4–8 da Etapa 01 de quem não pediu nada.
+ */
+export async function liberarAcompanhamento(
+  clienteId: string,
+  alunoId: string,
+  motivo: string,
+): Promise<Resultado<{ clienteId: string }>> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!clienteId) return { erro: "Cliente não informado." };
+  const texto = motivo.trim();
+  if (texto.length < 3) {
+    return { erro: "Escreva o motivo — a trilha deste aluno vai registrar." };
+  }
+  if (texto.length > 300) return { erro: "O motivo passa de 300 caracteres." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("admin_liberar_acompanhamento", {
+      p_cliente_id: clienteId,
+      p_motivo: texto,
+    });
+  if (error) {
+    return {
+      erro: traduzirErroBanco("central/liberarAcompanhamento", error, {
+        alunoId,
+      }),
+    };
+  }
+
+  revalidar(alunoId);
+  revalidatePath("/clientes", "layout");
+  const d = (data ?? {}) as Record<string, unknown>;
+  return { clienteId: String(d.cliente_id ?? clienteId) };
+}

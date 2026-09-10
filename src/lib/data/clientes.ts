@@ -32,7 +32,7 @@ import type { ClienteHonorarios } from "@/lib/etapa1";
  * está no `select`.
  */
 const COLUNAS_CLIENTE =
-  "id, aluno_id, nome, telefone, nivel_relacionamento, problemas, perda_inercia, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, acompanhado_equipe, ordem, valor_honorarios, contrato_url";
+  "id, aluno_id, nome, telefone, nivel_relacionamento, problemas, perda_inercia, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, acompanhado_equipe, ordem, valor_honorarios, contrato_url, grau_relacao, acompanhamento_confirmado_em, acompanhamento_confirmado_por";
 /** `gps.etapa3_agendamentos` → `Etapa3Agendamento`. */
 const COLUNAS_ETAPA3_AGENDAMENTO =
   "id, aluno_id, cliente_id, descricao, data, horario, equipe_participa, criado_em";

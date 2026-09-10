@@ -2,7 +2,12 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { resumoEtapa1 } from "@/lib/etapa1";
 import { logErro } from "@/lib/log";
-import type { Aluno, Ambiente, Membro } from "@/lib/types";
+import type {
+  Aluno,
+  Ambiente,
+  Membro,
+  StatusOnboarding,
+} from "@/lib/types";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Aluno, ambiente, membros e o PAINEL do admin (`/admin`).
@@ -147,6 +152,24 @@ export interface AlunoGps {
   contratados: number;
   /** Desses, quantos ainda sem `valor_honorarios`. */
   contratadosSemValor: number;
+  /**
+   * Questionário inicial do TITULAR do ambiente (migração 20260910000210).
+   * É do titular e não "de qualquer membro" de propósito: o card mostra o nome
+   * dele, e agregar sócio faria o chip dizer "concluído" por causa de outra
+   * pessoa. Pessoa por pessoa está em `getOnboardingDoAluno()`, na Central.
+   */
+  onboardingStatus: StatusOnboarding;
+  /** Clientes em `fase='fechamento'` — o meio do funil, que faltava. */
+  emFechamento: number;
+  /**
+   * DERIVADO no banco: existe cliente `contratado` com `valor_honorarios` E
+   * anexo `contrato_honorarios` de alguma pessoa do ambiente.
+   *
+   * 🔴 NENHUMA tela escreve valor em reais a partir disto (B-S1, pendente do
+   * João): o chip diz "Contrato de honorários enviado" e o filtro se chama
+   * "com contrato enviado". Nunca "apto a pagar os R$ 15.000".
+   */
+  aptoAoSaldo: boolean;
 }
 
 /**
@@ -176,6 +199,24 @@ interface LinhaPainelAlunos {
    * `undefined` aqui, e o fallback (ver `getAlunosGps`) tem de existir.
    */
   total_ambientes?: number;
+  /**
+   * As três colunas da v3 (migração 20260910000210). Opcionais no tipo porque
+   * um banco ainda sem a migração devolveria `undefined` — coluna ausente é
+   * `undefined` em JS, não erro, e sem fallback o chip diria "não iniciado"
+   * para todo mundo sem ninguém notar.
+   */
+  onboarding_status?: string | null;
+  em_fechamento?: number | null;
+  apto_ao_saldo?: boolean | null;
+}
+
+/**
+ * `onboarding_status` da RPC → o tipo fechado. Qualquer coisa fora dos dois
+ * valores conhecidos (inclusive `undefined`, num banco ainda sem a migração
+ * ...210) vira "nao_iniciado" — o estado honesto quando não se sabe.
+ */
+function mapearStatusOnboarding(v: unknown): StatusOnboarding {
+  return v === "concluido" || v === "em_andamento" ? v : "nao_iniciado";
 }
 
 /**
@@ -317,6 +358,11 @@ export async function getAlunosGps(opts?: {
           : Number(l.honorarios_contratados),
       contratados: l.contratados ?? 0,
       contratadosSemValor: l.contratados_sem_valor ?? 0,
+      // Fallback explícito: banco sem a migração ...210 devolve `undefined`, e
+      // o estado honesto nesse caso é "não iniciado" / 0 / false.
+      onboardingStatus: mapearStatusOnboarding(l.onboarding_status),
+      emFechamento: l.em_fechamento ?? 0,
+      aptoAoSaldo: l.apto_ao_saldo === true,
     };
   });
 

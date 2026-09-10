@@ -59,6 +59,25 @@ async function comNomesDeAutor(
     ),
   ];
 
+  // @menções (gps.nota_mencoes, ...207): uma consulta pequena pelos ids das
+  // notas já em mãos; os perfis mencionados entram na MESMA busca de nomes
+  // dos autores, para não abrir uma terceira ida a `perfis`.
+  const { data: mencoesRaw } = await supabase
+    .schema("gps")
+    .from("nota_mencoes")
+    .select("nota_id, perfil_id")
+    .in(
+      "nota_id",
+      notas.map((n) => n.id),
+    );
+  const mencoesPorNota = new Map<string, string[]>();
+  for (const m of (mencoesRaw ?? []) as { nota_id: string; perfil_id: string }[]) {
+    idsAutores.add(m.perfil_id);
+    const lista = mencoesPorNota.get(m.nota_id) ?? [];
+    lista.push(m.perfil_id);
+    mencoesPorNota.set(m.nota_id, lista);
+  }
+
   const [{ data: perfis }, { data: eventosRef }] = await Promise.all([
     supabase.from("perfis").select("id, nome").in("id", [...idsAutores]),
     idsEventos.length > 0
@@ -90,6 +109,10 @@ async function comNomesDeAutor(
       ? (nomePorId.get(n.resolvido_por) ?? null)
       : null,
     eventoContexto: n.evento_id ? (eventoPorId.get(n.evento_id) ?? null) : null,
+    mencoes: (mencoesPorNota.get(n.id) ?? []).map((id) => ({
+      id,
+      nome: nomePorId.get(id) ?? null,
+    })),
   }));
 }
 

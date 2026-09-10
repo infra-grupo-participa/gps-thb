@@ -1,4 +1,3 @@
-import { emailParaIlike } from "@/lib/texto";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { PapelMembro, Papel, Perfil } from "@/lib/types";
@@ -20,8 +19,23 @@ export interface ContextoSessao {
    * ambiente. Cabeçalho e "meu perfil" usam este, não `alunoId`.
    */
   membroAlunoId: string | null;
-  /** Nome da pessoa logada (thb_alunos.nome do `membroAlunoId`). */
-  membroNome: string | null;
+  /**
+   * A identidade da pessoa em `public.thb_alunos`, lida de
+   * `gps.membros.pessoa_aluno_id` — a MESMA linha que a sessão já carrega.
+   * É a chave do onboarding (`gps.pessoa_atual()` no banco).
+   *
+   * `null` quando o membro ainda não tem cadastro vinculado (a Central resolve
+   * com "Vincular pessoa"). Nesse caso o onboarding recusa com frase própria,
+   * em vez de escrever a resposta na conta errada.
+   */
+  pessoaAlunoId: string | null;
+  /*
+   * ⚠️ NÃO reintroduzir `membroNome` aqui (removido em 10/09/2026, depois de
+   * o último consumidor sair). Ele custava um `ilike` em
+   * `public.thb_alunos.email` em TODA requisição de sócio só para descobrir um
+   * nome — e casar pessoa por e-mail multiplica. Quem precisa do nome busca
+   * com `getAlunoById(ctx.membroAlunoId)`, que as páginas já fazem.
+   */
   /** Papel da pessoa dentro do ambiente ('titular' | 'socio'). */
   papelMembro: PapelMembro | null;
 }
@@ -73,45 +87,39 @@ export const getContextoSessao = cache(async function getContextoSessao(): Promi
       perfil,
       alunoId: null,
       membroAlunoId: null,
-      membroNome: null,
+      pessoaAlunoId: null,
       papelMembro: null,
     };
   }
 
   // Aluno?
+  //
+  // 🔑 `pessoa_aluno_id` vem na MESMA linha (migração ...154, backfill de
+  // 09/09: 0 membros sem pessoa, com trigger garantindo o titular). Até
+  // 10/09/2026 a identidade da PESSOA era resolvida com um `ilike` em
+  // `public.thb_alunos.email` — uma consulta a mais em toda requisição de
+  // sócio, casando gente por e-mail. Agora custa ZERO consulta.
   const { data: membro } = await supabase
     .schema("gps")
     .from("membros")
-    .select("aluno_id, papel")
+    .select("aluno_id, papel, pessoa_aluno_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (membro) {
-    // aluno_id do AMBIENTE (titular) já veio na linha. O aluno_id da PESSOA
-    // logada (para o sócio, diferente do ambiente) não vive em gps.membros —
-    // resolve pelo e-mail do login, mesmo casamento usado no onboarding.
-    let membroAlunoId = membro.aluno_id;
-    let membroNome: string | null = null;
-    if (membro.papel === "socio" && user.email) {
-      const { data: pessoa } = await supabase
-        .from("thb_alunos")
-        .select("id, nome")
-        .ilike("email", emailParaIlike(user.email))
-        .limit(1)
-        .maybeSingle();
-      if (pessoa) {
-        membroAlunoId = pessoa.id;
-        membroNome = pessoa.nome;
-      }
-    }
+    const pessoaAlunoId = (membro.pessoa_aluno_id as string | null) ?? null;
 
     return {
       user,
       papel: "aluno",
       perfil: null,
+      // aluno_id do AMBIENTE (titular) — o que filtra clientes, progresso e pasta.
       alunoId: membro.aluno_id,
-      membroAlunoId,
-      membroNome,
+      // A PESSOA. Para o titular coincide com o ambiente; para o sócio, não.
+      // Cai no ambiente quando o membro ainda não tem cadastro vinculado —
+      // mesmo comportamento de antes, quando o `ilike` não achava ninguém.
+      membroAlunoId: pessoaAlunoId ?? membro.aluno_id,
+      pessoaAlunoId,
       papelMembro: membro.papel,
     };
   }
@@ -122,7 +130,7 @@ export const getContextoSessao = cache(async function getContextoSessao(): Promi
     perfil: null,
     alunoId: null,
     membroAlunoId: null,
-    membroNome: null,
+    pessoaAlunoId: null,
     papelMembro: null,
   };
 });

@@ -398,9 +398,14 @@ async function avisarEquipe(
     return;
   }
 
+  // O nome de quem abriu o chamado sai de `thb_alunos` pelo
+  // `membroAlunoId` — o `ctx.membroNome` que servia de atalho ficou SEMPRE
+  // null em 10/09 (o `ilike` por e-mail saiu do contexto de sessão, porque
+  // casar pessoa por e-mail multiplica) e o campo foi removido do tipo. Esta
+  // consulta já era o caminho real; agora é o único.
   const ctx = await getContextoSessao();
-  let alunoNome = ctx?.membroNome ?? null;
-  if (!alunoNome && ctx?.membroAlunoId) {
+  let alunoNome: string | null = null;
+  if (ctx?.membroAlunoId) {
     const supabase = await createClient();
     const { data } = await supabase
       .from("thb_alunos")

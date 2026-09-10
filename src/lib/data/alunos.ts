@@ -176,6 +176,15 @@ export interface AlunoGps {
    * ninguém marca à mão, e a mais avançada vence.
    */
   classe: ClasseAluno;
+  /**
+   * `num` das tarefas da Etapa 01 já concluídas.
+   *
+   * A RPC sempre trouxe (`tarefas_concluidas`), mas o valor virava só o
+   * `pct` e era descartado. As submétricas dos cards de fase precisam da
+   * lista — "quantos já mandaram a 1ª mensagem?" é `tarefasConcluidas`
+   * contendo o `num` daquela tarefa. Zero consulta a mais.
+   */
+  tarefasConcluidas: number[];
 }
 
 /**
@@ -392,6 +401,7 @@ export async function getAlunosGps(opts?: {
       classe: (CLASSES as readonly string[]).includes(l.classe ?? "")
         ? (l.classe as ClasseAluno)
         : "inicial",
+      tarefasConcluidas: l.tarefas_concluidas ?? [],
     };
   });
 

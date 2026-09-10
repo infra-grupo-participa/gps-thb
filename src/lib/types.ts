@@ -636,10 +636,15 @@ export const MAX_DOCUMENTOS_ONBOARDING = 5;
  * A REGRA vive em `gps.admin_painel_alunos` — aqui é só o contrato.
  */
 export const CLASSES = [
-  "inicial",
-  "captacao",
-  "execucao",
-  "orientacao",
+  // 🔑 Ordem INVERTIDA (execução -> inicial) por decisão do Marcio,
+  // 10/09/2026. O topo da tela passa a ser quem está mais adiantado: a
+  // equipe abre o painel para ver quem está fechando holding, não quem
+  // acabou de entrar. A jornada continua legível — só é lida de trás
+  // para frente, como um funil de baixo para cima.
   "finalizado",
+  "orientacao",
+  "execucao",
+  "captacao",
+  "inicial",
 ] as const;
 export type ClasseAluno = (typeof CLASSES)[number];

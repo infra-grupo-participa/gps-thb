@@ -243,7 +243,11 @@ export function AlunosAtivosLista({
   // É o desenho do Marcio: cinco blocos, clica, vê a lista, clica de novo e
   // entra no ambiente.
   if (!estado.classe) {
-    return <CardsDeClasse contagem={contagem} aoEscolher={definirClasse} />;
+    return <CardsDeClasse
+        contagem={contagem}
+        alunos={alunos}
+        aoEscolher={definirClasse}
+      />;
   }
 
   return (

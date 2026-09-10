@@ -19,6 +19,8 @@
  */
 
 import { ChevronRight } from "lucide-react";
+import type { AlunoGps } from "@/lib/data/alunos";
+import { submetricasDaClasse } from "./submetricas";
 import {
   CLASSES,
   ROTULO_CLASSE,
@@ -28,10 +30,13 @@ import {
 
 export function CardsDeClasse({
   contagem,
+  alunos,
   aoEscolher,
 }: {
   /** Quantos alunos em cada classe. Vem do servidor, já agregado. */
   contagem: Record<ClasseAluno, number>;
+  /** O lote carregado — as submétricas saem daqui, sem consulta nova. */
+  alunos: AlunoGps[];
   aoEscolher: (c: ClasseAluno) => void;
 }) {
   const total = CLASSES.reduce((s, c) => s + (contagem[c] ?? 0), 0);
@@ -41,6 +46,10 @@ export function CardsDeClasse({
       {CLASSES.map((c) => {
         const n = contagem[c] ?? 0;
         const vazio = n === 0;
+        const subs = submetricasDaClasse(
+          c,
+          alunos.filter((a) => a.classe === c),
+        );
         return (
           <button
             key={c}
@@ -67,6 +76,27 @@ export function CardsDeClasse({
               <span className="mt-0.5 block corpo-sm text-muted-foreground">
                 {AJUDA_CLASSE[c]}
               </span>
+
+              {/* 🔑 As submétricas respondem "quantos já chegaram até aqui?",
+                  não "como o card se divide?" — elas NÃO SOMAM o total e o
+                  mesmo aluno aparece em várias (quem agendou também listou
+                  os 30). Sem isso, a equipe leria os números como fatias. */}
+              {subs.length > 0 ? (
+                <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {subs.map((sm) => (
+                    <span
+                      key={sm.rotulo}
+                      title={sm.ajuda}
+                      className="inline-flex items-baseline gap-1 corpo-sm"
+                    >
+                      <span className="font-semibold tabular-nums text-accent-foreground">
+                        {sm.valor}
+                      </span>
+                      <span className="text-muted-foreground">{sm.rotulo}</span>
+                    </span>
+                  ))}
+                </span>
+              ) : null}
             </span>
 
             <span className="flex shrink-0 items-center gap-2">

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { logErro } from "@/lib/log";
 import type { Etapa, ModoEnfase, ProgressoTarefa } from "@/lib/types";
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -20,13 +21,33 @@ const COLUNAS_ETAPA = "id, nome, descricao, ordem, liberada";
 /** `gps.progresso` → `ProgressoTarefa`. */
 const COLUNAS_PROGRESSO =
   "id, aluno_id, etapa, tarefa, concluida, concluida_em";
+/**
+ * As 6 etapas do programa e o estado de liberação de cada uma.
+ *
+ * 🔴 ESTA FUNÇÃO PRECISA FALHAR ALTO (10/09/2026).
+ *
+ * Ela descartava o `error` e devolvia `[]`. Parece defensivo; é o contrário.
+ * Num engasgo de rede — o `fetch failed` intermitente que o log de produção
+ * mostra e que o `server.js` documenta — a home renderizava **"Tudo em dia
+ * nas etapas liberadas"** com a jornada vazia: o portal afirmava ao aluno
+ * que ele havia concluído tudo.
+ *
+ * 🔑 Tela de ERRO é honesta; tela VAZIA mentindo, não. O `error.tsx` da rota
+ * já existe e diz "não foi possível carregar — tente de novo", que é a
+ * verdade. Lista vazia legítima (nenhuma etapa cadastrada) continua
+ * devolvendo `[]` sem erro.
+ */
 export async function getEtapas(): Promise<Etapa[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .schema("gps")
     .from("etapas")
     .select(COLUNAS_ETAPA)
     .order("ordem");
+  if (error) {
+    logErro("getEtapas", error);
+    throw new Error("Não foi possível carregar as etapas.");
+  }
   return (data ?? []) as Etapa[];
 }
 /** Todo o progresso do aluno (todas as etapas). */

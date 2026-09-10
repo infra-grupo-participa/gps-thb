@@ -53,15 +53,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="senha">Senha</Label>
-          <Link
-            href="/esqueci-senha"
-            className="text-xs text-muted-foreground underline-offset-4 hover:text-accent-foreground hover:underline"
-          >
-            Esqueci minha senha
-          </Link>
-        </div>
+        <Label htmlFor="senha">Senha</Label>
         <InputSenha
           id="senha"
           name="senha"
@@ -83,19 +75,44 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
         {pending ? "Entrando..." : "Entrar"}
       </Button>
 
-      {/* 🔑 Abaixo do botão, não ao lado do campo de senha: quem chega aqui
-          tenta entrar PRIMEIRO e só procura ajuda depois de falhar. E fala
-          em "criar a senha", não "redefinir" — 19 dos 137 titulares nunca
-          tiveram login, e para eles não há o que redefinir. */}
-      <p className="text-center text-sm text-muted-foreground">
-        Não consegue entrar?{" "}
-        <Link
-          href="/resgate"
-          className="font-medium text-accent-foreground underline-offset-4 hover:underline"
-        >
-          Crie sua senha com o código da equipe
-        </Link>
-      </p>
+      {/* 🔑 AS DUAS VIAS, LADO A LADO E EXPLICADAS (10/09/2026).
+          Abaixo do botão, não ao lado do campo: quem chega aqui tenta entrar
+          PRIMEIRO e só procura ajuda depois de falhar.
+
+          Cada uma resolve um caso diferente, e a diferença precisa estar
+          ESCRITA — senão a pessoa escolhe a errada e conclui que o sistema
+          não funciona:
+
+          · e-mail  → para quem TEM conta e esqueceu a senha. Depende de o
+                      e-mail chegar (SMTP embutido do Supabase; entrega
+                      baixa, pendência F.5 do projeto).
+          · código  → resolve na hora, sem depender de e-mail, e CRIA a conta
+                      para quem nunca teve. Medido em 10/09: 12 titulares
+                      sem login nenhum, todos com CPF — todos se resolvem
+                      por aqui. */}
+      <div className="mt-2 grid gap-2 rounded-xl border border-borda-fina bg-superficie-afundada p-3">
+        <p className="corpo-sm font-medium">Não consegue entrar?</p>
+        <p className="corpo-sm text-muted-foreground">
+          <Link
+            href="/resgate"
+            className="font-medium text-accent-foreground underline-offset-4 hover:underline"
+          >
+            Use o código que a equipe divulgou
+          </Link>{" "}
+          — você confirma com seu e-mail e CPF e cria a senha na hora, sem
+          esperar e-mail. Serve também para quem nunca entrou.
+        </p>
+        <p className="corpo-sm text-muted-foreground">
+          Prefere por e-mail?{" "}
+          <Link
+            href="/esqueci-senha"
+            className="font-medium text-accent-foreground underline-offset-4 hover:underline"
+          >
+            Receber um link para redefinir
+          </Link>
+          .
+        </p>
+      </div>
     </form>
   );
 }

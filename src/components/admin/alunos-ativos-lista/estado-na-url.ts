@@ -69,11 +69,43 @@ const ORDENS_SET = new Set<string>(ORDENS);
 export const ABAS = ["visao", "ativos", "solicitacoes", "etapas"] as const;
 export type AbaPainel = (typeof ABAS)[number];
 
+/**
+ * As 5 classes do programa — os cards do desenho do Marcio (10/09/2026).
+ *
+ * A regra é DERIVADA (`gps.admin_classes_dos_alunos`), não um campo que
+ * alguém marca: a mais avançada vence. A ordem aqui é a ordem dos cards na
+ * tela, e é a ordem da jornada — não mexer sem mexer no desenho.
+ */
+export { CLASSES, type ClasseAluno } from "@/lib/types";
+import { CLASSES, type ClasseAluno } from "@/lib/types";
+
+const CLASSES_SET = new Set<string>(CLASSES);
+
+/** O rótulo de cada card. Copy do desenho. */
+export const ROTULO_CLASSE: Record<ClasseAluno, string> = {
+  inicial: "Inicial",
+  captacao: "Captação / Fechamento",
+  execucao: "Execução",
+  orientacao: "Orientação",
+  finalizado: "Finalizados",
+};
+
+/** Uma linha explicando o que separa cada classe — a tela não adivinha. */
+export const AJUDA_CLASSE: Record<ClasseAluno, string> = {
+  inicial: "Ainda montando a lista de clientes",
+  captacao: "Já tem reunião marcada, sem honorários pactuados",
+  execucao: "Honorários pactuados, holding em execução",
+  orientacao: "Holding entregue, em acompanhamento",
+  finalizado: "Bateram a meta de R$ 150 mil",
+};
+
 /** A aba de `/admin` sem `?aba=`. Escrita uma vez, lida por três arquivos. */
 export const ABA_PADRAO: AbaPainel = "visao";
 
 export interface EstadoDoPainel {
   aba: AbaPainel;
+  /** O card escolhido. `null` = nenhum, então a tela mostra os 5 cards. */
+  classe: ClasseAluno | null;
   termo: string;
   ordem: OrdemAlunos;
   filtros: Set<FiltroId>;
@@ -85,6 +117,7 @@ const MAX_TERMO = 80;
 /** Lê o estado da URL. Qualquer coisa fora da allowlist vira o padrão. */
 function lerEstado(sp: URLSearchParams): EstadoDoPainel {
   const aba = sp.get("aba");
+  const classe = sp.get("classe");
   const ordem = sp.get("ordem");
   const f = (sp.get("f") ?? "")
     .split(",")
@@ -94,6 +127,7 @@ function lerEstado(sp: URLSearchParams): EstadoDoPainel {
     aba: (ABAS as readonly string[]).includes(aba ?? "")
       ? (aba as AbaPainel)
       : ABA_PADRAO,
+    classe: CLASSES_SET.has(classe ?? "") ? (classe as ClasseAluno) : null,
     termo: (sp.get("q") ?? "").slice(0, MAX_TERMO),
     ordem: ORDENS_SET.has(ordem ?? "") ? (ordem as OrdemAlunos) : "recentes",
     filtros: new Set(f),
@@ -120,6 +154,8 @@ function escreverEstado(
   // escrevendo a mesma chave se sobrescrevem: o último `router.replace` a
   // rodar devolve o valor que ele leu na montagem, e trocar de aba "voltaria"
   // sozinho 300 ms depois de digitar uma letra na busca.
+  // Sem classe escolhida a tela mostra os 5 cards — e a URL fica limpa.
+  por("classe", estado.classe ?? "", "");
   por("q", estado.termo.trim(), "");
   por("ordem", estado.ordem, "recentes");
   por(
@@ -198,6 +234,24 @@ export function useEstadoDoPainel() {
   );
 
   /**
+   * Entra numa fase (o card) ou volta para os 5 cards (`null`).
+   *
+   * 🔑 Voltar LIMPA busca e filtros. Eles foram escolhidos dentro de uma
+   * fase; carregá-los para a próxima faria o admin abrir "Execução" e ver
+   * uma lista vazia por causa de um filtro que ele marcou em "Inicial" —
+   * e o card diria 12 enquanto a tela mostra 0.
+   */
+  const definirClasse = useCallback(
+    (classe: ClasseAluno | null) =>
+      setEstado((e) =>
+        classe === null
+          ? { ...e, classe: null, termo: "", filtros: new Set<FiltroId>() }
+          : { ...e, classe },
+      ),
+    [],
+  );
+
+  /**
    * Costura o estado atual num link que o servidor gerou ("Mostrar mais", que
    * vem como `/admin?mais=2`).
    *
@@ -228,6 +282,7 @@ export function useEstadoDoPainel() {
     limparFiltros,
     definirTermo,
     definirOrdem,
+    definirClasse,
     hrefComEstado,
   };
 }

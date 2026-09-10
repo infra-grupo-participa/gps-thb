@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { resumoEtapa1 } from "@/lib/etapa1";
 import { logErro } from "@/lib/log";
+import { CLASSES, type ClasseAluno } from "@/lib/types";
 import type {
   Aluno,
   Ambiente,
@@ -170,6 +171,11 @@ export interface AlunoGps {
    * "com contrato enviado". Nunca "apto a pagar os R$ 15.000".
    */
   aptoAoSaldo: boolean;
+  /**
+   * A fase do aluno no programa. Derivada em `gps.admin_painel_alunos`:
+   * ninguém marca à mão, e a mais avançada vence.
+   */
+  classe: ClasseAluno;
 }
 
 /**
@@ -208,6 +214,7 @@ interface LinhaPainelAlunos {
   onboarding_status?: string | null;
   em_fechamento?: number | null;
   apto_ao_saldo?: boolean | null;
+  classe?: string | null;
 }
 
 /**
@@ -380,6 +387,11 @@ export async function getAlunosGps(opts?: {
       onboardingStatus: mapearStatusOnboarding(l.onboarding_status),
       emFechamento: l.em_fechamento ?? 0,
       aptoAoSaldo: l.apto_ao_saldo === true,
+      // Vem calculada da RPC. `inicial` é o padrão seguro: string
+      // desconhecida jamais some da lista — cai no primeiro card.
+      classe: (CLASSES as readonly string[]).includes(l.classe ?? "")
+        ? (l.classe as ClasseAluno)
+        : "inicial",
     };
   });
 

@@ -1,0 +1,78 @@
+-- As 5 fases do aluno no programa -- os cards da aba Alunos.
+--
+-- Desenho do Marcio (10/09/2026): cinco blocos empilhados, nome a esquerda e
+-- numero a direita. Clica num card -> lista daquela fase. Clica num aluno ->
+-- entra no ambiente dele.
+--
+-- AS 5 CLASSES, e o que separa cada uma (definicao do Marcio):
+--
+--   inicial     Ainda montando a lista de clientes -- nao completou os 30.
+--   captacao    Tem reuniao marcada (ou ja fez os 30), mas NENHUM honorario
+--               pactuado. "Captacao / Fechamento" na tela.
+--   execucao    Tem honorarios declarados: a holding esta em execucao.
+--   orientacao  Concluiu a ETAPA 06 (Entrega) -- holding vigente, agora e
+--               manutencao e recorrencia.
+--   finalizado  Soma dos honorarios contratados >= R$ 150.000 (meta AURUM).
+--               Nao precisa mais do apoio da equipe.
+--
+-- 🔑 PRECEDENCIA: a MAIS AVANCADA vence. Uma pessoa satisfaz varias regras ao
+--    mesmo tempo (quem bateu 150k tambem tem honorarios), e sem uma ordem
+--    explicita a classe dependeria da ordem do `case` -- que ninguem leria.
+--
+-- 🔑 REGRA DERIVADA, NAO CAMPO. Ninguem marca a fase a mao: ela sai do que o
+--    aluno ja registrou. Um campo editavel divergiria do dado no primeiro dia
+--    em que alguem esquecesse de atualizar.
+--
+-- ONDE VIVE
+--   Dentro de `gps.admin_painel_alunos`, a RPC que o painel JA chama -- e que
+--   ja agregava clientes por ambiente. A classe usa os MESMOS numeros, entao
+--   custa ZERO consulta a mais.
+--
+--   ⚠️ Uma primeira versao nasceu como funcao separada
+--   (`gps.admin_classes_dos_alunos`): 10,6 ms e 3.691 buffers para 159
+--   ambientes, porque eram 5 subconsultas POR AMBIENTE. Reescrita como
+--   agregacao unica caiu para 2,9 ms e 396 buffers -- 9x menos leitura. A
+--   versao final nem existe separada: entrou na RPC do painel.
+--
+-- ⚠️ TRES DAS CINCO NASCEM VAZIAS, e isso e o retrato real:
+--     • ninguem tem honorarios declarados (o campo e de 10/09);
+--     • ninguem chegou a Etapa 06 (as etapas 2-6 estao BLOQUEADAS);
+--     • ninguem bateu 150k.
+--   Medido em 10/09: inicial=140, captacao=19, o resto 0. Os cards vazios
+--   CONTINUAM na tela, apagados e sem clique -- esconde-los faria a jornada
+--   parecer ter duas etapas, e o admin nao veria para onde o aluno caminha.
+--
+-- 🔴 "Orientacao" depende de LIBERAR A ETAPA 06. Enquanto `gps.etapas`
+--    mantiver 2-6 bloqueadas, ninguem chega la. A Central de resolucao libera
+--    etapa por aluno, se a equipe quiser destravar alguem antes.
+--
+-- REVERSAO
+--   Recriar `gps.admin_painel_alunos` sem a coluna `classe` (a versao
+--   anterior esta na migracao 20260910000210) e remover `CardsDeClasse`.
+
+-- A funcao foi recriada por `drop` + `create` (a assinatura mudou: coluna
+-- `classe` no retorno). Sobrecarga conferida = 1 -- sobrecarga ambigua ja
+-- quebrou em runtime nos sistemas do grupo.
+--
+-- O corpo completo esta no banco:
+--   select pg_get_functiondef(p.oid) from pg_proc p
+--     join pg_namespace n on n.oid = p.pronamespace
+--    where n.nspname = 'gps' and p.proname = 'admin_painel_alunos';
+--
+-- O trecho que interessa:
+--
+--   case
+--     when coalesce(cl.honorarios_contratados, 0) >= 150000 then 'finalizado'
+--     when en.aluno_id is not null then 'orientacao'
+--     when coalesce(cl.com_honorarios, 0) > 0 then 'execucao'
+--     when coalesce(cl.com_dados, 0) >= 30
+--       or coalesce(cl.agendados, 0) > 0 then 'captacao'
+--     else 'inicial'
+--   end
+--
+-- onde `en` e a CTE `entregues` (etapa 6 concluida) e `cl.com_honorarios`
+-- conta clientes com `valor_honorarios` em QUALQUER fase -- honorario
+-- pactuado marca a execucao, mesmo antes de o cliente virar `contratado`.
+
+comment on function gps.admin_painel_alunos(integer, integer) is
+  'Painel do admin, uma linha por ambiente. `classe` sao as 5 fases do programa (inicial | captacao | execucao | orientacao | finalizado), derivadas dos mesmos agregados que a funcao ja calcula -- zero consulta a mais. Precedencia: a mais avancada vence.';

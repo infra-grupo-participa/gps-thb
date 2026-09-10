@@ -626,3 +626,20 @@ export interface OnboardingDaPessoa {
  * anexe aqui". Sem a lista, não dá para torná-lo obrigatório.
  */
 export const MAX_DOCUMENTOS_ONBOARDING = 5;
+
+/**
+ * As 5 fases do aluno no programa — os cards da aba Alunos (desenho do
+ * Marcio, 10/09/2026). A ordem é a da JORNADA, e é a ordem dos cards na
+ * tela; ordenar por tamanho faria os blocos trocarem de lugar conforme os
+ * alunos avançam, e a tela deixaria de ser um mapa.
+ *
+ * A REGRA vive em `gps.admin_painel_alunos` — aqui é só o contrato.
+ */
+export const CLASSES = [
+  "inicial",
+  "captacao",
+  "execucao",
+  "orientacao",
+  "finalizado",
+] as const;
+export type ClasseAluno = (typeof CLASSES)[number];

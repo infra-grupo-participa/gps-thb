@@ -35,7 +35,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, RotateCw, Search, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, RotateCw, Search, Users } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -59,7 +59,15 @@ import {
   fraseDoFiltro,
   type ContextoDoFiltro,
 } from "./filtros";
-import { FILTROS, useEstadoDoPainel, type FiltroId } from "./estado-na-url";
+import {
+  CLASSES,
+  FILTROS,
+  ROTULO_CLASSE,
+  useEstadoDoPainel,
+  type ClasseAluno,
+  type FiltroId,
+} from "./estado-na-url";
+import { CardsDeClasse } from "./cards-de-classe";
 import { ordenarAlunos } from "./ordenacao";
 import { ORDENS, ROTULO_ORDEM, SEM_ATENDIMENTO, type OrdemAlunos } from "./tipos";
 
@@ -100,6 +108,7 @@ export function AlunosAtivosLista({
     limparFiltros,
     definirTermo,
     definirOrdem,
+    definirClasse,
     hrefComEstado,
   } = useEstadoDoPainel();
 
@@ -149,18 +158,40 @@ export function AlunosAtivosLista({
     [alunos, ctx, estado.filtros],
   );
 
+  /** Quantos alunos em cada fase — alimenta os 5 cards. */
+  const contagem = useMemo(() => {
+    const acc = Object.fromEntries(CLASSES.map((c) => [c, 0])) as Record<
+      ClasseAluno,
+      number
+    >;
+    for (const a of alunos) acc[a.classe] = (acc[a.classe] ?? 0) + 1;
+    return acc;
+  }, [alunos]);
+
   const visiveis = useMemo(
     () =>
       ordenarAlunos(
         filtrarAlunos(
-          alunos,
+          // A fase escolhida corta ANTES da busca e dos filtros: dentro de
+          // um card, tudo o mais opera só sobre aquela fase.
+          estado.classe
+            ? alunos.filter((a) => a.classe === estado.classe)
+            : alunos,
           { filtros: estado.filtros, termo: estado.termo },
           ctx,
         ),
         estado.ordem,
         atendimentoPorAluno,
       ),
-    [alunos, atendimentoPorAluno, ctx, estado.filtros, estado.termo, estado.ordem],
+    [
+      alunos,
+      atendimentoPorAluno,
+      ctx,
+      estado.classe,
+      estado.filtros,
+      estado.termo,
+      estado.ordem,
+    ],
   );
 
   // Roda DEPOIS de `visiveis` já estar no DOM: é essa a condição que salvar
@@ -208,8 +239,34 @@ export function AlunosAtivosLista({
     );
   }
 
+  // 🔑 Sem fase escolhida, a aba Alunos É os 5 cards — a lista nem se monta.
+  // É o desenho do Marcio: cinco blocos, clica, vê a lista, clica de novo e
+  // entra no ambiente.
+  if (!estado.classe) {
+    return <CardsDeClasse contagem={contagem} aoEscolher={definirClasse} />;
+  }
+
   return (
     <div className="grid gap-3">
+      <button
+        type="button"
+        onClick={() => definirClasse(null)}
+        className="mr-auto flex items-center gap-1.5 rounded-md corpo-sm text-muted-foreground hover:text-accent-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Todas as fases
+      </button>
+
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-heading titulo-h2">
+          {ROTULO_CLASSE[estado.classe]}
+        </h2>
+        <span className="corpo-sm text-muted-foreground">
+          {contagem[estado.classe]}{" "}
+          {contagem[estado.classe] === 1 ? "aluno" : "alunos"}
+        </span>
+      </div>
+
       {/* Duas fileiras, não uma sopa: em cima a BUSCA e a ORDEM (o que muda a
           leitura da lista inteira); embaixo os FILTROS (o que tira gente da
           lista). */}

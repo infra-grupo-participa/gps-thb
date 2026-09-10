@@ -93,8 +93,11 @@ export const ROTULO_CLASSE: Record<ClasseAluno, string> = {
 /** Uma linha explicando o que separa cada classe — a tela não adivinha. */
 export const AJUDA_CLASSE: Record<ClasseAluno, string> = {
   inicial: "Ainda montando a lista de clientes",
-  captacao: "Já tem reunião marcada, sem honorários pactuados",
-  execucao: "Honorários pactuados, holding em execução",
+  // 🔑 A regra é `listou os 30 OU tem reunião marcada` — medido, 5 dos 18
+  // entram só por ter listado, sem reunião nenhuma. O rótulo anterior
+  // ("Já tem reunião marcada") prometia o que 5 deles não tinham.
+  captacao: "Listaram os 30 ou já têm reunião, sem contrato fechado",
+  execucao: "Cliente contratado com honorários pactuados",
   orientacao: "Holding entregue, em acompanhamento",
   finalizado: "Bateram a meta de R$ 150 mil",
 };

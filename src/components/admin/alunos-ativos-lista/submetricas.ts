@@ -66,16 +66,29 @@ export function submetricasDaClasse(
     // da Etapa 01, na ordem em que o aluno os cumpre.
     case "inicial":
       return [
+        // 🔑 "listaram os 30" SAIU daqui em 10/09/2026: com a trava nova,
+        // quem tem os 30 não está mais nesta fase — a submétrica seria zero
+        // para sempre, e número congelado parece medida quebrada.
+        //
+        // No lugar entra o que a equipe precisa saber para agir: quem está
+        // na reta final (a ligação resolve) e quem nem começou.
         {
-          rotulo: "listaram os 30",
-          valor: contar(alunos, (a) => a.clientesComDados >= META_CLIENTES),
-          ajuda: `${META_CLIENTES} clientes com nome, telefone e nível de relacionamento`,
+          rotulo: "faltam 10 ou menos",
+          valor: contar(
+            alunos,
+            (a) =>
+              a.clientesComDados >= META_CLIENTES - 10 &&
+              a.clientesComDados < META_CLIENTES,
+          ),
+          ajuda: `entre ${META_CLIENTES - 10} e ${META_CLIENTES - 1} fichas completas — perto de destravar a próxima fase`,
         },
         {
           rotulo: "começaram a lista",
           valor: contar(
             alunos,
-            (a) => a.clientesComDados > 0 && a.clientesComDados < META_CLIENTES,
+            (a) =>
+              a.clientesComDados > 0 &&
+              a.clientesComDados < META_CLIENTES - 10,
           ),
           ajuda: "têm ao menos um cliente com os dados completos",
         },

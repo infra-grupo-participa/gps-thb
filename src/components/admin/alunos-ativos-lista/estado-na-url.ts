@@ -92,11 +92,13 @@ export const ROTULO_CLASSE: Record<ClasseAluno, string> = {
 
 /** Uma linha explicando o que separa cada classe — a tela não adivinha. */
 export const AJUDA_CLASSE: Record<ClasseAluno, string> = {
-  inicial: "Ainda montando a lista de clientes",
-  // 🔑 A regra é `listou os 30 OU tem reunião marcada` — medido, 5 dos 18
-  // entram só por ter listado, sem reunião nenhuma. O rótulo anterior
-  // ("Já tem reunião marcada") prometia o que 5 deles não tinham.
-  captacao: "Listaram os 30 ou já têm reunião, sem contrato fechado",
+  inicial: "Ainda montando a lista — saem daqui com os 30 completos",
+  // 🔑 A regra mudou em 10/09/2026 (decisão do Marcio): os 30 são a ÚNICA
+  // porta de saída da Inicial. Antes era `listou os 30 OU tem reunião
+  // marcada`, e um único cliente com data preenchida bastava — medido, 14
+  // dos 19 aqui estavam sem ter os 30. Um rótulo que descreve a regra
+  // antiga é pior que rótulo nenhum: a equipe cobraria a coisa errada.
+  captacao: "Já listaram os 30, sem contrato fechado",
   execucao: "Cliente contratado com honorários pactuados",
   orientacao: "Holding entregue, em acompanhamento",
   finalizado: "Bateram a meta de R$ 150 mil",

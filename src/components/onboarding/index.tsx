@@ -22,6 +22,7 @@ import { PassoSenha } from "./passo-senha";
 import { PassoFase, PassoHonorarios, PassoOrigem } from "./passo-cliente";
 import { PassoTexto } from "./passo-texto";
 import { Rodape } from "./rodape";
+import { passoDeAbertura, sequenciaDePassos } from "./sequencia";
 import { razaoParaTravar } from "./travas";
 import { SENHA_MINIMO } from "@/lib/senha-regras";
 import {
@@ -87,16 +88,15 @@ export function OnboardingPortal({
     dados.status === "concluido" && dados.precisaTrocarSenha;
 
   const [aberto, setAberto] = useState(true);
-  const [passo, setPasso] = useState(() => {
-    if (dados.precisaTrocarSenha) return 0;
-    // 🔴 Retomada: 7 é a tela "Pronto", que só existe depois de `concluir()`.
-    // Um `passo_atual >= 7` com o questionário em aberto é uma conclusão que
-    // falhou. Retomar ali levaria a pessoa ao "Pronto" sem nunca ter entregado
-    // as respostas — e de lá não há "Voltar". Volta ao 6, o último passo que
-    // ainda tem "Continuar".
-    if (dados.status !== "concluido" && dados.passoAtual >= 6) return 5;
-    return Math.max(1, dados.passoAtual);
-  });
+  const [passo, setPasso] = useState(() =>
+    passoDeAbertura({
+      precisaTrocarSenha: dados.precisaTrocarSenha,
+      status: dados.status,
+      passoAtual: dados.passoAtual,
+      origem: r.origemCliente1,
+      soSenha,
+    }),
+  );
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -134,21 +134,11 @@ export function OnboardingPortal({
   // virava "Passo 1 de 9" (achado do Fable). A barra só pode ENCOLHER por
   // escolha da pessoa (captação), nunca por um passo que ela acabou de cumprir.
   const [teveSenhaNaAbertura] = useState(() => dados.precisaTrocarSenha);
-  const sequencia = useMemo(() => {
-    // Senha temporária sobre questionário concluído: a senha e o aviso de que
-    // deu certo. Nada de reabrir perguntas que a pessoa já respondeu.
-    if (soSenha) return [0, 6];
-    const passos: number[] = [];
-    if (teveSenhaNaAbertura) passos.push(0);
-    passos.push(1, 2);
-    // 🔑 Quem vai captar do zero NÃO TEM CLIENTE (decisão do Marcio,
-    // 10/09/2026: "se ele não fez sessão de viabilidade, ele não tem
-    // cliente"). Pula o cadastro, os honorários e a pergunta de ajuda —
-    // que só fazem sentido sobre um cliente concreto — e vai direto ao fim.
-    if (origem !== "captacao") passos.push(3, 4, 5);
-    passos.push(6);
-    return passos;
-  }, [teveSenhaNaAbertura, origem, soSenha]);
+  const sequencia = useMemo(
+    () =>
+      sequenciaDePassos({ teveSenhaNaAbertura, origem, soSenha }),
+    [teveSenhaNaAbertura, origem, soSenha],
+  );
 
   const posicao = Math.max(0, sequencia.indexOf(passo));
   // 🔴 O onboarding é OBRIGATÓRIO desde 10/09/2026 (decisão do Marcio: "a

@@ -21,14 +21,20 @@ export default async function AdminAlunoPerfilPage({
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const membros = await getMembrosDoAmbiente(alunoId);
+  // 🔑 As duas consultas são INDEPENDENTES — `getAlunoById` não usa nada de
+  // `getMembrosDoAmbiente`. Em série somavam duas idas ao banco; em paralelo
+  // custam uma. Só `getTurmaCodigo` depende de fato (precisa do `turma_id`),
+  // então ela fica de fora do lote.
+  const [membros, aluno] = await Promise.all([
+    getMembrosDoAmbiente(alunoId),
+    getAlunoById(alunoId),
+  ]);
   if (membros.length === 0) notFound();
   // O admin edita o perfil do TITULAR do ambiente (é quem `alunoId` identifica
   // diretamente; sócios têm perfil próprio, editável só pelo próprio login).
   const titular = membros.find((m) => m.papel === "titular") ?? membros[0];
 
   const base = `/admin/aluno/${alunoId}`;
-  const aluno = await getAlunoById(alunoId);
   const turma = await getTurmaCodigo(aluno?.turma_id);
 
   return (

@@ -17,7 +17,14 @@ export async function addAgendamentoEtapa3(alunoId: string) {
     .schema("gps")
     .from("etapa3_agendamentos")
     .insert({ aluno_id: alunoId })
-    .select("*")
+    // Colunas explícitas, não `select("*")`: o egress do Supabase é teto da
+    // ORGANIZAÇÃO, dividido com o `sip`. É a regra da casa desde 09/09 e
+    // esta linha era a única sobra — ficou de fora da varredura porque mora
+    // em `src/app/`, e a limpeza olhou `src/lib/data/**`.
+    // Espelha `Etapa3Agendamento` (`src/lib/types.ts`).
+    .select(
+      "id, aluno_id, cliente_id, descricao, data, horario, equipe_participa, criado_em",
+    )
     .single();
   if (error) return { erro: traduzirErroBanco("etapa3/addAgendamento", error) };
   revalidar(alunoId);

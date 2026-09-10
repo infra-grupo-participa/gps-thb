@@ -19,10 +19,20 @@ export default async function ClienteFichaPage({
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
   const alunoId = ctx.alunoId;
-  const cliente = await getClienteById(clienteId);
-  if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
-  const aluno = await getAlunoById(alunoId);
+  // 🔑 Em paralelo: `getAlunoById` recebe `alunoId` da SESSÃO, não do
+  // cliente — não depende do resultado da primeira consulta e não vaza nada
+  // se a guarda abaixo reprovar (ela busca o próprio aluno, que a pessoa já
+  // tem direito de ver). Em série eram duas idas ao banco.
+  //
+  // ⚠️ A guarda de propriedade continua ANTES de qualquer render: o
+  // `notFound()` roda com as duas respostas em mãos, no mesmo ponto lógico
+  // de antes.
+  const [cliente, aluno] = await Promise.all([
+    getClienteById(clienteId),
+    getAlunoById(alunoId),
+  ]);
+  if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
   /**
    * Só quando ESTE cliente não é a estrela: a ficha precisa saber se OUTRO

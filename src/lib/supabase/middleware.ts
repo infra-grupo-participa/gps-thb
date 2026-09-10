@@ -37,11 +37,6 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // IMPORTANTE: não colocar código entre createServerClient e getUser().
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const { pathname } = request.nextUrl;
   const isPublic =
     pathname === "/login" ||
@@ -68,6 +63,45 @@ export async function updateSession(request: NextRequest) {
     // pelo header `x-plantao-segredo` mais o segredo conferido dentro das
     // RPCs. Liberar `/api/` inteiro abriria o que vier depois.
     pathname === "/api/plantao/manutencao";
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔑 ROTA PÚBLICA NÃO PAGA A IDA AO GoTrue (10/09/2026)
+  // ═══════════════════════════════════════════════════════════════════════
+  //
+  // `getUser()` é uma REQUISIÇÃO DE REDE ao GoTrue — medido em 10/09:
+  // ~390 ms, constantes. Até aqui ela rodava ANTES desta linha, ou seja,
+  // `/resgate`, `/cadastro`, `/esqueci-senha` e `/p/plantao` pagavam esse
+  // custo sem ter o que fazer com o resultado.
+  //
+  // Pior que a lentidão: é essa chamada que aparece no log de produção como
+  // `failed to get redirect response TypeError: fetch failed`. Quando a rede
+  // da Hostinger engasga, ela derrubava o `/p/plantao` (que fica embedado na
+  // Hotmart, para 421 pessoas) e o `/resgate`, que existe justamente para
+  // quem não consegue entrar — as duas telas que menos podem depender de
+  // uma consulta de sessão que elas nem usam.
+  //
+  // ⚠️ DUAS PÚBLICAS CONTINUAM CHAMANDO — e pular qualquer uma delas quebra
+  //    comportamento de verdade:
+  //
+  //    `/login`  — precisa saber se já há sessão para mandar quem já entrou
+  //                para o destino, em vez de mostrar o formulário de novo.
+  //    `/auth/*` — é ONDE o token do e-mail vira sessão (`/auth/confirm`,
+  //                `/auth/redefinir`). Sem o `getUser()`, os cookies novos
+  //                não são gravados por `setAll` e o link de redefinir senha
+  //                pararia de funcionar.
+  //
+  //    O que sai da rede é o resto: `/resgate`, `/cadastro`,
+  //    `/esqueci-senha`, `/p/plantao`, `/favicon.ico`, `/_next/*` e o job
+  //    do plantão — nenhum deles usa `user` para nada.
+  const publicaQuePrecisaDeSessao =
+    pathname === "/login" || pathname.startsWith("/auth");
+
+  if (isPublic && !publicaQuePrecisaDeSessao) return supabaseResponse;
+
+  // IMPORTANTE: não colocar código entre createServerClient e getUser().
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

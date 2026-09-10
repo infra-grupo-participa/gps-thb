@@ -35,9 +35,14 @@ export default async function EtapaAlunoPage({
   // A liberação vale POR ALUNO: `coalesce(override, global)`. Sem isto, uma
   // etapa aberta só para ele na home redirecionaria aqui — e uma etapa travada
   // só para ele continuaria abrindo pela URL.
-  const [etapasGlobais, overrides] = await Promise.all([
+  //
+  // `getAlunoById` entra no MESMO lote: ele recebe `alunoId` da sessão e não
+  // depende de etapa nenhuma. Estava sozinho, depois das guardas — uma ida
+  // ao banco a mais, em série, em toda abertura de etapa.
+  const [etapasGlobais, overrides, aluno] = await Promise.all([
     getEtapas(),
     getEtapasLiberadasPara(alunoId),
+    getAlunoById(alunoId),
   ]);
   const etapas = etapasComLiberacaoDoAluno(etapasGlobais, overrides);
   const etapaInfo = etapas.find((e) => e.id === n);
@@ -54,8 +59,6 @@ export default async function EtapaAlunoPage({
   // voltando para a home: ali não há decisão sobre esta pessoa nem motivo
   // escrito, e a home já diz "Em breve · Libera conforme sua turma avança".
   if (!etapaInfo.liberada && !travadaPelaEquipe) redirect("/");
-
-  const aluno = await getAlunoById(alunoId);
 
   return (
     <>

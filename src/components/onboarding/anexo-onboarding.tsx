@@ -1,5 +1,25 @@
 "use client";
 
+/**
+ * 🔴 ESTE COMPONENTE NÃO ESTÁ MONTADO EM LUGAR NENHUM (achado em 10/09/2026).
+ *
+ * `onboarding-gate.tsx:136` passa `registrarAnexo`/`removerAnexo` adiante,
+ * mas o único consumidor dessas actions é ESTE arquivo — e nenhum arquivo o
+ * importa. O fio termina em si mesmo.
+ *
+ * CONFIRMADO NO BANCO: `select count(*) from gps.onboarding_anexos` = **0**.
+ * A feature de anexar o contrato de honorários no onboarding nunca gravou
+ * uma linha desde que foi escrita.
+ *
+ * ⚠️ NÃO APAGAR sem decisão do Marcio. Apagar esconderia a lacuna: o passo 7
+ * do onboarding pede o contrato, o banco tem tabela, bucket, RPCs e policies
+ * prontos, e a única peça que falta é montar este componente na tela. É meia
+ * hora de trabalho, não uma reescrita — e é o que decide se `apto_ao_saldo`
+ * (contratado + honorários + anexo) algum dia fica verdadeiro para alguém.
+ *
+ * Depende de B-D1 (a lista de documentos, que o João ainda não definiu).
+ */
+
 import { useId, useRef, useState } from "react";
 import { FileText, Paperclip, X } from "lucide-react";
 

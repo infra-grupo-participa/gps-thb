@@ -234,7 +234,7 @@ export function GraficosDoPrograma({
         rotulo="Acesso ao portal"
         valor={`${jaEntraram} de ${acesso.total}`}
         variante="grafico"
-        // Sem `contexto`: o rótulo, o "137 de 159" e o miolo da rosca ("86% já
+        // Sem `contexto`: o rótulo, o "117 de 136" e o miolo da rosca ("86% já
         // entraram") já dizem a mesma frase três vezes. O espaço vai para o anel.
         link={{
           href: `${LINK_LISTA}&f=sem_login`,

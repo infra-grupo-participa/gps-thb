@@ -15,6 +15,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { MateriaisView } from "@/components/materiais/materiais-view";
 
+/** Título da aba — sem isto, herdava o rótulo genérico do portal. */
+export const metadata = { title: "Materiais" };
+
 export default async function AdminAlunoMateriaisPage({
   params,
 }: {

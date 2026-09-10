@@ -7,6 +7,9 @@ import { ThbLogo } from "@/components/thb-logo";
 import { AuthLayout } from "@/components/auth-layout";
 import { destinoInterno } from "@/lib/nav";
 
+/** O título da aba: sem isto, a tela de login herdava o rótulo genérico do portal. */
+export const metadata = { title: "Entrar" };
+
 export default async function LoginPage({
   searchParams,
 }: {

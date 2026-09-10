@@ -30,7 +30,7 @@ import { FilaEBase } from "./fila";
  *    coluna (a razão está em `ui/graficos/tipos.ts`).
  * 2. *estado vazio como protagonista* — três caixas âmbar grandes gritavam
  *    mais alto do que os números que existem. Vazio continua sendo resultado,
- *    mas dito em número ("0 de 172 · 0%" com o trilho vazio) e em UMA linha.
+ *    mas dito em número ("0 de 136 · 0%" com o trilho vazio) e em UMA linha.
  * 3. *KPI sem "de quanto"* — todo tile da faixa A leva o percentual do próprio
  *    universo ao lado do número, e `acesso.ativos30d`/`semAcesso30d` (que a
  *    RPC já devolvia e ninguém mostrava) viraram o terceiro tile.
@@ -40,7 +40,7 @@ import { FilaEBase } from "./fila";
  * 🔑 As regras que **não** mudaram, e que valem para todo card daqui:
  * número, não frase · um card, um destino · todo `href` com valor da allowlist
  * de `alunos-ativos-lista/estado-na-url.ts` e com `aba=ativos` · vazio é
- * resultado com instrução curta · nenhum número inventado (nada de 159 × 150
+ * resultado com instrução curta · nenhum número inventado (nada de 136 × 150
  * mil) · comparação só onde a RPC dá o par · **nenhuma tela escreve valor de
  * saldo do programa** (BLOQUEIO B-S1) · Server Component, 0 KB de JS.
  *

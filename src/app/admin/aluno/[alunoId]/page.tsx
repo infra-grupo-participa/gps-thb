@@ -28,6 +28,13 @@ import { GerenciarAcesso } from "@/components/admin/gerenciar-acesso";
 import { DiarioResumoCard } from "@/components/admin/diario-resumo-card";
 import { VoltarAoPainel } from "@/components/admin/voltar-ao-painel";
 
+/**
+ * Título estático, não o nome do aluno: o nome só existe depois da query, e
+ * `generateMetadata` custaria uma segunda leitura do ambiente por abertura de
+ * tela. "Ambiente do aluno" já separa esta aba das outras do painel.
+ */
+export const metadata = { title: "Ambiente do aluno" };
+
 export default async function AdminAlunoInicioPage({
   params,
 }: {

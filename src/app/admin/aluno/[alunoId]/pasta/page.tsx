@@ -12,6 +12,9 @@ import { AssistBanner } from "@/components/admin/assist-banner";
 import { PastaView } from "@/components/pasta/pasta-view";
 import { PastaConfigForm } from "@/components/pasta/pasta-config-form";
 
+/** Título da aba — sem isto, herdava o rótulo genérico do portal. */
+export const metadata = { title: "Pasta" };
+
 export default async function AdminAlunoPastaPage({
   params,
 }: {

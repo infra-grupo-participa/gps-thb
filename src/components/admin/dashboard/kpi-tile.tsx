@@ -45,7 +45,7 @@ export function KpiTile({
   destaque?: boolean;
   /** `<VariacaoDoMes compacto>`, quando o tile tem comparação com o mês anterior. */
   variacao?: React.ReactNode;
-  /** UMA linha curta, numérica. Ex.: "de 159 · 19 sem login". */
+  /** UMA linha curta, numérica. Ex.: "de 136 · 19 sem login". */
   contexto?: string;
   link: { href: string; rotulo: string };
 }) {

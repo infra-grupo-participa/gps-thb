@@ -37,6 +37,14 @@ import { ThbLogo } from "@/components/thb-logo";
 import { AmbienteCompartilhadoBanner } from "@/components/ambiente-compartilhado-banner";
 import type { Aluno } from "@/lib/types";
 
+/**
+ * O root layout traz `title.template = "%s | Programa de Implementação
+ * Assistida"`, mas sem `metadata` aqui a aba caía no `default` do template —
+ * o mesmo rótulo do portal inteiro. Com oito abas abertas nada distinguia o
+ * início das outras telas.
+ */
+export const metadata = { title: "Início" };
+
 export default async function HomePage() {
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");

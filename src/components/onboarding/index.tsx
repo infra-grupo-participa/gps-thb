@@ -238,8 +238,14 @@ export function OnboardingPortal({
       return;
     }
     // Quem só veio trocar a senha vai para o aviso final; quem está no
-    // questionário segue para a primeira pergunta.
-    irPara(soSenha ? 9 : 1);
+    // questionário RETOMA onde parou (mesma regra da abertura: 8/9 em aberto
+    // voltam ao 7) — senha temporária nova no meio do questionário não pode
+    // mandar a pessoa de volta à primeira pergunta.
+    const retomada =
+      dados.status !== "concluido" && dados.passoAtual >= 8
+        ? 7
+        : Math.max(1, dados.passoAtual);
+    irPara(soSenha ? 9 : retomada);
   }
 
   /** A razão pela qual o "Continuar" está travado. Vazio = pode seguir. */

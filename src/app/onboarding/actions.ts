@@ -200,8 +200,8 @@ export async function salvarPassoOnboarding(
   const supabase = await createClient();
   const { error } = await supabase.schema("gps").rpc("onboarding_salvar_passo", {
     p_passo: passo,
-    // `null` viraria "sem chave nenhuma" no jsonb; um objeto vazio já foi
-    // barrado acima.
+    // `null` viraria "sem chave nenhuma" no jsonb; `{}` é válido e só
+    // avança `passo_atual` (passos 1 e 7→8).
     p_dados: limpo,
   });
 

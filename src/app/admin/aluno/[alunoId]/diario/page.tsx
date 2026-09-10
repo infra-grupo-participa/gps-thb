@@ -186,7 +186,7 @@ export default async function AdminAlunoDiarioPage({
     // tempo escolhida na tela — ver `getMarcosDeTrilha`. Não usar `eventos`
     // (já filtrado por `desde`) para nenhum dos dois.
     getMarcosDeTrilha(alunoId),
-    contarMembrosDoAmbiente(alunoId),,
+    contarMembrosDoAmbiente(alunoId),
     // Só 3 pessoas apagam nota (gps.config.notas_podem_apagar). A tela
     // esconde o botão para os outros; a fronteira real é a RPC.
     consultarPodeApagarNota()

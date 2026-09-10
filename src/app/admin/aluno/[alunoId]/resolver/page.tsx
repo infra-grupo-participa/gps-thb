@@ -11,6 +11,7 @@ import {
   getOnboardingDoAluno,
   getProgressoAluno,
   contarMembrosDoAmbiente,
+  alunoJaTemCliente,
 } from "@/lib/data";
 import { getFinanceiroDoAluno } from "@/lib/financeiro";
 import {
@@ -75,6 +76,7 @@ export default async function AdminAlunoResolverPage({
     progressoTodas,
     favorito,
     onboarding,
+    jaTemCliente
   ] = await Promise.all([
     getAlunoById(alunoId),
     contarMembrosDoAmbiente(alunoId),
@@ -86,6 +88,7 @@ export default async function AdminAlunoResolverPage({
     // Uma RPC (`gps.admin_onboarding_do_aluno`), no MESMO `Promise.all` das
     // outras: o bloco novo não acrescenta uma ida em série à abertura da tela.
     getOnboardingDoAluno(alunoId),
+    alunoJaTemCliente(alunoId)
   ]);
 
   // Diagnóstico parcial faria o admin concluir "está tudo bem" sobre o que não
@@ -124,6 +127,10 @@ export default async function AdminAlunoResolverPage({
   const etapas = etapasComLiberacaoDoAluno(etapasGlobais, overrides);
   const passo = proximoPasso(etapas, clientes, progressoTodas, {
     temFavorito: favorito !== null,
+    // 🔑 Sem isto a HOME trava o passo que a Etapa 01 mostra liberado: quem
+    // chegou COM cliente não é travado pela tarefa dos 30, e as duas telas
+    // precisam dizer a mesma coisa.
+    jaTemCliente,
   });
 
   const temContrato =

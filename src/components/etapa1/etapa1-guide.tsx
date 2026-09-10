@@ -93,6 +93,9 @@ export function Etapa1Guide({
   );
 
   /** O que falta para os já listados contarem. `frase` é null quando nada falta. */
+  /** Sem nenhum cliente cadastrado não existe estrela para escolher. */
+  const semCliente = clientesIniciais.length === 0;
+
   const faltam = useMemo(
     () => faltaParaContar(clientesIniciais),
     [clientesIniciais],
@@ -206,7 +209,7 @@ export function Etapa1Guide({
           className="col-span-2 lg:col-span-1"
           icone={<TrendingDown />}
           rotulo="Perda pela inércia (total)"
-          valor={brl(perdaTotal)}
+          valor={perdaTotal > 0 ? brl(perdaTotal) : "—"}
           hint="soma dos seus clientes"
         />
       </div>
@@ -258,18 +261,35 @@ export function Etapa1Guide({
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-accent/60 px-3 py-2.5">
               <div className="flex items-start gap-2">
                 <Lock className="mt-0.5 size-4 shrink-0 text-primary" />
+                {/* 🔑 Sem cliente cadastrado não há estrela para escolher.
+                    O CTA "Escolher o cliente da equipe" levava a uma lista
+                    VAZIA — o aluno clicava e não achava nada. A frase e o
+                    botão passam a dizer o passo que existe agora. */}
                 <p className="text-sm">
-                  <span className="font-medium">Do passo 4 em diante</span>, os
-                  passos abrem quando você escolher, na aba Clientes, o cliente
-                  que a equipe vai acompanhar (a{" "}
-                  <span className="text-accent-foreground">estrela</span>).
+                  {semCliente ? (
+                    <>
+                      <span className="font-medium">Do passo 4 em diante</span>,
+                      os passos abrem quando você escolher o cliente que a
+                      equipe vai acompanhar. Para isso, cadastre primeiro os
+                      seus clientes na aba Clientes.
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium">Do passo 4 em diante</span>,
+                      os passos abrem quando você escolher, na aba Clientes, o
+                      cliente que a equipe vai acompanhar (a{" "}
+                      <span className="text-accent-foreground">estrela</span>).
+                    </>
+                  )}
                 </p>
               </div>
               <Link
                 href={clientesHref}
                 className={buttonVariants({ size: "sm" })}
               >
-                Escolher o cliente da equipe
+                {semCliente
+                  ? "Cadastrar o primeiro cliente"
+                  : "Escolher o cliente da equipe"}
               </Link>
             </div>
           ) : null}

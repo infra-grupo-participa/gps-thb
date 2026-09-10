@@ -414,3 +414,38 @@ export async function liberarAcompanhamento(
   const d = (data ?? {}) as Record<string, unknown>;
   return { clienteId: String(d.cliente_id ?? clienteId) };
 }
+
+/**
+ * Destrava o questionário inicial de um aluno.
+ *
+ * 🔴 EXISTE PORQUE O ONBOARDING É OBRIGATÓRIO. Desde 10/09/2026 não há
+ * "Continuar depois", Esc nem clique fora: um erro de servidor no meio do
+ * questionário deixa o aluno SEM ACESSO ao portal, e nenhuma outra ação da
+ * Central escreve em `onboarding_respostas` — a saída não existia.
+ *
+ * 🔑 NÃO cria o cliente 1. `onboarding_concluir` cria porque o ALUNO
+ * respondeu; aqui quem age é a equipe, e inventar um cliente com dado que
+ * ninguém informou seria pior que a trava. O aluno cadastra depois, pela
+ * aba Clientes.
+ */
+export async function destravarOnboarding(
+  alunoId: string,
+): Promise<Resultado<{ jaEstava: boolean }>> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("admin_destravar_onboarding", { p_aluno_id: alunoId });
+
+  if (error) {
+    return { erro: traduzirErroBanco("central/destravarOnboarding", error) };
+  }
+
+  revalidatePath(`/admin/aluno/${alunoId}/resolver`);
+  revalidatePath("/", "layout");
+
+  return {
+    jaEstava: (data as { ja_estava?: boolean } | null)?.ja_estava === true,
+  };
+}

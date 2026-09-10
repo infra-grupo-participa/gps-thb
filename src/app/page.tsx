@@ -13,6 +13,7 @@ import {
   getMembrosDoAmbiente,
   getTurmaCodigo,
   getClienteEquipe,
+  alunoJaTemCliente,
 } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -107,6 +108,7 @@ export default async function HomePage() {
     favorito,
     membros,
     alunoSocio,
+    jaTemCliente
   ] = await Promise.all([
     // Liberação POR ALUNO: `coalesce(override, global)`. O override
     // (`gps.etapa_liberacao_aluno`) manda nos dois sentidos — libera quem está
@@ -130,6 +132,7 @@ export default async function HomePage() {
     souSocio && ctx.membroAlunoId
       ? getAlunoById(ctx.membroAlunoId)
       : Promise.resolve(null),
+    alunoJaTemCliente(alunoId)
   ]);
   const { etapas, overrides } = etapasEOverrides;
   const aluno = souSocio ? alunoSocio : alunoAmbiente;
@@ -152,6 +155,10 @@ export default async function HomePage() {
   // apontar para um checkbox desabilitado (PL2).
   const passo = proximoPasso(etapas, clientes, progressoTodas, {
     temFavorito: favorito !== null,
+    // 🔑 Sem isto a HOME trava o passo que a Etapa 01 mostra liberado: quem
+    // chegou COM cliente não é travado pela tarefa dos 30, e as duas telas
+    // precisam dizer a mesma coisa.
+    jaTemCliente,
   });
 
   const manual1: Record<number, boolean> = {};

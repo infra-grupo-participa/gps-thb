@@ -114,7 +114,7 @@ export function HomeResumo({
           <KpiLinha
             icone={<Coins />}
             rotulo="Perda pela inércia"
-            valor={brl(perdaTotal)}
+            valor={perdaTotal > 0 ? brl(perdaTotal) : "—"}
             hint="soma dos clientes"
             empilhado
             destaque

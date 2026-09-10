@@ -229,7 +229,7 @@ export function OnboardingPortal({
       dados.status !== "concluido" && dados.passoAtual >= 8
         ? 7
         : Math.max(1, dados.passoAtual);
-    irPara(soSenha ? 9 : retomada);
+    irPara(soSenha ? 6 : retomada);
   }
 
   /** A razão pela qual o "Continuar" está travado. Vazio = pode seguir. */

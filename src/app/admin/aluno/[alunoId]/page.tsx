@@ -10,6 +10,7 @@ import {
   getProgressoAluno,
   getResumoDiario,
   contarMembrosDoAmbiente,
+  alunoJaTemCliente,
 } from "@/lib/data";
 import {
   etapasComLiberacaoDoAluno,
@@ -49,6 +50,7 @@ export default async function AdminAlunoInicioPage({
     favorito,
     resumoDiario,
     qtdMembros,
+    jaTemCliente
   ] = await Promise.all([
     getAlunoById(alunoId),
     // Mesma regra do ambiente do aluno: `coalesce(override, global)`. Sem
@@ -67,6 +69,7 @@ export default async function AdminAlunoInicioPage({
     getClienteEquipe(alunoId),
     getResumoDiario(alunoId),
     contarMembrosDoAmbiente(alunoId),
+    alunoJaTemCliente(alunoId)
   ]);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
@@ -74,6 +77,10 @@ export default async function AdminAlunoInicioPage({
   // passo. O admin vê o mesmo card que o aluno vê.
   const passo = proximoPasso(etapas, clientes, progressoTodas, {
     temFavorito: favorito !== null,
+    // 🔑 Sem isto a HOME trava o passo que a Etapa 01 mostra liberado: quem
+    // chegou COM cliente não é travado pela tarefa dos 30, e as duas telas
+    // precisam dizer a mesma coisa.
+    jaTemCliente,
   });
 
   return (

@@ -47,8 +47,13 @@ export function CadastroForm() {
       <div className="rounded-md border bg-muted/40 p-4 text-sm">
         <p className="font-medium">Cadastro concluído!</p>
         <p className="mt-1 text-muted-foreground">
+          {/* 🔴 NÃO promete e-mail. O projeto está com `mailer_autoconfirm`
+              LIGADO, então este ramo só é alcançado se o Supabase deixar de
+              devolver sessão — e, nesse caso, ninguém dispara e-mail de
+              confirmação (o GPS não tem esse envio em `email.ts`). Prometer
+              um e-mail que não sai deixa a pessoa esperando para sempre. */}
           {state.precisaConfirmar
-            ? "Enviamos um e-mail de confirmação. Confirme seu e-mail e faça login para acessar o programa."
+            ? "Agora entre com o seu e-mail e a senha que você acabou de criar. Se não conseguir, fale com a equipe."
             : "Redirecionando para o seu portal..."}
         </p>
       </div>

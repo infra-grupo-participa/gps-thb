@@ -189,6 +189,23 @@ export function OnboardingPortal({
     // final, que não tem "Voltar"; o pop-up reabriria ali para sempre, sem
     // nunca ter entregado nada.
     if (passo === 5 || (passo === 2 && origem === "captacao")) {
+      // 🔴 GRAVA ANTES DE CONCLUIR. Quem escolhe "captação" salta do passo 2
+      // direto para o fim, e `concluir()` era chamada SEM a escolha ter ido
+      // ao banco — a RPC recusava com "Responda o questionário antes de
+      // concluir" e o aluno ficava preso no passo 2, sem saída.
+      //
+      // `dadosDoPasso` traz `{ origem_cliente1 }` quando vem do passo 2 e
+      // `{ ajuda_pronta }` quando vem do 5; nos dois casos é o que ainda
+      // não foi persistido. Erro aqui NÃO conclui.
+      if (Object.keys(dadosDoPasso).length > 0) {
+        const salvo = await actions.salvarPasso(passo, dadosDoPasso);
+        if (salvo.erro) {
+          setSalvando(false);
+          setErro(salvo.erro);
+          return;
+        }
+      }
+
       const c = await actions.concluir();
       setSalvando(false);
       if (c.erro) {

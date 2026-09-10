@@ -44,6 +44,7 @@ import {
   type OnboardingAnexo,
   type TipoAnexoOnboarding,
 } from "@/lib/types";
+import { PAISES } from "@/components/onboarding/tipos";
 
 /**
  * ⚠️ As constantes de anexo vêm de `chamados-tipos.ts` de propósito: o contrato
@@ -69,6 +70,8 @@ export interface PatchOnboarding {
   cliente_nome?: string | null;
   cliente_telefone?: string | null;
   cliente_grau_relacao?: string | null;
+  cliente_pais?: string | null;
+  honorarios_pactuados?: boolean | null;
   descricao_caso?: string | null;
   ajuda_pronta?: string | null;
 }
@@ -80,6 +83,8 @@ const CHAVES_PATCH_ONBOARDING: ReadonlySet<string> = new Set([
   "cliente_nome",
   "cliente_telefone",
   "cliente_grau_relacao",
+  "cliente_pais",
+  "honorarios_pactuados",
   "descricao_caso",
   "ajuda_pronta",
 ]);
@@ -126,7 +131,9 @@ export async function salvarPassoOnboarding(
   const guarda = await exigirAluno();
   if (!guarda.ok) return { erro: guarda.erro };
 
-  if (!Number.isInteger(passo) || passo < 0 || passo > 9) {
+  // Faixa 0..6. Saíram em 10/09/2026: anexo de documentos, tour e a
+  // pergunta "descreva o seu caso". O banco refaz esta checagem.
+  if (!Number.isInteger(passo) || passo < 0 || passo > 6) {
     return { erro: "Passo inválido." };
   }
 
@@ -168,6 +175,21 @@ export async function salvarPassoOnboarding(
     )
   ) {
     return { erro: "Escolha um grau de relação da lista." };
+  }
+  if (
+    "cliente_pais" in limpo &&
+    limpo.cliente_pais != null &&
+    limpo.cliente_pais !== "" &&
+    !PAISES.some((x) => x.id === String(limpo.cliente_pais))
+  ) {
+    return { erro: "Escolha o país da lista." };
+  }
+  if (
+    "honorarios_pactuados" in limpo &&
+    limpo.honorarios_pactuados != null &&
+    typeof limpo.honorarios_pactuados !== "boolean"
+  ) {
+    return { erro: "Responda sim ou não sobre os honorários pactuados." };
   }
   if ("valor_honorarios" in limpo) {
     const v = limpo.valor_honorarios;

@@ -16,7 +16,6 @@ import {
   TITULO_DOCUMENTOS,
 } from "@/components/onboarding/tipos";
 import { AnexoDoInicio } from "./anexo-do-inicio";
-import { ReverApresentacao } from "./rever-apresentacao";
 
 /**
  * "Suas respostas do início" — o que o aluno respondeu no primeiro acesso,
@@ -34,11 +33,9 @@ import { ReverApresentacao } from "./rever-apresentacao";
  */
 export function RespostasDoInicio({
   dados,
-  abas,
 }: {
   dados: MeuOnboarding | null;
   /** As abas reais da pessoa — o "Rever a apresentação" itera exatamente elas. */
-  abas: { href: string; label: string }[];
 }) {
   if (!dados || dados.status !== "concluido") return null;
 
@@ -73,7 +70,6 @@ export function RespostasDoInicio({
       icone={<FileText />}
       titulo="Suas respostas do início"
       descricao="O que você contou quando entrou no programa. Mudou alguma coisa? Fale com a equipe pelo Suporte."
-      acao={<ReverApresentacao dados={dados} abas={abas} />}
     >
       <Card>
         <CardContent className="grid gap-4">

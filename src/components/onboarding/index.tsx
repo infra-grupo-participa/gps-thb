@@ -11,28 +11,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { mascaraMoeda, moedaParaNumero } from "@/lib/masks";
-import { FASES_CLIENTE1_UI } from "@/lib/etapa1";
 import {
-  MAX_DOCUMENTOS_ONBOARDING,
   type FaseCliente1,
   type GrauRelacao,
   type MeuOnboarding,
-  type OnboardingAnexo,
   type OrigemCliente1,
 } from "@/lib/types";
-import { AnexoOnboarding } from "./anexo-onboarding";
 import { BarraDePassos } from "./barra-de-passos";
 import { PassoSenha } from "./passo-senha";
 import { PassoFase, PassoHonorarios, PassoOrigem } from "./passo-cliente";
 import { PassoTexto } from "./passo-texto";
-import { PassoTour, abasDoTour } from "./passo-tour";
 import { Rodape } from "./rodape";
 import { razaoParaTravar } from "./travas";
 import { SENHA_MINIMO } from "@/lib/senha-regras";
 import {
-  AJUDA_DOCUMENTOS,
   FRASE_ABERTURA,
-  TITULO_DOCUMENTOS,
   type OnboardingActions,
 } from "./tipos";
 
@@ -62,22 +55,11 @@ import {
  */
 export function OnboardingPortal({
   dados,
-  abas: abasDoAluno,
   actions,
   proximoPasso,
-  soTour = false,
   aoFechar,
 }: {
   dados: MeuOnboarding;
-  /**
-   * As abas REAIS desta pessoa — `navDoAluno(ctx)`, resolvido no servidor.
-   *
-   * 🔑 Prop e não campo de `MeuOnboarding`: a navegação é do contexto de
-   * sessão (o sócio não vê Financeiro, B7-b), não da resposta do questionário.
-   * A RPC `onboarding_meu()` devolve respostas; ela não sabe — nem deve — o
-   * que o menu daquela pessoa tem.
-   */
-  abas: { href: string; label: string }[];
   actions: OnboardingActions;
   /** O que fazer a seguir, vindo de `proximoPasso`. Texto + link. */
   proximoPasso?: { titulo: string; href: string } | null;
@@ -86,11 +68,9 @@ export function OnboardingPortal({
    * `/perfil`). Nesse modo nada é salvo e nenhuma action é chamada — é uma
    * releitura, não uma segunda resposta.
    */
-  soTour?: boolean;
   /** Avisa quem montou que o diálogo fechou (para poder reabrir). */
   aoFechar?: () => void;
 }) {
-  const abas = useMemo(() => abasDoTour(abasDoAluno), [abasDoAluno]);
   // Retomada: tudo que a pessoa já respondeu volta preenchido. As três
   // colunas do cliente 1 (`cliente_nome/_telefone/_grau_relacao`) existem
   // justamente para isso — fechar o navegador no passo 4 não pode apagar o que
@@ -104,22 +84,19 @@ export function OnboardingPortal({
    * reabre.
    */
   const soSenha =
-    !soTour && dados.status === "concluido" && dados.precisaTrocarSenha;
+    dados.status === "concluido" && dados.precisaTrocarSenha;
 
   const [aberto, setAberto] = useState(true);
   const [passo, setPasso] = useState(() => {
-    if (soTour) return 8;
     if (dados.precisaTrocarSenha) return 0;
-    // 🔴 Retomada: 8 e 9 são a APRESENTAÇÃO, e a apresentação só existe depois
-    // de `concluir()`. Um `passo_atual >= 8` com o questionário em aberto é uma
-    // conclusão que falhou (ou uma linha gravada pela versão que carimbava o 8
-    // antes de concluir). Retomar ali levaria a pessoa direto ao tour e ao
-    // "Pronto" sem nunca ter entregado as respostas — e do 8 não há "Voltar".
-    // Volta ao 7, o último passo que ainda tem "Continuar".
-    if (dados.status !== "concluido" && dados.passoAtual >= 8) return 7;
+    // 🔴 Retomada: 7 é a tela "Pronto", que só existe depois de `concluir()`.
+    // Um `passo_atual >= 7` com o questionário em aberto é uma conclusão que
+    // falhou. Retomar ali levaria a pessoa ao "Pronto" sem nunca ter entregado
+    // as respostas — e de lá não há "Voltar". Volta ao 6, o último passo que
+    // ainda tem "Continuar".
+    if (dados.status !== "concluido" && dados.passoAtual >= 6) return 5;
     return Math.max(1, dados.passoAtual);
   });
-  const [indiceTour, setIndiceTour] = useState(0);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -130,24 +107,19 @@ export function OnboardingPortal({
   const [nome, setNome] = useState(r.clienteNome ?? "");
   const [telefone, setTelefone] = useState(r.clienteTelefone ?? "");
   const [grau, setGrau] = useState<GrauRelacao | "">(r.clienteGrauRelacao ?? "");
+  const [pais, setPais] = useState(r.clientePais ?? "");
+  const [pactuados, setPactuados] = useState<boolean | null>(
+    r.honorariosPactuados ?? null,
+  );
   const [honorarios, setHonorarios] = useState(
     r.valorHonorarios != null
       ? mascaraMoeda(String(Math.round(r.valorHonorarios * 100)))
       : "",
   );
-  const [caso, setCaso] = useState(r.descricaoCaso ?? "");
   const [ajuda, setAjuda] = useState(r.ajudaPronta ?? "");
-  const [anexos, setAnexos] = useState<OnboardingAnexo[]>(dados.anexos);
   const [favoritado, setFavoritado] = useState<boolean | null>(null);
 
-  const contrato = anexos.filter((a) => a.tipo === "contrato_honorarios");
-  const documentos = anexos.filter((a) => a.tipo === "documento");
   const valorHonorarios = moedaParaNumero(honorarios);
-  // Quem decide se a fase exige honorários + contrato é `FASES_CLIENTE1_UI` —
-  // o mesmo mapa que `gps.onboarding_concluir()` implementa no banco. Comparar
-  // com a string `"execucao_andamento"` aqui abriria um segundo lugar para a
-  // regra do João mudar sozinha.
-  const execucao = FASES_CLIENTE1_UI.find((f) => f.id === fase)?.exigeContrato ?? false;
 
   /**
    * O caminho DESTA pessoa. É ele que a barra de progresso conta.
@@ -163,20 +135,31 @@ export function OnboardingPortal({
   // escolha da pessoa (captação), nunca por um passo que ela acabou de cumprir.
   const [teveSenhaNaAbertura] = useState(() => dados.precisaTrocarSenha);
   const sequencia = useMemo(() => {
-    if (soTour) return [8, 9];
     // Senha temporária sobre questionário concluído: a senha e o aviso de que
     // deu certo. Nada de reabrir perguntas que a pessoa já respondeu.
-    if (soSenha) return [0, 9];
+    if (soSenha) return [0, 6];
     const passos: number[] = [];
     if (teveSenhaNaAbertura) passos.push(0);
     passos.push(1, 2);
-    if (origem !== "captacao") passos.push(3, 4);
-    passos.push(5, 6, 7, 8, 9);
+    // 🔑 Quem vai captar do zero NÃO TEM CLIENTE (decisão do Marcio,
+    // 10/09/2026: "se ele não fez sessão de viabilidade, ele não tem
+    // cliente"). Pula o cadastro, os honorários e a pergunta de ajuda —
+    // que só fazem sentido sobre um cliente concreto — e vai direto ao fim.
+    if (origem !== "captacao") passos.push(3, 4, 5);
+    passos.push(6);
     return passos;
-  }, [teveSenhaNaAbertura, origem, soTour, soSenha]);
+  }, [teveSenhaNaAbertura, origem, soSenha]);
 
   const posicao = Math.max(0, sequencia.indexOf(passo));
-  const podeFechar = passo >= 1;
+  // 🔴 O onboarding é OBRIGATÓRIO desde 10/09/2026 (decisão do Marcio: "a
+  // parte do onboarding passa a ser obrigatória, ele não pode continuar
+  // depois"). Não há "Continuar depois", Esc nem clique fora em passo nenhum
+  // — só a tela final "Pronto" (7) fecha, e ali as respostas já foram
+  // entregues.
+  //
+  // ⚠️ Consequência aceita: quem travar no meio fica sem acesso ao portal até
+  // a equipe destravar pela Central de resolução.
+  const podeFechar = passo === 6;
 
   function fechar() {
     if (!podeFechar) return;
@@ -200,21 +183,16 @@ export function OnboardingPortal({
     setErro(null);
     const destino = proximo();
 
-    // 🔴 Sair do passo 7 é ENTREGAR as respostas, e quem entrega é
+    // 🔴 Sair do passo 6 é ENTREGAR as respostas, e quem entrega é
     // `concluir()` — não o ponteiro da retomada. A ordem importa e já mordeu:
-    // gravar `passo_atual = 8` ANTES prendia quem falhasse em `concluir()` na
-    // apresentação, que não tem "Voltar" e termina em "Pronto"; o pop-up
-    // reabriria no 8 para sempre, sem nunca ter entregado nada.
-    //
-    // 🔑 Depois de concluído o banco RECUSA `onboarding_salvar_passo` (22023),
-    // então o 8 e o 9 não são gravados: a apresentação vive só aqui, como
-    // estado de tela. Fechar no meio dela não perde resposta nenhuma, e
-    // "Rever a apresentação" no `/perfil` a devolve inteira.
-    if (passo === 7) {
+    // gravar o ponteiro ANTES prendia quem falhasse em `concluir()` na tela
+    // final, que não tem "Voltar"; o pop-up reabriria ali para sempre, sem
+    // nunca ter entregado nada.
+    if (passo === 5 || (passo === 2 && origem === "captacao")) {
       const c = await actions.concluir();
       setSalvando(false);
       if (c.erro) {
-        // Fica no 7, com a frase do servidor no `role="alert"` abaixo. O
+        // Fica onde está, com a frase do servidor no `role="alert"` abaixo. O
         // "Continuar" volta a ficar clicável para tentar de novo.
         setErro(c.erro);
         return;
@@ -262,18 +240,20 @@ export function OnboardingPortal({
     origem,
     fase,
     nome,
-    execucao,
+    telefone,
+    grau,
+    pais,
+    pactuados,
     valorHonorarios,
-    temContrato: contrato.length > 0,
   });
 
   return (
     <Dialog
       open={aberto}
       onOpenChange={(v) => {
-        // Esc e clique fora só fecham quando fechar é permitido: no passo 0 a
-        // pessoa está com senha temporária e sair dali a deixaria sem senha
-        // própria, no meio do caminho.
+        // Esc e clique fora só fecham na tela final: o questionário é
+        // obrigatório e sair no meio deixaria a pessoa sem cliente 1 e sem
+        // as respostas que a equipe precisa para acompanhar.
         if (!v) fechar();
       }}
     >
@@ -285,11 +265,9 @@ export function OnboardingPortal({
           <DialogTitle className="font-heading titulo-h2">
             {passo === 0
               ? "Crie a sua senha"
-              : passo === 9
+              : passo === 6
                 ? "Pronto"
-                : passo === 8
-                  ? "Conhecendo o portal"
-                  : "Programa de Implementação Assistida"}
+                : "Programa de Implementação Assistida"}
           </DialogTitle>
           <DialogDescription className="sr-only">
             Perguntas iniciais do Programa de Implementação Assistida.
@@ -336,6 +314,8 @@ export function OnboardingPortal({
               setNome={setNome}
               telefone={telefone}
               setTelefone={setTelefone}
+              pais={pais}
+              setPais={setPais}
               grau={grau}
               setGrau={setGrau}
               ambienteJaTemFavorito={dados.ambienteJaTemFavorito}
@@ -347,55 +327,26 @@ export function OnboardingPortal({
             <PassoHonorarios
               honorarios={honorarios}
               setHonorarios={setHonorarios}
-              execucao={execucao}
-              contrato={contrato}
-              actions={actions}
-              aoMudarAnexos={(novos) => setAnexos([...documentos, ...novos])}
-              desabilitado={salvando}
+              pactuados={pactuados}
+              setPactuados={setPactuados}
             />
           ) : null}
 
-          {passo === 5 || passo === 6 ? (
+          {passo === 5 ? (
             <PassoTexto
-              passo={passo === 5 ? 5 : 6}
-              valor={passo === 5 ? caso : ajuda}
-              setValor={passo === 5 ? setCaso : setAjuda}
-              origemEhJaTenho={origem === "ja_tenho"}
+              valor={ajuda}
+              setValor={setAjuda}
             />
           ) : null}
 
-          {passo === 7 ? (
-            <AnexoOnboarding
-              tipo="documento"
-              anexos={documentos}
-              actions={actions}
-              maximo={MAX_DOCUMENTOS_ONBOARDING}
-              rotulo={TITULO_DOCUMENTOS}
-              /* 🔒 B-D1: sem a lista do João, o passo fica genérico e opcional. */
-              ajuda={`${AJUDA_DOCUMENTOS} Até ${MAX_DOCUMENTOS_ONBOARDING} arquivos, PNG, JPG, WEBP ou PDF, de até 5 MB cada.`}
-              desabilitado={salvando}
-              aoMudar={(novos) => setAnexos([...contrato, ...novos])}
-            />
-          ) : null}
-
-          {passo === 8 && abas.length > 0 ? (
-            <PassoTour
-              aba={abas[Math.min(indiceTour, abas.length - 1)]}
-              indice={Math.min(indiceTour, abas.length - 1)}
-              total={abas.length}
-            />
-          ) : null}
-
-          {passo === 9 ? (
+          {passo === 6 ? (
             <div className="grid gap-3">
               <p className="flex items-start gap-2 corpo">
                 <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-sucesso-foreground" />
                 <span>
-                  {soTour
-                    ? "É isso. Você pode rever esta apresentação quando quiser, no Perfil."
-                    : soSenha
-                      ? "Senha alterada. Ela vale para todos os portais do grupo."
-                      : "Pronto. A equipe já recebeu as suas respostas."}
+                  {soSenha
+                    ? "Senha alterada. Ela vale para todos os portais do grupo."
+                    : "Pronto. A equipe já recebeu as suas respostas."}
                 </span>
               </p>
               {favoritado === true ? (
@@ -429,13 +380,10 @@ export function OnboardingPortal({
 
         <Rodape
           passo={passo}
-          soTour={soTour}
           soSenha={soSenha}
           podeFechar={podeFechar}
           salvando={salvando}
           razaoTravado={razaoTravado}
-          abas={abas.length}
-          indiceTour={indiceTour}
           proximoPassoHref={proximoPasso?.href}
           onFechar={fechar}
           onVoltar={() => {
@@ -455,17 +403,18 @@ export function OnboardingPortal({
                 cliente_nome: nome.trim(),
                 cliente_telefone: telefone || null,
                 cliente_grau_relacao: grau === "" ? null : grau,
+                cliente_pais: pais || null,
               });
-            if (passo === 4) return void avancar({ valor_honorarios: valorHonorarios });
-            if (passo === 5) return void avancar({ descricao_caso: caso || null });
-            if (passo === 6) return void avancar({ ajuda_pronta: ajuda || null });
+            if (passo === 4)
+              return void avancar({
+                honorarios_pactuados: pactuados,
+                // Só vai valor quando pactuado — o banco zera de qualquer
+                // forma, mas mandar `null` aqui deixa a intenção explícita.
+                valor_honorarios: pactuados ? valorHonorarios : null,
+              });
+            if (passo === 5) return void avancar({ ajuda_pronta: ajuda || null });
             return void avancar();
           }}
-          onTourAvancar={() => {
-            if (indiceTour + 1 < abas.length) setIndiceTour(indiceTour + 1);
-            else irPara(9);
-          }}
-          onPularTour={() => irPara(9)}
         />
       </DialogContent>
     </Dialog>

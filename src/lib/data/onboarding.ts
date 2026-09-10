@@ -34,6 +34,8 @@ interface RespostasCruas {
   cliente_nome?: string | null;
   cliente_telefone?: string | null;
   cliente_grau_relacao?: string | null;
+  cliente_pais?: string | null;
+  honorarios_pactuados?: boolean | null;
   descricao_caso?: string | null;
   ajuda_pronta?: string | null;
   cliente_id?: string | null;
@@ -98,6 +100,8 @@ const MEU_ONBOARDING_VAZIO: Omit<MeuOnboarding, "precisaTrocarSenha"> = {
     valorHonorarios: null,
     clienteNome: null,
     clienteTelefone: null,
+    clientePais: null,
+    honorariosPactuados: null,
     clienteGrauRelacao: null,
     descricaoCaso: null,
     ajudaPronta: null,
@@ -166,6 +170,11 @@ async function getMeuOnboardingSemCache(): Promise<MeuOnboarding | null> {
       clienteTelefone: texto(r.cliente_telefone),
       clienteGrauRelacao:
         (texto(r.cliente_grau_relacao) as GrauRelacao | null) ?? null,
+      clientePais: texto(r.cliente_pais),
+      honorariosPactuados:
+        typeof r.honorarios_pactuados === "boolean"
+          ? r.honorarios_pactuados
+          : null,
       descricaoCaso: texto(r.descricao_caso),
       ajudaPronta: texto(r.ajuda_pronta),
       clienteId: texto(r.cliente_id),

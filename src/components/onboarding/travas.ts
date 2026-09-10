@@ -24,10 +24,12 @@ export function razaoParaTravar(entrada: {
   /** A resposta do passo 3 — `null` enquanto ninguém escolheu. */
   fase: string | null;
   nome: string;
-  /** A fase escolhida é "execução em andamento"? */
-  execucao: boolean;
+  telefone: string;
+  grau: string;
+  pais: string;
+  /** A resposta da pergunta do passo 4 — `null` enquanto ninguém escolheu. */
+  pactuados: boolean | null;
   valorHonorarios: number | null;
-  temContrato: boolean;
 }): string {
   const { passo } = entrada;
   if (passo === 0) {
@@ -53,12 +55,26 @@ export function razaoParaTravar(entrada: {
   if (passo === 3 && entrada.nome.trim().length < 2) {
     return "Escreva o nome do cliente para continuar.";
   }
-  if (passo === 4 && entrada.execucao) {
-    if (entrada.valorHonorarios == null) {
-      return "Informe o valor dos honorários — é o que libera o próximo passo.";
+  // 🔴 Nome, WhatsApp, país e grau viraram OBRIGATÓRIOS em 10/09/2026
+  // (decisão do Marcio: "o cadastro do cliente tem que aceitar nome e
+  // telefone", e "Não informar agora" saiu do dropdown de relação). As
+  // frases são as mesmas que `gps.onboarding_concluir()` devolveria.
+  if (passo === 3 && entrada.telefone.trim().length < 8) {
+    return "Informe o número de WhatsApp deste cliente.";
+  }
+  if (passo === 3 && !entrada.pais) {
+    return "Escolha o país deste cliente.";
+  }
+  if (passo === 3 && !entrada.grau) {
+    return "Escolha o seu grau de relação com este cliente.";
+  }
+  // Passo 4: a pergunta é obrigatória; o valor só quando a resposta é "sim".
+  if (passo === 4) {
+    if (entrada.pactuados == null) {
+      return "Responda se os honorários já estão pactuados.";
     }
-    if (!entrada.temContrato) {
-      return "Anexe o contrato de honorários assinado para continuar.";
+    if (entrada.pactuados && entrada.valorHonorarios == null) {
+      return "Informe o valor dos honorários pactuados.";
     }
   }
   return "";

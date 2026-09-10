@@ -91,3 +91,29 @@ export async function salvarPerfilAluno(
   revalidatePath("/", "layout");
   return {};
 }
+
+/**
+ * Troca o nome de quem está logado. Vale para aluno e para a equipe.
+ *
+ * 🔑 Sem parâmetro de alvo: a RPC resolve o dono por `auth.uid()` no servidor,
+ * então não há como pedir a troca do nome de terceiro nem forjando a chamada.
+ */
+export async function trocarMeuNome(
+  nome: string,
+): Promise<{ ok?: true; erro?: string }> {
+  const limpo = (nome ?? "").trim();
+  if (limpo.length < 2) return { erro: "Escreva o seu nome completo." };
+  if (limpo.length > 120) return { erro: "O nome passa de 120 caracteres." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.schema("gps").rpc("trocar_meu_nome", {
+    p_nome: limpo,
+  });
+  if (error) {
+    return { erro: traduzirErroBanco("perfil/trocarMeuNome", error) };
+  }
+
+  revalidatePath("/perfil");
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

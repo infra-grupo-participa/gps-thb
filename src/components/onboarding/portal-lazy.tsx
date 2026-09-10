@@ -70,7 +70,7 @@ export function OnboardingPortalLazy({
   const [precisa] = useState(
     () =>
       dados !== null &&
-      (Boolean(props.soTour) ||
+      (Boolean(false) ||
         dados.status !== "concluido" ||
         Boolean(dados.precisaTrocarSenha)),
   );

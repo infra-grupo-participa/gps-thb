@@ -155,3 +155,28 @@ export const FRASE_DA_ABA: Record<string, string> = {
 export const MIMES_ACEITOS: readonly string[] = Object.keys(EXTENSAO_POR_MIME);
 export const TAMANHO_MAXIMO = ANEXO_TAMANHO_MAXIMO;
 export const BUCKET_ONBOARDING = "gps-onboarding";
+
+/**
+ * Países de origem do lead (passo do cliente 1).
+ *
+ * Pedido do Marcio em 10/09/2026: saber de onde vem o lead. A lista é curta de
+ * propósito — cobre o que a base tem hoje (Brasil e a diáspora que aparece nas
+ * turmas) e termina em "Outro". Uma lista de 195 países num `<select>` seria
+ * pior de usar e não traria informação melhor.
+ *
+ * O valor gravado é o ISO-3166 alpha-2, que não muda quando o rótulo muda.
+ */
+export const PAISES: { id: string; rotulo: string }[] = [
+  { id: "", rotulo: "Escolha…" },
+  { id: "BR", rotulo: "Brasil" },
+  { id: "PT", rotulo: "Portugal" },
+  { id: "US", rotulo: "Estados Unidos" },
+  { id: "ES", rotulo: "Espanha" },
+  { id: "IT", rotulo: "Itália" },
+  { id: "PY", rotulo: "Paraguai" },
+  { id: "AR", rotulo: "Argentina" },
+  { id: "UY", rotulo: "Uruguai" },
+  { id: "CH", rotulo: "Suíça" },
+  { id: "JP", rotulo: "Japão" },
+  { id: "OUTRO", rotulo: "Outro país" },
+];

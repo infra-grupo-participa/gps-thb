@@ -525,6 +525,10 @@ export type OrigemCliente1 = (typeof ORIGENS_CLIENTE1)[number];
  * `gps.onboarding_respostas.fase_cliente1`, que é o retrato do dia 0.
  */
 export const FASES_CLIENTE1 = [
+  // "agendado" entrou em 10/09/2026 (pedido do Marcio): quem marcou a sessão
+  // mas ainda não realizou não tinha onde se encaixar — ficava obrigado a
+  // dizer que a viabilidade já aconteceu.
+  "agendado",
   "viabilidade_feita",
   "croqui_apresentado",
   "execucao_andamento",
@@ -558,6 +562,10 @@ export interface RespostasOnboarding {
   clienteNome: string | null;
   clienteTelefone: string | null;
   clienteGrauRelacao: GrauRelacao | null;
+  /** País de origem do lead (ISO-3166 alpha-2). Pedido do Marcio, 10/09/2026. */
+  clientePais: string | null;
+  /** Respondeu "sim" à pergunta de honorários pactuados? */
+  honorariosPactuados: boolean | null;
   descricaoCaso: string | null;
   ajudaPronta: string | null;
   /** O cliente que a conclusão criou. `null` enquanto não concluiu. */

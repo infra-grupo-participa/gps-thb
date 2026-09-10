@@ -2,7 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { PERGUNTA_AJUDA, PERGUNTA_CASO } from "./tipos";
+import { PERGUNTA_AJUDA } from "./tipos";
 
 /** Teto que o CHECK da coluna também aplica no banco. */
 export const MAX_TEXTO = 4000;
@@ -24,27 +24,19 @@ export const MAX_TEXTO = 4000;
  * Slack, nunca no dashboard.
  */
 export function PassoTexto({
-  passo,
   valor,
   setValor,
-  origemEhJaTenho,
 }: {
-  passo: 5 | 6;
   valor: string;
   setValor: (v: string) => void;
-  origemEhJaTenho: boolean;
 }) {
   return (
     <div className="grid gap-1.5">
       <Label htmlFor="onb-texto" className="font-heading titulo-h2">
-        {passo === 5 ? PERGUNTA_CASO : PERGUNTA_AJUDA}
+        {PERGUNTA_AJUDA}
       </Label>
       <p className="corpo-sm text-muted-foreground">
-        {passo === 5
-          ? origemEhJaTenho
-            ? "Como está o rumo da execução da holding."
-            : "Onde você está hoje e o que já tentou."
-          : "Vale dúvida, trava, ou o que você quer resolver primeiro."}
+        Vale dúvida, trava, ou o que você quer resolver primeiro.
       </p>
       <Textarea
         id="onb-texto"

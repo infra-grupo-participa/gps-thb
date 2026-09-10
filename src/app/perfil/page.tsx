@@ -12,6 +12,7 @@ import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { PerfilEditor } from "@/components/perfil/perfil-editor";
 import { RespostasDoInicio } from "@/components/perfil/respostas-do-inicio";
+import { TrocarNome } from "@/components/perfil/trocar-nome";
 import { TrocarSenha } from "@/components/perfil/trocar-senha";
 import type { Aluno } from "@/lib/types";
 
@@ -65,6 +66,7 @@ export default async function PerfilPage() {
             perfilInicial={membro?.perfil ?? {}}
           />
 
+          <TrocarNome nomeAtual={aluno?.nome ?? null} />
           <TrocarSenha />
 
           {/* Somente leitura, e isso é decisão: a resposta é o RETRATO do dia
@@ -73,7 +75,7 @@ export default async function PerfilPage() {
               duas verdades sobre o mesmo caso, e a antiga venceria por ser a
               mais visível. Junto vem "Rever a apresentação", a contrapartida
               de o tour ser pulável (B-T2). */}
-          <RespostasDoInicio dados={onboarding} abas={abas} />
+          <RespostasDoInicio dados={onboarding} />
         </div>
       </main>
     </>

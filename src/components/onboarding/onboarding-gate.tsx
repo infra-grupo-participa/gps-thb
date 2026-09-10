@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 
 import { getContextoSessao } from "@/lib/auth";
 import { getMeuOnboarding } from "@/lib/data/onboarding";
-import { navDoAluno } from "@/lib/nav";
 import {
   concluirOnboarding,
   criarUploadAssinadoOnboarding,
@@ -131,9 +130,6 @@ export async function OnboardingGate() {
   return (
     <OnboardingPortalLazy
       dados={dadosParaOPortal}
-      // O tour itera as abas REAIS desta pessoa (o sócio não vê Financeiro),
-      // nunca uma lista fixa.
-      abas={navDoAluno(ctx)}
       actions={{
         salvarPasso: salvarPassoOnboarding,
         criarUploadAssinado: criarUploadAssinadoOnboarding,

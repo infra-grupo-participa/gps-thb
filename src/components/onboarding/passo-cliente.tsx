@@ -8,18 +8,16 @@ import { GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import type {
   FaseCliente1,
   GrauRelacao,
-  OnboardingAnexo,
   OrigemCliente1,
 } from "@/lib/types";
-import { AnexoOnboarding } from "./anexo-onboarding";
 import { Escolha } from "./escolha";
 import {
   OPCOES_FASE,
   OPCOES_ORIGEM,
   PERGUNTA_CLIENTE1,
   PERGUNTA_FASE,
+  PAISES,
   ROTULO_HONORARIOS,
-  type OnboardingActions,
 } from "./tipos";
 
 /** Passo 2 — de onde vem o cliente 1. É a pergunta que ramifica o resto. */
@@ -62,6 +60,8 @@ export function PassoFase({
   setNome,
   telefone,
   setTelefone,
+  pais,
+  setPais,
   grau,
   setGrau,
   ambienteJaTemFavorito,
@@ -73,6 +73,8 @@ export function PassoFase({
   setNome: (v: string) => void;
   telefone: string;
   setTelefone: (v: string) => void;
+  pais: string;
+  setPais: (v: string) => void;
   grau: GrauRelacao | "";
   setGrau: (v: GrauRelacao | "") => void;
   ambienteJaTemFavorito: boolean;
@@ -98,13 +100,44 @@ export function PassoFase({
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="onb-tel">Telefone</Label>
+          <Label htmlFor="onb-pais">País</Label>
+          <select
+            id="onb-pais"
+            className="h-9 w-full rounded-md border border-input bg-transparent px-3 corpo shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            value={pais}
+            onChange={(e) => setPais(e.target.value)}
+          >
+            {PAISES.map((op) => (
+              <option key={op.id} value={op.id}>
+                {op.rotulo}
+              </option>
+            ))}
+          </select>
+          <p className="corpo-sm text-muted-foreground">
+            De onde vem este lead. A equipe usa isso para saber como falar com
+            ele.
+          </p>
+        </div>
+        <div className="grid gap-1.5">
+          {/* Rotulado como WhatsApp desde 10/09/2026: é por ali que a equipe
+              fala com o lead, e "Telefone" deixava dúvida sobre qual número. */}
+          <Label htmlFor="onb-tel">Número de WhatsApp</Label>
           <Input
             id="onb-tel"
             inputMode="tel"
             value={telefone}
-            onChange={(e) => setTelefone(mascaraTelefone(e.target.value))}
+            onChange={(e) =>
+              setTelefone(
+                pais === "BR" ? mascaraTelefone(e.target.value) : e.target.value,
+              )
+            }
+            placeholder={pais === "BR" ? "(11) 99999-9999" : "+000 000 000 000"}
           />
+          <p className="corpo-sm text-muted-foreground">
+            {pais === "BR"
+              ? "Com DDD."
+              : "Com o código do país, como aparece no WhatsApp."}
+          </p>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="onb-grau">Qual o seu grau de relação com ele?</Label>
@@ -117,7 +150,13 @@ export function PassoFase({
             onChange={(e) => setGrau(e.target.value as GrauRelacao | "")}
             className="foco-visivel h-9 rounded-md border border-input bg-card px-3 corpo-sm"
           >
-            <option value="">Não informar agora</option>
+            {/* "Não informar agora" saiu em 10/09/2026 (decisão do Marcio):
+                o grau de relação passou a ser obrigatório quando há cliente.
+                O placeholder vazio existe só para o campo nascer sem escolha
+                feita — a trava do "Continuar" cobra a resposta. */}
+            <option value="" disabled>
+              Escolha…
+            </option>
             {GRAUS_RELACAO_UI.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.rotulo}
@@ -143,59 +182,74 @@ export function PassoFase({
 /**
  * Passo 4 — honorários e contrato.
  *
- * 🔴 A obrigatoriedade vale **só em "Execução em andamento"**. Nas outras duas
- * fases o valor é opcional e o contrato nem aparece: pedir contrato assinado a
- * quem ainda vai apresentar o croqui é pedir um documento que não existe.
+ * 🔑 Desde 10/09/2026 (decisão do Marcio) o valor não depende mais da FASE, e
+ * sim de uma PERGUNTA: "já tem os honorários pactuados?". Quem responde que
+ * sim informa o valor, esteja em que fase estiver — antes, o campo aparecia
+ * sempre e só era obrigatório em "Execução em andamento".
  *
- * 🔴 O contrato é documento de TERCEIRO (o cliente do aluno). Ele é prova, não
- * fichário: fica no bucket privado, é lido por quem é do ambiente e pela
- * equipe, e nunca sai por e-mail nem por notificação.
+ * 🔴 O ANEXO do contrato SAIU deste passo na mesma decisão. Ele continua
+ * existindo na ficha do cliente, onde o aluno anexa quando quiser: o
+ * onboarding não pede mais arquivo nenhum.
  */
 export function PassoHonorarios({
   honorarios,
   setHonorarios,
-  execucao,
-  contrato,
-  actions,
-  aoMudarAnexos,
-  desabilitado,
+  pactuados,
+  setPactuados,
 }: {
   honorarios: string;
   setHonorarios: (v: string) => void;
-  execucao: boolean;
-  contrato: OnboardingAnexo[];
-  actions: OnboardingActions;
-  aoMudarAnexos: (novos: OnboardingAnexo[]) => void;
-  desabilitado: boolean;
+  pactuados: boolean | null;
+  setPactuados: (v: boolean) => void;
 }) {
   return (
     <div className="grid gap-4">
-      <div className="grid gap-1.5">
-        <Label htmlFor="onb-hon">{ROTULO_HONORARIOS}</Label>
-        <Input
-          id="onb-hon"
-          inputMode="numeric"
-          value={honorarios}
-          onChange={(e) => setHonorarios(mascaraMoeda(e.target.value))}
-          placeholder="R$ 0,00"
-        />
-        <p className="corpo-sm text-muted-foreground">
-          {execucao
-            ? "Obrigatório: é o valor do contrato desta execução."
-            : "Opcional agora — você preenche quando fechar."}
-        </p>
-      </div>
-      {execucao ? (
-        <AnexoOnboarding
-          tipo="contrato_honorarios"
-          anexos={contrato}
-          actions={actions}
-          maximo={1}
-          rotulo="Anexe o contrato de honorários assinado"
-          ajuda="PNG, JPG, WEBP ou PDF, até 5 MB. Ele fica visível para você e para a equipe."
-          desabilitado={desabilitado}
-          aoMudar={aoMudarAnexos}
-        />
+      <fieldset className="grid gap-2">
+        <legend className="corpo font-medium">
+          Você já tem os honorários pactuados com este cliente?
+        </legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {[
+            { id: true, rotulo: "Sim, já estão pactuados" },
+            { id: false, rotulo: "Ainda não" },
+          ].map((op) => (
+            <label
+              key={String(op.id)}
+              className={
+                "flex cursor-pointer items-center gap-2.5 rounded-xl border p-3 corpo " +
+                (pactuados === op.id
+                  ? "border-marca-acao bg-primary/[0.06]"
+                  : "border-borda-fina hover:bg-superficie-afundada")
+              }
+            >
+              <input
+                type="radio"
+                name="onb-pactuados"
+                className="size-4 accent-[var(--color-marca-acao)]"
+                checked={pactuados === op.id}
+                onChange={() => setPactuados(op.id)}
+              />
+              <span>{op.rotulo}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {pactuados === true ? (
+        <div className="grid gap-1.5">
+          <Label htmlFor="onb-hon">{ROTULO_HONORARIOS}</Label>
+          <Input
+            id="onb-hon"
+            inputMode="numeric"
+            value={honorarios}
+            onChange={(e) => setHonorarios(mascaraMoeda(e.target.value))}
+            placeholder="R$ 0,00"
+          />
+          <p className="corpo-sm text-muted-foreground">
+            É o valor combinado com este cliente. Ele entra na sua meta de
+            faturamento do programa.
+          </p>
+        </div>
       ) : null}
     </div>
   );

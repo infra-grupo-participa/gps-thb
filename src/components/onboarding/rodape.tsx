@@ -11,24 +11,18 @@ import { Button, buttonVariants } from "@/components/ui/button";
  */
 export function Rodape(p: {
   passo: number;
-  soTour: boolean;
   /** Só o passo da senha (questionário já concluído, senha temporária nova). */
   soSenha: boolean;
   podeFechar: boolean;
   salvando: boolean;
   razaoTravado: string;
-  abas: number;
-  indiceTour: number;
   proximoPassoHref?: string;
   onFechar: () => void;
   onVoltar: () => void;
   onSenha: () => void;
   onAvancar: () => void;
-  onTourAvancar: () => void;
-  onPularTour: () => void;
 }) {
   const travado = p.razaoTravado.length > 0;
-  const ultimoDoTour = p.indiceTour + 1 >= p.abas;
 
   return (
     <div className="grid gap-2">
@@ -42,19 +36,11 @@ export function Rodape(p: {
       ) : null}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {p.podeFechar && p.passo !== 9 ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={p.onFechar}
-            disabled={p.salvando}
-            className="mr-auto"
-          >
-            Continuar depois
-          </Button>
-        ) : null}
+        {/* 🔴 "Continuar depois" NÃO EXISTE MAIS desde 10/09/2026: o
+            questionário é obrigatório (decisão do Marcio). O único jeito de
+            sair é concluir — a tela final (7) tem o botão "Começar". */}
 
-        {p.passo > 1 && p.passo < 8 ? (
+        {p.passo > 1 && p.passo < 6 ? (
           <Button variant="outline" onClick={p.onVoltar} disabled={p.salvando}>
             Voltar
           </Button>
@@ -64,17 +50,7 @@ export function Rodape(p: {
           <Button onClick={p.onSenha} disabled={travado || p.salvando} aria-busy={p.salvando || undefined}>
             {p.salvando ? "Salvando…" : "Salvar a senha"}
           </Button>
-        ) : p.passo === 8 ? (
-          <>
-            <Button variant="ghost" size="sm" onClick={p.onPularTour}>
-              Pular a apresentação
-            </Button>
-            <Button onClick={p.onTourAvancar}>
-              {ultimoDoTour ? "Terminar" : "Próxima"}
-              <ArrowRight aria-hidden />
-            </Button>
-          </>
-        ) : p.passo === 9 ? (
+        ) : p.passo === 6 ? (
           // Navegar e "fechar" são a MESMA ação aqui, e um `<a>` faz as duas:
           // sair da página desmonta o diálogo. Botão dentro de link é HTML
           // inválido (e some do Tab) — por isso é o link que veste o estilo de
@@ -90,8 +66,8 @@ export function Rodape(p: {
             </Link>
           ) : (
             <Button onClick={p.onFechar}>
-              {p.soTour || p.soSenha ? null : <Sparkles aria-hidden />}
-              {p.soTour ? "Fechar" : p.soSenha ? "Continuar" : "Começar"}
+              {p.soSenha ? null : <Sparkles aria-hidden />}
+              {p.soSenha ? "Continuar" : "Começar"}
             </Button>
           )
         ) : (

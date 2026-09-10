@@ -171,26 +171,29 @@ export const FASES_CLIENTE1_UI: {
   /** Copy LITERAL do João — não reescrever. */
   rotulo: string;
   faseCliente: FaseCliente;
-  /** Esta resposta exige honorários + contrato assinado para avançar? */
-  exigeContrato: boolean;
 }[] = [
+  {
+    // Sessão/reunião marcada, ainda não realizada. Vira `prospeccao`: não
+    // houve reunião, então não é fechamento.
+    id: "agendado",
+    rotulo:
+      "Sessão de viabilidade já agendada ou Reunião preliminar já agendada, aguardando realização",
+    faseCliente: "prospeccao",
+  },
   {
     id: "viabilidade_feita",
     rotulo: "Sessão de viabilidade já realizada e Croqui estrutural a apresentar",
     faseCliente: "fechamento",
-    exigeContrato: false,
   },
   {
     id: "croqui_apresentado",
     rotulo: "Croqui Estrutural já apresentado e aguardando a execução",
     faseCliente: "fechamento",
-    exigeContrato: false,
   },
   {
     id: "execucao_andamento",
     rotulo: "Execução em andamento",
     faseCliente: "contratado",
-    exigeContrato: true,
   },
 ];
 

@@ -817,7 +817,23 @@ export interface ResultadoAcessoEmLote {
   programas?: string[];
 }
 
-export async function criarAcessosEmLote(alunoIds: string[]): Promise<{
+/**
+ * 🔑 `adotarLoginsExistentes`: resolve o lote INTEIRO, sem parar em cada um.
+ *
+ * O padrão (`false`) devolve "precisa de decisão" para quem já tem login em
+ * outro portal do grupo, e o admin resolve um a um em Gerenciar acesso. É a
+ * proteção certa para o caso raro — e virou gargalo no dia em que a equipe
+ * precisou liberar dezenas de pessoas de uma vez (10/09/2026).
+ *
+ * Com `true`, a confirmação continua existindo, mas acontece UMA VEZ para o
+ * lote: a tela avisa quantas contas serão adotadas e o que isso significa,
+ * e o admin confirma uma vez. Adotar troca a senha da pessoa nos outros
+ * portais do grupo — o aviso não sai, só deixa de se repetir N vezes.
+ */
+export async function criarAcessosEmLote(
+  alunoIds: string[],
+  opts?: { adotarLoginsExistentes?: boolean },
+): Promise<{
   erro?: string;
   resultados: ResultadoAcessoEmLote[];
 }> {
@@ -842,7 +858,9 @@ export async function criarAcessosEmLote(alunoIds: string[]): Promise<{
     if (i > 0) await new Promise((r) => setTimeout(r, LOTE_PAUSA_MS));
 
     try {
-      const r = await criarAcessoAluno(alunoId, { permitirAdocao: false });
+      const r = await criarAcessoAluno(alunoId, {
+        permitirAdocao: opts?.adotarLoginsExistentes === true,
+      });
       const erro = (r as { erro?: string }).erro;
       if (erro) {
         resultados.push({

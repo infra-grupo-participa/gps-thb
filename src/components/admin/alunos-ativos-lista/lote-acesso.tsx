@@ -119,13 +119,16 @@ export function LoteDeAcesso({
     candidatos.map((a) => [a.alunoId, a.aluno?.nome ?? a.aluno?.email ?? "Aluno sem nome"]),
   );
 
-  function criar() {
+  function criar(adotarLoginsExistentes = false) {
     setErro(null);
     // Snapshot SÍNCRONO, antes do await: `selecionados` e `candidatos` ainda
     // são os desta tela. Depois do `router.refresh()` eles não existem mais.
     const pessoas = congelarPessoas([...candidatos, ...selecionados]);
     startTransition(async () => {
-      const r = await criarAcessosEmLote(selecionados.map((a) => a.alunoId));
+      const r = await criarAcessosEmLote(
+        selecionados.map((a) => a.alunoId),
+        { adotarLoginsExistentes },
+      );
       if (r.erro) {
         setErro(r.erro);
         return;
@@ -235,6 +238,29 @@ export function LoteDeAcesso({
           resultados={relatorio.resultados}
           pessoas={relatorio.pessoas}
           onFechar={() => setRelatorio(null)}
+          resolvendo={enviando}
+          onResolverPendentes={() => {
+            // 🔑 Refaz SÓ quem parou em "precisa de decisão", adotando os
+            // logins que já existem em outros portais do grupo. A conta é a
+            // MESMA pessoa (mesmo e-mail); o que muda é que a senha dela
+            // passa a valer também nos outros portais.
+            const pendentes = relatorio.resultados
+              .filter((r) => !r.ok && r.precisaDecisao)
+              .map((r) => r.alunoId);
+            if (pendentes.length === 0) return;
+            const pessoas = relatorio.pessoas;
+            startTransition(async () => {
+              const r = await criarAcessosEmLote(pendentes, {
+                adotarLoginsExistentes: true,
+              });
+              if (r.erro) {
+                setErro(r.erro);
+                return;
+              }
+              setRelatorio({ resultados: r.resultados, pessoas });
+              router.refresh();
+            });
+          }}
         />
       ) : null}
     </>
@@ -256,11 +282,16 @@ function RelatorioDoLote({
   resultados,
   pessoas,
   onFechar,
+  onResolverPendentes,
+  resolvendo,
 }: {
   resultados: ResultadoAcessoEmLote[];
   /** Nome, telefone e e-mail congelados no clique — ver `RelatorioCongelado`. */
   pessoas: Map<string, PessoaDoLote>;
   onFechar: () => void;
+  /** Refaz o lote adotando os logins que já existem em outros portais. */
+  onResolverPendentes?: () => void;
+  resolvendo?: boolean;
 }) {
   const criados = resultados.filter((r) => r.ok);
   const decisao = resultados.filter((r) => !r.ok && r.precisaDecisao);
@@ -285,6 +316,41 @@ function RelatorioDoLote({
             .
           </DialogDescription>
         </DialogHeader>
+
+        {/* 🔑 AUTONOMIA DO ADMIN (10/09/2026).
+            Quem já tem login em outro portal do grupo parava aqui em
+            "precisa de decisão", e a equipe tinha de abrir o ambiente de
+            cada um e resolver à mão — inviável no dia em que dezenas de
+            pessoas precisam entrar ao mesmo tempo.
+
+            A confirmação NÃO sumiu: ela virou UMA para o lote, com o número
+            e a consequência escritos. Adotar troca a senha da pessoa nos
+            outros portais do grupo, e isso continua dito aqui. */}
+        {decisao.length > 0 && onResolverPendentes ? (
+          <div className="grid gap-2 rounded-lg border border-atencao-foreground/30 bg-atencao/40 p-3">
+            <p className="corpo-sm text-atencao-foreground">
+              <strong>
+                {decisao.length}{" "}
+                {decisao.length === 1 ? "pessoa já tem" : "pessoas já têm"}{" "}
+                login em outro portal do grupo.
+              </strong>{" "}
+              Resolver aqui cria o acesso {decisao.length === 1 ? "dela" : "delas"}{" "}
+              no Programa usando a conta que já existe — a senha nova passa a
+              valer também nos outros portais, e as sessões abertas caem.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              className="w-fit"
+              disabled={resolvendo}
+              onClick={onResolverPendentes}
+            >
+              {resolvendo
+                ? "Resolvendo…"
+                : `Resolver ${decisao.length === 1 ? "esta pessoa" : `as ${decisao.length}`} agora`}
+            </Button>
+          </div>
+        ) : null}
 
         {semEmail.length > 0 ? (
           <p className="flex items-start gap-2 rounded-lg bg-atencao p-3 corpo-sm text-atencao-foreground">

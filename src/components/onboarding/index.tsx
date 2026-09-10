@@ -28,6 +28,7 @@ import { PassoTexto } from "./passo-texto";
 import { PassoTour, abasDoTour } from "./passo-tour";
 import { Rodape } from "./rodape";
 import { razaoParaTravar } from "./travas";
+import { SENHA_MINIMO } from "@/lib/senha-regras";
 import {
   AJUDA_DOCUMENTOS,
   FRASE_ABERTURA,
@@ -233,7 +234,7 @@ export function OnboardingPortal({
   }
 
   async function trocarSenha() {
-    if (senha.length < 8 || senha !== senha2) return;
+    if (senha.length < SENHA_MINIMO || senha !== senha2) return;
     setSalvando(true);
     setErro(null);
     const res = await actions.trocarSenha(senha);

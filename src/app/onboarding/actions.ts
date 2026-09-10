@@ -28,6 +28,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
 import { traduzirErroBanco } from "@/lib/erros";
+import { MSG_SENHA_MINIMO, SENHA_MINIMO } from "@/lib/senha-regras";
 import { logErro } from "@/lib/log";
 import {
   ANEXO_PATH_REGEX,
@@ -415,8 +416,8 @@ export async function trocarSenhaObrigatoria(
   if (!guarda.ok) return { erro: guarda.erro };
 
   const senha = (nova ?? "").trim();
-  if (senha.length < 8) {
-    return { erro: "A senha precisa ter ao menos 8 caracteres." };
+  if (senha.length < SENHA_MINIMO) {
+    return { erro: MSG_SENHA_MINIMO };
   }
   if (senha.length > 72) {
     // bcrypt trunca em 72 bytes: aceitar mais é aceitar uma senha que o GoTrue

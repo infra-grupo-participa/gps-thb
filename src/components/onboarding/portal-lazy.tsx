@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ComponentProps } from "react";
+import { useState, type ComponentProps } from "react";
 
+import type { MeuOnboarding } from "@/lib/types";
 import type { OnboardingPortal } from "./index";
 
 /**
@@ -36,8 +37,45 @@ const Portal = dynamic(
   { ssr: false },
 );
 
-export function OnboardingPortalLazy(
-  props: ComponentProps<typeof OnboardingPortal>,
-) {
-  return <Portal {...props} />;
+/**
+ * ## A trava de montagem (Auditor F, war-room 10/09)
+ *
+ * `concluir()` revalida o layout enquanto o questionário está aberto. O gate
+ * (Server Component) volta com `status: "concluido"`; se a decisão "abrir ou
+ * não" fosse tomada a cada render, o portal seria desmontado no instante da
+ * conclusão e a apresentação (passos 8/9) nunca apareceria — foi exatamente o
+ * que aconteceu com todo aluno até aqui.
+ *
+ * Por isso a decisão é tomada **uma vez, na montagem**, e os `dados` daquela
+ * montagem ficam congelados enquanto o componente viver: o portal continua
+ * de pé, `concluir()` avança para o tour, e quem fecha o diálogo deixa este
+ * componente rendendo `null` até a próxima carga completa da página. Quem não
+ * precisa (já concluiu e não tem senha temporária) nunca dispara o `import()`
+ * do chunk — a otimização de bundle acima continua valendo.
+ */
+export function OnboardingPortalLazy({
+  dados,
+  ...props
+}: Omit<ComponentProps<typeof OnboardingPortal>, "dados"> & {
+  /**
+   * `null` = "este aluno já concluiu e não tem senha temporária": o gate manda
+   * `null` em vez do objeto inteiro para não serializar as respostas
+   * (nome do cliente, descrição do caso) no RSC de TODA página do aluno.
+   */
+  dados: MeuOnboarding | null;
+}) {
+  const [congelado] = useState(() => dados);
+  // `soTour` é o "Rever a apresentação" do /perfil: monta com status concluído
+  // de propósito e tem de abrir.
+  const [precisa] = useState(
+    () =>
+      dados !== null &&
+      (Boolean(props.soTour) ||
+        dados.status !== "concluido" ||
+        Boolean(dados.precisaTrocarSenha)),
+  );
+  if (!precisa || congelado === null) return null;
+  // As actions e as abas vêm sempre do render atual (são estáveis); só os
+  // `dados` ficam congelados — é neles que "concluido" chega no meio do tour.
+  return <Portal {...props} dados={congelado} />;
 }

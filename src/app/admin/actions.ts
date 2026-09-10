@@ -593,14 +593,23 @@ export async function criarAcessoAluno(
   });
 
   if (error) {
-    // Classificação por `code`/`status` do GoTrue — nunca pelo texto da
-    // mensagem, que muda de versão para versão e é a regra da casa desde
-    // 09/09. O teste por mensagem sobrou só como fallback para o servidor de
-    // auth que não manda `code` (e aí `status` também costuma faltar).
+    // Classificação por `code` do GoTrue — nunca pelo texto da mensagem, que
+    // muda de versão para versão e é a regra da casa desde 09/09. O teste por
+    // mensagem sobrou só como fallback para o servidor de auth que não manda
+    // `code`.
+    //
+    // 🔴 `error.status === 422` SAIU da condição (war-room ciclo 3). O 422 do
+    // GoTrue não significa "já existe": `weak_password`, `validation_failed` e
+    // `signup_disabled` também voltam 422. Com o status na condição, uma senha
+    // fraca caía no ramo de ADOÇÃO — o admin via a conta de outra pessoa ser
+    // adotada (ou um erro de "aluno não encontrado" vindo da adoção) no lugar
+    // de "senha fraca". Agora: 422 COM código decide pelo código (e cai nos
+    // ramos de `weak_password`/rate limit abaixo); 422 SEM código nenhum vira
+    // erro genérico traduzido, com `logErro` guardando status e mensagem.
     const codigo = error.code ?? null;
     if (
       codigo === "user_already_exists" ||
-      error.status === 422 ||
+      codigo === "email_exists" ||
       (!codigo && /already/i.test(error.message ?? ""))
     ) {
       // A conta já existe (tipicamente lead do Workbook — o auth.users é
@@ -665,7 +674,10 @@ export async function criarAcessoAluno(
     // GoTrue, não Postgres: `traduzirErroBanco` não serve aqui. As duas causas
     // reais (senha fraca e limite de envio) precisam chegar ao admin com o que
     // fazer; o resto vira frase genérica, com o detalhe no log.
-    logErro("criarAcessoAluno.signUp", error, { code: codigo });
+    logErro("criarAcessoAluno.signUp", error, {
+      code: codigo,
+      status: error.status ?? null,
+    });
     if (codigo === "weak_password") {
       return { erro: `Senha fraca: use ao menos ${SENHA_MINIMO} caracteres.` };
     }

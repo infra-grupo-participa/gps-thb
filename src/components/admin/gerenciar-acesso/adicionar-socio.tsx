@@ -44,6 +44,10 @@ export function AdicionarSocio({
   // grupo. A action voltou SEM mexer em nada; só depois do "sim" ela repete
   // com `confirmarOutrosSistemas` — mesmo contrato do "Definir senha".
   const [outrosPortais, setOutrosPortais] = useState<string[] | null>(null);
+  // ...218: a RECUSA veio da RPC (P0003) porque o e-mail já tem login — sem
+  // papel em portal nenhum, então não há lista de portais para mostrar. É a
+  // mesma confirmação, com a frase certa.
+  const [loginExistente, setLoginExistente] = useState(false);
   const [pending, startTransition] = useTransition();
 
   async function buscar(e: React.FormEvent) {
@@ -75,9 +79,11 @@ export function AdicionarSocio({
       });
       if (res.precisaConfirmar) {
         setOutrosPortais(res.programas ?? []);
+        setLoginExistente(res.loginExistente === true);
         return;
       }
       setOutrosPortais(null);
+      setLoginExistente(false);
       if (res.erro) {
         toast.error(res.erro);
         return;
@@ -92,6 +98,10 @@ export function AdicionarSocio({
       toast.success("Sócio adicionado ao ambiente.");
     });
   }
+
+  // Lista vazia + recusa da RPC = não há portal a nomear. A lista vazia sozinha
+  // nunca deve virar "já entra em: " seguido de nada.
+  const semPortais = (outrosPortais ?? []).length === 0 && loginExistente;
 
   if (credenciais) {
     return (
@@ -142,12 +152,22 @@ export function AdicionarSocio({
           </Button>
           <DialogoConfirmacao
             aberto={outrosPortais !== null}
-            titulo="Este e-mail já tem conta em outro portal do grupo"
+            titulo={
+              semPortais
+                ? "Este e-mail já tem login no grupo"
+                : "Este e-mail já tem conta em outro portal do grupo"
+            }
             descricao={
-              <>
-                <strong>{email}</strong> já entra em:{" "}
-                <strong>{(outrosPortais ?? []).join(", ")}</strong>.
-              </>
+              semPortais ? (
+                <>
+                  <strong>{email}</strong> já tem login em um portal do grupo.
+                </>
+              ) : (
+                <>
+                  <strong>{email}</strong> já entra em:{" "}
+                  <strong>{(outrosPortais ?? []).join(", ")}</strong>.
+                </>
+              )
             }
             consequencia="Adicionar como sócio TROCA a senha dessa conta e derruba as sessões abertas dela em todos os portais. A pessoa precisa ser avisada da senha nova."
             rotuloConfirmar="Trocar a senha e adicionar como sócio"
@@ -155,7 +175,10 @@ export function AdicionarSocio({
             destrutivo
             confirmando={pending}
             onConfirmar={() => adicionar(true)}
-            onCancelar={() => setOutrosPortais(null)}
+            onCancelar={() => {
+              setOutrosPortais(null);
+              setLoginExistente(false);
+            }}
           />
         </>
       ) : (

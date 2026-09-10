@@ -51,6 +51,11 @@ const FALTA_PARAMETRO =
 
 const FRASES_DO_BANCO: Record<string, string> = {
   "Sem permissão.": "Sem permissão para esta ação.",
+  // ⚠️ O "8" fica LITERAL aqui: a chave é o texto VERBATIM que as RPCs do
+  // admin levantam (`length(trim(p_senha)) < 8`), e o mapa casa por igualdade
+  // exata. Interpolar `SENHA_MINIMO` faria a chave deixar de casar no dia em
+  // que o mínimo do TypeScript mudasse sem migração — o mínimo do banco é o
+  // que está escrito na função. Ver `src/lib/senha-regras.ts`.
   "A senha precisa ter ao menos 8 caracteres.":
     "A senha precisa ter ao menos 8 caracteres.",
   "Aluno não encontrado.": "Aluno não encontrado.",
@@ -79,6 +84,16 @@ const FRASES_DO_BANCO: Record<string, string> = {
 
   // --- gps.admin_adicionar_socio (migração ...118) ---
   "Informe o e-mail do sócio.": "Informe o e-mail do sócio.",
+
+  // --- gps.admin_adicionar_socio, guarda de login preexistente (...218) ---
+  // O caminho normal NÃO passa por aqui: `adicionarSocioAluno` intercepta o
+  // `P0003` e devolve `precisaConfirmar`, que abre o diálogo. Esta entrada é a
+  // rede: qualquer outro chamador (ou uma tela futura) lê a frase inteira em
+  // vez de "Não foi possível concluir agora" — `P0003` não está em POR_CODIGO
+  // de propósito, porque no Postgres ele é `too_many_rows` e serve de sinal
+  // custom só nas nossas funções.
+  "Este e-mail já tem login no grupo. Confirme para trocar a senha dessa conta e adicioná-la como sócio.":
+    "Este e-mail já tem login no grupo. Confirme para trocar a senha dessa conta e adicioná-la como sócio.",
   "Este ambiente não tem titular — crie o acesso do titular primeiro.":
     "Este ambiente não tem titular — crie o acesso do titular primeiro.",
   "Esta conta é da equipe — não pode virar sócio de um ambiente.":

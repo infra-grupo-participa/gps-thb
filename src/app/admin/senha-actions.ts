@@ -10,6 +10,7 @@ import { enviarCredenciaisAcesso } from "@/lib/email";
 import { traduzirErroBanco } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import { mapearStatusAcesso } from "@/lib/data/central";
+import { MSG_SENHA_MINIMO, SENHA_MINIMO } from "@/lib/senha-regras";
 import type { PapelMembro } from "@/lib/types";
 
 /**
@@ -113,8 +114,8 @@ export async function definirSenhaAluno(
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
 
   const senha = opts?.senha?.trim() || gerarSenhaTemporaria();
-  if (senha.length < 8) {
-    return { erro: "A senha precisa ter ao menos 8 caracteres." };
+  if (senha.length < SENHA_MINIMO) {
+    return { erro: MSG_SENHA_MINIMO };
   }
 
   const supabase = await createClient();
@@ -225,8 +226,8 @@ export async function definirSenhaMembro(
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
 
   const senha = opts?.senha?.trim() || gerarSenhaTemporaria();
-  if (senha.length < 8) {
-    return { erro: "A senha precisa ter ao menos 8 caracteres." };
+  if (senha.length < SENHA_MINIMO) {
+    return { erro: MSG_SENHA_MINIMO };
   }
 
   const supabase = await createClient();
@@ -383,12 +384,19 @@ export async function adicionarSocioAluno(
   /** O e-mail já tem conta com papel em OUTRO sistema do grupo; nada foi alterado. Repita com `confirmarOutrosSistemas: true`. */
   precisaConfirmar?: boolean;
   programas?: string[];
+  /**
+   * O e-mail já tem login no grupo, mas SEM papel em portal nenhum — quem
+   * recusou foi a RPC (`P0003`), não a guarda por `admin_programas_do_email`.
+   * `programas` volta vazio de propósito: não há portal a nomear. A tela usa
+   * este booleano para trocar a frase do `DialogoConfirmacao`.
+   */
+  loginExistente?: boolean;
 }> {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
 
   const senha = opts?.senha?.trim() || gerarSenhaTemporaria();
-  if (senha.length < 8) {
-    return { erro: "A senha precisa ter ao menos 8 caracteres." };
+  if (senha.length < SENHA_MINIMO) {
+    return { erro: MSG_SENHA_MINIMO };
   }
   const email = opts?.email?.trim().toLowerCase();
   if (!email || !emailValido(email)) {
@@ -426,10 +434,21 @@ export async function adicionarSocioAluno(
       p_socio_aluno_id: socioAlunoId,
       p_email: email,
       p_senha: senha,
+      // A FRONTEIRA é a RPC (migração ...218), não a guarda acima: um login que
+      // existe e não tem papel em portal NENHUM não aparece em
+      // `admin_programas_do_email` e passava batido — com a senha trocada e as
+      // sessões derrubadas em todos os portais do grupo.
+      p_confirmar_login_existente: opts?.confirmarOutrosSistemas === true,
     },
   );
 
   if (error) {
+    // P0003 = "esse e-mail já tem login" (migração ...218). Não é falha: é o
+    // mesmo contrato da guarda acima — nada foi escrito e a tela confirma. Sem
+    // portal a nomear, `programas` volta vazio.
+    if (error.code === "P0003") {
+      return { precisaConfirmar: true, programas: [], loginExistente: true };
+    }
     return { erro: traduzirErroBanco("admin/adicionarSocioAluno", error) };
   }
 

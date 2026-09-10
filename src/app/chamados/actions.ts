@@ -219,11 +219,15 @@ export async function abrirChamado(input: {
     return { ok: false, erro: "Não foi possível abrir o chamado agora." };
   }
 
-  await avisarEquipe(linha.avisar_equipe, assunto, linha.chamado_id);
+  const equipeAvisada = await avisarEquipe(
+    linha.avisar_equipe,
+    assunto,
+    linha.chamado_id,
+  );
 
   revalidatePath("/chamados", "layout");
   revalidatePath("/admin/chamados");
-  return { ok: true, chamadoId: linha.chamado_id };
+  return { ok: true, chamadoId: linha.chamado_id, equipeAvisada };
 }
 
 /**
@@ -337,11 +341,12 @@ export async function fecharChamado(chamadoId: string): Promise<ResultadoAcao> {
  * `public.perfis` com cargo dev/admin não serve: são 16 pessoas, e avisar 16
  * por chamado treina o time a ignorar.
  */
+/** Devolve `true` só quando o e-mail para a equipe foi ACEITO pela Resend. */
 async function avisarEquipe(
   avisarDoBanco: string | null,
   assunto: string,
   chamadoId: string,
-): Promise<void> {
+): Promise<boolean> {
   let destinatarios = listaDeEmails(
     avisarDoBanco || process.env.EMAIL_SUPORTE || "",
   );
@@ -376,7 +381,7 @@ async function avisarEquipe(
       "chamado registrado e NINGUEM foi avisado: chamados_email_equipe, EMAIL_SUPORTE e chamados_email_fallback vazios",
       { chamadoId },
     );
-    return;
+    return false;
   }
 
   // O nome de quem abriu o chamado sai de `thb_alunos` pelo
@@ -405,6 +410,7 @@ async function avisarEquipe(
   if (!r.ok) {
     logErro("chamados.avisarEquipe", r.erro ?? "falha sem detalhe", { chamadoId });
   }
+  return r.ok;
 }
 
 

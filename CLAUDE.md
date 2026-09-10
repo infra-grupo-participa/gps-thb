@@ -1480,7 +1480,16 @@ plano e achados em `tmp/squad/war-room.md`). O que passou a valer:
   - **Adicionar sócio tem a guarda cross-sistema** (`adicionarSocioAluno` → `precisaConfirmar` +
     portais, `DialogoConfirmacao` antes de repetir) — a RPC troca a senha de conta preexistente. A
     guarda nos 3 caminhos (`definirSenhaAluno`/`definirSenhaMembro`/`adicionarSocioAluno`)
-    **falha fechada**: erro na RPC de programas devolve `{ erro }`, nunca segue.
+    **falha fechada**: erro na RPC de programas devolve `{ erro }`, nunca segue. E a fronteira
+    está no banco desde a `…218`: `gps.admin_adicionar_socio(…, p_confirmar_login_existente
+    boolean default false)` recusa com **P0003** (zero escrita) quando o e-mail já tem login e a
+    confirmação não veio — a action traduz P0003 em `precisaConfirmar` + `loginExistente`.
+  - 🔴 **`…219` — "Adicionar sócio" com e-mail novo estava QUEBRADO desde sempre** para sócio com
+    CPF/e-mail na base: o gatilho `on_auth_user_created_gps` roda dentro do `insert into
+    auth.users` da própria função e já grava um `gps.membros` para o user_id novo; o `on conflict
+    (aluno_id, user_id)` não cobria `membros_user_id_key` → 23505. Agora `on conflict (user_id) do
+    update` move o membro para o ambiente pedido e apaga o `gps.ambientes` órfão criado na mesma
+    transação. Pego pela prova em rollback da 218 — build verde nunca veria.
   - **Ficha do cliente não trava o salvar por "0 problemas"** — medido: 355 de 879 clientes (39
     ambientes) estão assim; virou aviso âmbar no grupo (`problemasEmFalta`), a ficha salva. A
     cobrança do problema é da tarefa 1.1.
@@ -1491,8 +1500,22 @@ plano e achados em `tmp/squad/war-room.md`). O que passou a valer:
   - 🔴 **Pendência D3 (ClickUp):** `p_ip_hash` das 3 RPCs públicas do Plantão vem do cliente —
     quem chama a REST direto com a anon key forja o balde de rate limit. Fechar exige um segredo
     só do servidor (`PLANTAO_SERVIDOR_TOKEN` na Hostinger + `gps.config`), com default seguro.
+  - 🔴 **O tour do onboarding nunca aparecia** (Auditor F, navegado): `concluir()` revalida o
+    layout, `OnboardingGate` voltava com `status: "concluido"`, devolvia `null` e desmontava o
+    portal antes dos passos 8/9. Agora o gate **sempre** rende `OnboardingPortalLazy` para o aluno
+    com pessoa, e o wrapper decide **uma vez na montagem** (`precisa`, respeitando `soTour`) e
+    congela os `dados` daquela montagem; quem já concluiu nunca dispara o `import()` do chunk.
+    **Não voltar a colocar `return null` por status no gate.**
+  - **Toast do chamado só diz "a equipe foi avisada por e-mail" quando o e-mail saiu**
+    (`ResultadoAbrir.equipeAvisada`); senão, "já aparece na fila da equipe".
+    `gps.config.chamados_email_equipe` estava **vazio** em produção em 10/09 — segue pendência.
+  - Mover o cliente favorito de fase (inclusive de volta a Prospecção) **não é** trocar o favorito:
+    a `…215` trava desmarcar/apagar; a `…203` trava voltar a prospecção **só** quando a equipe
+    confirmou. Se o Marcio quiser travar a fase do favorito não confirmado, é uma linha na trigger.
   - Conta de teste do onboarding: **`onboarding.teste@programa.timeholdingbrasil.com.br`** /
-    `Holding#Teste2026` (resetada ao estado de primeiro acesso em 10/09 à noite).
+    `Holding#Teste2026` (resetada ao estado de primeiro acesso em 10/09 à noite). Para resetar por
+    SQL, gravar as claims do admin **antes** dos deletes: a trigger `…215` recusa apagar o favorito
+    mesmo como `postgres` sem JWT.
 
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 

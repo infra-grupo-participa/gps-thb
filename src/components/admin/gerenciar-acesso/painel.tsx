@@ -54,6 +54,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
+import { SENHA_MINIMO } from "@/lib/senha-regras";
 import {
   CredenciaisView,
   sugerirSenha,
@@ -357,12 +358,12 @@ export function GerenciarAcessoPainel({
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Mínimo de 8 caracteres. As sessões abertas do titular caem e
+                  Mínimo de {SENHA_MINIMO} caracteres. As sessões abertas do titular caem e
                   o e-mail dele fica confirmado.
                 </p>
                 <Button
                   onClick={definirSenha}
-                  disabled={pending || senha.trim().length < 8}
+                  disabled={pending || senha.trim().length < SENHA_MINIMO}
                 >
                   <KeyRound className="size-4" /> Definir senha agora
                 </Button>

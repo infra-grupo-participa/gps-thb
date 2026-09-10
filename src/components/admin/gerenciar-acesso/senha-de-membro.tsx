@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 import { sugerirSenha } from "@/components/admin/credenciais-view";
+import { SENHA_MINIMO } from "@/lib/senha-regras";
 import type { Tela } from "./tipos";
 
 export function SenhaDeMembro({
@@ -66,14 +67,14 @@ export function SenhaDeMembro({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Mínimo de 8 caracteres. As sessões abertas desta pessoa caem
+          Mínimo de {SENHA_MINIMO} caracteres. As sessões abertas desta pessoa caem
           e o e-mail dela fica confirmado. O login vale para todos os
           portais do grupo.
         </p>
       </div>
       <Button
         onClick={() => definirSenhaDeMembro(membroSenha)}
-        disabled={pending || senhaMembro.trim().length < 8}
+        disabled={pending || senhaMembro.trim().length < SENHA_MINIMO}
       >
         <KeyRound className="size-4" /> Definir senha agora
       </Button>

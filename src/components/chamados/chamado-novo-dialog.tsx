@@ -86,7 +86,14 @@ export function ChamadoNovoDialog({
         setErro(r.erro);
         return;
       }
-      toast.success("Chamado aberto. A equipe foi avisada.");
+      // "A equipe foi avisada" só quando o e-mail SAIU de verdade. Sem
+      // destinatário configurado o chamado existe e aparece na fila da equipe
+      // — é isso que a frase promete, nem mais nem menos (Auditor F, 10/09).
+      toast.success(
+        r.equipeAvisada
+          ? "Chamado aberto. A equipe foi avisada por e-mail."
+          : "Chamado aberto. Ele já aparece na fila da equipe.",
+      );
       setAberto(false);
       // Volta ao prefill, não ao vazio: o diálogo continua montado na página
       // e reabri-lo depois de abrir um chamado deve oferecer o mesmo ponto de

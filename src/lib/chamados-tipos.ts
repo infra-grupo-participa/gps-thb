@@ -80,7 +80,16 @@ export interface AnexoInput {
 
 export type ResultadoAcao = { ok: true } | { ok: false; erro: string };
 export type ResultadoAbrir =
-  | { ok: true; chamadoId: string }
+  | {
+      ok: true;
+      chamadoId: string;
+      /**
+       * `true` só quando o e-mail para a equipe SAIU (há destinatário e a
+       * Resend aceitou). A tela não pode dizer "a equipe foi avisada" por
+       * suposição: em 10/09 `chamados_email_equipe` estava vazio em produção.
+       */
+      equipeAvisada: boolean;
+    }
   | { ok: false; erro: string };
 
 const ANEXO_MIMES = [

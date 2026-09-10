@@ -63,9 +63,12 @@ import { OnboardingPortalLazy } from "./portal-lazy";
  *
  * - **Não abre para quem já concluiu** — salvo se houver **senha temporária
  *   pendente**. `getMeuOnboarding()` devolve `status: "concluido"` e o portão
- *   devolve `null`, sem montar diálogo e sem carregar o JS do questionário. É
- *   também o estado que a leitura assume quando a RPC falha, para o pop-up
- *   jamais reaparecer sobre quem já respondeu. A **exceção** é
+ *   manda `dados = null` ao `OnboardingPortalLazy`, que rende nada e não
+ *   carrega o JS do questionário (⚠️ o portão NÃO devolve `null` ele mesmo:
+ *   `concluir()` revalida o layout no meio do questionário e isso desmontava
+ *   o portal antes do tour — Auditor F, 10/09). É também o estado que a
+ *   leitura assume quando a RPC falha, para o pop-up jamais reaparecer sobre
+ *   quem já respondeu. A **exceção** é
  *   `precisaTrocarSenha`: quem recebeu senha temporária nova por "Reenviar
  *   acesso" já respondeu o questionário, mas ainda precisa criar a própria
  *   senha — para essa pessoa o portal abre **só no passo 0**, e a checagem da
@@ -111,11 +114,23 @@ export async function OnboardingGate() {
   // 🔑 A senha temporária vem ANTES do "já concluiu": quem respondeu tudo e
   // depois recebeu acesso novo por "Reenviar acesso" precisa do passo 0 — e
   // só dele. O portal cuida de não reabrir as perguntas (`soSenha`).
-  if (dados.status === "concluido" && !dados.precisaTrocarSenha) return null;
+  //
+  // ⚠️ NÃO devolver `null` aqui quando `status === "concluido"`. `concluir()`
+  // revalida o layout no meio do questionário: este gate re-renderiza com
+  // "concluido", devolvia `null` e DESMONTAVA o portal na hora — a
+  // apresentação (passos 8/9) nunca aparecia para ninguém (Auditor F, 10/09).
+  // Quem decide "precisa abrir?" é `OnboardingPortalLazy`, UMA vez, na
+  // montagem, e o chunk do portal só é baixado quando a resposta é sim.
+
+  // Quem já concluiu e não tem senha temporária recebe `null`: o wrapper
+  // rende nada e o RSC desta página não carrega as respostas do questionário
+  // (nome do cliente, descrição do caso — ~1,5 KB por página, para sempre).
+  const dadosParaOPortal =
+    dados.status === "concluido" && !dados.precisaTrocarSenha ? null : dados;
 
   return (
     <OnboardingPortalLazy
-      dados={dados}
+      dados={dadosParaOPortal}
       // O tour itera as abas REAIS desta pessoa (o sócio não vê Financeiro),
       // nunca uma lista fixa.
       abas={navDoAluno(ctx)}

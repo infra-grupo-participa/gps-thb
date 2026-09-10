@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { login, type LoginState } from "./actions";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
@@ -60,6 +60,15 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
           autoComplete="current-password"
           required
         />
+        {/* 🔑 A ORIENTAÇÃO FICA AQUI, embaixo do campo — é onde a dúvida
+            acontece, não num aviso no rodapé que ninguém lê.
+            Sutil de propósito: quem já tem senha não pode achar que precisa
+            trocar de caminho. Por isso "primeiro acesso", e não um convite
+            a todo mundo usar o código. */}
+        <p className="corpo-sm text-muted-foreground">
+          Primeiro acesso ou esqueceu a senha? Use o código que a equipe
+          passou aqui mesmo, neste campo.
+        </p>
       </div>
 
       {/* `role="alert"` — sem ele o leitor de tela nunca anuncia a falha de
@@ -90,29 +99,23 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
                       para quem nunca teve. Medido em 10/09: 12 titulares
                       sem login nenhum, todos com CPF — todos se resolvem
                       por aqui. */}
-      {/* 🔑 A ENTRADA PELO CÓDIGO EM DESTAQUE (10/09/2026, durante o evento).
-          Não é mais um link discreto: é a porta que a equipe está divulgando,
-          e serve para quem esqueceu a senha E para quem nunca teve acesso. */}
-      <div className="mt-2 grid gap-2 rounded-xl border border-marca-acao/40 bg-primary/[0.04] p-3">
-        <p className="corpo-sm font-medium">Não sabe a senha?</p>
-        <p className="corpo-sm text-muted-foreground">
-          Entre com o seu e-mail e o código que a equipe passou — você cria a
-          sua senha depois de entrar. Serve também para quem nunca acessou.
-        </p>
-        <Link href="/entrar" className={buttonVariants({ variant: "outline" })}>
-          Entrar com o código
+      {/* Discreto: o caminho principal agora é o próprio campo de senha
+          acima. Estes ficam para quem prefere outro jeito. */}
+      <p className="text-center corpo-sm text-muted-foreground">
+        <Link
+          href="/esqueci-senha"
+          className="underline-offset-4 hover:text-accent-foreground hover:underline"
+        >
+          Receber um link por e-mail
         </Link>
-        <p className="corpo-sm text-muted-foreground">
-          Prefere por e-mail?{" "}
-          <Link
-            href="/esqueci-senha"
-            className="font-medium text-accent-foreground underline-offset-4 hover:underline"
-          >
-            Receber um link para redefinir
-          </Link>
-          .
-        </p>
-      </div>
+        {" · "}
+        <Link
+          href="/resgate"
+          className="underline-offset-4 hover:text-accent-foreground hover:underline"
+        >
+          Recuperar com e-mail e CPF
+        </Link>
+      </p>
     </form>
   );
 }

@@ -69,11 +69,21 @@ export function MenuDeContas({
     setErro(null);
     iniciar(async () => {
       const r = await trocarDeConta(userId);
-      // Sucesso redireciona no servidor; só volta aqui quando falha.
       if (r?.erro) {
         setErro(r.erro);
         router.refresh();
+        return;
       }
+      // 🔑 Quem navega é o CLIENTE. A action não chama `redirect()`: ele
+      // funciona lançando uma exceção, e dentro de um `useTransition` que dá
+      // `await` no retorno isso quebrava a navegação — o clique caía em
+      // "rota não encontrada".
+      //
+      // `router.replace` (não `push`): a tela anterior era da conta que
+      // acabou de sair; deixá-la no histórico faria o "voltar" do navegador
+      // mostrar dados de outra conta.
+      router.replace(r?.destino ?? "/");
+      router.refresh();
     });
   }
 
@@ -184,7 +194,9 @@ export function MenuDeContas({
           onSelect={(e) => {
             e.preventDefault();
             iniciar(async () => {
-              await sairDeTodas();
+              const r = await sairDeTodas();
+              router.replace(r?.destino ?? "/login");
+              router.refresh();
             });
           }}
         >

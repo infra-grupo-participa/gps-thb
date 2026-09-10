@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logErro } from "@/lib/log";
 import {
@@ -27,7 +27,9 @@ import { nomeDoUsuario } from "@/lib/nome-do-usuario";
  * 🔑 Antes de trocar, a conta ATUAL é regravada no cofre: sem isso, sair de
  * A para B deixaria A de fora e a volta exigiria senha — o oposto do pedido.
  */
-export async function trocarDeConta(userId: string): Promise<{ erro?: string }> {
+export async function trocarDeConta(
+  userId: string,
+): Promise<{ erro?: string; destino?: string }> {
   const alvo = (await lerContas()).find((c) => c.userId === userId);
   if (!alvo) {
     return { erro: "Sessão expirada. Entre nesta conta de novo." };
@@ -73,8 +75,17 @@ export async function trocarDeConta(userId: string): Promise<{ erro?: string }> 
     refreshToken: data.session.refresh_token,
   });
 
-  // A home decide para onde cada papel vai (admin → /admin, aluno → /).
-  redirect("/");
+  // 🔴 NÃO chama `redirect()` aqui. `redirect` funciona LANÇANDO uma
+  // exceção, e esta action roda dentro de um `useTransition` que dá `await`
+  // no retorno — o par "lança e retorna" quebrava a navegação e o clique
+  // caía em "rota não encontrada". Quem navega é o cliente, com o destino
+  // que esta action devolve.
+  //
+  // 🔑 `revalidatePath("/", "layout")` derruba o cache do RSC: sem isso a
+  // próxima tela viria com o header (e o contexto de sessão) da conta
+  // ANTERIOR, mesmo com o cookie já trocado.
+  revalidatePath("/", "layout");
+  return { destino: "/" };
 }
 
 /** Tira uma conta do menu deste navegador. Não desloga de lugar nenhum. */
@@ -103,9 +114,10 @@ export async function contasDoMenu(): Promise<
 }
 
 /** Logout de verdade: encerra a sessão e esvazia o cofre. */
-export async function sairDeTodas(): Promise<void> {
+export async function sairDeTodas(): Promise<{ destino: string }> {
   const supabase = await createClient();
   await supabase.auth.signOut({ scope: "local" });
   await esquecerTodas();
-  redirect("/login");
+  revalidatePath("/", "layout");
+  return { destino: "/login" };
 }

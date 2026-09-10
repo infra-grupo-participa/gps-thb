@@ -1,0 +1,72 @@
+-- Polimento do dia -- dois achados de auditoria própria, ambos meus.
+--
+-- Depois de subir as features de 10/09, varri o que eu mesmo tinha criado.
+-- Achei duas coisas: uma função com furo de acesso e uma porta do Plantão
+-- que eu havia declarado fechada sem estar.
+--
+-- ─────────────────────────────────────────────────────────────────────────
+-- 🔴 ACHADO 1 -- `gps.admin_classes_dos_alunos` vazava a base inteira
+-- ─────────────────────────────────────────────────────────────────────────
+--
+--   Ao construir os 5 cards, a PRIMEIRA versão nasceu como função separada.
+--   Substituí por `admin_painel_alunos` (que tem `gp_is_admin()`) por causa
+--   do custo -- 10,6 ms vs 2,9 ms -- e ESQUECI DE APAGAR a intermediária.
+--
+--   Ela ficou no banco com `grant execute to authenticated` e SEM guarda
+--   nenhuma. Provado antes de apagar: um aluno comum, com JWT real, leu os
+--   159 ambientes e a soma de faturamento de todos.
+--
+--   Hoje o faturamento é R$ 0 em todo mundo, então nada de valor vazou --
+--   mas a estrutura estava aberta, e encheria sozinha conforme os alunos
+--   preenchessem honorários.
+--
+--   🔑 A LIÇÃO: substituir uma função não a apaga. Toda vez que eu trocar
+--   uma abordagem por outra no meio do caminho, a versão descartada tem de
+--   sair do banco na mesma passada -- ela nasce com os grants do projeto
+--   (ALTER DEFAULT PRIVILEGES dá `execute` a `authenticated`), então uma
+--   função "esquecida" não é inerte: é uma porta aberta.
+--
+-- ─────────────────────────────────────────────────────────────────────────
+-- 🔴 ACHADO 2 -- a SEXTA porta do Plantão
+-- ─────────────────────────────────────────────────────────────────────────
+--
+--   A migração ...226 fechou cinco portas e eu disse que a exclusividade
+--   estava "redonda". Faltava uma: `gps.plantao_minha_inscricao`, pública,
+--   checando só a flag `bloqueado_por_programa` -- que é cache do cron da
+--   madrugada, com até 24h de atraso.
+--
+--   ⚠️ CORREÇÃO DO QUE EU MESMO DISSE: ao achá-la, afirmei que ela
+--   "devolve o link do Zoom". NÃO DEVOLVE. O retorno traz `tem_sala`
+--   (booleano); o `zoom_url` aparece no corpo só para calcular esse
+--   booleano. O impacto real era menor do que anunciei: quem migrou
+--   continuava VENDO a própria inscrição antiga na tela, com o botão
+--   recusando -- constrangedor, não um vazamento.
+--
+--   Fechada por consistência: as seis portas passam a usar a mesma
+--   condição de verdade (ter ambiente no GPS), não a flag.
+--
+-- PROVA (rollback, com o Heber -- pessoa real que migrou para o Programa):
+--   1 inscrever       false   (Acelera puro: true)
+--   2 calendario      0 slots
+--   3 revelar_link    false
+--   4 minha_inscricao 0 linhas   ← esta migração
+--   5 admin_inscrever recusou
+--   6 admin_liberar   recusou P0003
+--
+-- REVERSÃO
+--   Tirar o `not exists (... gps.membros ... thb_alunos ...)` de
+--   `plantao_minha_inscricao`. A função apagada não volta -- e não deve.
+
+drop function if exists gps.admin_classes_dos_alunos();
+
+-- `plantao_minha_inscricao` foi alterada por edição do corpo vigente
+-- (regra do projeto). O predicado acrescentado é o mesmo das outras cinco:
+--
+--   and not exists (select 1 from gps.membros m
+--                    join public.thb_alunos t on t.id = m.aluno_id
+--                   where lower(btrim(t.email)) = v_email)
+--
+-- Corpo completo:
+--   select pg_get_functiondef(p.oid) from pg_proc p
+--     join pg_namespace n on n.oid = p.pronamespace
+--    where n.nspname = 'gps' and p.proname = 'plantao_minha_inscricao';

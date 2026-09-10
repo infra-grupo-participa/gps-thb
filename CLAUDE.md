@@ -233,7 +233,47 @@ preservado, então o cadastro, o documento e o histórico comercial
 continuam lá. O que se perde é o conteúdo do ambiente (a Naiara tinha 2
 clientes cadastrados; a Joyce, 1).
 
-### Os 7 sobressalentes que FICARAM
+### Rodada 3 — os 7 que sobravam saíram (142 -> 135)
+
+Decisão do Marcio, 10/09: **"remove todo mundo que não tá no programa de
+implementação assistida"**. Aplicado ao GPS (o Plantão ficou intacto). O
+sistema passou a ter EXATAMENTE as 135 pessoas da planilha.
+
+| Nome | Último login | Clientes | Pago |
+|---|---|---:|---:|
+| Eder Fagundes da Silva | 03/09 | 30 | R$ 0 |
+| Guilherme Henrique Canal da Rocha | 09/09 | 17 | **R$ 15.300** |
+| Scarlett Zeilinger Coelho | 20/08 | 10 | R$ 2.701 |
+| Thiago Barbosa Ferreira | 11/08 | 3 | R$ 4.417 |
+| Quelen Soper | 24/08 | 2 | R$ 0 |
+| Anderson Silva Resende | 31/08 | 0 | **R$ 15.000** |
+| conta de teste do onboarding | 10/09 | 0 | — |
+
+🔴 **Mais R$ 37.418 em pagamentos cortados**, somando R$ 93.651 no dia.
+Guilherme e Anderson pagaram o valor cheio e entraram por
+`webhook_hotmart_ht` — o sistema reconheceu o pagamento deles. Levei o
+número à mesa antes de cada rodada; a decisão foi seguir.
+
+⚠️ **A conta de teste do onboarding saiu junto** (não está na planilha).
+Recriar: "Criar acesso" no painel, com o e-mail
+`onboarding.teste@programa.timeholdingbrasil.com.br`.
+
+### Estado final de 10/09/2026
+
+| | |
+|---|---:|
+| Titulares no GPS | **135** (= a planilha) |
+| Sócios | 12 |
+| Ambientes | 135 |
+| Removidos no dia | **24** |
+| Plantão: elegíveis | 379 (intacto) |
+
+Os cadastros em `public.thb_alunos` foram **preservados** em todas as 24
+remoções — documento, histórico comercial e vínculo com o sip continuam
+lá. Recriar qualquer acesso é um clique; o que se perde é o conteúdo do
+ambiente (clientes cadastrados, progresso, notas).
+
+### Os 7 sobressalentes (REMOVIDOS na rodada 3)
 
 Todas as remoções por `gps.admin_excluir_acesso`, que **preserva
 `public.thb_alunos`** (base compartilhada com o sip) e grava trilha em
@@ -251,12 +291,12 @@ Ficaram, por terem login recente:
 | Thiago Barbosa Ferreira | 11/08 | 3 | R$ 4.417 |
 | conta de teste do onboarding | 10/09 | 0 | — |
 
-**Resultado: 159 → 142 titulares.**
+**Resultado das rodadas 1 e 2: 159 → 142 titulares.**
 
 ### ⚠️ O que continua aberto
 
-1. **142 ≠ 135.** Sobram 7: os 6 sobressalentes com login recente + a
-   conta de teste do onboarding. Todos preservados por decisão explícita.
+1. ✅ **RESOLVIDO na rodada 3:** o GPS tem exatamente 135 titulares, as
+   mesmas pessoas da planilha.
 2. **A planilha precisa ganhar os 9** que pagaram por webhook — enquanto
    ela for a fonte de verdade e não os incluir, a conferência vai divergir
    de novo.
@@ -268,9 +308,9 @@ Ficaram, por terem login recente:
 
 Conferência (o número tem de bater com a planilha + as 13 exceções):
 ```sql
-select count(*) from gps.membros where papel = 'titular';   -- 142
+select count(*) from gps.membros where papel = 'titular';   -- 135
 select count(*) from gps.acessos_log
- where acao like '%exclu%' and criado_em::date = '2026-09-10';  -- 17
+ where acao like '%exclu%' and criado_em::date = '2026-09-10';  -- 24
 ```
 
 ## Dados alterados a mão em 09/09/2026 (war-room) — NÃO viram migration

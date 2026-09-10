@@ -4,6 +4,7 @@ import { getContextoSessao } from "@/lib/auth";
 import {
   getAlunoById,
   getClienteById,
+  getClienteEquipe,
   getAmbiente,
   contarMembrosDoAmbiente,
 } from "@/lib/data";
@@ -30,10 +31,17 @@ export default async function AdminAlunoClienteFichaPage({
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, qtdMembros] = await Promise.all([
+  const [aluno, qtdMembros, outroConfirmado] = await Promise.all([
     getAlunoById(alunoId),
     contarMembrosDoAmbiente(alunoId),
+    // Mesma regra da ficha do aluno: só quando este cliente não é a estrela.
+    cliente.acompanhado_equipe
+      ? Promise.resolve(null)
+      : getClienteEquipe(alunoId),
   ]);
+  const outroConfirmadoNome = outroConfirmado?.acompanhamento_confirmado_em
+    ? (outroConfirmado.nome ?? null)
+    : null;
 
   return (
     <>
@@ -61,7 +69,15 @@ export default async function AdminAlunoClienteFichaPage({
           }
         />
 
-        <ClienteFicha cliente={cliente} alunoId={alunoId} />
+        {/* `admin` liga "Confirmar acompanhamento"/"Liberar acompanhamento" —
+            a CASA DE ORIGEM dessa escrita (§B.5). Quem autoriza é o
+            `gp_is_admin()` das RPCs; esta prop decide o que a tela oferece. */}
+        <ClienteFicha
+          cliente={cliente}
+          alunoId={alunoId}
+          admin
+          outroConfirmadoNome={outroConfirmadoNome}
+        />
       </main>
     </>
   );

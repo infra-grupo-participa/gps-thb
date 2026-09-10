@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getClienteById } from "@/lib/data";
+import { getAlunoById, getClienteById, getClienteEquipe } from "@/lib/data";
 import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
@@ -24,6 +24,19 @@ export default async function ClienteFichaPage({
 
   const aluno = await getAlunoById(alunoId);
 
+  /**
+   * Só quando ESTE cliente não é a estrela: a ficha precisa saber se a equipe
+   * já assumiu OUTRO cliente do ambiente, senão ofereceria uma estrela que o
+   * banco recusa (42501). Uma linha indexada (`acompanhado_equipe` é único por
+   * ambiente), e nem isso quando o cliente aberto já é o favorito.
+   */
+  const outroConfirmado = cliente.acompanhado_equipe
+    ? null
+    : await getClienteEquipe(alunoId);
+  const outroConfirmadoNome = outroConfirmado?.acompanhamento_confirmado_em
+    ? (outroConfirmado.nome ?? null)
+    : null;
+
   return (
     <>
       <AppHeader
@@ -45,7 +58,11 @@ export default async function ClienteFichaPage({
           }
         />
 
-        <ClienteFicha cliente={cliente} alunoId={alunoId} />
+        <ClienteFicha
+          cliente={cliente}
+          alunoId={alunoId}
+          outroConfirmadoNome={outroConfirmadoNome}
+        />
       </main>
     </>
   );

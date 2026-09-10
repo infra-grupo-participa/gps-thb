@@ -9,6 +9,68 @@
 
 import { MessageCircle, Star } from "lucide-react";
 import type { ClienteEtapa1 } from "@/lib/types";
+import { GRAUS_RELACAO_UI } from "@/lib/etapa1";
+import { formatarData } from "@/lib/datas";
+
+/**
+ * O grau de relação do cliente, como chip de leitura.
+ *
+ * `null` não desenha nada AQUI (o card já é apertado e "não informado" em cada
+ * linha viraria ruído) — mas a ficha e a tabela dizem "Não informado" com todas
+ * as letras. O que nunca acontece, em lugar nenhum, é `null` virar "Lead".
+ */
+export function GrauChip({
+  grau,
+  className = "",
+}: {
+  grau: ClienteEtapa1["grau_relacao"];
+  className?: string;
+}) {
+  if (!grau) return null;
+  const def = GRAUS_RELACAO_UI.find((g) => g.id === grau);
+  if (!def) return null;
+  return (
+    <span
+      title={def.ajuda}
+      className={
+        "inline-flex shrink-0 items-center rounded-full bg-superficie-afundada px-2 py-0.5 text-[10px] font-medium text-neutro-foreground " +
+        className
+      }
+    >
+      {def.rotulo}
+    </span>
+  );
+}
+
+/**
+ * A estrela do cliente que a EQUIPE assumiu: sinal, não botão.
+ *
+ * 🔑 Não é um `StarButton` desabilitado. Botão desligado ainda é botão — pede
+ * clique, recebe foco e não explica nada. Aqui a estrela é um ícone com o
+ * motivo escrito ao lado (ou no `title`, quando não há espaço), e o caminho de
+ * saída fica na ficha. A trava real é a trigger `...203`, que devolve 42501
+ * mesmo para quem chamar a Server Action por fora.
+ */
+export function EstrelaTravada({
+  desde,
+  className = "",
+}: {
+  desde: string | null;
+  className?: string;
+}) {
+  const texto = desde
+    ? `A equipe está acompanhando este cliente desde ${formatarData(desde)}. Só a equipe troca.`
+    : "A equipe está acompanhando este cliente. Só a equipe troca.";
+  return (
+    <span
+      title={texto}
+      className={"shrink-0 text-accent-foreground " + className}
+    >
+      <Star className="size-4 fill-accent-foreground" aria-hidden />
+      <span className="sr-only">{texto}</span>
+    </span>
+  );
+}
 
 /**
  * Vestígio do modelo antigo de 5 status: sem esta marca, o cliente que disse

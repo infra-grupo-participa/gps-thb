@@ -1,7 +1,8 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { AtSign } from "lucide-react";
 import { registrarNota } from "@/app/admin/diario-actions";
 import { VOZES_NOTA, TIPOS_NOTA, ORIGENS_NOTA } from "@/lib/types";
 import type { VozNota, TipoNota, OrigemNota } from "@/lib/types";
@@ -10,6 +11,11 @@ import {
   ROTULO_TIPO,
   ROTULO_ORIGEM,
 } from "@/components/admin/diario-labels";
+import {
+  ChipsMencionados,
+  ListaMencionaveis,
+  useMencoes,
+} from "@/components/admin/diario-mencoes";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,6 +65,7 @@ export function DiarioForm({
   const idTexto = `${uid}-texto`;
   const idContador = `${uid}-contador`;
   const idErro = `${uid}-erro`;
+  const idAjudaMencao = `${uid}-ajuda-mencao`;
 
   const [texto, setTexto] = useState("");
   const [voz, setVoz] = useState<VozNota>("equipe");
@@ -66,6 +73,14 @@ export function DiarioForm({
   const [origem, setOrigem] = useState<OrigemNota>("plataforma");
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  /**
+   * @menção. O hook é dono do token sob o cursor, da lista e dos chips; o
+   * texto continua sendo estado DESTE componente — quem escreve a nota é a
+   * equipe, não o autocompletar.
+   */
+  const refTexto = useRef<HTMLTextAreaElement | null>(null);
+  const mencoes = useMencoes(texto, setTexto, uid, refTexto);
 
   const textoValido = texto.trim().length > 0 && texto.length <= TEXTO_MAXIMO;
 
@@ -80,6 +95,9 @@ export function DiarioForm({
         origem,
         texto,
         eventoId,
+        // Ids de `public.perfis`. O servidor revalida cada um contra ativo +
+        // cargo dev/admin e descarta o que não passar (§B.7).
+        mencoes: mencoes.ids,
       });
       if (!res.ok) {
         // Erro de envio fica NA TELA, ao lado do campo, com `role="alert"`:
@@ -88,8 +106,18 @@ export function DiarioForm({
         setErro(res.erro);
         return;
       }
-      toast.success("Nota registrada.");
+      // 🔑 A action devolve `ok` mesmo com o Slack fora do ar — a nota está
+      // gravada e o aviso é subproduto. Por isso a frase fala de MENÇÃO
+      // REGISTRADA, nunca de aviso entregue: prometer entrega aqui seria
+      // prometer o que nem o servidor confirma.
+      const quantos = mencoes.ids.length;
+      toast.success(
+        quantos > 0
+          ? `Nota registrada com ${quantos} ${quantos === 1 ? "menção" : "menções"}.`
+          : "Nota registrada.",
+      );
       setTexto("");
+      mencoes.limpar();
       setErro(null);
       aoRegistrar?.();
     });
@@ -108,20 +136,43 @@ export function DiarioForm({
         <Label htmlFor={idTexto}>Texto</Label>
         <Textarea
           id={idTexto}
+          ref={refTexto}
           value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder="O que aconteceu, o que foi combinado ou o que ficou pendente."
+          onChange={(e) => mencoes.aoMudarTexto(e.target.value)}
+          // Mover o cursor com o teclado ou o mouse pode tirá-lo de cima do
+          // `@` — sem isto a lista ficaria aberta apontando para um token que
+          // não está mais sob o cursor.
+          onKeyDown={mencoes.aoTeclar}
+          onBlur={mencoes.fechar}
+          onClick={() => mencoes.fechar()}
+          placeholder="O que aconteceu, o que foi combinado ou o que ficou pendente. Digite @ para avisar alguém da equipe."
           rows={4}
           maxLength={TEXTO_MAXIMO}
-          aria-describedby={erro ? `${idErro} ${idContador}` : idContador}
+          aria-describedby={
+            erro
+              ? `${idErro} ${idContador} ${idAjudaMencao}`
+              : `${idContador} ${idAjudaMencao}`
+          }
           aria-invalid={erro ? true : undefined}
+          aria-controls={mencoes.aberto ? mencoes.idLista : undefined}
+          aria-activedescendant={mencoes.idAtivo}
         />
-        <div
-          id={idContador}
-          className="text-right text-xs text-muted-foreground"
-        >
-          {texto.length}/{TEXTO_MAXIMO}
+        <ListaMencionaveis ctrl={mencoes} />
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p id={idAjudaMencao} className="text-xs text-muted-foreground">
+            <AtSign aria-hidden className="mr-1 inline size-3 align-[-1px]" />
+            Digite <span className="font-medium">@</span> para avisar alguém da
+            equipe. Só quem já pode ler este diário aparece na lista.
+            {mencoes.carregando ? " Carregando a equipe…" : null}
+          </p>
+          <div
+            id={idContador}
+            className="text-right text-xs text-muted-foreground"
+          >
+            {texto.length}/{TEXTO_MAXIMO}
+          </div>
         </div>
+        <ChipsMencionados ctrl={mencoes} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

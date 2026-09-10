@@ -125,7 +125,11 @@ export default async function HomePage() {
       : Promise.resolve(null),
   ]);
   const aluno = souSocio ? alunoSocio : alunoAmbiente;
-  const nomeExibicao = souSocio ? (aluno?.nome ?? ctx.membroNome) : aluno?.nome;
+  // `alunoSocio` já é `getAlunoById(ctx.membroAlunoId)` — o nome do sócio vem
+  // dali. O `?? ctx.membroNome` que existia aqui era o último consumidor de um
+  // campo que ficou SEMPRE null em 10/09 (o `ilike` em `thb_alunos.email` saiu
+  // do contexto de sessão), ou seja: um fallback que nunca mais caía.
+  const nomeExibicao = aluno?.nome ?? null;
   // PF3 — único estágio 2 que sobrou, e ele FICA. Depende de `aluno.turma_id`,
   // que só existe depois do lote acima, e o aluno é `alunoAmbiente` OU
   // `alunoSocio` conforme o papel: não há como saber a turma antes de saber de

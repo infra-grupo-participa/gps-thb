@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { ToasterLazy } from "@/components/ui/toaster-lazy";
+import { OnboardingGate } from "@/components/onboarding/onboarding-gate";
 
 // Fonte padrão dos sistemas do Grupo Participa: Inter (corpo) + Space Grotesk (títulos).
 const inter = Inter({
@@ -51,6 +52,13 @@ export default function RootLayout({
           Pular para o conteúdo
         </a>
         {children}
+        {/* O questionário inicial. Mora AQUI, e não em cada página do aluno,
+            porque "assim que ele ingressar" pode ser em /clientes por um link
+            do e-mail — e nove cópias garantiriam esquecer a décima página. O
+            componente devolve `null` (sem custo de rede) para quem não tem
+            cookie de sessão, para admin e para quem já concluiu; a razão
+            completa está no cabeçalho dele. */}
+        <OnboardingGate />
         <ToasterLazy />
       </body>
     </html>

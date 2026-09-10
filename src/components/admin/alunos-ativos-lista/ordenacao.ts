@@ -13,15 +13,10 @@
  */
 
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
-import { casaTodosOsTermos, semAcento } from "@/lib/texto";
+import { semAcento } from "@/lib/texto";
 import { FUSO } from "@/lib/datas";
 import { brl, brlCompacto } from "@/lib/moeda";
-import {
-  DIAS_INATIVO,
-  DIAS_NOTA_RECENTE,
-  META_CLIENTES,
-  type OrdemAlunos,
-} from "./tipos";
+import { DIAS_NOTA_RECENTE, type OrdemAlunos } from "./tipos";
 
 /** "YYYY-MM-DD" no fuso de Brasília — base para contar dias de CALENDÁRIO.
  *
@@ -101,69 +96,6 @@ export function honorariosDoCard(
 /** Nota escrita nos últimos 7 dias de CALENDÁRIO. Sem nota nenhuma = `false`. */
 export function notaRecente(iso: string | null | undefined, agora: number): boolean {
   return iso ? diasDesde(iso, agora) <= DIAS_NOTA_RECENTE : false;
-}
-
-/** Os seis interruptores da barra + o termo de busca. Combinam por AND. */
-export type FiltrosAlunos = {
-  somentePendencia: boolean;
-  somenteListou30: boolean;
-  somenteInativos: boolean;
-  somenteNotaRecente: boolean;
-  somenteSemNota: boolean;
-  somenteChamado: boolean;
-  termo: string;
-};
-
-/** Aplica os filtros da barra e a busca por nome/e-mail. Não ordena. */
-export function filtrarAlunos(
-  alunos: AlunoGps[],
-  atendimentoPorAluno: Record<string, AtendimentoDoAluno>,
-  {
-    somentePendencia,
-    somenteListou30,
-    somenteInativos,
-    somenteNotaRecente,
-    somenteSemNota,
-    somenteChamado,
-    termo,
-  }: FiltrosAlunos,
-  agora: number,
-): AlunoGps[] {
-  // Os filtros combinam por AND: marcar dois estreita, nunca alarga.
-  const filtrados = alunos.filter((a) => {
-    if (
-      somentePendencia &&
-      (atendimentoPorAluno[a.alunoId]?.pendenciasAbertas ?? 0) === 0
-    ) {
-      return false;
-    }
-    if (somenteListou30 && a.clientesPreenchidos < META_CLIENTES) return false;
-    if (
-      somenteInativos &&
-      diasSemAcesso(a.ultimoAcesso, agora) < DIAS_INATIVO
-    ) {
-      return false;
-    }
-    if (
-      somenteNotaRecente &&
-      !notaRecente(atendimentoPorAluno[a.alunoId]?.ultimaNotaEm, agora)
-    ) {
-      return false;
-    }
-    if (somenteSemNota && atendimentoPorAluno[a.alunoId]?.ultimaNotaEm) {
-      return false;
-    }
-    if (
-      somenteChamado &&
-      (atendimentoPorAluno[a.alunoId]?.chamadosAbertos ?? 0) === 0
-    ) {
-      return false;
-    }
-    const alvo = `${a.aluno?.nome ?? ""} ${a.aluno?.email ?? ""}`;
-    return casaTodosOsTermos(alvo, termo);
-  });
-
-  return filtrados;
 }
 
 /**

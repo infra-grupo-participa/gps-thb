@@ -39,6 +39,32 @@ function DialogOverlay({
   )
 }
 
+/**
+ * O conteúdo do diálogo.
+ *
+ * 🔑 **O foco FICA preso aqui — medido, não suposto (10/09/2026).** A Onda 1
+ * relatou que o Tab escapava de todo diálogo do portal. Refeito no Chromium
+ * contra o app de verdade (`DialogoConfirmacao`, dev server, 8 `Tab` + 4
+ * `Shift+Tab`, com 120 ms de espera entre cada tecla): **as 12 paradas caem
+ * dentro do popup**. O relato veio de um harness que lia `document.activeElement`
+ * no mesmo tick da tecla — as guardas do Base UI devolvem o foco por
+ * `requestAnimationFrame`, então nesse instante o `activeElement` ainda é
+ * `<body>`. Era o medidor, não a trava.
+ *
+ * O que o Base UI faz de verdade, com `modal` (o padrão) ligado:
+ * - o irmão externo do portal recebe `aria-hidden="true"` + `data-base-ui-inert`
+ *   (leitor de tela não alcança);
+ * - duas `FocusGuard` invisíveis cercam o popup e devolvem o foco ao primeiro
+ *   ou ao último tabulável de dentro;
+ * - um backdrop interno bloqueia o ponteiro.
+ *
+ * ⚠️ **Não aplicar o atributo `inert` de verdade nos irmãos.** É tentador
+ * (`[data-base-ui-inert]` já está lá), mas `markOthers` do Base UI isenta de
+ * propósito os elementos `[aria-live]` do `aria-hidden` — e `inert` os
+ * apagaria da árvore de acessibilidade junto com o resto, calando os toasts e
+ * os avisos de erro anunciados enquanto o diálogo está aberto. Trocaríamos uma
+ * trava que funciona por um silêncio que ninguém veria.
+ */
 function DialogContent({
   className,
   children,
@@ -70,9 +96,11 @@ function DialogContent({
               />
             }
           >
-            <XIcon
-            />
-            <span className="sr-only">Close</span>
+            <XIcon aria-hidden />
+            {/* Em PORTUGUÊS. Era "Close" — o único texto em inglês que
+                atravessava os ~8 diálogos do portal, e o único rótulo deste
+                botão para quem usa leitor de tela. */}
+            <span className="sr-only">Fechar</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>
@@ -110,7 +138,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close render={<Button variant="outline" />}>
-          Close
+          Fechar
         </DialogPrimitive.Close>
       )}
     </div>

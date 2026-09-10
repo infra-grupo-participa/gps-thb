@@ -271,6 +271,12 @@ function ItemNota({ item }: { item: ItemTrilha & { variante: "nota" } }) {
         </div>
       ) : null}
       <p className="whitespace-pre-wrap break-words text-sm">{nota.texto}</p>
+      {nota.mencoes.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Mencionou:{" "}
+          {nota.mencoes.map((m) => m.nome ?? "membro da equipe").join(", ")}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>{nota.autor_nome ?? "Equipe"}</span>
         {pendenciaAberta ? <DiarioBaixaButton notaId={nota.id} /> : null}

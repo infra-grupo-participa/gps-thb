@@ -27,11 +27,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { MarcaRecusou, StarButton, WhatsappLink } from "./clientes-chips";
+import {
+  EstrelaTravada,
+  GrauChip,
+  MarcaRecusou,
+  StarButton,
+  WhatsappLink,
+} from "./clientes-chips";
+import { fasesDisponiveis, travadoPelaEquipe } from "./ordenacao";
 
 export function ClienteCardLista({
   cliente: c,
   fichaHref,
+  existeConfirmado,
   onFase,
   onEquipe,
   onExcluir,
@@ -39,12 +47,15 @@ export function ClienteCardLista({
 }: {
   cliente: ClienteEtapa1;
   fichaHref: (id: string) => string;
+  /** Ver `ClientesTabela`: com um confirmado no ambiente, a estrela some dos outros. */
+  existeConfirmado: boolean;
   onFase: (c: ClienteEtapa1, f: FaseCliente) => void;
   onEquipe: (c: ClienteEtapa1) => void;
   onExcluir: (c: ClienteEtapa1) => void;
   pending: boolean;
 }) {
   const wpp = linkWhatsapp(c.telefone);
+  const travado = travadoPelaEquipe(c);
   return (
     <div
       className={cn(
@@ -56,13 +67,24 @@ export function ClienteCardLista({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2">
-          <StarButton ativo={c.acompanhado_equipe} onClick={() => onEquipe(c)} />
+          {travado ? (
+            <EstrelaTravada
+              desde={c.acompanhamento_confirmado_em}
+              className="mt-0.5"
+            />
+          ) : existeConfirmado ? null : (
+            <StarButton
+              ativo={c.acompanhado_equipe}
+              onClick={() => onEquipe(c)}
+            />
+          )}
           <Link
             href={fichaHref(c.id)}
             className="foco-visivel rounded-sm font-medium text-balance hover:text-accent-foreground hover:underline"
           >
             {c.nome || "Sem nome"}
           </Link>
+          <GrauChip grau={c.grau_relacao} className="mt-0.5" />
           <MarcaRecusou cliente={c} />
         </div>
         {c.perda_inercia != null ? (
@@ -99,7 +121,7 @@ export function ClienteCardLista({
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {FASES_CLIENTE.map((f) => (
+            {fasesDisponiveis(c).map((f) => (
               <SelectItem key={f.id} value={f.id}>
                 {f.rotulo}
               </SelectItem>
@@ -114,17 +136,20 @@ export function ClienteCardLista({
         </Link>
         {/* Ícone, não texto: o vermelho só aparece na intenção (`ghost-danger`)
             e o nome do cliente vai no `aria-label`, então o leitor de tela
-            ganha precisão em vez de ouvir "Excluir" oito vezes seguidas. */}
-        <Button
-          variant="ghost-danger"
-          size="icon-sm"
-          aria-label={`Excluir ${c.nome || "cliente sem nome"}`}
-          className="ml-1 disabled:opacity-40"
-          onClick={() => onExcluir(c)}
-          disabled={pending}
-        >
-          <Trash2 aria-hidden />
-        </Button>
+            ganha precisão em vez de ouvir "Excluir" oito vezes seguidas.
+            🔴 Some no cliente que a equipe acompanha — o DELETE volta 42501. */}
+        {travado ? null : (
+          <Button
+            variant="ghost-danger"
+            size="icon-sm"
+            aria-label={`Excluir ${c.nome || "cliente sem nome"}`}
+            className="ml-1 disabled:opacity-40"
+            onClick={() => onExcluir(c)}
+            disabled={pending}
+          >
+            <Trash2 aria-hidden />
+          </Button>
+        )}
       </div>
     </div>
   );

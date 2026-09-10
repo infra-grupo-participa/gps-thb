@@ -16,45 +16,70 @@ import { mascaraTelefone } from "@/lib/masks";
 import { brl } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Badge } from "@/components/ui/badge";
-import { MarcaRecusou, StarButton, WhatsappLink } from "./clientes-chips";
+import {
+  EstrelaTravada,
+  GrauChip,
+  MarcaRecusou,
+  StarButton,
+  WhatsappLink,
+} from "./clientes-chips";
+import { fasesDisponiveis, travadoPelaEquipe } from "./ordenacao";
 
 export function Kanban({
   clientes,
   fichaHref,
+  existeConfirmado,
   onMover,
   onToggleEquipe,
 }: {
   clientes: ClienteEtapa1[];
   fichaHref: (id: string) => string;
+  /** Ver `ClientesTabela`: com um confirmado no ambiente, a estrela some dos outros. */
+  existeConfirmado: boolean;
   onMover: (c: ClienteEtapa1, f: FaseCliente) => void;
   onToggleEquipe: (c: ClienteEtapa1) => void;
 }) {
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [sobre, setSobre] = useState<FaseCliente | null>(null);
 
+  const emArraste = clientes.find((c) => c.id === arrastando) ?? null;
+  /**
+   * A coluna aceita o que está sendo arrastado? Cliente confirmado pela equipe
+   * não volta para "Prospecção" — o banco recusa com 42501. A coluna se recusa
+   * ANTES do solto, com a razão escrita: soltar e receber erro é o mesmo que um
+   * botão que falha.
+   */
+  const aceita = (fase: FaseCliente) =>
+    !emArraste || fasesDisponiveis(emArraste).some((f) => f.id === fase);
+
   return (
     <div className="overflow-x-auto pb-2">
       <div className="flex min-w-max gap-3">
         {FASES_CLIENTE.map((coluna) => {
           const itens = clientes.filter((c) => c.fase === coluna.id);
-          const destaque = sobre === coluna.id;
+          const recusa = !aceita(coluna.id);
+          const destaque = sobre === coluna.id && !recusa;
           return (
             <div
               key={coluna.id}
               onDragOver={(e) => {
+                if (recusa) return;
                 e.preventDefault();
                 setSobre(coluna.id);
               }}
               onDragLeave={() => setSobre((s) => (s === coluna.id ? null : s))}
               onDrop={() => {
                 const c = clientes.find((x) => x.id === arrastando);
-                if (c) onMover(c, coluna.id);
+                if (c && !recusa) onMover(c, coluna.id);
                 setArrastando(null);
                 setSobre(null);
               }}
               className={
                 "flex w-64 shrink-0 flex-col rounded-lg border bg-muted/30 p-2 transition " +
-                (destaque ? "border-primary ring-1 ring-primary" : "")
+                (destaque ? "border-primary ring-1 ring-primary " : "") +
+                // Estado "não aceita" por FORMA (borda tracejada), nunca por
+                // `opacity` na coluna inteira.
+                (recusa ? "border-dashed border-borda-forte" : "")
               }
             >
               <div className="mb-2 px-1">
@@ -67,6 +92,12 @@ export function Kanban({
                 <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
                   {coluna.ajuda}
                 </p>
+                {recusa ? (
+                  <p className="mt-1 text-[11px] leading-snug font-medium text-atencao-foreground">
+                    A equipe acompanha este cliente — a fase não volta para
+                    Prospecção.
+                  </p>
+                ) : null}
               </div>
               <div className="flex flex-1 flex-col gap-2">
                 {itens.map((c) => {
@@ -89,15 +120,34 @@ export function Kanban({
                         >
                           {c.nome || "Sem nome"}
                         </Link>
-                        <StarButton
-                          ativo={c.acompanhado_equipe}
-                          onClick={() => onToggleEquipe(c)}
-                        />
+                        {travadoPelaEquipe(c) ? (
+                          <EstrelaTravada
+                            desde={c.acompanhamento_confirmado_em}
+                          />
+                        ) : existeConfirmado ? null : (
+                          <StarButton
+                            ativo={c.acompanhado_equipe}
+                            onClick={() => onToggleEquipe(c)}
+                          />
+                        )}
                       </div>
-                      <MarcaRecusou cliente={c} className="mt-1" />
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <GrauChip grau={c.grau_relacao} />
+                        <MarcaRecusou cliente={c} className="" />
+                      </div>
                       {c.perda_inercia != null ? (
                         <div className="mt-1 text-xs tabular-nums text-muted-foreground">
                           {brl(c.perda_inercia)}
+                        </div>
+                      ) : null}
+                      {/* Honorários no card da coluna "Contratados" — o número
+                          que a equipe procura fica onde o cliente está.
+                          `null` NUNCA vira R$ 0,00: quem não informou não
+                          fechou por zero. */}
+                      {c.valor_honorarios != null ? (
+                        <div className="mt-1 text-xs font-medium tabular-nums text-accent-foreground">
+                          Honorários: {brl(c.valor_honorarios)}
+                          {c.fase === "contratado" ? "" : " (fora da meta)"}
                         </div>
                       ) : null}
                       <div className="mt-2 flex items-center gap-2">

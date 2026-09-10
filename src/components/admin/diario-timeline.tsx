@@ -46,6 +46,13 @@ function NotaCard({ nota }: { nota: AlunoNotaComAutor }) {
           {nota.texto}
         </p>
 
+        {nota.mencoes.length > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Mencionou:{" "}
+            {nota.mencoes.map((m) => m.nome ?? "membro da equipe").join(", ")}
+          </p>
+        ) : null}
+
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>{nota.autor_nome ?? "Equipe"}</span>
 

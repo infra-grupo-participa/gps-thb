@@ -55,8 +55,14 @@ import { ClientesTabela } from "./clientes-tabela";
 import { ConfirmacaoEquipe } from "./confirmacao-equipe";
 import { DialogoExcluirCliente } from "./dialogos";
 import { DialogoDesfavoritar } from "../dialogo-desfavoritar";
-import { contarPorFase, filtrarPorBusca, ordenarClientes } from "./ordenacao";
-import { ROTULO_ORDENACAO, type Ordenacao } from "./tipos";
+import {
+  contarPorFase,
+  contarPorGrau,
+  filtrarPorBusca,
+  ordenarClientes,
+  travadoPelaEquipe,
+} from "./ordenacao";
+import { ROTULO_ORDENACAO, type FiltroGrau, type Ordenacao } from "./tipos";
 
 export function ClientesManager({
   alunoId,
@@ -71,6 +77,7 @@ export function ClientesManager({
   const [clientes, setClientes] = useState<ClienteEtapa1[]>(clientesIniciais);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<"todos" | FaseCliente>("todos");
+  const [filtroGrau, setFiltroGrau] = useState<"todos" | FiltroGrau>("todos");
   const [view, setView] = useState<"lista" | "quadro">("lista");
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("recentes");
   /** Cliente aguardando confirmação de exclusão (PL9). `null` = sem diálogo. */
@@ -80,6 +87,12 @@ export function ClientesManager({
     null,
   );
   const [erroDialogo, setErroDialogo] = useState<string | null>(null);
+  /**
+   * Falha de escrita FORA de diálogo (fase e estrela são um clique só). Fica na
+   * tela com `role="alert"` e com a frase que a action já traduziu do banco —
+   * "Erro ao mudar a fase" num toast apagaria justamente o que explica a trava.
+   */
+  const [erroLista, setErroLista] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const fichaHref = (id: string) => `${basePath}/clientes/${id}`;
@@ -93,15 +106,30 @@ export function ClientesManager({
 
   const contagemFase = useMemo(() => contarPorFase(clientes), [clientes]);
 
+  // Grau só entra na conta sobre a lista INTEIRA (como a fase): o chip precisa
+  // dizer quantos existem, não quantos sobraram do outro filtro.
+  const contagemGrau = useMemo(() => contarPorGrau(clientes), [clientes]);
+
   const buscaFiltrada = useMemo(
     () => filtrarPorBusca(clientes, busca),
     [clientes, busca],
   );
 
   const listaOrdenada = useMemo(
-    () => ordenarClientes(buscaFiltrada, filtro, ordenacao),
-    [buscaFiltrada, filtro, ordenacao],
+    () => ordenarClientes(buscaFiltrada, filtro, ordenacao, filtroGrau),
+    [buscaFiltrada, filtro, ordenacao, filtroGrau],
   );
+
+  /**
+   * O cliente que a EQUIPE assumiu (§B.5). Enquanto ele existe:
+   *   · a estrela não aparece em nenhum outro card/linha (o banco recusaria);
+   *   · "Excluir" some nele;
+   *   · "Prospecção" sai das fases oferecidas para ele.
+   * Nada disto é a trava — a trava é a trigger `...203`. Isto é não oferecer o
+   * que vai falhar.
+   */
+  const confirmado = clientes.find(travadoPelaEquipe) ?? null;
+  const existeConfirmado = confirmado !== null;
 
   // ---- Ações ----
   function addCliente() {
@@ -118,6 +146,7 @@ export function ClientesManager({
   function mudarFase(cliente: ClienteEtapa1, nova: FaseCliente) {
     if (cliente.fase === nova) return;
     const anterior = cliente.fase;
+    setErroLista(null);
     setClientes((prev) =>
       prev.map((c) => (c.id === cliente.id ? { ...c, fase: nova } : c)),
     );
@@ -127,7 +156,7 @@ export function ClientesManager({
         setClientes((prev) =>
           prev.map((c) => (c.id === cliente.id ? { ...c, fase: anterior } : c)),
         );
-        toast.error("Erro ao mudar a fase.");
+        setErroLista(res.erro);
       }
     });
   }
@@ -149,6 +178,7 @@ export function ClientesManager({
 
   function aplicarEquipe(cliente: ClienteEtapa1) {
     const ativar = !cliente.acompanhado_equipe;
+    setErroLista(null);
     setClientes((prev) =>
       prev.map((c) => ({
         ...c,
@@ -166,8 +196,10 @@ export function ClientesManager({
               : c,
           ),
         );
-        setErroDialogo("Erro ao mudar o cliente da equipe.");
-        toast.error("Erro ao marcar o cliente da equipe.");
+        // A frase já vem traduzida do banco pela action — inclusive a da trava
+        // do favorito, que diz o que fazer ("fale com a equipe pelo Suporte").
+        setErroDialogo(res.erro);
+        setErroLista(res.erro);
         return;
       }
       setDesfavoritando(null);
@@ -189,11 +221,11 @@ export function ClientesManager({
    * encostado em "Abrir ficha", e não havia confirmação nenhuma.
    */
   function excluir(cliente: ClienteEtapa1) {
+    setErroLista(null);
     startTransition(async () => {
       const res = await removerCliente(cliente.id, alunoId);
       if (res.erro) {
-        setErroDialogo("Erro ao excluir o cliente.");
-        toast.error("Erro ao remover cliente.");
+        setErroDialogo(res.erro);
         return;
       }
       setExcluindo(null);
@@ -222,7 +254,19 @@ export function ClientesManager({
         <Secao
           icone={<Users />}
           titulo="Meus clientes"
-          descricao={`${preenchidos} de ${META_CLIENTES} preenchidos · gerencie o contato e os documentos.`}
+          descricao={
+            <>
+              {preenchidos} de {META_CLIENTES} preenchidos · gerencie o contato e
+              os documentos.
+              {/* Rodapé honesto do KPI: sem ele, quem tem 3 clientes REAIS (um
+                  deles em execução) lê "3/30" como fracasso. A meta de 30 é da
+                  tarefa 1 da Etapa 01; a aba é a central de todos. */}
+              <span className="mt-1 block text-xs text-muted-foreground">
+                A meta de {META_CLIENTES} é da Etapa 01; clientes em andamento e
+                em execução contam aqui também.
+              </span>
+            </>
+          }
           acao={
             <div className="flex items-center gap-2">
               <div className="flex rounded-lg border p-0.5">
@@ -285,25 +329,69 @@ export function ClientesManager({
         </div>
 
         {view === "lista" ? (
-          <div className="flex flex-wrap gap-2">
-            <FiltroChip
-              ativo={filtro === "todos"}
-              onClick={() => setFiltro("todos")}
-              rotulo="Todos"
-              qtd={clientes.length}
-            />
-            {contagemFase.map((f) => (
+          <div className="grid gap-2">
+            {/* Dois grupos de chips, dois `role="group"` com nome: sem isso são
+                nove botões `aria-pressed` seguidos, e quem navega por leitor de
+                tela não sabe onde a fase acaba e o vínculo começa. */}
+            <div
+              role="group"
+              aria-label="Filtrar por fase"
+              className="flex flex-wrap gap-2"
+            >
               <FiltroChip
-                key={f.id}
-                ativo={filtro === f.id}
-                onClick={() => setFiltro(f.id)}
-                rotulo={f.rotulo}
-                titulo={f.ajuda}
-                qtd={f.qtd}
+                ativo={filtro === "todos"}
+                onClick={() => setFiltro("todos")}
+                rotulo="Todos"
+                qtd={clientes.length}
               />
-            ))}
+              {contagemFase.map((f) => (
+                <FiltroChip
+                  key={f.id}
+                  ativo={filtro === f.id}
+                  onClick={() => setFiltro(f.id)}
+                  rotulo={f.rotulo}
+                  titulo={f.ajuda}
+                  qtd={f.qtd}
+                />
+              ))}
+            </div>
+
+            {/* Grau de relação. A linha inteira some quando ninguém tem grau
+                preenchido E não há "não informado" a mostrar — filtro que só
+                devolve vazio não é filtro. */}
+            {contagemGrau.length > 0 ? (
+              <div
+                role="group"
+                aria-label="Filtrar por grau de relação"
+                className="flex flex-wrap items-center gap-2"
+              >
+                <span className="rotulo text-muted-foreground">Vínculo</span>
+                <FiltroChip
+                  ativo={filtroGrau === "todos"}
+                  onClick={() => setFiltroGrau("todos")}
+                  rotulo="Qualquer"
+                  qtd={clientes.length}
+                />
+                {contagemGrau.map((g) => (
+                  <FiltroChip
+                    key={g.id}
+                    ativo={filtroGrau === g.id}
+                    onClick={() => setFiltroGrau(g.id)}
+                    rotulo={g.rotulo}
+                    titulo={g.ajuda}
+                    qtd={g.qtd}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
+
+        {/* Sempre montado, mesmo vazio (uma região viva que nasce com o texto
+            não é anunciada por parte dos leitores de tela). */}
+        <p role="alert" className="corpo-sm text-destructive empty:hidden">
+          {erroLista}
+        </p>
       </CardHeader>
 
       <CardContent>
@@ -316,6 +404,7 @@ export function ClientesManager({
           <Kanban
             clientes={buscaFiltrada}
             fichaHref={fichaHref}
+            existeConfirmado={existeConfirmado}
             onMover={mudarFase}
             onToggleEquipe={toggleEquipe}
           />
@@ -332,6 +421,7 @@ export function ClientesManager({
                   key={c.id}
                   cliente={c}
                   fichaHref={fichaHref}
+                  existeConfirmado={existeConfirmado}
                   onFase={mudarFase}
                   onEquipe={toggleEquipe}
                   onExcluir={(c) => {
@@ -345,6 +435,7 @@ export function ClientesManager({
             <ClientesTabela
               listaOrdenada={listaOrdenada}
               fichaHref={fichaHref}
+              existeConfirmado={existeConfirmado}
               pending={pending}
               mudarFase={mudarFase}
               toggleEquipe={toggleEquipe}

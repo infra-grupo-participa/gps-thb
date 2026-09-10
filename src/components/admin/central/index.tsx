@@ -34,6 +34,7 @@ import type {
   MembroDiagnostico,
   VerificacaoDiagnostico,
 } from "@/lib/data/central";
+import type { OnboardingDaPessoa } from "@/lib/types";
 import type { ProximoPasso } from "@/lib/etapas";
 import { formatarDataHora } from "@/lib/datas";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,7 @@ import {
 } from "./catalogo";
 import { AcaoDaLinha } from "./acao-da-linha";
 import { LinhaVerificacao } from "./linha-verificacao";
+import { SecaoOnboarding } from "./secao-onboarding";
 import { SecaoPessoas } from "./secao-pessoas";
 import { SecaoTrilha } from "./secao-trilha";
 import {
@@ -72,6 +74,8 @@ export function CentralResolucao({
   diagnostico,
   passo,
   contratosVinculados,
+  onboarding,
+  favorito,
 }: {
   alunoId: string;
   diagnostico: DiagnosticoAmbiente;
@@ -79,6 +83,14 @@ export function CentralResolucao({
   passo: ProximoPasso | null;
   /** Contratos JÁ ligados a este ambiente, para o desvincular. */
   contratosVinculados: ContratoVinculado[];
+  /**
+   * O questionário inicial de CADA pessoa do ambiente (§D.3). Inclui quem não
+   * respondeu: "ninguém respondeu ainda" é resultado, e sumiria da tela se a
+   * lista só trouxesse quem respondeu.
+   */
+  onboarding: OnboardingDaPessoa[];
+  /** A estrela do ambiente — e se a equipe já assumiu o acompanhamento. */
+  favorito: { id: string; nome: string; confirmadoEm: string | null } | null;
 }) {
   const router = useRouter();
   const [acao, setAcao] = useState<AcaoPendente | null>(null);
@@ -338,6 +350,17 @@ export function CentralResolucao({
             </Secao>
           );
         })}
+
+        {/* O questionário inicial fecha a lista: ele explica o CONTEXTO do
+            aluno (de onde vem o cliente 1, o que ele pediu de pronto), e não é
+            uma conferência do ambiente — por isso vem depois do checklist e
+            fora da contagem de problemas/avisos do topo, que soma as
+            verificações que o banco devolve. */}
+        <SecaoOnboarding
+          pessoas={onboarding}
+          alunoId={alunoId}
+          favorito={favorito}
+        />
       </div>
 
       {/* Escolher o alvo NÃO escreve: o seletor só devolve quem foi escolhido,

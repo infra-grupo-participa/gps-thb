@@ -8,6 +8,7 @@ import {
   getClientesEtapa1,
   getDiagnosticoAmbiente,
   getEtapas,
+  getOnboardingDoAluno,
   getProgressoAluno,
   contarMembrosDoAmbiente,
 } from "@/lib/data";
@@ -73,6 +74,7 @@ export default async function AdminAlunoResolverPage({
     clientes,
     progressoTodas,
     favorito,
+    onboarding,
   ] = await Promise.all([
     getAlunoById(alunoId),
     contarMembrosDoAmbiente(alunoId),
@@ -81,6 +83,9 @@ export default async function AdminAlunoResolverPage({
     getClientesEtapa1(alunoId),
     getProgressoAluno(alunoId),
     getClienteEquipe(alunoId),
+    // Uma RPC (`gps.admin_onboarding_do_aluno`), no MESMO `Promise.all` das
+    // outras: o bloco novo não acrescenta uma ida em série à abertura da tela.
+    getOnboardingDoAluno(alunoId),
   ]);
 
   // Diagnóstico parcial faria o admin concluir "está tudo bem" sobre o que não
@@ -174,6 +179,19 @@ export default async function AdminAlunoResolverPage({
           diagnostico={diagnostico}
           passo={passo}
           contratosVinculados={contratosVinculados}
+          onboarding={onboarding}
+          // `getClienteEquipe` já era carregado aqui (é ele que diz a
+          // `proximoPasso` se há favorito): nenhuma consulta nova para saber se
+          // a equipe assumiu o acompanhamento.
+          favorito={
+            favorito
+              ? {
+                  id: favorito.id,
+                  nome: favorito.nome,
+                  confirmadoEm: favorito.acompanhamento_confirmado_em,
+                }
+              : null
+          }
         />
       </main>
     </>

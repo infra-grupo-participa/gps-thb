@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
+import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
 import {
   PROBLEMAS_7,
   NIVEIS_RELACIONAMENTO,
   FASES_CLIENTE,
+  GRAUS_RELACAO_UI,
   PERFIS_DISC,
   META_HONORARIOS,
 } from "@/lib/etapa1";
@@ -22,10 +24,8 @@ import {
   Phone,
   Calendar,
   User,
-  ExternalLink,
   IdCard,
   ListChecks,
-  FileSignature,
   NotebookPen,
 } from "lucide-react";
 import { atualizarCliente, definirClienteEquipe } from "@/app/clientes/actions";
@@ -39,6 +39,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DialogoDesfavoritar } from "@/components/clientes/dialogo-desfavoritar";
+import { FichaContrato } from "@/components/clientes/ficha-contrato";
+import {
+  AcoesAcompanhamento,
+  AvisoAcompanhamento,
+  AvisoOutroConfirmado,
+} from "@/components/clientes/acompanhamento-equipe";
+import {
+  fasesDisponiveis,
+  travadoPelaEquipe,
+} from "@/components/clientes/clientes-manager/ordenacao";
 import {
   Select,
   SelectContent,
@@ -53,15 +63,31 @@ const brlMeta = brlInteiro(META_HONORARIOS);
 export function ClienteFicha({
   cliente,
   alunoId,
+  admin = false,
+  outroConfirmadoNome = null,
 }: {
   cliente: ClienteEtapa1;
   alunoId: string;
+  /**
+   * Modo assistência. Só com `true` aparecem "Confirmar acompanhamento" e
+   * "Liberar acompanhamento" — quem autoriza mesmo é o `gp_is_admin()` das
+   * RPCs `...203`; aqui é a diferença entre oferecer e não oferecer.
+   */
+  admin?: boolean;
+  /**
+   * Nome do cliente que a equipe JÁ acompanha no ambiente, quando não é este.
+   * `null` = não há outro confirmado. Com um confirmado em outro cliente, a
+   * estrela desta ficha some (o banco recusaria a troca) e o motivo é escrito.
+   */
+  outroConfirmadoNome?: string | null;
 }) {
+  const router = useRouter();
   const [nome, setNome] = useState(cliente.nome ?? "");
   const [telefone, setTelefone] = useState(
     cliente.telefone ? mascaraTelefone(cliente.telefone) : "",
   );
   const [nivel, setNivel] = useState(cliente.nivel_relacionamento ?? "");
+  const [grau, setGrau] = useState<string>(cliente.grau_relacao ?? "");
   const [problemas, setProblemas] = useState<string[]>(cliente.problemas ?? []);
   const [perda, setPerda] = useState(numeroParaMoeda(cliente.perda_inercia));
   const [fase, setFase] = useState<FaseCliente>(
@@ -85,6 +111,13 @@ export function ClienteFicha({
    */
   const [desfavoritando, setDesfavoritando] = useState(false);
   const [erroDialogo, setErroDialogo] = useState<string | null>(null);
+  /**
+   * Falha da estrela FORA do diálogo (o caminho de ligar, que é um clique só).
+   * Fica na tela, com `role="alert"`: a frase que vem da action já é a
+   * traduzida do banco ("A equipe está acompanhando este cliente…") e é a única
+   * pista do que aconteceu — um toast a apagaria em 4 segundos.
+   */
+  const [erroEstrela, setErroEstrela] = useState<string | null>(null);
   // Honorários e link do contrato (Fase 7-B). Ficam no estado mesmo quando a
   // fase não é "contratado": o valor SOBREVIVE à volta de fase (B9-b) e é
   // reenviado como está — mudar de fase nunca apaga o que o aluno digitou.
@@ -97,6 +130,20 @@ export function ClienteFicha({
   const wpp = linkWhatsapp(telefone);
   const contratoLimpo = contratoUrl.trim();
   const faseAtual = FASES_CLIENTE.find((f) => f.id === fase);
+
+  /**
+   * A equipe assumiu ESTE cliente? Vem do dado do servidor, nunca do estado
+   * local: a confirmação é escrita da equipe e não passa pelo formulário.
+   */
+  const confirmado = travadoPelaEquipe(cliente);
+  /** As fases que o banco ainda aceita para este cliente (§B.5). */
+  const fasesDaFicha = fasesDisponiveis(cliente);
+  /**
+   * A estrela só aparece quando ela pode funcionar: sem confirmado no ambiente,
+   * ou quando o confirmado é este mesmo cliente (aí ela vira leitura). Com
+   * outro cliente confirmado, o botão só teria um destino — falhar com 42501.
+   */
+  const mostraEstrela = !confirmado && outroConfirmadoNome == null;
 
   /**
    * Há edição pendente na tela?
@@ -114,6 +161,7 @@ export function ClienteFicha({
     (telefone.trim() || null) !==
       (cliente.telefone ? mascaraTelefone(cliente.telefone) : null) ||
     (nivel || null) !== (cliente.nivel_relacionamento ?? null) ||
+    (grau || null) !== (cliente.grau_relacao ?? null) ||
     problemas.length !== (cliente.problemas ?? []).length ||
     problemas.some((p) => !(cliente.problemas ?? []).includes(p)) ||
     perda !== numeroParaMoeda(cliente.perda_inercia) ||
@@ -148,14 +196,18 @@ export function ClienteFicha({
   }
 
   function aplicarEquipe(ativar: boolean) {
+    setErroEstrela(null);
     setAcompanhado(ativar);
     startTransition(async () => {
       const res = await definirClienteEquipe(cliente.id, alunoId, ativar);
       if (res.erro) {
         // Desfaz o otimismo: sem isto a estrela ficaria mentindo na tela.
         setAcompanhado(!ativar);
-        setErroDialogo("Erro ao mudar o cliente da equipe.");
-        toast.error("Erro ao marcar o cliente da equipe.");
+        // A frase vem TRADUZIDA da action (`traduzirErroBanco` + as entradas
+        // de `FRASES_DO_BANCO`): trocá-la por "Erro ao mudar o cliente da
+        // equipe" apagaria justamente o que explica a trava e o que fazer.
+        setErroDialogo(res.erro);
+        setErroEstrela(res.erro);
         return;
       }
       setDesfavoritando(false);
@@ -181,6 +233,9 @@ export function ClienteFicha({
         telefone: telefone.trim() || null,
         nivel_relacionamento:
           (nivel as ClienteEtapa1["nivel_relacionamento"]) || null,
+        // `""` (campo esvaziado) vira `null` = NÃO INFORMADO. A action repete
+        // esta normalização — aqui é para o `alterado` acima não mentir.
+        grau_relacao: (grau as GrauRelacao) || null,
         problemas,
         perda_inercia: moedaParaNumero(perda),
         // `status` congelou na migração 20260909000060 (é o caminho de volta):
@@ -226,18 +281,30 @@ export function ClienteFicha({
             {faseAtual.rotulo}
           </span>
         ) : null}
-        <Button
-          type="button"
-          variant={acompanhado ? "default" : "outline"}
-          size="sm"
-          onClick={toggleEquipe}
-          disabled={pending}
-        >
-          <Star className={"size-4 " + (acompanhado ? "fill-current" : "")} />
-          {acompanhado
-            ? "Cliente acompanhado pela equipe"
-            : "Marcar como cliente da equipe"}
-        </Button>
+        {mostraEstrela ? (
+          <Button
+            type="button"
+            variant={acompanhado ? "default" : "outline"}
+            size="sm"
+            onClick={toggleEquipe}
+            disabled={pending}
+          >
+            <Star className={"size-4 " + (acompanhado ? "fill-current" : "")} />
+            {acompanhado
+              ? "Cliente acompanhado pela equipe"
+              : "Marcar como cliente da equipe"}
+          </Button>
+        ) : confirmado ? (
+          // Somente leitura: a estrela vira SINAL, não botão. A explicação e o
+          // caminho de saída ficam no aviso logo abaixo do cabeçalho.
+          <span
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-sucesso-foreground/25 bg-sucesso px-3 text-xs font-semibold text-sucesso-foreground"
+            title="Só a equipe troca o cliente acompanhado."
+          >
+            <Star className="size-4 fill-current" aria-hidden />
+            Cliente acompanhado pela equipe
+          </span>
+        ) : null}
         {wpp ? (
           <a
             href={wpp}
@@ -249,6 +316,41 @@ export function ClienteFicha({
           </a>
         ) : null}
       </div>
+
+      {/* ── Acompanhamento pela equipe (§B.5 / migração ...203) ──────────────
+          Ordem proposital: primeiro o que o ALUNO precisa saber (por que a
+          estrela não se move), depois a porta da EQUIPE. Nada disto é
+          formulário — a confirmação não passa por "Salvar ficha". */}
+      {confirmado ? (
+        <AvisoAcompanhamento
+          confirmadoEm={cliente.acompanhamento_confirmado_em as string}
+          admin={admin}
+        />
+      ) : outroConfirmadoNome != null ? (
+        <AvisoOutroConfirmado nome={outroConfirmadoNome} admin={admin} />
+      ) : null}
+
+      {/* Sempre montado, mesmo vazio: região viva que nasce junto com o texto
+          não é anunciada por parte dos leitores de tela. */}
+      <p role="alert" className="corpo-sm text-destructive empty:hidden">
+        {erroEstrela}
+      </p>
+
+      {/* Só a equipe confirma/libera — e só quando este cliente É a estrela.
+          Confirmar um que não é a estrela criaria um terceiro estado que
+          nenhuma tela sabe mostrar (a RPC recusa, item 7 dos desvios).
+          🔑 A condição lê `cliente.acompanhado_equipe` (dado do SERVIDOR), não
+          o `acompanhado` otimista da tela: com o otimista, marcar a estrela
+          faria o botão "Confirmar" aparecer antes de o banco ter a estrela, e
+          o clique rápido cairia na recusa da RPC. Aqui ele aparece quando o
+          dado volta — `definirClienteEquipe` já revalida esta rota. */}
+      {admin && (cliente.acompanhado_equipe || confirmado) ? (
+        <AcoesAcompanhamento
+          cliente={cliente}
+          alunoId={alunoId}
+          aoMudar={() => router.refresh()}
+        />
+      ) : null}
 
       {/* TRÊS SEÇÕES, não três caixas aninhadas.
           A ficha era um formulário de 1.000 px dentro de um card só, com
@@ -316,6 +418,43 @@ export function ClienteFicha({
             </div>
           </div>
 
+          {/* GRAU DE RELAÇÃO — ao lado do nível, e não no lugar dele: nível é
+              TEMPERATURA (frio/morno/quente), grau é TIPO DE VÍNCULO. Existe
+              parente frio e lead quente; são dois eixos (§B.6). */}
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="f-grau">Grau de relação</Label>
+              <Select value={grau} onValueChange={(v) => setGrau(v ?? "")}>
+                <SelectTrigger id="f-grau" aria-describedby="f-grau-ajuda">
+                  {/* Sem função de render o Base UI imprime o VALOR do banco
+                      (`cliente_atual`). E `""` mostra o placeholder, que diz
+                      "Não informado" — NUNCA "Lead": a ausência de resposta
+                      sobre um terceiro não vira palpite sobre a vida dele. */}
+                  <SelectValue placeholder="Não informado">
+                    {(v: string) =>
+                      GRAUS_RELACAO_UI.find((g) => g.id === v)?.rotulo ??
+                      "Não informado"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {GRAUS_RELACAO_UI.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.rotulo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p
+                id="f-grau-ajuda"
+                className="text-xs leading-snug text-muted-foreground"
+              >
+                {GRAUS_RELACAO_UI.find((g) => g.id === grau)?.ajuda ??
+                  "Como você conhece esta pessoa. Não informado enquanto você não escolher."}
+              </p>
+            </div>
+          </div>
+
           {/* UX5 — grupo de checkboxes não tem um controle único para
               apontar: o rótulo vira legenda de um `fieldset`, que é a forma
               correta de nomear o conjunto (WCAG 1.3.1). */}
@@ -367,7 +506,10 @@ export function ClienteFicha({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {FASES_CLIENTE.map((f) => (
+                  {/* Cliente confirmado não oferece "Prospecção": o banco
+                      recusa a volta com 42501. Opção que só serve para falhar
+                      não é opção. */}
+                  {fasesDaFicha.map((f) => (
                     <SelectItem key={f.id} value={f.id}>
                       {f.rotulo}
                     </SelectItem>
@@ -379,6 +521,9 @@ export function ClienteFicha({
                 className="text-xs leading-snug text-muted-foreground"
               >
                 {faseAtual?.ajuda}
+                {confirmado && cliente.fase !== "prospeccao"
+                  ? " A equipe está acompanhando este cliente, então a fase não volta para Prospecção."
+                  : null}
               </p>
             </div>
             <div className="grid gap-2">
@@ -435,122 +580,18 @@ export function ClienteFicha({
           </div>
         </Secao>
 
-        <Secao icone={<FileSignature />} titulo="Contrato" nivel="h3">
-
-          {/* ---- Contrato (Fase 7-B) ----
-              Só aparece em "Contratado", porque só contratado conta na meta.
-              Mas o valor NÃO some quando a fase volta: aí ele vira leitura com
-              o aviso de que saiu da meta. Esconder dado que o aluno digitou é
-              perdê-lo em silêncio (B9-b). */}
-          {contratado ? (
-            <div className="grid gap-3">
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="f-honorarios">Honorários contratados</Label>
-                  <Input
-                    id="f-honorarios"
-                    inputMode="numeric"
-                    value={honorarios}
-                    onChange={(e) => setHonorarios(mascaraMoeda(e.target.value))}
-                    placeholder="R$ 0,00"
-                    aria-describedby="f-honorarios-ajuda"
-                  />
-                  <p
-                    id="f-honorarios-ajuda"
-                    className="text-xs leading-snug text-muted-foreground"
-                  >
-                    Valor contratado com este cliente — não é o que já entrou no
-                    caixa. Entra na meta de {brlMeta} do seu ambiente.
-                  </p>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="f-contrato">Link do contrato</Label>
-                  <Input
-                    id="f-contrato"
-                    type="url"
-                    inputMode="url"
-                    value={contratoUrl}
-                    onChange={(e) => setContratoUrl(e.target.value)}
-                    placeholder="https://drive.google.com/..."
-                    aria-invalid={contratoInvalido || undefined}
-                    aria-describedby={
-                      contratoInvalido
-                        ? "f-contrato-ajuda f-contrato-erro"
-                        : "f-contrato-ajuda"
-                    }
-                  />
-                  <p
-                    id="f-contrato-ajuda"
-                    className="text-xs leading-snug text-muted-foreground"
-                  >
-                    Cole o link do contrato na sua pasta do Drive. O arquivo não
-                    é enviado para o portal.
-                  </p>
-                  {contratoInvalido ? (
-                    <p
-                      id="f-contrato-erro"
-                      className="text-xs leading-snug font-medium text-destructive"
-                    >
-                      O link precisa começar com https:// e não pode conter
-                      espaços.
-                    </p>
-                  ) : null}
-                  {!contratoInvalido && contratoLimpo ? (
-                    <a
-                      href={contratoLimpo}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex w-fit items-center gap-1.5 rounded-sm text-xs font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    >
-                      {/* UX2 — o CHECK do banco exige só `https://`: o link
-                          pode ser Dropbox, OneDrive ou o site do cartório. A
-                          ajuda e o `placeholder` acima seguem SUGERINDO o
-                          Drive; o rótulo do botão não pode AFIRMAR. */}
-                      Abrir contrato
-                      <ExternalLink className="size-3.5" aria-hidden />
-                      <span className="sr-only">(abre em nova aba)</span>
-                    </a>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          ) : honorariosValor != null || contratoLimpo ? (
-            // Fora de "Contratado" o valor sobrevive, mas não conta na meta —
-            // e isso é ATENÇÃO, não decoração: o token semântico diz o estado.
-            <div className="grid gap-1.5 rounded-lg bg-atencao p-3 text-atencao-foreground">
-              <p className="text-sm">
-                Honorários registrados:{" "}
-                <strong className="tabular-nums">
-                  {numeroParaMoeda(honorariosValor) || "não informado"}
-                </strong>{" "}
-                — não contam na meta enquanto o cliente estiver em{" "}
-                {faseAtual?.rotulo ?? "outra fase"}.
-              </p>
-              {contratoLimpo && !contratoInvalido ? (
-                <a
-                  href={contratoLimpo}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center gap-1.5 rounded-sm text-xs font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                >
-                  Abrir contrato
-                  <ExternalLink className="size-3.5" aria-hidden />
-                  <span className="sr-only">(abre em nova aba)</span>
-                </a>
-              ) : null}
-              <p className="text-xs">
-                Mova o cliente de volta para Contratado para editar e voltar a
-                contar na meta. O valor não é apagado.
-              </p>
-            </div>
-          ) : (
-            <p className="corpo-sm text-muted-foreground">
-              Os honorários e o link do contrato aparecem aqui quando o cliente
-              entra na fase Contratado.
-            </p>
-          )}
-        </Secao>
+        <FichaContrato
+          contratado={contratado}
+          honorarios={honorarios}
+          onHonorarios={setHonorarios}
+          honorariosValor={honorariosValor}
+          contratoUrl={contratoUrl}
+          onContratoUrl={setContratoUrl}
+          contratoLimpo={contratoLimpo}
+          contratoInvalido={contratoInvalido}
+          faseRotulo={faseAtual?.rotulo}
+          metaFormatada={brlMeta}
+        />
 
         <Secao icone={<NotebookPen />} titulo="Registro e perfil" nivel="h3" classeConteudo="grid gap-5">
 

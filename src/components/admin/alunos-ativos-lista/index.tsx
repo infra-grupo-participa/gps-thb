@@ -5,27 +5,31 @@
  * lote e os cards.
  *
  * ONDA 3 (09/09/2026) — o arquivo tinha 805 linhas e três assuntos juntos
- * (CD5). Foi cortado POR RESPONSABILIDADE, sem uma linha de lógica nova:
+ * (CD5). Foi cortado POR RESPONSABILIDADE:
  *
  *   aluno-card.tsx       o card de um ambiente
  *   lista-vazia.tsx      o que dizer quando a busca/filtro não acha ninguém
  *   filtro-checkbox.tsx  um interruptor da barra
- *   ordenacao.ts         dias, filtro e ordem — sem React, TESTÁVEIS
- *   tipos.ts             rótulos e constantes que os quatro dividem
+ *   ordenacao.ts         dias e ordem — sem React, TESTÁVEIS
+ *   filtros.ts           o que cada filtro significa e quando ele aparece
+ *   estado-na-url.ts     busca/ordem/filtros/aba na URL, com allowlist
+ *   ancora.ts            "volte para onde eu parei"
+ *   tipos.ts             rótulos e constantes que os outros dividem
  *
  * 🔴 Esta é uma tela SÓ DE ADMIN. `atendimentoPorAluno` carrega trecho de nota
- * do Diário (`gps.aluno_notas`, exclusiva do admin por LGPD — migração
+ * do Diário (`gps.aluno_notas`, exclusiva do admin por LGPD, migração
  * 20260908000001). Não reaproveitar este componente em rota de aluno.
  *
  * 🔑 PAGINAÇÃO (migração 20260909000120): `alunos` é um LOTE, não a base. A
  * busca e os filtros continuam varrendo só o que está em memória — por isso o
  * rodapé é OBRIGADO a dizer quantos foram carregados de quantos existem, e o
- * vazio de busca precisa oferecer "Carregar mais". Sem isso, "nenhum aluno
- * para «Silva»" seria falso para quem está no lote seguinte.
+ * vazio de busca precisa oferecer "Carregar mais".
  *
- * Recebe os dados já carregados pelo Server Component (uma query no
- * `Promise.all` de `admin/page.tsx`) — busca, ordenação e filtro acontecem em
- * memória, sobre o array recebido, sem segunda ida ao banco.
+ * 🔑 PERSISTÊNCIA (10/09/2026): busca, ordem, filtros e aba vivem na **URL**
+ * (`estado-na-url.ts`) e "de qual card eu saí" vive numa chave de
+ * `sessionStorage` (`ancora.ts`). Recarregar, voltar pelo histórico e mandar o
+ * link a um colega devolvem a mesma tela — e voltar do ambiente de um aluno
+ * traz de volta o filtro E a posição na lista.
  */
 
 import { useMemo, useState } from "react";
@@ -33,6 +37,7 @@ import Link from "next/link";
 import { Search, Users } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import { buttonVariants } from "@/components/ui/button";
+import { LoteDeAcesso } from "./lote-acesso";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,16 +50,16 @@ import {
 import { AlunoCard } from "./aluno-card";
 import { FiltroCheckbox } from "./filtro-checkbox";
 import { ListaVazia } from "./lista-vazia";
-import { filtrarAlunos, notaRecente, ordenarAlunos, diasSemAcesso } from "./ordenacao";
+import { useAncoraDoPainel } from "./ancora";
 import {
-  DIAS_INATIVO,
-  DIAS_NOTA_RECENTE,
-  META_CLIENTES,
-  ORDENS,
-  ROTULO_ORDEM,
-  SEM_ATENDIMENTO,
-  type OrdemAlunos,
-} from "./tipos";
+  DEFINICAO_DOS_FILTROS,
+  filtrarAlunos,
+  fraseDoFiltro,
+  type ContextoDoFiltro,
+} from "./filtros";
+import { FILTROS, useEstadoDoPainel, type FiltroId } from "./estado-na-url";
+import { ordenarAlunos } from "./ordenacao";
+import { ORDENS, ROTULO_ORDEM, SEM_ATENDIMENTO, type OrdemAlunos } from "./tipos";
 
 export function AlunosAtivosLista({
   alunos,
@@ -66,7 +71,7 @@ export function AlunosAtivosLista({
   alunos: AlunoGps[];
   /**
    * `alunoId` → resumo do Diário (pendências abertas + última nota). Ambiente
-   * sem nenhuma nota simplesmente não aparece no mapa.
+   * sem nota nenhuma simplesmente não aparece no mapa.
    */
   atendimentoPorAluno: Record<string, AtendimentoDoAluno>;
   /** Total de ambientes no GPS (`total_ambientes` da RPC), não o do lote. */
@@ -79,15 +84,19 @@ export function AlunosAtivosLista({
   // `alunos.length` é o lote carregado; `total`, o universo. Toda frase da
   // tela tem de deixar claro qual dos dois está falando.
   const parcial = alunos.length < total;
-  const [somentePendencia, setSomentePendencia] = useState(false);
-  const [somenteListou30, setSomenteListou30] = useState(false);
-  const [somenteInativos, setSomenteInativos] = useState(false);
-  const [somenteNotaRecente, setSomenteNotaRecente] = useState(false);
-  const [somenteSemNota, setSomenteSemNota] = useState(false);
-  /** PL5 — chamado aberto era invisível no painel, com o dado já na tela. */
-  const [somenteChamado, setSomenteChamado] = useState(false);
-  const [termo, setTermo] = useState("");
-  const [ordem, setOrdem] = useState<OrdemAlunos>("recentes");
+  const {
+    estado,
+    alternarFiltro,
+    limparFiltros,
+    definirTermo,
+    definirOrdem,
+    hrefComEstado,
+  } = useEstadoDoPainel();
+
+  // O href do próximo lote é montado no servidor e não conhece o filtro que o
+  // admin marcou aqui. Costurar o estado nele é o que impede "Mostrar mais" de
+  // devolver a lista sem filtro nenhum.
+  const hrefMais = carregarMaisHref ? hrefComEstado(carregarMaisHref) : null;
 
   // "Agora" fixado uma vez por montagem: recalcular a cada render faria a
   // lista mudar de conteúdo sem ninguém ter mexido em nada.
@@ -97,46 +106,37 @@ export function AlunosAtivosLista({
   const atendimentoDe = (alunoId: string): AtendimentoDoAluno =>
     atendimentoPorAluno[alunoId] ?? SEM_ATENDIMENTO;
 
-  const totalComPendencia = useMemo(
-    () =>
-      alunos.filter(
-        (a) => (atendimentoPorAluno[a.alunoId]?.pendenciasAbertas ?? 0) > 0,
-      ).length,
-    [alunos, atendimentoPorAluno],
+  const ctx: ContextoDoFiltro = useMemo(
+    () => ({
+      atendimento: (id) => atendimentoPorAluno[id] ?? SEM_ATENDIMENTO,
+      agora,
+    }),
+    [atendimentoPorAluno, agora],
   );
 
-  const totalListou30 = useMemo(
-    () => alunos.filter((a) => a.clientesPreenchidos >= META_CLIENTES).length,
-    [alunos],
-  );
-
-  const totalInativos = useMemo(
+  /**
+   * Um passe só pela lista: para cada filtro DISPONÍVEL, quantos ele pega.
+   * Antes era um `useMemo` por filtro — seis varreduras da mesma lista para
+   * seis números que saem da mesma passada.
+   *
+   * 🔴 Um filtro **marcado** aparece sempre, mesmo quando `disponivel` diz
+   * não. Os links do dashboard levam a filtros que hoje não separam ninguém
+   * (`?f=onb_ok` com a base inteira em "não iniciado"): sem esta linha, o
+   * admin chegaria numa lista vazia com um interruptor invisível e sem jeito
+   * de desligá-lo pelo chip.
+   */
+  const chips = useMemo(
     () =>
-      alunos.filter((a) => diasSemAcesso(a.ultimoAcesso, agora) >= DIAS_INATIVO)
-        .length,
-    [alunos, agora],
-  );
-
-  const totalNotaRecente = useMemo(
-    () =>
-      alunos.filter((a) =>
-        notaRecente(atendimentoPorAluno[a.alunoId]?.ultimaNotaEm, agora),
-      ).length,
-    [alunos, atendimentoPorAluno, agora],
-  );
-
-  const totalSemNota = useMemo(
-    () =>
-      alunos.filter((a) => !atendimentoPorAluno[a.alunoId]?.ultimaNotaEm).length,
-    [alunos, atendimentoPorAluno],
-  );
-
-  const totalComChamado = useMemo(
-    () =>
-      alunos.filter(
-        (a) => (atendimentoPorAluno[a.alunoId]?.chamadosAbertos ?? 0) > 0,
-      ).length,
-    [alunos, atendimentoPorAluno],
+      FILTROS.filter(
+        (id) =>
+          DEFINICAO_DOS_FILTROS[id].disponivel(alunos) || estado.filtros.has(id),
+      ).map((id) => ({
+        id,
+        rotulo: DEFINICAO_DOS_FILTROS[id].rotulo,
+        total: alunos.filter((a) => DEFINICAO_DOS_FILTROS[id].predicado(a, ctx))
+          .length,
+      })),
+    [alunos, ctx, estado.filtros],
   );
 
   const visiveis = useMemo(
@@ -144,54 +144,46 @@ export function AlunosAtivosLista({
       ordenarAlunos(
         filtrarAlunos(
           alunos,
-          atendimentoPorAluno,
-          {
-            somentePendencia,
-            somenteListou30,
-            somenteInativos,
-            somenteNotaRecente,
-            somenteSemNota,
-            somenteChamado,
-            termo,
-          },
-          agora,
+          { filtros: estado.filtros, termo: estado.termo },
+          ctx,
         ),
-        ordem,
+        estado.ordem,
         atendimentoPorAluno,
       ),
-    [
-      alunos,
-      atendimentoPorAluno,
-      somentePendencia,
-      somenteListou30,
-      somenteInativos,
-      somenteNotaRecente,
-      somenteSemNota,
-      somenteChamado,
-      agora,
-      termo,
-      ordem,
-    ],
+    [alunos, atendimentoPorAluno, ctx, estado.filtros, estado.termo, estado.ordem],
   );
 
-  const buscando = termo.trim().length > 0;
-  const filtrosAtivos = [
-    somentePendencia ? "com pendência aberta" : null,
-    somenteListou30 ? `já listou os ${META_CLIENTES}` : null,
-    somenteInativos ? `sem acessar há ${DIAS_INATIVO}+ dias` : null,
-    somenteNotaRecente ? `com nota nos últimos ${DIAS_NOTA_RECENTE} dias` : null,
-    somenteSemNota ? "sem nenhuma nota" : null,
-    somenteChamado ? "com chamado aberto" : null,
-  ].filter((f): f is string => f !== null);
+  // Roda DEPOIS de `visiveis` já estar no DOM: é essa a condição que salvar
+  // `scrollY` nunca conseguia satisfazer numa lista filtrada no cliente.
+  useAncoraDoPainel();
 
-  const limparFiltros = () => {
-    setSomentePendencia(false);
-    setSomenteListou30(false);
-    setSomenteInativos(false);
-    setSomenteNotaRecente(false);
-    setSomenteSemNota(false);
-    setSomenteChamado(false);
-  };
+  /**
+   * Seleção em lote — só existe com o filtro "sem login" ligado.
+   *
+   * 🔑 O checkbox aparece exatamente onde a ação existe. "Criar acesso" não
+   * faz sentido para quem já tem login, e uma caixa de seleção em 158 cards
+   * que não leva a lugar nenhum é ruído — a lição do chip de filtro que não
+   * separa ninguém.
+   *
+   * 🔴 **A seleção é sempre a INTERSEÇÃO com o que está na tela.** `marcados`
+   * guarda ids; quem manda é `visiveis.filter(...)`. Sem isso, marcar cinco
+   * pessoas e depois digitar na busca deixaria o botão agindo sobre gente que
+   * o admin não está mais vendo — criar acesso para quem ninguém olhou é o
+   * erro que este lote não pode cometer. (E é por ser derivado que não existe
+   * `useEffect` limpando estado aqui: efeito que chama `setState` no corpo
+   * dispara renderização em cascata e some com a seleção em casos que ninguém
+   * previu.)
+   */
+  const emLote = estado.filtros.has("sem_login");
+  const [marcados, setMarcados] = useState<Set<string>>(() => new Set());
+
+  const selecionados = useMemo(
+    () => visiveis.filter((a) => marcados.has(a.alunoId)),
+    [visiveis, marcados],
+  );
+
+  const buscando = estado.termo.trim().length > 0;
+  const filtrosAtivos = [...estado.filtros].map(fraseDoFiltro);
 
   if (alunos.length === 0) {
     return (
@@ -207,8 +199,7 @@ export function AlunosAtivosLista({
     <div className="grid gap-3">
       {/* Duas fileiras, não uma sopa: em cima a BUSCA e a ORDEM (o que muda a
           leitura da lista inteira); embaixo os FILTROS (o que tira gente da
-          lista). Antes eram seis caixas de seleção nuas espalhadas com a busca
-          e o select em duas linhas, e a barra parecia formulário. */}
+          lista). */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-[240px] flex-1">
           <Search
@@ -218,8 +209,8 @@ export function AlunosAtivosLista({
           <Input
             id="busca-alunos"
             type="search"
-            value={termo}
-            onChange={(e) => setTermo(e.target.value)}
+            value={estado.termo}
+            onChange={(e) => definirTermo(e.target.value)}
             placeholder="Buscar por nome ou e-mail"
             aria-label="Buscar aluno por nome ou e-mail"
             className="pl-8"
@@ -227,8 +218,8 @@ export function AlunosAtivosLista({
         </div>
 
         <Select
-          value={ordem}
-          onValueChange={(v) => v && setOrdem(v as OrdemAlunos)}
+          value={estado.ordem}
+          onValueChange={(v) => v && definirOrdem(v as OrdemAlunos)}
         >
           <SelectTrigger aria-label="Ordenar alunos" className="w-[240px]">
             <SelectValue>
@@ -243,47 +234,30 @@ export function AlunosAtivosLista({
             ))}
           </SelectContent>
         </Select>
-
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <FiltroCheckbox
-          rotulo="Só com pendência"
-          total={totalComPendencia}
-          marcado={somentePendencia}
-          onChange={setSomentePendencia}
-        />
-        <FiltroCheckbox
-          rotulo={`Já listou os ${META_CLIENTES}`}
-          total={totalListou30}
-          marcado={somenteListou30}
-          onChange={setSomenteListou30}
-        />
-        <FiltroCheckbox
-          rotulo={`Sem acessar há ${DIAS_INATIVO}+ dias`}
-          total={totalInativos}
-          marcado={somenteInativos}
-          onChange={setSomenteInativos}
-        />
-        <FiltroCheckbox
-          rotulo={`Com nota nos últimos ${DIAS_NOTA_RECENTE} dias`}
-          total={totalNotaRecente}
-          marcado={somenteNotaRecente}
-          onChange={setSomenteNotaRecente}
-        />
-        <FiltroCheckbox
-          rotulo="Sem nenhuma nota"
-          total={totalSemNota}
-          marcado={somenteSemNota}
-          onChange={setSomenteSemNota}
-        />
-        <FiltroCheckbox
-          rotulo="Com chamado aberto"
-          total={totalComChamado}
-          marcado={somenteChamado}
-          onChange={setSomenteChamado}
-        />
+        {chips.map((c) => (
+          <FiltroCheckbox
+            key={c.id}
+            rotulo={c.rotulo}
+            total={c.total}
+            marcado={estado.filtros.has(c.id)}
+            onChange={(v) => alternarFiltro(c.id as FiltroId, v)}
+          />
+        ))}
       </div>
+
+      {emLote ? (
+        <LoteDeAcesso
+          selecionados={selecionados}
+          candidatos={visiveis}
+          onLimpar={() => setMarcados(new Set())}
+          onSelecionarAte={(n) =>
+            setMarcados(new Set(visiveis.slice(0, n).map((a) => a.alunoId)))
+          }
+        />
+      ) : null}
 
       <p aria-live="polite" className="text-xs text-muted-foreground">
         Mostrando {visiveis.length} de {alunos.length}
@@ -294,9 +268,7 @@ export function AlunosAtivosLista({
             sobre os {alunos.length} carregados.
             {/* Teto batido e nada mais para carregar: dizer isso é o mínimo.
                 Sem esta frase o admin veria "de 1.250" sem botão e concluiria
-                que a tela quebrou. É também o sinal de que a busca precisa ir
-                para o servidor (Leitura B do bloqueio 2) — hoje são 125
-                ambientes e este caminho não acontece. */}
+                que a tela quebrou. */}
             {carregarMaisHref === null ? (
               <> Este é o teto do painel; para achar quem ficou de fora, a
               busca precisará passar a rodar no servidor.</>
@@ -307,12 +279,12 @@ export function AlunosAtivosLista({
 
       {visiveis.length === 0 ? (
         <ListaVazia
-          termo={termo}
+          termo={estado.termo}
           buscando={buscando}
           filtrosAtivos={filtrosAtivos}
-          setTermo={setTermo}
+          setTermo={definirTermo}
           limparFiltros={limparFiltros}
-          carregarMaisHref={carregarMaisHref}
+          carregarMaisHref={hrefMais}
           carregarMaisQtd={carregarMaisQtd}
         />
       ) : (
@@ -322,6 +294,20 @@ export function AlunosAtivosLista({
             {...a}
             atendimentoDe={atendimentoDe}
             agora={agora}
+            selecao={
+              emLote
+                ? {
+                    marcado: marcados.has(a.alunoId),
+                    onChange: (v) =>
+                      setMarcados((s) => {
+                        const novo = new Set(s);
+                        if (v) novo.add(a.alunoId);
+                        else novo.delete(a.alunoId);
+                        return novo;
+                      }),
+                  }
+                : undefined
+            }
           />
         ))
       )}
@@ -331,10 +317,10 @@ export function AlunosAtivosLista({
           devolve a mesma tela. `scroll={false}` mantém o admin onde ele
           estava; `prefetch={false}` evita que só passar o mouse dispare a
           consulta agregada do painel. */}
-      {carregarMaisHref ? (
+      {hrefMais ? (
         <div className="flex justify-center pt-2">
           <Link
-            href={carregarMaisHref}
+            href={hrefMais}
             scroll={false}
             prefetch={false}
             className={buttonVariants({ variant: "outline", size: "sm" })}

@@ -27,7 +27,10 @@ export function FiltroCheckbox({
   marcado: boolean;
   onChange: (v: boolean) => void;
 }) {
-  if (total === 0) return null;
+  // Zero e desmarcado: não existe. Zero e MARCADO existe, e tem de existir —
+  // é o chip que veio de um link do dashboard (`?f=onb_ok`) e zerou a lista;
+  // esconder o interruptor deixaria o admin sem como desligá-lo.
+  if (total === 0 && !marcado) return null;
   return (
     <button
       type="button"

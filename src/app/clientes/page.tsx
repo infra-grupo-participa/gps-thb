@@ -29,9 +29,13 @@ export default async function ClientesPage() {
         navItems={navDoAluno(ctx)}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
+        {/* A aba deixou de se apresentar como "os 30 da Etapa 01": ela é a
+            central de TODOS os clientes do aluno, em qualquer estágio (§E.2).
+            Quem chega com um caso em execução precisa saber que ele cabe aqui
+            — o portal já aceitava, mas não dizia. */}
         <PageHeader
           titulo="Clientes"
-          descricao="Cadastre e acompanhe seus clientes potenciais e o contato com eles."
+          descricao="Todos os seus clientes — os novos, os que já estão em andamento e os que já estão em execução."
         />
 
         <ClientesManager

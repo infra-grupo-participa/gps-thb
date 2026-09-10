@@ -6,10 +6,13 @@ import {
   acharAlunosPorEmails,
   getEtapas,
   getAtendimentoPorAluno,
+  getDashboard,
+  faixasDeTrilha,
+  resumoAtendimento,
   LIMITE_PAINEL_ALUNOS,
   LIMITE_PAINEL_ALUNOS_MAX,
 } from "@/lib/data";
-import { Users, UserCheck, UserX, Inbox } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { adminNavItems } from "@/lib/nav";
@@ -17,10 +20,10 @@ import { CriarAcesso } from "@/components/admin/criar-acesso-botao";
 import { SolicitacaoCard } from "@/components/admin/solicitacao-card";
 import { EtapasControle } from "@/components/admin/etapas-controle";
 import { AlunosAtivosLista } from "@/components/admin/alunos-ativos-lista";
-import { KpiCard } from "@/components/ui/kpi-card";
+import { AbasPainel } from "@/components/admin/abas-painel";
+import { DashboardExecutivo } from "@/components/admin/dashboard";
+import { AvisoInline } from "@/components/ui/aviso-inline";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const metadata = { title: "Admin — Alunos" };
 
@@ -61,13 +64,18 @@ export default async function AdminPage({
   // com as outras leituras, em vez de esperar o `Promise.all` inteiro.
   // Antes: um `acharAlunoPorEmail` POR solicitação, em série, depois de tudo.
   const pendentesPromise = getSolicitacoes("pendente");
-  const [pagina, pendentes, etapas, atendimentoDiario, alunosPorEmail] =
+  const [pagina, pendentes, etapas, atendimentoDiario, alunosPorEmail, dashboard] =
     await Promise.all([
       getAlunosGps({ limite }),
       pendentesPromise,
       getEtapas(),
       getAtendimentoPorAluno(),
       pendentesPromise.then((ps) => acharAlunosPorEmails(ps.map((s) => s.email))),
+      // UMA ida ao banco para os 7 blocos agregados do dashboard
+      // (`gps.admin_dashboard()`). Os cards 6 e 7 NÃO consultam nada: saem de
+      // `faixasDeTrilha` e `resumoAtendimento`, funções puras sobre o que as
+      // duas leituras acima já trouxeram.
+      getDashboard(),
     ]);
   const { alunos, total: totalAlunos } = pagina;
   // Map -> objeto simples porque `Map` não atravessa a fronteira Server ->
@@ -89,11 +97,11 @@ export default async function AdminPage({
     0,
   );
 
-  const comLogin = alunos.filter((a) => a.temLogin).length;
-  const semLogin = alunos.length - comLogin;
-  // O lote não cobre a base inteira: os KPIs de login contam só o que veio, e
-  // o `hint` tem de dizer isso. Número parcial apresentado como total é a
-  // mesma classe de erro do "R$ 0,00" em campo que nasceu vazio.
+  // 🔑 C-9 — os 4 KPIs antigos ("Alunos no programa", "Com login", "Sem
+  // login", "Solicitações") FORAM REMOVIDOS: os cards 1, 2 e 7 do dashboard
+  // dizem os mesmos números **com variação do mês e com clique**, e o badge da
+  // aba Solicitações já mostra a fila. Manter os dois seria dois lugares
+  // dizendo o mesmo número — a tela substitui, não acumula.
   const parcial = alunos.length < totalAlunos;
   const proximoLimite = limiteDoPainel(String(rodadasPedidas + 1));
   // Quantos ambientes o próximo clique acrescenta DE FATO (nunca prometer
@@ -118,64 +126,32 @@ export default async function AdminPage({
           acao={<CriarAcesso />}
         />
 
-        {/* Resumo — 2x2 no celular (era 1x4: os quatro KPIs em coluna comiam
-            ~500 px antes de qualquer conteúdo). Os números são curtos, então
-            cabem em meia largura sem encolher a escala. */}
-        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiCard
-            icone={<Users className="size-4" />}
-            rotulo="Alunos no programa"
-            valor={String(totalAlunos)}
-            hint="em implementação assistida"
-            destaque
+        {/* Dashboard executivo — macro → micro → onde atacar. Todo card
+            termina num link para a lista filtrada; os que não têm destino
+            dizem por escrito que são leitura. */}
+        {dashboard ? (
+          <DashboardExecutivo
+            dados={dashboard}
+            trilha={faixasDeTrilha(alunos)}
+            atendimento={resumoAtendimento(alunos, atendimentoDiario)}
+            ambientesCarregados={alunos.length}
           />
-          <KpiCard
-            icone={<UserCheck className="size-4" />}
-            rotulo="Com login"
-            valor={String(comLogin)}
-            hint={
-              parcial
-                ? `entre os ${alunos.length} carregados`
-                : "já podem acessar"
-            }
-          />
-          <KpiCard
-            icone={<UserX className="size-4" />}
-            rotulo="Sem login"
-            valor={String(semLogin)}
-            hint={
-              parcial
-                ? `entre os ${alunos.length} carregados`
-                : "ambiente sem acesso"
-            }
-          />
-          <KpiCard
-            icone={<Inbox className="size-4" />}
-            rotulo="Solicitações"
-            valor={String(pendentes.length)}
-            hint="aguardando decisão"
-          />
-        </div>
+        ) : (
+          // `getDashboard()` devolve `null` em falha — e a tela diz isso em
+          // vez de desenhar nove cards zerados. Um dashboard todo em zero é
+          // indistinguível de um sistema vazio, e é assim que alguém decide em
+          // cima de dado que não existe. A lista abaixo continua funcionando.
+          <AvisoInline className="mb-8">
+            Não foi possível carregar a visão do programa agora. Os números
+            desta parte da tela ficam de fora até a próxima atualização — a
+            lista de alunos abaixo não depende dela.
+          </AvisoInline>
+        )}
 
-        <Tabs defaultValue="ativos" className="gap-6">
-          <TabsList variant="line">
-            <TabsTrigger value="ativos">
-              Alunos ativos
-              <Badge variant="secondary" className="ml-1.5 text-[10px]">
-                {totalAlunos}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="solicitacoes">
-              Solicitações
-              {pendentes.length > 0 ? (
-                <Badge className="ml-1.5 text-[10px]">{pendentes.length}</Badge>
-              ) : null}
-            </TabsTrigger>
-            <TabsTrigger value="etapas">Etapas</TabsTrigger>
-          </TabsList>
-
-          {/* Alunos ativos */}
-          <TabsContent value="ativos">
+        <AbasPainel
+          totalAlunos={totalAlunos}
+          pendentes={pendentes.length}
+          ativos={
             <AlunosAtivosLista
               alunos={alunos}
               atendimentoPorAluno={atendimentoPorAluno}
@@ -183,11 +159,9 @@ export default async function AdminPage({
               carregarMaisHref={carregarMaisHref}
               carregarMaisQtd={proximoLote}
             />
-          </TabsContent>
-
-          {/* Solicitações */}
-          <TabsContent value="solicitacoes">
-            {solicitacoesComMatch.length === 0 ? (
+          }
+          solicitacoes={
+            solicitacoesComMatch.length === 0 ? (
               <EmptyState
                 icone={<Inbox />}
                 titulo="Nenhuma solicitação pendente."
@@ -203,14 +177,10 @@ export default async function AdminPage({
                   />
                 ))}
               </div>
-            )}
-          </TabsContent>
-
-          {/* Etapas */}
-          <TabsContent value="etapas">
-            <EtapasControle etapasIniciais={etapas} />
-          </TabsContent>
-        </Tabs>
+            )
+          }
+          etapas={<EtapasControle etapasIniciais={etapas} />}
+        />
       </main>
     </>
   );

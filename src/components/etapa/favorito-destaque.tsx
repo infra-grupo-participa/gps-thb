@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Star, MessageCircle, ArrowRight } from "lucide-react";
 import type { ClienteEtapa1 } from "@/lib/types";
 import { FASES_CLIENTE } from "@/lib/etapa1";
+import { formatarData } from "@/lib/datas";
 import { mascaraTelefone } from "@/lib/masks";
 import { brl } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
@@ -33,6 +34,15 @@ export function FavoritoDestaque({
               <div className="text-lg font-semibold">
                 {cliente.nome || "Sem nome"}
               </div>
+              {/* A equipe ASSUMIU o acompanhamento (migração ...203) — não é a
+                  mesma coisa que o aluno ter escolhido a estrela. Card só
+                  informativo: o que fazer a respeito mora na ficha. */}
+              {cliente.acompanhamento_confirmado_em ? (
+                <p className="mt-1 corpo-sm font-medium text-sucesso-foreground">
+                  A equipe está acompanhando este cliente desde{" "}
+                  {formatarData(cliente.acompanhamento_confirmado_em)}.
+                </p>
+              ) : null}
               <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 {fase ? (
                   <span

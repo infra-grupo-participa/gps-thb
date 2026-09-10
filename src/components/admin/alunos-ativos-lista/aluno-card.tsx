@@ -25,15 +25,18 @@
  */
 
 import Link from "next/link";
-import { LifeBuoy } from "lucide-react";
+import { LifeBuoy, MailPlus } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
+import type { StatusOnboarding } from "@/lib/types";
 import { ROTULO_TIPO } from "@/components/admin/diario-labels";
 import { formatarDataHora, formatarData } from "@/lib/datas";
 import { NotaRapida } from "@/components/admin/nota-rapida";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { descreverAcesso, honorariosDoCard } from "./ordenacao";
+import { marcarUltimoAluno } from "./ancora";
 import { META_CLIENTES, TAMANHO_RESUMO } from "./tipos";
 
 /** Uma coluna da régua de números. Largura FIXA, para alinhar entre cards. */
@@ -65,6 +68,23 @@ function Metrica({
   );
 }
 
+/**
+ * O chip de onboarding do TITULAR do ambiente.
+ *
+ * 🔑 "Não iniciado" **não vira chip**: hoje são os 158 ambientes, e um chip
+ * repetido em todo card não separa ninguém — só engorda a linha de badges. O
+ * chip aparece quando há notícia ("começou" / "respondeu"), que é quando ele
+ * muda o que a equipe faz. O FILTRO continua servindo para achar quem não
+ * respondeu, e o card 3 do dashboard leva direto a ele.
+ */
+const CHIP_ONBOARDING: Partial<
+  Record<StatusOnboarding, { rotulo: string; variante: "success" | "warning" }>
+> = {
+  // Atenção: começou e não terminou é o que a equipe pode destravar.
+  em_andamento: { rotulo: "onboarding em andamento", variante: "warning" },
+  concluido: { rotulo: "onboarding concluído", variante: "success" },
+};
+
 export function AlunoCard({
   aluno,
   alunoId,
@@ -79,13 +99,22 @@ export function AlunoCard({
   contratadosSemValor,
   desde,
   ultimoAcesso,
+  onboardingStatus,
+  aptoAoSaldo,
   atendimentoDe,
   agora,
+  selecao,
 }: AlunoGps & {
   /** Nunca `undefined`: o card sempre tem o que ler, sem `?.` espalhado. */
   atendimentoDe: (alunoId: string) => AtendimentoDoAluno;
   /** "Agora" fixado uma vez pela lista inteira. */
   agora: number;
+  /**
+   * Seleção em lote. Só chega quando o filtro "sem login" está ativo — o
+   * checkbox é para uma ação (criar acesso) que só existe para quem não tem
+   * login, e uma caixa que não leva a lugar nenhum é ruído em 158 cards.
+   */
+  selecao?: { marcado: boolean; onChange: (v: boolean) => void };
 }) {
   const atendimento = atendimentoDe(alunoId);
   const honorarios = honorariosDoCard(
@@ -100,6 +129,7 @@ export function AlunoCard({
   // pode ter a mesma moldura de um em dia — era a queixa do diagnóstico, e a
   // faixa lateral custa 3 px, não uma cor de fundo que competiria com o texto.
   const esperando = pendencias > 0 || chamados > 0;
+  const chipOnboarding = CHIP_ONBOARDING[onboardingStatus];
   return (
     // O card NÃO é um `<Link>` por fora: botão dentro de link é HTML inválido,
     // some do Tab e o clique navega em vez de abrir o diálogo. O link é uma
@@ -108,11 +138,18 @@ export function AlunoCard({
     <Card
       key={alunoId}
       interativo
+      // `data-aluno-id` é o gancho da âncora: é por ele que `ancora.ts` acha
+      // o card depois de a lista filtrada montar. Não remover.
+      data-aluno-id={alunoId}
       className={
         "relative [--card-spacing:--spacing(3)]" +
         (esperando
           ? " before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-risco-foreground"
-          : "")
+          : "") +
+        // Destaque de "é daqui que você saiu": `ancora.ts` põe e tira o
+        // atributo `data-ancorado` direto no DOM. Anel por OUTLINE, não por
+        // `ring`: o `Card` é `overflow-hidden` e recortaria o anel inteiro.
+        " data-ancorado:outline-2 data-ancorado:outline-offset-2 data-ancorado:outline-solid data-ancorado:outline-ring"
       }
     >
       <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -124,9 +161,26 @@ export function AlunoCard({
         <Link
           href={`/admin/aluno/${alunoId}`}
           aria-label={`Abrir o ambiente de ${nome}`}
+          // Guarda de qual card o admin saiu. É gravado no clique (e não numa
+          // rolagem monitorada) porque o que interessa é a INTENÇÃO de sair
+          // por aqui — o `scrollY` de quem só passou o olho não diz nada.
+          onClick={() => marcarUltimoAluno(alunoId)}
           className="absolute inset-0 z-0 rounded-[inherit] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         />
-        <div className="min-w-0">
+
+        <div className="flex min-w-0 items-start gap-3">
+          {/* `relative z-10`: sobe acima da camada do link, senão marcar a
+              caixa abriria o ambiente em vez de selecionar. */}
+          {selecao ? (
+            <Checkbox
+              checked={selecao.marcado}
+              onCheckedChange={(v) => selecao.onChange(v === true)}
+              aria-label={`Selecionar ${nome} para criar acesso`}
+              className="relative z-10 mt-1 shrink-0"
+            />
+          ) : null}
+
+          <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="truncate font-medium">{nome}</span>
             {temLogin ? (
@@ -156,6 +210,20 @@ export function AlunoCard({
               <Badge variant="warning" icone={LifeBuoy} className="text-[10px]">
                 {chamados}{" "}
                 {chamados === 1 ? "chamado aberto" : "chamados abertos"}
+              </Badge>
+            ) : null}
+            {chipOnboarding ? (
+              <Badge variant={chipOnboarding.variante} className="text-[10px]">
+                {chipOnboarding.rotulo}
+              </Badge>
+            ) : null}
+            {/* 🔒 B-S1 — o chip diz o FATO observável e nenhum valor em reais.
+                `aptoAoSaldo` é derivado no banco (cliente contratado + valor +
+                anexo do contrato); a tela não recalcula e não escreve
+                "apto a pagar os R$ 15.000". */}
+            {aptoAoSaldo ? (
+              <Badge variant="default" className="text-[10px]">
+                Contrato de honorários enviado
               </Badge>
             ) : null}
           </div>
@@ -216,6 +284,7 @@ export function AlunoCard({
               <span className="text-muted-foreground">Sem nota no Diário</span>
             )}
           </div>
+          </div>
         </div>
 
         {/* `flex-wrap` no celular: 3 métricas + barra + botão davam 462 px
@@ -249,7 +318,28 @@ export function AlunoCard({
           </div>
           {/* `relative z-10`: sobe acima da camada do link, senão o clique
               abriria o ambiente em vez do diálogo. */}
-          <div className="relative z-10">
+          <div className="relative z-10 flex items-center gap-2">
+            {/* Tem login e NUNCA entrou: recriar acesso não serve (a conta já
+                existe). O caminho é "Gerenciar acesso", que gera senha
+                temporária nova, confirma o e-mail e — se a conta tiver papel
+                em outro portal do grupo — devolve `precisaConfirmar` com a
+                lista de sistemas SEM alterar nada. A senha não é
+                reimplementada aqui: um segundo caminho de escrita de senha é
+                um segundo lugar para essa confirmação sumir. */}
+            {temLogin && !ultimoAcesso ? (
+              <Link
+                href={`/admin/aluno/${alunoId}`}
+                prefetch={false}
+                onClick={() => marcarUltimoAluno(alunoId)}
+                className={
+                  "foco-visivel inline-flex items-center gap-1 rounded-md border border-borda-forte px-2.5 py-1 text-xs font-medium " +
+                  "text-accent-foreground hover:bg-muted"
+                }
+              >
+                <MailPlus aria-hidden className="size-3.5" />
+                Reenviar acesso
+              </Link>
+            ) : null}
             <NotaRapida alunoId={alunoId} nomeDoAluno={nome} />
           </div>
         </div>

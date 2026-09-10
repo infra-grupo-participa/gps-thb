@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { AvisoInline } from "@/components/ui/aviso-inline";
 import { Badge } from "@/components/ui/badge";
+import { DetalhesEquipe } from "@/components/financeiro/detalhes-equipe";
 import { Progress } from "@/components/ui/progress";
 import { formatarData, formatarDataSoDia, hojeSaoPaulo } from "@/lib/datas";
 import { brl, brlInteiro } from "@/lib/moeda";
@@ -25,6 +26,13 @@ import { cn } from "@/lib/utils";
 
 /**
  * Um contrato do programa — "quanto é, quanto já paguei, o que falta".
+ *
+ * 🔴 **Enxuto por decisão do João (09/09/2026).** O aluno lê quatro coisas:
+ * situação, pago de total (com barra), parcelas e próximo vencimento. Origem
+ * do dado, id do cadastro, divergência e excedente são assunto da equipe e
+ * vivem em `DetalhesEquipe`, uma gaveta fechada que só existe no ramo
+ * `ehAdmin`. Nome de view e "divergência de cadastro" na tela de quem só quer
+ * saber se está em dia é ruído — e exposição desnecessária da nossa cozinha.
  *
  * 🔴 Três regras que este card existe para respeitar:
  *
@@ -83,11 +91,20 @@ const SITUACOES: Record<
   },
 };
 
-/** `timestamptz` → "dd/mm/aaaa" em São Paulo; `null` quando não dá para ler. */
+/**
+ * "dd/mm/aaaa" em São Paulo; `null` quando não dá para ler.
+ *
+ * 🔑 Data-only ("2026-08-21") vai por RECORTE DE STRING. A RPC devolve
+ * `ultimo_pagamento_em`/`cancelamento_em` já como `date` no fuso de São Paulo,
+ * e `new Date("2026-08-21")` os leria como meia-noite UTC — 21/08 virava 20/08
+ * na tela, um dia a menos. É a mesma armadilha que `proximaCobrancaEm` já
+ * evitava com `formatarDataSoDia`. Com hora, vai pelo formatador com fuso.
+ */
 function dataHora(iso: string | null): string | null {
   if (!iso) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso.trim())) return formatarDataSoDia(iso);
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : formatarData(iso);
+  return Number.isNaN(d.getTime()) ? formatarDataSoDia(iso) : formatarData(iso);
 }
 
 /**
@@ -221,12 +238,22 @@ export function ProgramaCard({
   // (que É um problema: falta dinheiro na conta apesar do "quitado").
   const excedente = ehAdmin ? excedentePago(contrato) : null;
 
+  // O aluno vê o vencimento (o que ele precisa fazer) e o crédito (dinheiro
+  // dele). Entrada e último pagamento saíram do card: os dois já aparecem na
+  // lista de pagamentos logo abaixo, e repeti-los aqui engordava a tela sem
+  // responder nada de novo.
   const temDetalhes =
-    (proximaCobranca !== null && !cancelado && !quitado) ||
-    ultimoPagamento !== null ||
-    contrato.entradaValor !== null ||
-    credito !== null ||
-    ehAurum;
+    (proximaCobranca !== null && !cancelado && !quitado) || credito !== null;
+
+  const temDetalhesEquipe =
+    ehAdmin &&
+    (ultimoPagamento !== null ||
+      contrato.entradaValor !== null ||
+      ehAurum ||
+      excedente !== null ||
+      divergencia !== null ||
+      contrato.semRegistroSip ||
+      contrato.contatoHmId !== null);
 
   return (
     <Card
@@ -303,7 +330,7 @@ export function ProgramaCard({
 
             {quitado ? (
               <p className="text-sm font-medium text-sucesso-foreground">
-                Nada em aberto no cadastro.
+                Está tudo pago. Nada em aberto.
               </p>
             ) : faltaPagar !== null ? (
               <p className="text-sm">
@@ -314,28 +341,19 @@ export function ProgramaCard({
               </p>
             ) : cancelado ? null : (
               <p className="text-sm text-muted-foreground">
-                Saldo não informado no cadastro.
+                A equipe ainda está conferindo o saldo deste programa.
               </p>
             )}
           </div>
         ) : (
           /* `semRegistroSip`: o contrato existe em `cs.contatos_hm` mas não
-             tem linha na view financeira — lacuna de cadastro no sip, não bug
-             do portal. O aluno lê a frase simples; o admin lê a causa, senão
-             a lacuna fica invisível para sempre. */
-          <div className="grid gap-1 text-sm text-muted-foreground">
-            <p>
-              Os valores deste contrato ainda não estão no cadastro financeiro.
-              Fale com a equipe.
-            </p>
-            {ehAdmin && contrato.semRegistroSip ? (
-              <p className="previa-oculta text-xs">
-                Sem linha em{" "}
-                <code className="font-mono">cs.vw_hm_financeiro</code> para este
-                contrato.
-              </p>
-            ) : null}
-          </div>
+             tem linha na view financeira — lacuna de cadastro, não bug do
+             portal. O aluno lê a frase acolhedora; a causa fica na gaveta da
+             equipe, senão a lacuna some para sempre. */
+          <p className="text-sm text-muted-foreground">
+            Os valores deste programa ainda não chegaram aqui — a equipe está
+            cuidando disso.
+          </p>
         )}
 
         {parcelas ? (
@@ -374,68 +392,62 @@ export function ProgramaCard({
               )
             ) : null}
 
-            {ultimoPagamento ? (
-              <Detalhe rotulo="Último pagamento" valor={ultimoPagamento} />
-            ) : null}
-
-            {contrato.entradaValor !== null ? (
-              <Detalhe
-                rotulo="Entrada"
-                valor={
-                  entradaPagoEm
-                    ? `${brl(contrato.entradaValor)} em ${entradaPagoEm}`
-                    : brl(contrato.entradaValor)
-                }
-              />
-            ) : null}
-
             {credito !== null ? (
               <Detalhe
                 rotulo="Crédito aplicado"
                 valor={brl(credito)}
-                ressalva="Informado pelo Grupo Participa; não entra no cálculo do saldo."
+                ressalva="Não entra no saldo acima."
               />
-            ) : null}
-
-            {ehAurum ? (
-              <div className="text-xs text-muted-foreground">
-                Os valores do AURUM são consolidados fora deste portal.
-              </div>
             ) : null}
           </dl>
         ) : null}
-
-        {excedente !== null ? (
-          /* Discreta de propósito (decisão do Marcio, 09/09): não é erro,
-             é informação — "ele vê que pagou os 15k, mas a equipe vê que
-             ele tem 18k pagos". Sem ícone de alerta, sem "confira o
-             cadastro": o aluno pagou a mais, ponto. */
-          <p className="previa-oculta text-xs text-muted-foreground">
-            Só a equipe vê: pagou {brl(excedente)} além do pacote.
-          </p>
-        ) : divergencia !== null ? (
-          /* FN1 — divergência POSITIVA: dito quitado, mas falta dinheiro na
-             conta. Este sim é problema de cadastro a conferir. */
-          <AvisoInline icone={Info} className="previa-oculta">
-            <span className="font-medium">Só a equipe vê esta linha.</span>{" "}
-            Contrato apresentado como quitado, mas o saldo apurado é{" "}
-            {brl(divergencia)}. Confira no cadastro financeiro antes de
-            responder ao aluno.
-          </AvisoInline>
-        ) : null}
       </CardContent>
 
-      <CardFooter className="grid gap-1 text-xs text-muted-foreground">
-        <p>
-          Fonte: cadastro financeiro do Grupo Participa, atualizado pela equipe.
-          Não é editável aqui. Encontrou divergência? Fale com a equipe.
-        </p>
-        {ehAdmin ? (
-          <p className="previa-oculta font-mono break-all">
-            cs.vw_hm_financeiro · contato_hm_id {contrato.contatoHmId ?? "—"}
-          </p>
-        ) : null}
-      </CardFooter>
+      {temDetalhesEquipe ? (
+        <CardFooter>
+          <DetalhesEquipe>
+            <p className="font-mono break-all">
+              cs.vw_hm_financeiro · contato_hm_id {contrato.contatoHmId ?? "—"}
+            </p>
+
+            {contrato.semRegistroSip ? (
+              <p>
+                Sem linha em{" "}
+                <code className="font-mono">cs.vw_hm_financeiro</code> para este
+                contrato — lacuna de cadastro, não erro do portal.
+              </p>
+            ) : null}
+
+            {ultimoPagamento ? <p>Último pagamento: {ultimoPagamento}</p> : null}
+
+            {contrato.entradaValor !== null ? (
+              <p>
+                Entrada: {brl(contrato.entradaValor)}
+                {entradaPagoEm ? ` em ${entradaPagoEm}` : ""}
+              </p>
+            ) : null}
+
+            {ehAurum ? (
+              <p>Produto AURUM: valores consolidados fora deste portal.</p>
+            ) : null}
+
+            {excedente !== null ? (
+              /* Discreta de propósito (decisão do Marcio, 09/09): não é erro,
+                 é informação — "ele vê que pagou os 15k, mas a equipe vê que
+                 ele tem 18k pagos". Sem ícone de alerta: pagou a mais, ponto. */
+              <p>Pagou {brl(excedente)} além do pacote.</p>
+            ) : divergencia !== null ? (
+              /* FN1 — divergência POSITIVA: dito quitado, mas falta dinheiro
+                 na conta. Este sim é problema de cadastro a conferir. */
+              <AvisoInline icone={Info}>
+                Contrato apresentado como quitado, mas o saldo apurado é{" "}
+                {brl(divergencia)}. Confira no cadastro financeiro antes de
+                responder ao aluno.
+              </AvisoInline>
+            ) : null}
+          </DetalhesEquipe>
+        </CardFooter>
+      ) : null}
     </Card>
   );
 }

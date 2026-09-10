@@ -143,7 +143,17 @@ export function adminNavItems(
   opts: { chamadosAbertos?: number } = {},
 ): NavItem[] {
   return [
-    { href: "/admin", label: "Alunos", icon: "alunos", exact: true },
+    // `restauraPainel`: o clique leva à ÚLTIMA URL do painel (aba, busca,
+    // ordem, filtros, lote), não a `/admin` pelado. Sem isso, a aba do header
+    // desfazia exatamente o estado que a URL do painel existe para guardar —
+    // era a segunda porta de volta, e ela apagava tudo.
+    {
+      href: "/admin",
+      label: "Alunos",
+      icon: "alunos",
+      exact: true,
+      restauraPainel: true,
+    },
     // Ícone "materiais" (BookOpen) reaproveitado: não há chave dedicada a
     // calendário/atendimento em NavItem["icon"] (nav-tabs.tsx) e a regra do
     // projeto é não inventar chave nova de ícone.

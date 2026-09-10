@@ -1,0 +1,29 @@
+{
+  "_comment": "Manifest do Slack App 'Portal THB' (menções do Diário do GPS). Criar em api.slack.com/apps → Create New App → From an app manifest → colar este JSON. Depois: Install to Workspace, copiar o Bot User OAuth Token (xoxb-…) para a env SLACK_BOT_TOKEN na Hostinger, convidar o app para o canal (/invite @Portal THB) e colocar o ID do canal (C…) em SLACK_CANAL_MENCOES. O token NUNCA vai para o banco.",
+  "display_information": {
+    "name": "Portal THB",
+    "description": "Avisos do Diário do Programa de Implementação Assistida (menções da equipe).",
+    "background_color": "#180b00"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "Portal THB",
+      "always_online": true
+    }
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "chat:write",
+        "chat:write.public",
+        "users:read",
+        "users:read.email"
+      ]
+    }
+  },
+  "settings": {
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}

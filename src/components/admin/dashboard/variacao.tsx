@@ -46,12 +46,14 @@ export function VariacaoDoMes({
       title={`${variacao.atual} ${substantivo} em ${mesAtual} até o dia ${variacao.ateODia}, contra ${variacao.anterior} no mesmo intervalo de ${mesAnterior}.`}
     >
       <Icone aria-hidden className="size-3.5" />
-      <span>
+      <span className="numero">
         {sinal}
         {Math.abs(delta)}
-        <span className="ml-1 font-normal text-muted-foreground">
-          vs. {mesAnterior} até o dia {variacao.ateODia}
-        </span>
+      </span>
+      {/* A nota que impede a comparação de mentir, em texto pequeno: o
+          número manda, mas "até o dia N" não pode sumir. */}
+      <span className="text-[11px] font-normal text-muted-foreground">
+        vs. {mesAnterior}, até dia {variacao.ateODia}
       </span>
     </span>
   );

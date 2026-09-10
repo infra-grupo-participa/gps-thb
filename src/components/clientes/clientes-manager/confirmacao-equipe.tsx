@@ -5,14 +5,18 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 import type { ClienteEtapa1 } from "@/lib/types";
 import { formatarData } from "@/lib/datas";
 import { buttonVariants } from "@/components/ui/button";
+import { LinkTrocaPorChamado } from "@/components/clientes/acompanhamento-equipe";
 
 /** Banner do cliente escolhido para o acompanhamento da equipe. */
 export function ConfirmacaoEquipe({
   cliente,
   etapa1Href,
+  admin = false,
 }: {
   cliente: ClienteEtapa1;
   etapa1Href: string;
+  /** No Modo Assistência a troca é aqui mesmo — não se manda a equipe abrir chamado consigo. */
+  admin?: boolean;
 }) {
   return (
     // Verde do TOKEN semântico, não `emerald-*` cru: esta tela mostrava três
@@ -35,17 +39,29 @@ export function ConfirmacaoEquipe({
             {cliente.acompanhamento_confirmado_em ? (
               <>
                 Acompanhamento assumido pela equipe em{" "}
-                {formatarData(cliente.acompanhamento_confirmado_em)}. A troca do
-                cliente passa pela equipe — abra a ficha para ver como. Os passos
+                {formatarData(cliente.acompanhamento_confirmado_em)}. Os passos
                 4 a 8 da Etapa 01 seguem liberados.
               </>
             ) : (
               <>
-                Cliente confirmado para o apoio da equipe. Os próximos passos da
-                Etapa 01 (do passo 4 em diante) estão liberados.
+                Este é o cliente que a equipe vai acompanhar em todo o progresso
+                da sua primeira holding. Os próximos passos da Etapa 01 (do passo
+                4 em diante) estão liberados.
               </>
             )}
           </p>
+          {/* O caminho da troca fica no MESMO lugar em que a estrela virou
+              sinal — a lista. Nas linhas e nos cards não cabe um link. */}
+          {admin ? (
+            <p className="corpo-sm text-sucesso-foreground">
+              A troca do cliente acompanhado é feita na ficha dele, aqui no Modo
+              Assistência.
+            </p>
+          ) : (
+            <p className="corpo-sm text-sucesso-foreground">
+              <LinkTrocaPorChamado /> — a equipe faz a troca com você.
+            </p>
+          )}
         </div>
       </div>
       <Link

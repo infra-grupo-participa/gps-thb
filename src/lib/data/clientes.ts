@@ -19,7 +19,7 @@ import type { ClienteHonorarios } from "@/lib/etapa1";
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * `gps.etapa1_clientes` → `ClienteEtapa1`. As 20 colunas do tipo.
+ * `gps.etapa1_clientes` → `ClienteEtapa1`. As 28 colunas do tipo.
  *
  * 🔑 `status` entra de propósito, mesmo CONGELADO desde a migração ...060:
  * o marcador "Recusou" da UI ainda o lê (1 linha na base). Sai daqui quando
@@ -27,12 +27,18 @@ import type { ClienteHonorarios } from "@/lib/etapa1";
  * 🔑 `fase`, `valor_honorarios` e `contrato_url` nasceram hoje (migrações
  * ...060/...090) — sem elas na lista, o quadro de fases e a coluna de
  * honorários ficariam vazios sem erro nenhum.
+ * 🔑 As 5 colunas de `contrato_*` (migração ...214) são o contrato ANEXADO.
+ * Vêm juntas porque o CHECK do banco é tudo-ou-nada e a ficha precisa das 4
+ * primeiras para montar o botão de download (nome, tamanho e tipo aparecem
+ * antes do clique; a URL assinada só nasce no clique). `contrato_path` NÃO é
+ * segredo por si só — o que autoriza é a policy do bucket, com a sessão de
+ * quem pede.
  * `criado_em`/`atualizado_em` NÃO entram: ninguém os lê. `criado_em` continua
  * servindo de critério de `.order()`, e o PostgREST ordena por coluna que não
  * está no `select`.
  */
 const COLUNAS_CLIENTE =
-  "id, aluno_id, nome, telefone, nivel_relacionamento, problemas, perda_inercia, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, acompanhado_equipe, ordem, valor_honorarios, contrato_url, grau_relacao, acompanhamento_confirmado_em, acompanhamento_confirmado_por";
+  "id, aluno_id, nome, telefone, nivel_relacionamento, problemas, perda_inercia, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, acompanhado_equipe, ordem, valor_honorarios, contrato_url, grau_relacao, acompanhamento_confirmado_em, acompanhamento_confirmado_por, contrato_path, contrato_nome, contrato_mime, contrato_tamanho, contrato_anexado_em";
 /** `gps.etapa3_agendamentos` → `Etapa3Agendamento`. */
 const COLUNAS_ETAPA3_AGENDAMENTO =
   "id, aluno_id, cliente_id, descricao, data, horario, equipe_participa, criado_em";

@@ -27,19 +27,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { Estrela, GrauChip, MarcaRecusou, WhatsappLink } from "./clientes-chips";
 import {
-  EstrelaTravada,
-  GrauChip,
-  MarcaRecusou,
-  StarButton,
-  WhatsappLink,
-} from "./clientes-chips";
-import { fasesDisponiveis, travadoPelaEquipe } from "./ordenacao";
+  fasesDisponiveis,
+  modoEstrela,
+  podeExcluirCliente,
+  type CtxEstrela,
+} from "./ordenacao";
 
 export function ClienteCardLista({
   cliente: c,
   fichaHref,
-  existeConfirmado,
+  ctxEstrela,
   onFase,
   onEquipe,
   onExcluir,
@@ -47,15 +46,15 @@ export function ClienteCardLista({
 }: {
   cliente: ClienteEtapa1;
   fichaHref: (id: string) => string;
-  /** Ver `ClientesTabela`: com um confirmado no ambiente, a estrela some dos outros. */
-  existeConfirmado: boolean;
+  /** Ver `ClientesTabela`: havendo favorito, a estrela some dos outros. */
+  ctxEstrela: CtxEstrela;
   onFase: (c: ClienteEtapa1, f: FaseCliente) => void;
   onEquipe: (c: ClienteEtapa1) => void;
   onExcluir: (c: ClienteEtapa1) => void;
   pending: boolean;
 }) {
   const wpp = linkWhatsapp(c.telefone);
-  const travado = travadoPelaEquipe(c);
+  const modo = modoEstrela(c, ctxEstrela);
   return (
     <div
       className={cn(
@@ -67,17 +66,12 @@ export function ClienteCardLista({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2">
-          {travado ? (
-            <EstrelaTravada
-              desde={c.acompanhamento_confirmado_em}
-              className="mt-0.5"
-            />
-          ) : existeConfirmado ? null : (
-            <StarButton
-              ativo={c.acompanhado_equipe}
-              onClick={() => onEquipe(c)}
-            />
-          )}
+          <Estrela
+            cliente={c}
+            modo={modo}
+            onToggle={onEquipe}
+            className="mt-0.5"
+          />
           <Link
             href={fichaHref(c.id)}
             className="foco-visivel rounded-sm font-medium text-balance hover:text-accent-foreground hover:underline"
@@ -137,8 +131,8 @@ export function ClienteCardLista({
         {/* Ícone, não texto: o vermelho só aparece na intenção (`ghost-danger`)
             e o nome do cliente vai no `aria-label`, então o leitor de tela
             ganha precisão em vez de ouvir "Excluir" oito vezes seguidas.
-            🔴 Some no cliente que a equipe acompanha — o DELETE volta 42501. */}
-        {travado ? null : (
+            🔴 Some no cliente acompanhado — o DELETE volta 42501. */}
+        {podeExcluirCliente(c, ctxEstrela.admin) ? (
           <Button
             variant="ghost-danger"
             size="icon-sm"
@@ -149,7 +143,7 @@ export function ClienteCardLista({
           >
             <Trash2 aria-hidden />
           </Button>
-        )}
+        ) : null}
       </div>
     </div>
   );

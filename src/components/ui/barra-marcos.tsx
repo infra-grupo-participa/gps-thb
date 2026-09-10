@@ -5,11 +5,15 @@ import { cn } from "@/lib/utils";
 /**
  * Barra de progresso com MARCOS desenhados na trilha.
  *
- * Nasceu para a meta de faturamento (R$ 150.000 = "Áureo", R$ 250.000 =
- * bônus do programa), que aparece em DOIS lugares com o mesmo desenho: o hero
- * da aba Financeiro e o `MetaHonorarios` da home/Clientes. Duas cópias da
- * mesma geometria dariam duas barras diferentes para o mesmo número — foi o
- * motivo de `moeda.ts` e `datas.ts` existirem (CD1/CD2).
+ * Nasceu para a meta de faturamento (R$ 150.000 = o **AURUM**), que aparece em
+ * DOIS lugares com o mesmo desenho: o hero da aba Financeiro e o
+ * `MetaHonorarios` da home/Clientes. Duas cópias da mesma geometria dariam
+ * duas barras diferentes para o mesmo número — foi o motivo de `moeda.ts` e
+ * `datas.ts` existirem (CD1/CD2).
+ *
+ * 🔑 Aceita N marcos, mas hoje recebe **um só**: o AURUM, no fim da trilha. O
+ * segundo marco (o "bônus do programa" em R$ 250.000) saiu da interface em
+ * 09/09/2026 — duas metas empilhadas afastavam o objetivo em vez de aproximá-lo.
  *
  * 🔑 A barra só desenha porque quem chama JÁ decidiu que há dado. Ela não
  * conhece `null`: `valor` é `number`. Componente que aceitasse `null` e
@@ -27,7 +31,7 @@ import { cn } from "@/lib/utils";
 export interface Marco {
   /** Onde o marco cai na trilha, na mesma unidade de `valor`/`max`. */
   valor: number;
-  /** "Áureo", "Bônus" — a palavra que o aluno lê. */
+  /** "AURUM" — a palavra que o aluno lê. */
   rotulo: string;
   /** `true` pinta ✓ e o laranja de marca; `false` fica em cinza com bandeira. */
   atingido: boolean;
@@ -48,16 +52,16 @@ export function BarraMarcos({
   className,
 }: {
   valor: number;
-  /** Fim da trilha — o marco mais alto (bônus), não a meta. */
+  /** Fim da trilha — hoje o próprio AURUM (R$ 150.000). */
   max: number;
   marcos: Marco[];
   /** Nome acessível da barra ("Faturamento na mentoria"). */
   rotuloAcessivel: string;
   /**
-   * `aria-valuetext` da barra. Sem ele o leitor de tela anuncia
-   * "R$ 40.000 de R$ 250.000" — o fim da TRILHA, que é o bônus, e não a meta
-   * de R$ 150.000 que a tela inteira usa como referência. Quem chama sabe qual
-   * é a frase certa; a barra não inventa.
+   * `aria-valuetext` da barra. Sem ele o leitor de tela anuncia só
+   * "R$ 40.000 de R$ 150.000", sem dizer que o fim da trilha é o AURUM — a
+   * palavra que a tela inteira usa como referência. Quem chama sabe qual é a
+   * frase certa; a barra não inventa.
    */
   textoAcessivel?: string;
   className?: string;
@@ -71,9 +75,9 @@ export function BarraMarcos({
   // 360 px (as duas etiquetas se sobrepõem a partir de ~330 px de trilha).
   //
   // 🔑 Rótulo e valor em DUAS LINHAS, não lado a lado. Medido em 360 px: numa
-  // linha só, a faixa do bônus tem 128 px e "Bônus R$ 250.000" precisa de
-  // ~150 — o rótulo truncava para "Bô…". Empilhado, cada célula precisa de
-  // ~80 px e cabe até na coluna de apoio da home (~300 px).
+  // linha só, "AURUM R$ 150.000" precisa de ~150 px e o rótulo truncava.
+  // Empilhado, cada célula precisa de ~80 px e cabe até na coluna de apoio da
+  // home (~300 px).
   const posicoes = ordenados.map((m) => posicao(m.valor, max));
   const faixas = ordenados.map((m, i) => ({
     marco: m,

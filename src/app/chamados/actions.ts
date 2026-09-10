@@ -40,6 +40,7 @@ import {
   CHAMADO_TEXTO_MAXIMO,
   EXTENSAO_POR_MIME,
   ehAnexoMime,
+  nomeDeArquivoSeguro,
   type AnexoInput,
   type ResultadoAbrir,
   type ResultadoAcao,
@@ -90,26 +91,6 @@ const FRASES: Record<string, string> = {
 
 function traduzirErro(escopo: string, error: ErroDeBanco): string {
   return traduzirErroBanco(escopo, error, undefined, FRASES);
-}
-
-/**
- * Tira separador de caminho e caractere de controle do nome que o usuario
- * mandou, e corta em 120 (o CHECK da coluna recusa mais que isso).
- *
- * Sem regex de proposito: caractere de controle dentro de classe de caractere
- * e o que `no-control-regex` proibe, e o filtro explicito diz o que esta sendo
- * tirado -- `/`, `\` e todo caractere de controle.
- */
-function nomeDeArquivoSeguro(nome: string): string {
-  const limpo = Array.from(nome ?? "")
-    .filter((c) => {
-      if (c === "/" || c === "\\") return false;
-      const cod = c.charCodeAt(0);
-      return cod >= 32 && cod !== 127;
-    })
-    .join("")
-    .trim();
-  return limpo.slice(0, 120);
 }
 
 /**

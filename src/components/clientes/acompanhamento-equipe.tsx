@@ -43,6 +43,62 @@ const MOTIVO_MIN = 3;
 const MOTIVO_MAX = 300;
 
 /**
+ * O caminho de saída, num lugar só. Vai como `?assunto=` para o Suporte, que
+ * usa o valor como texto inicial do campo (prefill, nada mais — quem valida
+ * continua sendo `abrirChamado`).
+ */
+export const HREF_CHAMADO_TROCA =
+  "/chamados?assunto=Trocar%20cliente%20acompanhado";
+
+/** A frase que explica a estrela travada. Repetida em 4 telas, escrita aqui. */
+export const TEXTO_TROCA_POR_CHAMADO =
+  "Para trocar o cliente acompanhado, abra um chamado";
+
+/** O link "abra um chamado", já com o assunto preenchido. */
+export function LinkTrocaPorChamado({
+  className = "",
+}: {
+  className?: string;
+}) {
+  return (
+    <Link
+      href={HREF_CHAMADO_TROCA}
+      className={
+        "inline-flex items-center gap-1 font-medium text-accent-foreground underline underline-offset-4 " +
+        className
+      }
+    >
+      <LifeBuoy aria-hidden className="size-3.5" />
+      {TEXTO_TROCA_POR_CHAMADO}
+    </Link>
+  );
+}
+
+/**
+ * O aviso da ficha do cliente que o ALUNO escolheu e a equipe ainda não
+ * confirmou (migração ...215).
+ *
+ * Não existe botão aqui, e não é esquecimento: a partir da ...215 o banco
+ * recusa (42501) que o aluno desmarque a estrela, marque outro cliente ou
+ * apague este. A tela diz o que aconteceu e por onde se troca.
+ */
+export function AvisoEscolhaFeita() {
+  return (
+    <div className="grid gap-2 rounded-xl border border-borda-fina bg-superficie-afundada p-3.5">
+      <p className="corpo-sm">
+        <strong>Este é o cliente que a equipe acompanha.</strong> A equipe vai
+        acompanhar todo o progresso dele até a sua primeira holding. O resto da
+        ficha segue editável — telefone, registro do contato, honorários,
+        contrato assinado, perfil DISC e problemas.
+      </p>
+      <p className="corpo-sm text-muted-foreground">
+        <LinkTrocaPorChamado /> — a equipe faz a troca com você.
+      </p>
+    </div>
+  );
+}
+
+/**
  * O aviso que o aluno lê na ficha do cliente acompanhado.
  *
  * `admin` muda só a última linha: mandar a equipe "falar com a equipe pelo
@@ -67,24 +123,23 @@ export function AvisoAcompanhamento({
         Enquanto o acompanhamento estiver ativo, este cliente continua sendo o da
         equipe: a estrela não muda, ele não pode ser excluído e a fase não volta
         para Prospecção. <strong>O resto da ficha segue editável</strong> —
-        telefone, registro do contato, honorários, perfil DISC e problemas.
+        telefone, registro do contato, honorários, contrato assinado, perfil
+        DISC e problemas.
       </p>
       {admin ? (
+        // ⚠️ Depois da migração ...215 “Liberar acompanhamento” NÃO devolve ao
+        // aluno o direito de trocar a estrela: ele solta só a camada de dentro
+        // (a fase volta a poder ir para Prospecção e o cliente volta a poder
+        // ser excluído). A troca continua sendo da equipe, aqui mesmo.
         <p className="corpo-sm text-sucesso-foreground">
-          Para devolver a escolha ao aluno, use “Liberar acompanhamento” aqui
-          mesmo.
+          “Liberar acompanhamento” solta a fase e a exclusão deste cliente. A
+          troca do cliente acompanhado continua sendo da equipe — feita aqui,
+          no Modo Assistência.
         </p>
       ) : (
         <p className="corpo-sm text-sucesso-foreground">
-          Precisa trocar?{" "}
-          <Link
-            href="/chamados"
-            className="inline-flex items-center gap-1 font-medium underline underline-offset-4"
-          >
-            <LifeBuoy aria-hidden className="size-3.5" />
-            Fale com a equipe pelo Suporte
-          </Link>
-          .
+          Precisa trocar? <LinkTrocaPorChamado /> — a equipe faz a troca com
+          você.
         </p>
       )}
     </div>
@@ -92,34 +147,32 @@ export function AvisoAcompanhamento({
 }
 
 /**
- * O aviso na ficha de um cliente que NÃO é o acompanhado, quando outro do
- * ambiente já está confirmado. Existe para a estrela ausente ter explicação —
- * botão que some sem motivo é tão ruim quanto botão que falha.
+ * O aviso na ficha de um cliente que NÃO é o acompanhado, quando OUTRO do
+ * ambiente já é. Existe para a estrela ausente ter explicação — botão que some
+ * sem motivo é tão ruim quanto botão que falha.
+ *
+ * `confirmado` separa os dois estados: a equipe já assumiu, ou o aluno apenas
+ * escolheu (e a ...215 já trava a troca nos dois casos).
  */
 export function AvisoOutroConfirmado({
   nome,
   admin = false,
+  confirmado = true,
 }: {
   nome: string | null;
   admin?: boolean;
+  confirmado?: boolean;
 }) {
   return (
     <p className="corpo-sm text-muted-foreground">
-      A equipe está acompanhando{" "}
+      {confirmado ? "A equipe está acompanhando " : "O cliente acompanhado é "}
       <strong className="text-foreground">{nome || "outro cliente"}</strong>, por
       isso a estrela não pode ser movida para cá.{" "}
       {admin ? (
-        "Libere o acompanhamento na ficha daquele cliente antes de trocar."
+        "A troca é feita na ficha daquele cliente, no Modo Assistência."
       ) : (
         <>
-          Para trocar,{" "}
-          <Link
-            href="/chamados"
-            className="font-medium text-accent-foreground underline underline-offset-4"
-          >
-            fale com a equipe pelo Suporte
-          </Link>
-          .
+          <LinkTrocaPorChamado /> — a equipe faz a troca com você.
         </>
       )}
     </p>
@@ -231,8 +284,8 @@ export function AcoesAcompanhamento({
       <p className="rotulo text-accent-foreground">Equipe</p>
       <p className="corpo-sm text-muted-foreground">
         {confirmado
-          ? "A equipe assumiu o acompanhamento deste cliente. Liberar devolve ao aluno o direito de trocar a estrela."
-          : "Confirmar o acompanhamento trava a escolha do aluno neste cliente. Só faz sentido depois de combinar com ele."}
+          ? "A equipe assumiu o acompanhamento deste cliente. Liberar solta a fase e a exclusão; a troca do cliente continua sendo da equipe."
+          : "Confirmar o acompanhamento registra que a equipe assumiu este cliente. A escolha do aluno já é definitiva desde que ele marcou a estrela."}
       </p>
       <div className="flex flex-wrap gap-2">
         {confirmado ? (
@@ -271,20 +324,23 @@ export function AcoesAcompanhamento({
           consequencia={
             acao === "confirmar" ? (
               <>
-                A partir de agora o aluno{" "}
+                A partir de agora{" "}
                 <strong>
-                  deixa de poder trocar a estrela, apagar este cliente ou voltar
-                  a fase para Prospecção
+                  a fase deste cliente não volta para Prospecção e ele não pode
+                  ser excluído
                 </strong>
-                ; ele continua editando o resto da ficha. A trava é do banco —
-                vale também fora desta tela.
+                ; o aluno continua editando o resto da ficha. A troca do cliente
+                acompanhado já era da equipe desde que o aluno marcou a estrela
+                (migração ...215). A trava é do banco — vale também fora desta
+                tela.
               </>
             ) : (
               <>
-                O aluno <strong>volta a poder trocar</strong> o cliente
-                acompanhado. A <strong>estrela continua neste cliente</strong>:
-                liberar devolve a escolha, não a desfaz — desmarcar aqui travaria
-                os passos 4 a 8 da Etapa 01 de quem não pediu nada.
+                A fase deste cliente <strong>volta a poder ir para
+                Prospecção</strong> e ele volta a poder ser excluído. A{" "}
+                <strong>estrela continua neste cliente</strong> e a troca segue
+                sendo da equipe (migração ...215) — desmarcar aqui travaria os
+                passos 4 a 8 da Etapa 01 de quem não pediu nada.
               </>
             )
           }

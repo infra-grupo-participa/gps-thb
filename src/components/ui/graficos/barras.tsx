@@ -7,7 +7,7 @@ import {
   type PontoGrafico,
   type TomGrafico,
 } from "./tipos";
-import { TabelaValores } from "./tabela-valores";
+import { LegendaValores } from "./legenda-valores";
 
 const L = 320; // largura do viewBox — o SVG escala sozinho no card
 const TOPO = 18; // respiro do rótulo direto acima da coluna mais alta
@@ -27,13 +27,13 @@ const Y_ROTULO = 96;
  *   nome escrito é o canal de identidade que a cor não dá (ver `tipos.ts`).
  *   É por isso que categoria nominal aqui NUNCA vira rosca: 6 fatias quentes
  *   não se separam, 6 linhas rotuladas se leem sem esforço. Este modo não usa
- *   SVG (a razão está no corpo) e por isso ignora `mostrarTabela`: a lista JÁ
+ *   SVG (a razão está no corpo) e por isso ignora `mostrarLegenda`: a lista JÁ
  *   é a tabela de valores.
  *
  * Server Component, zero JS.
  *
  * No modo vertical, sem gradeado de propósito: a regra é "rótulo direto antes
- * de grade", e a tabela abaixo carrega **todos** os valores — grade seria
+ * de grade", e a legenda abaixo carrega **todos** os valores — grade seria
  * tinta que não é dado. Fica a linha de base, que é o zero.
  */
 export function Barras({
@@ -42,9 +42,8 @@ export function Barras({
   tom = "marca",
   orientacao = "vertical",
   formatar = String,
-  mostrarTabela = true,
-  tituloTabela,
-  colunasTabela = 1,
+  mostrarLegenda = true,
+  colunasLegenda = 1,
 }: {
   dados: PontoGrafico[];
   /** Frase com os números — vira o `aria-label` do gráfico. Obrigatória. */
@@ -52,10 +51,9 @@ export function Barras({
   tom?: TomGrafico;
   orientacao?: "vertical" | "horizontal";
   formatar?: FormatarValor;
-  mostrarTabela?: boolean;
-  tituloTabela?: string;
-  /** `2` para série longa (os 12 meses) — ver `TabelaValores`. */
-  colunasTabela?: 1 | 2;
+  mostrarLegenda?: boolean;
+  /** `2` para série longa (os 12 meses) — ver `LegendaValores`. */
+  colunasLegenda?: 1 | 2;
 }) {
   if (dados.length === 0) return null;
 
@@ -177,13 +175,12 @@ export function Barras({
           );
         })}
       </svg>
-      {mostrarTabela ? (
-        <TabelaValores
-          titulo={tituloTabela ?? resumo}
+      {mostrarLegenda ? (
+        <LegendaValores
           linhas={dados}
           formatar={formatar}
           tomPadrao={tom}
-          colunas={colunasTabela}
+          colunas={colunasLegenda}
         />
       ) : null}
     </div>

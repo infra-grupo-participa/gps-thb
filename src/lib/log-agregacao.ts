@@ -202,6 +202,14 @@ const ROTULO_MACRO_POR_TIPO: Partial<
     `A equipe assumiu o acompanhamento de ${n} clientes`,
   favorito_liberado_pela_equipe: (n) =>
     `A equipe liberou ${n} clientes acompanhados`,
+  // Contrato do cliente como ANEXO (migração ...214). Entram na agregação
+  // porque rajada existe de verdade aqui: o aluno que já tem carteira anexa
+  // vários contratos numa sentada só, e 8 linhas iguais na trilha escondem o
+  // resto do dia.
+  cliente_contrato_anexado: (n) =>
+    `Anexou o contrato assinado de ${n} clientes`,
+  cliente_contrato_removido: (n) =>
+    `Removeu o contrato assinado de ${n} clientes`,
 };
 
 // Nota sobre achado menor do `fable-orchestrator`: o `rotulo` de

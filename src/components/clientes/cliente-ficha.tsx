@@ -19,8 +19,6 @@ import {
   numeroParaMoeda,
 } from "@/lib/masks";
 import {
-  MessageCircle,
-  Star,
   Phone,
   Calendar,
   User,
@@ -40,11 +38,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DialogoDesfavoritar } from "@/components/clientes/dialogo-desfavoritar";
 import { FichaContrato } from "@/components/clientes/ficha-contrato";
-import {
-  AcoesAcompanhamento,
-  AvisoAcompanhamento,
-  AvisoOutroConfirmado,
-} from "@/components/clientes/acompanhamento-equipe";
+import { FichaCabecalho } from "@/components/clientes/ficha-cabecalho";
+import { DialogoEscolherFavorito } from "@/components/clientes/dialogo-escolher-favorito";
 import {
   fasesDisponiveis,
   travadoPelaEquipe,
@@ -65,6 +60,7 @@ export function ClienteFicha({
   alunoId,
   admin = false,
   outroConfirmadoNome = null,
+  outroFavoritoNome = null,
 }: {
   cliente: ClienteEtapa1;
   alunoId: string;
@@ -80,6 +76,13 @@ export function ClienteFicha({
    * estrela desta ficha some (o banco recusaria a troca) e o motivo é escrito.
    */
   outroConfirmadoNome?: string | null;
+  /**
+   * Nome do cliente que o ALUNO já escolheu no ambiente, quando não é este e a
+   * equipe ainda não confirmou. Desde a migração ...215 a escolha basta para o
+   * banco recusar a troca (42501), então a estrela também some daqui — com a
+   * razão escrita. `null` = não há outro escolhido.
+   */
+  outroFavoritoNome?: string | null;
 }) {
   const router = useRouter();
   const [nome, setNome] = useState(cliente.nome ?? "");
@@ -110,6 +113,8 @@ export function ClienteFicha({
    * reversível e não tranca nada.
    */
   const [desfavoritando, setDesfavoritando] = useState(false);
+  /** Diálogo de ESCOLHA do cliente acompanhado (aluno, migração ...215). */
+  const [escolhendo, setEscolhendo] = useState(false);
   const [erroDialogo, setErroDialogo] = useState<string | null>(null);
   /**
    * Falha da estrela FORA do diálogo (o caminho de ligar, que é um clique só).
@@ -139,11 +144,23 @@ export function ClienteFicha({
   /** As fases que o banco ainda aceita para este cliente (§B.5). */
   const fasesDaFicha = fasesDisponiveis(cliente);
   /**
-   * A estrela só aparece quando ela pode funcionar: sem confirmado no ambiente,
-   * ou quando o confirmado é este mesmo cliente (aí ela vira leitura). Com
-   * outro cliente confirmado, o botão só teria um destino — falhar com 42501.
+   * 🔴 Migração ...215 — a escolha do aluno é DEFINITIVA. Este cliente já é a
+   * estrela e quem lê não é a equipe? Então não há botão nenhum: nem para
+   * desmarcar (o banco recusa) nem para trocar. A estrela vira sinal.
+   *
+   * A leitura é do dado do SERVIDOR (`cliente.acompanhado_equipe`), nunca do
+   * `acompanhado` otimista: com o otimista, o botão sumiria no clique, antes de
+   * o banco confirmar, e a falha deixaria a ficha sem caminho de volta.
    */
-  const mostraEstrela = !confirmado && outroConfirmadoNome == null;
+  const escolhidoPeloAluno = !admin && cliente.acompanhado_equipe && !confirmado;
+  /** Outro cliente do ambiente já é a estrela (confirmado ou só escolhido). */
+  const outroNome = outroConfirmadoNome ?? outroFavoritoNome;
+  /**
+   * A estrela só aparece quando ela pode funcionar: sem estrela no ambiente, e
+   * sem a trava da escolha já feita. Nos demais casos o botão só teria um
+   * destino — falhar com 42501.
+   */
+  const mostraEstrela = !confirmado && !escolhidoPeloAluno && outroNome == null;
 
   /**
    * Há edição pendente na tela?
@@ -186,10 +203,21 @@ export function ClienteFicha({
       contratoLimpo.length < 12 ||
       contratoLimpo.length > 2000);
 
+  /**
+   * 🔴 Para o ALUNO, marcar a estrela é escolha única (migração ...215):
+   * pergunta antes, com a consequência escrita. Desmarcar nem chega aqui —
+   * `mostraEstrela` já não desenha o botão. Para a EQUIPE nada mudou.
+   */
   function toggleEquipe() {
     if (acompanhado) {
+      if (!admin) return;
       setErroDialogo(null);
       setDesfavoritando(true);
+      return;
+    }
+    if (!admin) {
+      setErroDialogo(null);
+      setEscolhendo(true);
       return;
     }
     aplicarEquipe(true);
@@ -211,6 +239,7 @@ export function ClienteFicha({
         return;
       }
       setDesfavoritando(false);
+      setEscolhendo(false);
     });
   }
 
@@ -264,93 +293,23 @@ export function ClienteFicha({
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-center gap-2">
-        {/* A fase sobe para o topo, como CHIP: o verde que existia era uma
-            caixa de 300 px em volta do formulário do contrato — cor de estado
-            aplicada à moldura, não ao estado. Agora o token semântico da fase
-            (`FASES_CLIENTE.cor`, contraste medido) diz onde o cliente está,
-            e a caixa colorida some. */}
-        {faseAtual ? (
-          <span
-            className={
-              "inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold " +
-              faseAtual.cor
-            }
-            title={faseAtual.ajuda}
-          >
-            {faseAtual.rotulo}
-          </span>
-        ) : null}
-        {mostraEstrela ? (
-          <Button
-            type="button"
-            variant={acompanhado ? "default" : "outline"}
-            size="sm"
-            onClick={toggleEquipe}
-            disabled={pending}
-          >
-            <Star className={"size-4 " + (acompanhado ? "fill-current" : "")} />
-            {acompanhado
-              ? "Cliente acompanhado pela equipe"
-              : "Marcar como cliente da equipe"}
-          </Button>
-        ) : confirmado ? (
-          // Somente leitura: a estrela vira SINAL, não botão. A explicação e o
-          // caminho de saída ficam no aviso logo abaixo do cabeçalho.
-          <span
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-sucesso-foreground/25 bg-sucesso px-3 text-xs font-semibold text-sucesso-foreground"
-            title="Só a equipe troca o cliente acompanhado."
-          >
-            <Star className="size-4 fill-current" aria-hidden />
-            Cliente acompanhado pela equipe
-          </span>
-        ) : null}
-        {wpp ? (
-          <a
-            href={wpp}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="foco-visivel inline-flex items-center gap-1.5 rounded-md border border-sucesso-foreground/25 bg-sucesso px-3 py-1.5 text-sm font-medium text-sucesso-foreground transition hover:brightness-97"
-          >
-            <MessageCircle className="size-4" /> WhatsApp
-          </a>
-        ) : null}
-      </div>
-
-      {/* ── Acompanhamento pela equipe (§B.5 / migração ...203) ──────────────
-          Ordem proposital: primeiro o que o ALUNO precisa saber (por que a
-          estrela não se move), depois a porta da EQUIPE. Nada disto é
-          formulário — a confirmação não passa por "Salvar ficha". */}
-      {confirmado ? (
-        <AvisoAcompanhamento
-          confirmadoEm={cliente.acompanhamento_confirmado_em as string}
-          admin={admin}
-        />
-      ) : outroConfirmadoNome != null ? (
-        <AvisoOutroConfirmado nome={outroConfirmadoNome} admin={admin} />
-      ) : null}
-
-      {/* Sempre montado, mesmo vazio: região viva que nasce junto com o texto
-          não é anunciada por parte dos leitores de tela. */}
-      <p role="alert" className="corpo-sm text-destructive empty:hidden">
-        {erroEstrela}
-      </p>
-
-      {/* Só a equipe confirma/libera — e só quando este cliente É a estrela.
-          Confirmar um que não é a estrela criaria um terceiro estado que
-          nenhuma tela sabe mostrar (a RPC recusa, item 7 dos desvios).
-          🔑 A condição lê `cliente.acompanhado_equipe` (dado do SERVIDOR), não
-          o `acompanhado` otimista da tela: com o otimista, marcar a estrela
-          faria o botão "Confirmar" aparecer antes de o banco ter a estrela, e
-          o clique rápido cairia na recusa da RPC. Aqui ele aparece quando o
-          dado volta — `definirClienteEquipe` já revalida esta rota. */}
-      {admin && (cliente.acompanhado_equipe || confirmado) ? (
-        <AcoesAcompanhamento
-          cliente={cliente}
-          alunoId={alunoId}
-          aoMudar={() => router.refresh()}
-        />
-      ) : null}
+      <FichaCabecalho
+        cliente={cliente}
+        alunoId={alunoId}
+        admin={admin}
+        fase={faseAtual}
+        wpp={wpp}
+        acompanhado={acompanhado}
+        confirmado={confirmado}
+        escolhidoPeloAluno={escolhidoPeloAluno}
+        mostraEstrela={mostraEstrela}
+        outroNome={outroNome}
+        outroConfirmado={outroConfirmadoNome != null}
+        erroEstrela={erroEstrela}
+        pending={pending}
+        onToggleEquipe={toggleEquipe}
+        aoMudarAcompanhamento={() => router.refresh()}
+      />
 
       {/* TRÊS SEÇÕES, não três caixas aninhadas.
           A ficha era um formulário de 1.000 px dentro de um card só, com
@@ -528,7 +487,21 @@ export function ClienteFicha({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="f-data">Data da reunião preliminar</Label>
-              <div className="relative">
+              {/* 🔴 `flex h-8 items-center` NÃO é decoração — é a correção do
+                  "ícone quebrado, caindo para baixo".
+                  Duas coisas somadas: (a) a coluna do lado ("Fase") tem texto
+                  de ajuda, então a linha do grid ESTICA e o `div.relative`
+                  ficava com 44,3 px em vez dos 32 do campo; (b) o
+                  `input[type=date]` do Chrome é inline-block e assenta na
+                  BASELINE, o que sozinho já deixava o wrapper mais alto que o
+                  campo. Como o ícone é `absolute top-1/2`, ele se centralizava
+                  na caixa esticada e saía **6,1 px abaixo** do centro do campo,
+                  encostando na borda de baixo (medido no Chromium em 1366 e
+                  390; depois da correção o desvio é 0,0).
+                  `h-8` trava a altura na do `Input` e o `flex` elimina a caixa
+                  de linha. Os campos de texto (nome, telefone) não sofrem disso
+                  — por isso a correção é aqui, e não em `ui/input.tsx`. */}
+              <div className="relative flex h-8 items-center">
                 <Calendar className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="f-data"
@@ -591,6 +564,26 @@ export function ClienteFicha({
           contratoInvalido={contratoInvalido}
           faseRotulo={faseAtual?.rotulo}
           metaFormatada={brlMeta}
+          clienteId={cliente.id}
+          // Vem do SERVIDOR, sempre: a escrita do anexo é por RPC e não passa
+          // pelo "Salvar ficha" — manter um espelho local só criaria duas
+          // verdades sobre o mesmo arquivo.
+          contratoAnexo={
+            cliente.contrato_path
+              ? {
+                  nome: cliente.contrato_nome,
+                  mime: cliente.contrato_mime,
+                  tamanho: cliente.contrato_tamanho,
+                  anexadoEm: cliente.contrato_anexado_em,
+                }
+              : null
+          }
+          // 🔴 Só o aluno anexa: `gps.pode_anexar_onboarding` exige que o
+          // ambiente do prefixo seja o de quem chama, e o admin não tem
+          // ambiente. A equipe baixa e remove.
+          podeAnexar={!admin}
+          anexoDesabilitado={pending}
+          aoMudarAnexo={() => router.refresh()}
         />
 
         <Secao icone={<NotebookPen />} titulo="Registro e perfil" nivel="h3" classeConteudo="grid gap-5">
@@ -660,6 +653,21 @@ export function ClienteFicha({
           onConfirmar={() => aplicarEquipe(false)}
           onCancelar={() => {
             setDesfavoritando(false);
+            setErroDialogo(null);
+          }}
+        />
+      ) : null}
+
+      {/* 🔴 Escolha ÚNICA do aluno (migração ...215). Mesmo cuidado do irmão
+          acima: o botão da estrela fica montado, para o foco voltar a ele. */}
+      {escolhendo ? (
+        <DialogoEscolherFavorito
+          cliente={{ ...cliente, nome: nome.trim() || cliente.nome }}
+          pending={pending}
+          erro={erroDialogo}
+          onConfirmar={() => aplicarEquipe(true)}
+          onCancelar={() => {
+            setEscolhendo(false);
             setErroDialogo(null);
           }}
         />

@@ -6,7 +6,7 @@ import {
   type PontoGrafico,
   type TomGrafico,
 } from "./tipos";
-import { TabelaValores } from "./tabela-valores";
+import { LegendaValores } from "./legenda-valores";
 
 const L = 320;
 const TOPO = 6;
@@ -28,24 +28,21 @@ export interface SerieLinha {
  * 5). Uma terceira linha exigiria cor nova, que é token fora do `globals.css`.
  * Precisa de mais séries? São dois gráficos, nunca duas escalas no mesmo.
  *
- * 🔑 A tabela aqui é de RESUMO, não ponto a ponto: 30 dias × 2 séries são 60
+ * 🔑 A legenda aqui é de RESUMO, não ponto a ponto: 30 dias × 2 séries são 60
  * números, e sessenta números não são uma leitura — são um despejo. Cada série
- * vira uma linha com total, média e pico (com o dia do pico), que é o que
- * alguém responde olhando um termômetro. O `<title>` da ponta e do pico dá a
- * inspeção pontual que um Server Component sem JavaScript ainda pode dar.
+ * vira UMA linha: nome, total do período e a fatia dele. O `<title>` de cada
+ * série dá a inspeção que um Server Component sem JavaScript ainda pode dar.
  */
 export function Linha({
   series,
   resumo,
   formatar = String,
-  mostrarTabela = true,
-  tituloTabela,
+  mostrarLegenda = true,
 }: {
   series: SerieLinha[];
   resumo: string;
   formatar?: FormatarValor;
-  mostrarTabela?: boolean;
-  tituloTabela?: string;
+  mostrarLegenda?: boolean;
 }) {
   const pontos = series.flatMap((s) => s.pontos.map((p) => p.valor));
   if (pontos.length === 0) return null;
@@ -57,20 +54,12 @@ export function Linha({
   const primeiro = series[0].pontos[0]?.rotulo ?? "";
   const ultimo = series[0].pontos[series[0].pontos.length - 1]?.rotulo ?? "";
 
-  const resumoDaSerie: PontoGrafico[] = series.map((s) => {
-    const total = s.pontos.reduce((a, p) => a + p.valor, 0);
-    const pico = s.pontos.reduce(
-      (a, p) => (p.valor > a.valor ? p : a),
-      s.pontos[0] ?? { rotulo: "—", valor: 0 },
-    );
-    const media = s.pontos.length ? total / s.pontos.length : 0;
-    return {
-      rotulo: s.rotulo,
-      valor: total,
-      tom: s.tom,
-      hint: `média ${media.toFixed(1).replace(".", ",")} por dia · pico ${formatar(pico.valor)} em ${pico.rotulo}`,
-    };
-  });
+  const resumoDaSerie: PontoGrafico[] = series.map((s) => ({
+    rotulo: s.rotulo,
+    valor: s.pontos.reduce((a, p) => a + p.valor, 0),
+    tom: s.tom,
+  }));
+  const totalDoPeriodo = resumoDaSerie.reduce((a, s) => a + s.valor, 0);
 
   return (
     <div className="grid gap-3">
@@ -136,11 +125,11 @@ export function Linha({
           {ultimo}
         </text>
       </svg>
-      {mostrarTabela ? (
-        <TabelaValores
-          titulo={tituloTabela ?? resumo}
+      {mostrarLegenda ? (
+        <LegendaValores
           linhas={resumoDaSerie}
           formatar={formatar}
+          total={totalDoPeriodo || undefined}
         />
       ) : null}
     </div>

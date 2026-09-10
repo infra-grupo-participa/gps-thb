@@ -6,7 +6,7 @@ import {
   type FormatarValor,
   type PontoGrafico,
 } from "./tipos";
-import { TabelaValores } from "./tabela-valores";
+import { LegendaValores } from "./legenda-valores";
 
 const L = 320;
 const ALTURA_ETAPA = 20; // ≤ 24, a espessura de marca da casa
@@ -28,17 +28,12 @@ export function Funil({
   etapas,
   resumo,
   formatar = String,
-  mostrarTabela = true,
-  tituloTabela,
-  mostrarConversao = true,
+  mostrarLegenda = true,
 }: {
   etapas: (PontoGrafico & { tom: NonNullable<PontoGrafico["tom"]> })[];
   resumo: string;
   formatar?: FormatarValor;
-  mostrarTabela?: boolean;
-  tituloTabela?: string;
-  /** Acrescenta "x% da etapa anterior" na tabela. Conta, não estimativa. */
-  mostrarConversao?: boolean;
+  mostrarLegenda?: boolean;
 }) {
   if (etapas.length === 0) return null;
   const larguraDe = escala(
@@ -47,13 +42,15 @@ export function Funil({
   );
   const altura = etapas.length * ALTURA_ETAPA + (etapas.length - 1) * ESPACO;
 
+  // A conversão vira a coluna de % da legenda — número, não frase (pedido de
+  // 10/09). A PRIMEIRA etapa fica sem `pct`: "100% de si mesma" é tinta que
+  // não é dado.
   const linhas: PontoGrafico[] = etapas.map((e, i) => {
-    const anterior = i > 0 ? etapas[i - 1].valor : null;
-    const conversao =
-      mostrarConversao && anterior && anterior > 0
-        ? `${((e.valor / anterior) * 100).toFixed(1).replace(".", ",")}% de ${etapas[i - 1].rotulo.toLowerCase()}`
-        : undefined;
-    return { ...e, hint: conversao };
+    const anterior = i > 0 ? etapas[i - 1].valor : 0;
+    return {
+      ...e,
+      pct: i > 0 && anterior > 0 ? Math.round((e.valor / anterior) * 100) : null,
+    };
   });
 
   return (
@@ -102,12 +99,8 @@ export function Funil({
           );
         })}
       </svg>
-      {mostrarTabela ? (
-        <TabelaValores
-          titulo={tituloTabela ?? resumo}
-          linhas={linhas}
-          formatar={formatar}
-        />
+      {mostrarLegenda ? (
+        <LegendaValores linhas={linhas} formatar={formatar} />
       ) : null}
     </div>
   );

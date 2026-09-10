@@ -1,8 +1,18 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getContextoSessao } from "@/lib/auth";
 import { traduzirErroBanco } from "@/lib/erros";
+import { logErro } from "@/lib/log";
+import {
+  ANEXO_PATH_REGEX,
+  ANEXO_TAMANHO_MAXIMO,
+  EXTENSAO_POR_MIME,
+  ehAnexoMime,
+  nomeDeArquivoSeguro,
+} from "@/lib/chamados-tipos";
 import { GRAUS_RELACAO } from "@/lib/types";
 import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
 
@@ -86,6 +96,15 @@ const CHAVES_PATCH_CLIENTE: ReadonlySet<string> = new Set([
  * (`gps.admin_confirmar_acompanhamento`/`_liberar_`). A trigger
  * `trg_etapa1_clientes_acompanhamento_travado` recusa a escrita de quem não é
  * admin mesmo pelo PostgREST — a trava é do banco, esta lista é conveniência.
+ *
+ * ⚠️ As 5 colunas de `contrato_*` (migração ...214) também ficam de fora, pelo
+ * mesmo motivo: a escrita é só por `gps.cliente_definir_contrato` /
+ * `gps.cliente_remover_contrato`, que conferem o objeto REAL no bucket. Sem
+ * essa passagem obrigatória, `contrato_path` seria um campo de texto livre —
+ * "contrato anexado" sem arquivo nenhum do outro lado. A trigger
+ * `trg_etapa1_clientes_contrato_travado` é quem garante; esta lista é
+ * conveniência. `contrato_url` (o link do Drive, LEGADO) continua na lista:
+ * ele nunca prometeu ser prova de nada.
  */
 
 function filtrarPatch(patch: PatchCliente): PatchCliente {
@@ -182,7 +201,23 @@ function revalidar(alunoId: string) {
   revalidatePath(`/admin/aluno/${alunoId}`, "layout");
 }
 
-export async function criarCliente(alunoId: string) {
+/**
+ * Cria o cliente. `inicial` (opcional) é o que o diálogo "Novo cliente" pede:
+ * fase e grau de relação — validados aqui contra os catálogos (a allowlist do
+ * `PatchCliente` vale para atualizar; criar tem a própria). Sem `inicial`
+ * nasce em prospecção, sem vínculo, como sempre.
+ */
+export async function criarCliente(
+  alunoId: string,
+  inicial?: { fase?: FaseCliente; grau_relacao?: string | null },
+) {
+  const fasesValidas: readonly string[] = ["prospeccao", "fechamento", "contratado"];
+  const fase = inicial?.fase ?? "prospeccao";
+  if (!fasesValidas.includes(fase)) return { erro: "Fase inválida." };
+  const grau = inicial?.grau_relacao ? String(inicial.grau_relacao) : null;
+  if (grau !== null && !(GRAUS_RELACAO as readonly string[]).includes(grau)) {
+    return { erro: "Escolha um grau de relação da lista." };
+  }
   const supabase = await createClient();
 
   const { data: ultimos } = await supabase
@@ -198,7 +233,7 @@ export async function criarCliente(alunoId: string) {
   const { data, error } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
-    .insert({ aluno_id: alunoId, ordem: proximaOrdem })
+    .insert({ aluno_id: alunoId, ordem: proximaOrdem, fase, grau_relacao: grau })
     .select("id")
     .single();
 
@@ -253,18 +288,23 @@ export async function mudarFaseCliente(
 /**
  * Define (ou remove) o cliente acompanhado pela equipe — no máximo um por aluno.
  *
- * 🔴 TRAVA DO FAVORITO (migração 20260910000203): quando o favorito atual está
- * CONFIRMADO pela equipe (`acompanhamento_confirmado_em` preenchido), o
- * `update ... acompanhado_equipe = false` abaixo bate na trigger e volta 42501
- * — e a ação inteira falha, que é o comportamento CERTO. O que esta função
- * garante é que a frase chegue em português (`traduzirErroBanco` + as 4
- * entradas em `FRASES_DO_BANCO`), e não um "Sem permissão" cru.
+ * 🔴 A ESCOLHA É UMA SÓ (migração 20260910000215, pedido do João): a PRIMEIRA
+ * marcação é livre; depois dela, o ALUNO não desmarca mais. Como esta função
+ * desmarca TODOS antes de marcar um (o índice único parcial
+ * `etapa1_clientes_unico_equipe` obriga), com favorito existente o primeiro
+ * `update` abaixo bate na trigger e volta 42501 — e a ação inteira falha, que
+ * é o comportamento PEDIDO. O que esta função garante é que a frase chegue em
+ * português ("Para trocar o cliente que a equipe acompanha, abra um chamado no
+ * Suporte."), e não um "Sem permissão" cru.
  *
- * A UI **não deve oferecer** a estrela nos outros cards enquanto houver
- * confirmado — botão que sempre falha é pior do que botão ausente. Isso é
- * tarefa do frontend; aqui é a rede de segurança.
+ * A UI **não deve oferecer** a estrela nos outros cards nem o "desmarcar" no
+ * card marcado enquanto houver favorito — botão que sempre falha é pior do que
+ * botão ausente. Isso é tarefa do frontend; aqui é a rede de segurança.
  *
- * O admin passa pela trava (é ele quem confirma e libera).
+ * 🔑 O ADMIN passa pela trava: é por esta MESMA função, em Modo Assistência,
+ * que a equipe troca o cliente acompanhado quando o aluno pede pelo Suporte.
+ * (A ...203 continua valendo por dentro: `acompanhamento_confirmado_em` é a
+ * confirmação formal da equipe e trava também a volta de fase.)
  */
 export async function definirClienteEquipe(
   clienteId: string,
@@ -295,10 +335,12 @@ export async function definirClienteEquipe(
 }
 
 /**
- * 🔴 Cliente CONFIRMADO pela equipe não é excluído: a trigger
- * `trg_etapa1_clientes_acompanhamento_travado` recusa o DELETE com 42501, e a
- * frase traduzida diz por quê e o que fazer ("fale com a equipe pelo Suporte").
- * A confirmação nomeada da UI continua valendo para todos os outros.
+ * 🔴 O cliente MARCADO como acompanhado não é excluído pelo aluno (migração
+ * ...215): apagar a linha marcada é trocar de cliente por outro caminho. A
+ * trigger `trg_etapa1_clientes_acompanhamento_travado` recusa o DELETE com
+ * 42501 e a frase diz o que fazer ("abra um chamado no Suporte"). O mesmo vale
+ * para o cliente CONFIRMADO pela equipe, mesmo sem a estrela (...203). A
+ * confirmação nomeada da UI continua valendo para todos os outros.
  */
 export async function removerCliente(clienteId: string, alunoId: string) {
   const supabase = await createClient();
@@ -389,4 +431,285 @@ export async function salvarDataAgendamento(
   if (error) return { erro: traduzirErroBanco("salvarDataAgendamento", error) };
   revalidar(alunoId);
   return {};
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Contrato do cliente — ANEXO, não link (migração 20260910000214)
+// ═════════════════════════════════════════════════════════════════════════
+/**
+ * 🔴 Nada aqui é a fronteira de segurança. A fronteira são, nesta ordem:
+ *   1. o BUCKET `gps-onboarding` (privado, 5 MB, 4 MIMEs) — recusa por
+ *      tamanho e tipo em qualquer caminho de upload;
+ *   2. as POLICIES `gps_onboarding_anexo_insert`/`_select` em
+ *      `storage.objects` — decidem por CAMINHO, com a SESSÃO de quem pede;
+ *   3. as RPCs `gps.cliente_definir_contrato`/`gps.cliente_remover_contrato`
+ *      (`SECURITY DEFINER`) — conferem posse, existência do objeto e
+ *      MIME/tamanho REAIS em `storage.objects.metadata`;
+ *   4. a trigger `trg_etapa1_clientes_contrato_travado` — recusa (42501)
+ *      qualquer escrita das 5 colunas fora dessas RPCs.
+ * As validações daqui existem para o erro chegar em PORTUGUÊS e para não
+ * gastar ida ao banco com entrada obviamente inválida.
+ *
+ * 🔑 NUNCA `service_role`: upload e download usam a sessão do usuário.
+ *
+ * ⚠️ O BUCKET É O MESMO do questionário inicial, de propósito (...214): as
+ * policies, o teto e a allowlist são idênticos, e um bucket a mais seria um
+ * lugar a mais para eles divergirem. O bucket passou a significar "anexos do
+ * ambiente".
+ */
+const BUCKET_ANEXOS = "gps-onboarding";
+
+/**
+ * A ficha do cliente, lida COM A SESSÃO de quem chama — a RLS de
+ * `gps.etapa1_clientes` só devolve linha para o dono do ambiente
+ * (`gps.aluno_atual()`) ou para o admin. Não há aqui nenhuma comparação com
+ * `alunoId` vindo do cliente: o parâmetro é o id do CLIENTE e o ambiente sai
+ * da linha.
+ *
+ * Uma frase só para "não existe" e "não é seu": distinguir transformaria a
+ * action num oráculo sobre ficha alheia.
+ */
+async function fichaDoCliente(clienteId: string): Promise<
+  | {
+      ok: true;
+      alunoId: string;
+      contratoPath: string | null;
+      contratoNome: string | null;
+    }
+  | { ok: false; erro: string }
+> {
+  if (!clienteId) return { ok: false, erro: "Cliente não informado." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .from("etapa1_clientes")
+    .select("id, aluno_id, contrato_path, contrato_nome")
+    .eq("id", clienteId)
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, erro: traduzirErroBanco("fichaDoCliente", error) };
+  }
+  if (!data) return { ok: false, erro: "Cliente não encontrado." };
+  return {
+    ok: true,
+    alunoId: data.aluno_id as string,
+    contratoPath: (data.contrato_path as string | null) ?? null,
+    contratoNome: (data.contrato_nome as string | null) ?? null,
+  };
+}
+
+/**
+ * URL assinada de UPLOAD, emitida com a sessão do aluno. Molde literal de
+ * `criarUploadAssinadoOnboarding` (`src/app/onboarding/actions.ts`).
+ *
+ * O caminho é montado NO SERVIDOR — `<aluno_id do AMBIENTE>/<uuid>.<ext>`, com
+ * a extensão derivada do MIME e **não** do nome do arquivo
+ * (`contrato.pdf.html` com `type=image/png` vira `<uuid>.png`). O usuário
+ * nunca escolhe onde grava.
+ *
+ * 🔴 O ADMIN NÃO ANEXA. `gps.pode_anexar_onboarding` exige
+ * `gps.aluno_atual() = prefixo`, e o admin não tem ambiente: a URL assinada
+ * nasceria e o PUT morreria com 403 depois de a pessoa já ter escolhido o
+ * arquivo. Recusar aqui, com frase, é melhor do que falhar lá. A equipe BAIXA
+ * e REMOVE; anexar é do aluno — a mesma regra do chamado.
+ */
+export async function criarUploadAssinadoContratoCliente(input: {
+  clienteId: string;
+  nome: string;
+  mime: string;
+  tamanho: number;
+}): Promise<
+  | { ok: true; path: string; token: string; nome: string }
+  | { ok: false; erro: string }
+> {
+  const ctx = await getContextoSessao();
+  if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
+    return {
+      ok: false,
+      erro: "Só o aluno anexa o contrato do cliente pelo portal.",
+    };
+  }
+
+  if (!ehAnexoMime(input.mime)) {
+    return {
+      ok: false,
+      erro: "Formato não aceito. Envie PNG, JPG, WEBP ou PDF.",
+    };
+  }
+  if (
+    !Number.isInteger(input.tamanho) ||
+    input.tamanho < 1 ||
+    input.tamanho > ANEXO_TAMANHO_MAXIMO
+  ) {
+    return { ok: false, erro: "Arquivo maior que 5 MB." };
+  }
+  const nome = nomeDeArquivoSeguro(input.nome);
+  if (!nome) return { ok: false, erro: "Nome de arquivo inválido." };
+
+  const ficha = await fichaDoCliente(input.clienteId);
+  if (!ficha.ok) return { ok: false, erro: ficha.erro };
+
+  // O prefixo é o ambiente DO CLIENTE. Para o aluno é o mesmo `ctx.alunoId`
+  // (a RLS não devolveria ficha de outro ambiente); a igualdade fica explícita
+  // porque é ela que a policy do bucket confere depois.
+  if (ficha.alunoId !== ctx.alunoId) {
+    return { ok: false, erro: "Cliente não encontrado." };
+  }
+
+  const path = `${ficha.alunoId}/${randomUUID()}.${EXTENSAO_POR_MIME[input.mime]}`;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from(BUCKET_ANEXOS)
+    .createSignedUploadUrl(path);
+
+  if (error || !data?.token) {
+    logErro(
+      "criarUploadAssinadoContratoCliente",
+      error ?? "createSignedUploadUrl sem token",
+      { clienteId: input.clienteId },
+    );
+    return {
+      ok: false,
+      erro: "Não foi possível preparar o envio do arquivo. Recarregue a página e tente de novo.",
+    };
+  }
+
+  return { ok: true, path, token: data.token, nome };
+}
+
+/**
+ * Grava o contrato na ficha DEPOIS de o arquivo subir. Quem confere que o
+ * objeto existe e qual é o MIME/tamanho REAL é a RPC, lendo
+ * `storage.objects.metadata` — o que chega daqui é declaração, nunca fonte.
+ *
+ * Anexar de novo SUBSTITUI. ⚠️ O byte antigo fica no bucket até o expurgo do
+ * admin (a policy de delete de `storage.objects` é só de admin e o GPS não usa
+ * `service_role`): a tela precisa dizer isso — fingir que o arquivo sumiu
+ * seria mentira.
+ */
+export async function registrarContratoCliente(input: {
+  clienteId: string;
+  path: string;
+  nome: string;
+  mime: string;
+  tamanho: number;
+}): Promise<{ erro?: string }> {
+  if (!ANEXO_PATH_REGEX.test(input.path ?? "")) {
+    return { erro: "Não foi possível anexar o arquivo. Tente enviar de novo." };
+  }
+  if (!ehAnexoMime(input.mime)) {
+    return { erro: "Formato não aceito. Envie PNG, JPG, WEBP ou PDF." };
+  }
+  if (
+    !Number.isInteger(input.tamanho) ||
+    input.tamanho < 1 ||
+    input.tamanho > ANEXO_TAMANHO_MAXIMO
+  ) {
+    return { erro: "Arquivo maior que 5 MB." };
+  }
+  const nome = nomeDeArquivoSeguro(input.nome);
+  if (!nome) return { erro: "Nome de arquivo inválido." };
+
+  const ficha = await fichaDoCliente(input.clienteId);
+  if (!ficha.ok) return { erro: ficha.erro };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .schema("gps")
+    .rpc("cliente_definir_contrato", {
+      p_cliente_id: input.clienteId,
+      p_path: input.path,
+      p_nome: nome,
+      p_mime: input.mime,
+      p_tamanho: input.tamanho,
+    });
+
+  if (error) {
+    return {
+      erro: traduzirErroBanco("registrarContratoCliente", error, {
+        clienteId: input.clienteId,
+      }),
+    };
+  }
+
+  revalidar(ficha.alunoId);
+  return {};
+}
+
+/**
+ * Tira o contrato da FICHA. O ARQUIVO continua no bucket até o expurgo do
+ * admin — a mesma verdade do anexo do questionário.
+ *
+ * Dono do ambiente OU admin (quem decide é a RPC). A trava do favorito NÃO
+ * bloqueia: contrato é ficha, não vínculo.
+ */
+export async function removerContratoCliente(
+  clienteId: string,
+): Promise<{ erro?: string }> {
+  const ficha = await fichaDoCliente(clienteId);
+  if (!ficha.ok) return { erro: ficha.erro };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .schema("gps")
+    .rpc("cliente_remover_contrato", { p_cliente_id: clienteId });
+
+  if (error) {
+    return {
+      erro: traduzirErroBanco("removerContratoCliente", error, { clienteId }),
+    };
+  }
+
+  revalidar(ficha.alunoId);
+  return {};
+}
+
+/**
+ * URL assinada de LEITURA, emitida NO CLIQUE e válida por 60 segundos.
+ *
+ * 🔴 `download` SEMPRE. O MIME de um objeto de storage vem do que o cliente
+ * declarou no PUT, não de inspeção de bytes: servir inline é o que
+ * transformaria um "PNG" em HTML executando no domínio do Supabase. Molde de
+ * `src/app/onboarding/anexo-actions.ts`.
+ *
+ * Não assinar durante o render também é regra: a URL vive 60 segundos
+ * (nasceria morta numa tela aberta há mais tempo) e imprimiria um PORTADOR no
+ * HTML de toda ficha, inclusive as que ninguém vai abrir.
+ *
+ * Quem autoriza é a policy `gps_onboarding_anexo_select`, com a sessão de quem
+ * pede: admin ou membro do ambiente que é PREFIXO do caminho.
+ */
+export async function urlDeDownloadDoContratoCliente(
+  clienteId: string,
+): Promise<{ ok: true; url: string } | { ok: false; erro: string }> {
+  const ficha = await fichaDoCliente(clienteId);
+  if (!ficha.ok) return { ok: false, erro: ficha.erro };
+  if (!ficha.contratoPath) {
+    return { ok: false, erro: "Este cliente não tem contrato anexado." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from(BUCKET_ANEXOS)
+    .createSignedUrl(ficha.contratoPath, 60, {
+      download: ficha.contratoNome ?? "contrato",
+    });
+
+  if (error || !data?.signedUrl) {
+    // Uma frase só para todos os casos (não existe / não é seu / bucket fora
+    // do ar): o motivo real fica no log do servidor. Este arquivo é documento
+    // de um TERCEIRO.
+    logErro(
+      "urlDeDownloadDoContratoCliente",
+      error ?? "createSignedUrl sem url",
+      { clienteId },
+    );
+    return {
+      ok: false,
+      erro: "Não foi possível abrir este arquivo agora. Atualize a página e tente de novo.",
+    };
+  }
+  return { ok: true, url: data.signedUrl };
 }

@@ -34,19 +34,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Estrela, GrauChip, MarcaRecusou, WhatsappLink } from "./clientes-chips";
 import {
-  EstrelaTravada,
-  GrauChip,
-  MarcaRecusou,
-  StarButton,
-  WhatsappLink,
-} from "./clientes-chips";
-import { fasesDisponiveis, travadoPelaEquipe } from "./ordenacao";
+  fasesDisponiveis,
+  modoEstrela,
+  podeExcluirCliente,
+  type CtxEstrela,
+} from "./ordenacao";
 
 export function ClientesTabela({
   listaOrdenada,
   fichaHref,
-  existeConfirmado,
+  ctxEstrela,
   pending,
   mudarFase,
   toggleEquipe,
@@ -57,11 +56,11 @@ export function ClientesTabela({
   listaOrdenada: ClienteEtapa1[];
   fichaHref: (id: string) => string;
   /**
-   * Há um cliente confirmado pela equipe neste ambiente? Com `true`, a estrela
-   * some de TODAS as outras linhas: a Server Action falharia com 42501 do
-   * banco, e botão que só sabe falhar é pior do que botão ausente.
+   * Já há estrela no ambiente? Com favorito (e o leitor sendo o ALUNO), a
+   * estrela some de TODAS as outras linhas: a Server Action falharia com 42501
+   * do banco, e botão que só sabe falhar é pior do que botão ausente.
    */
-  existeConfirmado: boolean;
+  ctxEstrela: CtxEstrela;
   pending: boolean;
   mudarFase: (c: ClienteEtapa1, nova: FaseCliente) => void;
   toggleEquipe: (c: ClienteEtapa1) => void;
@@ -90,7 +89,7 @@ export function ClientesTabela({
       <TableBody>
         {listaOrdenada.map((c) => {
           const wpp = linkWhatsapp(c.telefone);
-          const travado = travadoPelaEquipe(c);
+          const modo = modoEstrela(c, ctxEstrela);
           return (
             <TableRow
               key={c.id}
@@ -101,14 +100,7 @@ export function ClientesTabela({
               }
             >
               <TableCell>
-                {travado ? (
-                  <EstrelaTravada desde={c.acompanhamento_confirmado_em} />
-                ) : existeConfirmado ? null : (
-                  <StarButton
-                    ativo={c.acompanhado_equipe}
-                    onClick={() => toggleEquipe(c)}
-                  />
-                )}
+                <Estrela cliente={c} modo={modo} onToggle={toggleEquipe} />
               </TableCell>
               <TableCell className="font-medium">
                 <Link
@@ -196,10 +188,11 @@ export function ClientesTabela({
                       na intenção — `ghost-danger`.
                       PL9 — separador + margem: o destrutivo estava encostado
                       em "Abrir ficha" e o erro de mira apagava a linha.
-                      🔴 Cliente confirmado pela equipe NÃO tem "Excluir": a
-                      trigger `...203` recusa o DELETE com 42501. O caminho
-                      existe e está escrito na ficha (Suporte). */}
-                  {travado ? null : (
+                      🔴 O cliente acompanhado NÃO tem "Excluir": a trigger
+                      recusa o DELETE com 42501 (`...203` para o confirmado,
+                      `...215` para o escolhido pelo aluno). O caminho existe e
+                      está escrito na ficha (Suporte). */}
+                  {podeExcluirCliente(c, ctxEstrela.admin) ? (
                     <Button
                       variant="ghost-danger"
                       size="icon-sm"
@@ -213,7 +206,7 @@ export function ClientesTabela({
                     >
                       <Trash2 aria-hidden />
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </TableCell>
             </TableRow>

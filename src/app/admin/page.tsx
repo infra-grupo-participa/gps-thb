@@ -22,6 +22,7 @@ import { EtapasControle } from "@/components/admin/etapas-controle";
 import { AlunosAtivosLista } from "@/components/admin/alunos-ativos-lista";
 import { AbasPainel } from "@/components/admin/abas-painel";
 import { DashboardExecutivo } from "@/components/admin/dashboard";
+import { RegistrarUrlDoPainel } from "@/components/admin/voltar-ao-painel";
 import { AvisoInline } from "@/components/ui/aviso-inline";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -126,31 +127,34 @@ export default async function AdminPage({
           acao={<CriarAcesso />}
         />
 
-        {/* Dashboard executivo — macro → micro → onde atacar. Todo card
-            termina num link para a lista filtrada; os que não têm destino
-            dizem por escrito que são leitura. */}
-        {dashboard ? (
-          <DashboardExecutivo
-            dados={dashboard}
-            trilha={faixasDeTrilha(alunos)}
-            atendimento={resumoAtendimento(alunos, atendimentoDiario)}
-            ambientesCarregados={alunos.length}
-          />
-        ) : (
-          // `getDashboard()` devolve `null` em falha — e a tela diz isso em
-          // vez de desenhar nove cards zerados. Um dashboard todo em zero é
-          // indistinguível de um sistema vazio, e é assim que alguém decide em
-          // cima de dado que não existe. A lista abaixo continua funcionando.
-          <AvisoInline className="mb-8">
-            Não foi possível carregar a visão do programa agora. Os números
-            desta parte da tela ficam de fora até a próxima atualização — a
-            lista de alunos abaixo não depende dela.
-          </AvisoInline>
-        )}
+        {/* Grava a URL do painel (aba, busca, ordem, filtros, lote) a cada
+            mudança, para o "← Voltar aos alunos" da ficha do aluno devolver
+            esta mesma tela. Ver `admin/painel-url.ts`. */}
+        <RegistrarUrlDoPainel />
 
         <AbasPainel
           totalAlunos={totalAlunos}
           pendentes={pendentes.length}
+          visao={
+            dashboard ? (
+              <DashboardExecutivo
+                dados={dashboard}
+                trilha={faixasDeTrilha(alunos)}
+                atendimento={resumoAtendimento(alunos, atendimentoDiario)}
+                ambientesCarregados={alunos.length}
+              />
+            ) : (
+              // `getDashboard()` devolve `null` em falha — e a tela diz isso
+              // em vez de desenhar nove cards zerados. Um dashboard todo em
+              // zero é indistinguível de um sistema vazio, e é assim que
+              // alguém decide em cima de dado que não existe. A aba "Alunos"
+              // continua funcionando.
+              <AvisoInline>
+                Não foi possível carregar a visão do programa agora. A aba
+                Alunos não depende dela.
+              </AvisoInline>
+            )
+          }
           ativos={
             <AlunosAtivosLista
               alunos={alunos}

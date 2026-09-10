@@ -56,6 +56,8 @@ function Chip({ children }: { children: React.ReactNode }) {
  * - `programa` é opcional: sem ele o hero é só a identidade, e nada é
  *   inventado. `honorariosTotal === null` (nenhum contratado com valor) NÃO
  *   vira R$ 0,00 — mostra a meta, como a `MetaHonorarios` já fazia.
+ * - A meta é o **AURUM** (R$ 150.000), com a mesma frase da aba Financeiro e
+ *   do painel da home: "faltam R$ X para o AURUM". Três telas, uma régua.
  * - Nome NUNCA trunca: a 390 px os chips iam para a linha de baixo e o nome
  *   saía "Marian…". Nome de pessoa não se corta.
  */
@@ -157,8 +159,17 @@ export function PerfilHero({
                   <div className="numero-lg mt-0.5">
                     {brlInteiro(programa.honorariosTotal)}
                   </div>
-                  <p className="corpo-sm text-muted-foreground">
+                  <p className="corpo-sm text-muted-foreground text-balance">
                     de {brlInteiro(META_HONORARIOS)}
+                    {programa.honorariosTotal >= META_HONORARIOS ? (
+                      <> · AURUM alcançado</>
+                    ) : (
+                      <>
+                        {" · faltam "}
+                        {brlInteiro(META_HONORARIOS - programa.honorariosTotal)}{" "}
+                        para o AURUM
+                      </>
+                    )}
                   </p>
                 </>
               ) : (
@@ -167,8 +178,8 @@ export function PerfilHero({
                    número faturado, o valor lê como FATURAMENTO, e o rótulo
                    pequeno não desfaz o que o número grande já afirmou. Sem
                    dado não há número grande: fica a régua, em uma linha. */
-                <p className="corpo-sm mt-0.5 text-muted-foreground">
-                  meta de {brlInteiro(META_HONORARIOS)}
+                <p className="corpo-sm mt-0.5 text-muted-foreground text-balance">
+                  meta de {brlInteiro(META_HONORARIOS)} — o AURUM
                 </p>
               )}
             </div>

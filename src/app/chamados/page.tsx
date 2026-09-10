@@ -3,7 +3,10 @@ import { LifeBuoy, Lock } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById } from "@/lib/data";
 import { getChamadosDoAmbiente, getSuporteAberto } from "@/lib/chamados-data";
-import { CHAMADOS_MAX_ABERTOS } from "@/lib/chamados-tipos";
+import {
+  CHAMADOS_MAX_ABERTOS,
+  CHAMADO_ASSUNTO_MAXIMO,
+} from "@/lib/chamados-tipos";
 import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
@@ -24,7 +27,34 @@ export const metadata = { title: "Suporte" };
  * ele preenche um vazio. Por isso a copy é "Fale com a equipe por aqui", nunca
  * "no lugar do e-mail".
  */
-export default async function ChamadosPage() {
+
+/**
+ * `?assunto=` é PREFILL, nada mais: quem chega da ficha do cliente ("abra um
+ * chamado" para trocar o cliente acompanhado) já encontra o campo escrito.
+ *
+ * Tratado como texto normal, e o tratamento é o mínimo honesto: uma linha só
+ * (CR/LF e caracteres de controle fora — o assunto vira `subject` de e-mail lá
+ * na frente, e quebra de linha em cabeçalho é injeção), colapso de espaços e o
+ * teto que o campo já tem. **Não é a fronteira**: quem valida de verdade
+ * continua sendo `abrirChamado`, e é o React que escapa o texto na tela.
+ */
+const CONTROLE = new RegExp("[\u0000-\u001f\u007f]+", "g");
+
+function assuntoDaUrl(bruto: string | string[] | undefined): string {
+  if (typeof bruto !== "string") return "";
+  return bruto
+    .replace(CONTROLE, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, CHAMADO_ASSUNTO_MAXIMO);
+}
+
+export default async function ChamadosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [k: string]: string | string[] | undefined }>;
+}) {
+  const assuntoInicial = assuntoDaUrl((await searchParams).assunto);
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
   if (ctx.papel === "admin") redirect("/admin/chamados");
@@ -55,7 +85,11 @@ export default async function ChamadosPage() {
         <PageHeader
           titulo="Suporte"
           descricao="Fale com a equipe por aqui. Abra um chamado, acompanhe a resposta e feche quando resolver."
-          acao={podeAbrir ? <ChamadoNovoDialog /> : null}
+          acao={
+            podeAbrir ? (
+              <ChamadoNovoDialog assuntoInicial={assuntoInicial} />
+            ) : null
+          }
         />
 
         {!suporteAberto ? (
@@ -85,7 +119,11 @@ export default async function ChamadosPage() {
             icone={<LifeBuoy />}
             titulo="Você ainda não abriu nenhum chamado."
             descricao="Precisa de ajuda com o portal? Abra um chamado e a equipe responde por aqui."
-            acao={podeAbrir ? <ChamadoNovoDialog /> : null}
+            acao={
+              podeAbrir ? (
+                <ChamadoNovoDialog assuntoInicial={assuntoInicial} />
+              ) : null
+            }
           />
         ) : (
           <ChamadosLista

@@ -5,8 +5,8 @@
  * Duas perguntas, duas fontes que não se misturam:
  *
  * 1. **Quanto EU faturei** — honorários dos clientes em `fase='contratado'`,
- *    do banco do GPS (`gps.etapa1_clientes`). Meta R$ 150.000 = próximo nível
- *    (**Áureo**); passar de R$ 250.000 = **bônus do programa**. Vive em
+ *    do banco do GPS (`gps.etapa1_clientes`). Meta R$ 150.000 = o **AURUM**,
+ *    o objetivo do programa e a única régua da tela. Vive em
  *    `progressoFaturamento` (`@/lib/etapa1`), reexportado aqui.
  * 2. **Quanto EU devo do programa** — contrato com o Grupo Participa, lido do
  *    **sip** por `gps.financeiro_do_aluno` e `gps.financeiro_extrato_do_aluno`
@@ -554,7 +554,7 @@ export async function getExtratoDoAluno(
 }
 
 /**
- * Progresso de faturamento do ambiente (meta de R$ 150.000 → Áureo → bônus).
+ * Progresso de faturamento do ambiente (meta de R$ 150.000 — o AURUM).
  *
  * ⚠️ **Sem a trava do titular de propósito.** Isto não é o contrato do
  * programa: são os honorários dos clientes DO AMBIENTE, que o sócio já vê

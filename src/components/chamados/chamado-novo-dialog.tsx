@@ -37,7 +37,20 @@ import {
  * desistir depois de subir, o arquivo vira órfão — e órfão é exatamente o que
  * a tela de retenção do admin expurga.
  */
-export function ChamadoNovoDialog() {
+export function ChamadoNovoDialog({
+  assuntoInicial = "",
+}: {
+  /**
+   * Texto que já vem escrito no campo Assunto — hoje vem de `?assunto=` na
+   * URL, para quem chega da ficha do cliente pedindo a troca do cliente
+   * acompanhado.
+   *
+   * 🔑 É PREFILL, não pré-aprovação: o valor entra como estado inicial de um
+   * campo que a pessoa lê e edita, e quem valida continua sendo
+   * `abrirChamado` (mínimo e máximo) — nada aqui confia na URL.
+   */
+  assuntoInicial?: string;
+} = {}) {
   const router = useRouter();
   const uid = useId();
   const idAssunto = `${uid}-assunto`;
@@ -46,7 +59,7 @@ export function ChamadoNovoDialog() {
   const idErro = `${uid}-erro`;
 
   const [aberto, setAberto] = useState(false);
-  const [assunto, setAssunto] = useState("");
+  const [assunto, setAssunto] = useState(assuntoInicial);
   const [texto, setTexto] = useState("");
   const [anexo, setAnexo] = useState<AnexoInput | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -75,7 +88,10 @@ export function ChamadoNovoDialog() {
       }
       toast.success("Chamado aberto. A equipe foi avisada.");
       setAberto(false);
-      setAssunto("");
+      // Volta ao prefill, não ao vazio: o diálogo continua montado na página
+      // e reabri-lo depois de abrir um chamado deve oferecer o mesmo ponto de
+      // partida da primeira vez.
+      setAssunto(assuntoInicial);
       setTexto("");
       setAnexo(null);
       router.push(`/chamados/${r.chamadoId}`);

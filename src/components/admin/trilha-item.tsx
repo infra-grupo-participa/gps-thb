@@ -10,6 +10,7 @@
  */
 
 import { useState } from "react";
+import { TextoComMencoes } from "@/components/admin/texto-com-mencoes";
 import { ChevronDown, ChevronRight, MessageSquarePlus, CheckCircle2, ShieldAlert, Link2 } from "lucide-react";
 import type {
   ItemTrilha,
@@ -270,7 +271,9 @@ function ItemNota({ item }: { item: ItemTrilha & { variante: "nota" } }) {
           <span className="truncate">sobre: {rotuloContexto}</span>
         </div>
       ) : null}
-      <p className="whitespace-pre-wrap break-words text-sm">{nota.texto}</p>
+      <p className="whitespace-pre-wrap break-words text-sm">
+        <TextoComMencoes texto={nota.texto} mencoes={nota.mencoes} />
+      </p>
       {nota.mencoes.length > 0 ? (
         <p className="text-xs text-muted-foreground">
           Mencionou:{" "}

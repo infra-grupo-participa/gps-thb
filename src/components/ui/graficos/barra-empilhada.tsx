@@ -6,7 +6,7 @@ import {
   type FormatarValor,
   type PontoGrafico,
 } from "./tipos";
-import { TabelaValores } from "./tabela-valores";
+import { LegendaValores } from "./legenda-valores";
 
 const L = 320;
 const ALTURA = 22; // ≤ 24 px, a espessura máxima de marca da casa
@@ -21,21 +21,19 @@ const VAO = 2; // o vão na cor da superfície que separa dois segmentos
  * casa (que ficam a ΔE 2,7 um do outro na deuteranopia) é o vão que faz a
  * fronteira existir. Rótulo direto entra **só quando mede que cabe** — texto
  * cortado pela própria marca é pior do que texto ausente, e o valor nunca se
- * perde: a tabela abaixo tem todos.
+ * perde: a legenda abaixo tem todos.
  */
 export function BarraEmpilhada({
   segmentos,
   resumo,
   formatar = String,
-  mostrarTabela = true,
-  tituloTabela,
+  mostrarLegenda = true,
 }: {
   /** Cada segmento PRECISA de tom — é o que o diferencia do vizinho. */
   segmentos: (PontoGrafico & { tom: NonNullable<PontoGrafico["tom"]> })[];
   resumo: string;
   formatar?: FormatarValor;
-  mostrarTabela?: boolean;
-  tituloTabela?: string;
+  mostrarLegenda?: boolean;
 }) {
   const total = segmentos.reduce((s, x) => s + Math.max(0, x.valor), 0);
   const visiveis = segmentos.filter((s) => s.valor > 0);
@@ -123,9 +121,8 @@ export function BarraEmpilhada({
           );
         })}
       </svg>
-      {mostrarTabela ? (
-        <TabelaValores
-          titulo={tituloTabela ?? resumo}
+      {mostrarLegenda ? (
+        <LegendaValores
           linhas={segmentos}
           formatar={formatar}
           total={total || undefined}

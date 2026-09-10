@@ -90,11 +90,13 @@ export interface DashboardHonorarios {
    */
   totalReais: number | null;
   /**
-   * Quantos AMBIENTES bateram `META_HONORARIOS` (o Áureo). Calculado aqui, com
+   * Quantos AMBIENTES bateram `META_HONORARIOS` (o **AURUM**, o próximo nível
+   * do programa — o dashboard chamava isso de "Áureo", que estava errado; o
+   * cálculo não mudou). Calculado aqui, com
    * a constante que já existe: a meta é POR AMBIENTE, e somar 158 × 150k para
    * inventar uma "meta do programa" seria número inventado.
    */
-  ambientesNoAureo: number;
+  ambientesNoAurum: number;
 }
 
 export interface DashboardAtividadeDia {
@@ -225,7 +227,7 @@ export async function getDashboard(): Promise<Dashboard | null> {
       contratadosSemValor: n(hon.contratados_sem_valor),
       ambientesComContratado: n(hon.ambientes_com_contratado),
       totalReais: numeroOuNulo(hon.total_reais),
-      ambientesNoAureo: somas.filter((s) => s >= META_HONORARIOS).length,
+      ambientesNoAurum: somas.filter((s) => s >= META_HONORARIOS).length,
     },
     atividade: Array.isArray(d.atividade)
       ? (d.atividade as Record<string, unknown>[]).map((a) => ({

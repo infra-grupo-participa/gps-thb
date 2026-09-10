@@ -54,9 +54,23 @@ export type FiltroId = (typeof FILTROS)[number];
 const FILTROS_SET = new Set<string>(FILTROS);
 const ORDENS_SET = new Set<string>(ORDENS);
 
-/** As abas do painel. Mesma allowlist, mesmo motivo. */
-export const ABAS = ["ativos", "solicitacoes", "etapas"] as const;
+/**
+ * As abas do painel. Mesma allowlist, mesmo motivo.
+ *
+ * 🔑 `visao` (a "Visão geral", onde vive o dashboard) é a PRIMEIRA e é o
+ * PADRÃO: `/admin` sem `?aba=` abre o resumo do programa. O dashboard deixou
+ * de ficar empilhado em cima da lista — eram duas telas na mesma rolagem, e
+ * quem entrava para procurar um aluno tinha de passar por nove cards.
+ *
+ * 🔴 Consequência para quem monta link: `/admin?f=sem_login` agora cai na
+ * Visão geral. Todo link que quer a LISTA precisa dizer `?aba=ativos&f=…` —
+ * é por isso que os cards do dashboard escrevem a aba no `href`.
+ */
+export const ABAS = ["visao", "ativos", "solicitacoes", "etapas"] as const;
 export type AbaPainel = (typeof ABAS)[number];
+
+/** A aba de `/admin` sem `?aba=`. Escrita uma vez, lida por três arquivos. */
+export const ABA_PADRAO: AbaPainel = "visao";
 
 export interface EstadoDoPainel {
   aba: AbaPainel;
@@ -79,7 +93,7 @@ export function lerEstado(sp: URLSearchParams): EstadoDoPainel {
   return {
     aba: (ABAS as readonly string[]).includes(aba ?? "")
       ? (aba as AbaPainel)
-      : "ativos",
+      : ABA_PADRAO,
     termo: (sp.get("q") ?? "").slice(0, MAX_TERMO),
     ordem: ORDENS_SET.has(ordem ?? "") ? (ordem as OrdemAlunos) : "recentes",
     filtros: new Set(f),
@@ -196,9 +210,16 @@ export function useEstadoDoPainel() {
     (href: string) => {
       const [caminho, consulta = ""] = href.split("?");
       const sp = new URLSearchParams(consulta);
+      // 🔴 A aba não passa por `escreverEstado` (um escritor só), e o href do
+      // servidor nasce sem ela (`/admin?mais=2`). Como o padrão do painel
+      // passou a ser "Visão geral", sem esta linha "Mostrar mais" devolveria o
+      // dashboard em vez da lista que o admin estava lendo. Copiar o que já
+      // está no endereço não é escrever estado novo — é não perder o atual.
+      const abaAtual = searchParams.get("aba");
+      if (abaAtual && !sp.has("aba")) sp.set("aba", abaAtual);
       return `${caminho}${escreverEstado(sp, estado)}`;
     },
-    [estado],
+    [estado, searchParams],
   );
 
   return {

@@ -66,6 +66,54 @@ export function travadoPelaEquipe(c: ClienteEtapa1): boolean {
 }
 
 /**
+ * Como a estrela deste cliente aparece para quem está vendo a tela.
+ *
+ * 🔴 Migração ...215 — **a escolha do aluno virou definitiva**. A trigger
+ * `etapa1_clientes_acompanhamento_travado` passou a recusar (42501, com a
+ * frase "Para trocar o cliente que a equipe acompanha, abra um chamado no
+ * Suporte.") DUAS coisas que antes passavam: o aluno desmarcar a estrela e o
+ * aluno marcar um segundo cliente. E `definirClienteEquipe` desmarca TODOS
+ * antes de marcar um (o índice único parcial obriga), então marcar o segundo
+ * bate na trava já no primeiro `update`.
+ *
+ * Por isso, para o ALUNO, basta existir favorito no ambiente:
+ *   · no favorito, a estrela é SINAL (`escolhida`) — não há clique possível;
+ *   · em todos os outros, ela some (`ausente`).
+ *
+ * Para o ADMIN nada mudou: ele é o caminho da equipe trocar. Só o cliente já
+ * CONFIRMADO continua com a estrela travada para os dois.
+ */
+export type ModoEstrela = "botao" | "escolhida" | "confirmada" | "ausente";
+
+/** Quem está vendo a tela e o que já existe no ambiente. */
+export type CtxEstrela = {
+  admin: boolean;
+  existeFavorito: boolean;
+  existeConfirmado: boolean;
+};
+
+export function modoEstrela(c: ClienteEtapa1, ctx: CtxEstrela): ModoEstrela {
+  if (travadoPelaEquipe(c)) return "confirmada";
+  if (ctx.admin) return ctx.existeConfirmado ? "ausente" : "botao";
+  if (c.acompanhado_equipe) return "escolhida";
+  return ctx.existeFavorito ? "ausente" : "botao";
+}
+
+
+/**
+ * "Excluir" pode ser oferecido?
+ *
+ * Confirmado: não, para ninguém (a trava da ...203 continua, e a ficha diz o
+ * caminho). Favorito ainda não confirmado: não para o ALUNO — a ...215 recusa
+ * o DELETE com a mesma frase do Suporte —, sim para o admin, que é quem troca.
+ */
+export function podeExcluirCliente(c: ClienteEtapa1, admin: boolean): boolean {
+  if (travadoPelaEquipe(c)) return false;
+  if (!admin && c.acompanhado_equipe) return false;
+  return true;
+}
+
+/**
  * As fases que ESTE cliente ainda pode assumir.
  *
  * Travado, "Prospecção" sai da lista — o banco recusa a volta. A exceção do

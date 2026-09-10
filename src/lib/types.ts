@@ -191,10 +191,39 @@ export interface ClienteEtapa1 {
    */
   valor_honorarios: number | null;
   /**
-   * Link https do contrato no Drive. LINK, não upload — o documento do cliente
-   * continua fora do GPS. O CHECK do banco exige `https://` sem espaço.
+   * @deprecated LEGADO desde a migração 20260910000214 (0 linhas preenchidas
+   * em 10/09/2026). Link https do contrato no Drive — LINK, não upload. O
+   * contrato de verdade agora é ANEXO (`contrato_path` e as 4 abaixo). A
+   * coluna fica porque quem organiza a pasta no Drive continua podendo colar o
+   * link, e porque é o caminho de volta da ...214. O CHECK do banco exige
+   * `https://` sem espaço.
    */
   contrato_url: string | null;
+  /**
+   * Contrato ASSINADO anexado à ficha (migração 20260910000214): caminho no
+   * bucket `gps-onboarding`, no formato `<ambiente_aluno_id>/<uuid>.<ext>`.
+   *
+   * 🔴 As 5 colunas de contrato são TUDO OU NADA (CHECK
+   * `chk_etapa1_clientes_contrato_anexo_completo`) e **não** se escrevem pelo
+   * PostgREST: `PatchCliente` não as tem e a trigger
+   * `trg_etapa1_clientes_contrato_travado` recusa (42501) quem não é admin nem
+   * função `SECURITY DEFINER` nossa. A escrita é só por
+   * `gps.cliente_definir_contrato` / `gps.cliente_remover_contrato`.
+   *
+   * O PREFIXO do caminho é a credencial de leitura (policies
+   * `gps_onboarding_anexo_*`): nunca montar caminho no cliente, nunca exibir
+   * o arquivo inline — o download sai por URL assinada com `download=`
+   * (`urlDeDownloadDoContratoCliente`).
+   */
+  contrato_path: string | null;
+  /** Nome ORIGINAL do arquivo (1..120, sem `/` nem `\`) — só para exibir e para o `download=`. */
+  contrato_nome: string | null;
+  /** MIME REAL, lido de `storage.objects.metadata` pela RPC — nunca o que o navegador declarou. */
+  contrato_mime: string | null;
+  /** Tamanho REAL em bytes (1..5 MB), lido de `storage.objects.metadata`. */
+  contrato_tamanho: number | null;
+  /** Quando o arquivo passou a valer para ESTA ficha. Nulo junto com as outras 4. */
+  contrato_anexado_em: string | null;
   /**
    * Tipo de vínculo com o cliente (migração 20260910000202). `null` = não
    * informado — **nunca** exibir como "Lead".
@@ -379,6 +408,14 @@ export const TIPOS_EVENTO = [
   "onboarding_concluido",
   "favorito_confirmado_pela_equipe",
   "favorito_liberado_pela_equipe",
+  // Contrato do cliente como ANEXO (migração ...214). Gravados só por
+  // `gps.cliente_definir_contrato`/`gps.cliente_remover_contrato`.
+  // ⚠️ NÃO é `cliente_honorarios_definidos` (aquele é o VALOR) e não tem nada
+  // a ver com `contrato_url`, o link do Drive, que segue sem auditoria.
+  // O contrato anexado é a PROVA que sustenta o sinal "apto ao saldo": tirar a
+  // prova sem rastro seria o único jeito de esse sinal apagar sozinho.
+  "cliente_contrato_anexado",
+  "cliente_contrato_removido",
 ] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 

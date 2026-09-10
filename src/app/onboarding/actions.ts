@@ -34,6 +34,7 @@ import {
   ANEXO_TAMANHO_MAXIMO,
   EXTENSAO_POR_MIME,
   ehAnexoMime,
+  nomeDeArquivoSeguro,
 } from "@/lib/chamados-tipos";
 import {
   FASES_CLIENTE1,
@@ -111,19 +112,6 @@ function revalidar(alunoId: string) {
   revalidatePath("/etapa", "layout");
   revalidatePath(`/admin/aluno/${alunoId}`, "layout");
   revalidatePath("/admin", "layout");
-}
-
-/** Tira separador de caminho e caractere de controle; corta em 120 (CHECK da coluna). */
-function nomeDeArquivoSeguro(nome: string): string {
-  const limpo = Array.from(nome ?? "")
-    .filter((c) => {
-      if (c === "/" || c === "\\") return false;
-      const cod = c.charCodeAt(0);
-      return cod >= 32 && cod !== 127;
-    })
-    .join("")
-    .trim();
-  return limpo.slice(0, 120);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

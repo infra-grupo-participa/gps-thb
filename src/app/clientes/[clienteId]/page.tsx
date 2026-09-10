@@ -25,16 +25,21 @@ export default async function ClienteFichaPage({
   const aluno = await getAlunoById(alunoId);
 
   /**
-   * Só quando ESTE cliente não é a estrela: a ficha precisa saber se a equipe
-   * já assumiu OUTRO cliente do ambiente, senão ofereceria uma estrela que o
-   * banco recusa (42501). Uma linha indexada (`acompanhado_equipe` é único por
-   * ambiente), e nem isso quando o cliente aberto já é o favorito.
+   * Só quando ESTE cliente não é a estrela: a ficha precisa saber se OUTRO
+   * cliente do ambiente já é, senão ofereceria uma estrela que o banco recusa
+   * (42501). Uma linha indexada (`acompanhado_equipe` é único por ambiente), e
+   * nem isso quando o cliente aberto já é o favorito.
+   *
+   * 🔴 Desde a migração ...215 a ESCOLHA do aluno já basta para a recusa — não
+   * é mais só a confirmação da equipe. Por isso os dois nomes saem da MESMA
+   * consulta: `outroConfirmadoNome` continua separando as duas frases.
    */
-  const outroConfirmado = cliente.acompanhado_equipe
+  const outroFavorito = cliente.acompanhado_equipe
     ? null
     : await getClienteEquipe(alunoId);
-  const outroConfirmadoNome = outroConfirmado?.acompanhamento_confirmado_em
-    ? (outroConfirmado.nome ?? null)
+  const outroFavoritoNome = outroFavorito?.nome ?? null;
+  const outroConfirmadoNome = outroFavorito?.acompanhamento_confirmado_em
+    ? (outroFavorito.nome ?? null)
     : null;
 
   return (
@@ -62,6 +67,7 @@ export default async function ClienteFichaPage({
           cliente={cliente}
           alunoId={alunoId}
           outroConfirmadoNome={outroConfirmadoNome}
+          outroFavoritoNome={outroFavoritoNome}
         />
       </main>
     </>

@@ -10,25 +10,26 @@ import { brl, brlInteiro } from "@/lib/moeda";
 import type { ProgressoFaturamento } from "@/lib/financeiro";
 
 /**
- * Hero da aba Financeiro: **quanto o aluno já faturou na mentoria**.
+ * A peça FORTE da aba Financeiro: **quanto o aluno já faturou na mentoria**.
  *
- * A pergunta que a aba responde primeiro não é "quanto eu devo", é "quanto eu
- * já ganhei com isso" — R$ 150.000 em honorários contratados é o próximo
- * nível (**Áureo**) e R$ 250.000 dá o **bônus do programa**. Por isso o
- * faturamento vem antes do pagamento, com o número grande e a barra.
+ * A aba abre com o progresso dele, não com o que ele deve. R$ 150.000 em
+ * honorários contratados é o **AURUM** (ouro em latim) — o objetivo do
+ * programa. Uma meta, um número, uma barra: é a tela inteira em três linhas.
  *
  * 🔴 **Com 0 contratados o número NÃO aparece.** "R$ 0 de R$ 150.000" com a
  * barra zerada é uma afirmação sobre o faturamento de gente real feita em
  * cima de campo vazio — a mesma armadilha do `coalesce(..., 0)` que virou
- * "taxa zero" por 5 semanas no sistema de disparos. Sem dado, a tela mostra o
- * CAMINHO (os dois marcos) e a instrução de como entrar nele.
+ * "taxa zero" por 5 semanas no sistema de disparos. Sem dado, a tela mostra a
+ * meta e a instrução de como entrar nela.
  *
- * 🔑 Nada é recalculado aqui: `faltaParaMeta`, `faltaParaBonus`, `pctMeta` e
- * `nivelAtual` vêm de `ProgressoFaturamento` (servidor, `@/lib/financeiro`),
- * a mesma fonte da home. Duas contas = duas respostas para o mesmo aluno.
+ * 🔑 Nada é recalculado aqui: `faltaParaMeta`, `pctMeta` e `nivelAtual` vêm de
+ * `ProgressoFaturamento` (servidor, `@/lib/financeiro`), a mesma fonte da
+ * home. Duas contas = duas respostas para o mesmo aluno.
  *
- * ⚠️ O bônus é "**bônus do programa**", sem detalhe. O João não disse qual é;
- * inventar "R$ X de prêmio" seria promessa do portal, não do programa.
+ * ⚠️ O segundo marco (R$ 250.000, "bônus do programa") **saiu da interface**
+ * em 09/09/2026, a pedido do João: ninguém sabia dizer o que era o bônus, e
+ * uma segunda meta atrás da primeira empurrava o objetivo para longe em vez de
+ * aproximá-lo. Não reintroduzir sem ele definir o que é.
  */
 export function HeroFaturamento({
   progresso,
@@ -41,9 +42,7 @@ export function HeroFaturamento({
   const {
     faturado,
     meta,
-    bonus,
     faltaParaMeta,
-    faltaParaBonus,
     pctMeta,
     nivelAtual,
     contratados,
@@ -51,17 +50,15 @@ export function HeroFaturamento({
   } = progresso;
 
   const hrefClientes = `${basePath}/clientes`;
-  const chegouNoAureo = nivelAtual === "aureo" || nivelAtual === "bonus";
+  const chegouNoAurum = nivelAtual === "aureo";
   // Quantos contratados de fato somam para o número exibido. Dizer
   // "honorários de 4 clientes" quando 1 deles está sem valor atribuiria ao
   // número uma origem que ele não tem — e é justamente o cliente que o aviso
   // logo abaixo manda preencher.
   const comValor = Math.max(0, contratados - contratadosSemValor);
 
-  const marcos = [
-    { valor: meta, rotulo: "Áureo", atingido: chegouNoAureo },
-    { valor: bonus, rotulo: "Bônus", atingido: nivelAtual === "bonus" },
-  ];
+  // Um marco só, no fim da trilha: o AURUM.
+  const marcos = [{ valor: meta, rotulo: "AURUM", atingido: chegouNoAurum }];
 
   return (
     <Card className="ring-primary/20">
@@ -69,12 +66,12 @@ export function HeroFaturamento({
         {/* `Secao`, não o `uppercase tracking-wide` que a Onda A tirou de 15
             telas: rótulo tracked-out acima de tudo é o tell mais conhecido de
             UI gerada. O troféu continua à direita (`acao`), e continua sendo
-            o `IconeChip` — é ele que acende em `marca-solida` no Áureo. */}
+            o `IconeChip` — é ele que acende em `marca-solida` no AURUM. */}
         <Secao
-          titulo="Seu faturamento na mentoria"
-          descricao="Honorários dos clientes que você já fechou."
+          titulo={faturado === null ? "Seu faturamento" : "Você já faturou"}
+          descricao="Honorários dos clientes que você fechou no programa."
           acao={
-            <IconeChip destaque={chegouNoAureo}>
+            <IconeChip destaque={chegouNoAurum}>
               <Trophy />
             </IconeChip>
           }
@@ -82,10 +79,10 @@ export function HeroFaturamento({
 
         {faturado === null ? (
           /* ── SEM DADO ────────────────────────────────────────────────────
-             Nem número nem barra. A tela mostra a régua do programa (os dois
-             marcos são regra, não medição) e diz o que fazer para entrar
-             nela. Dois textos diferentes: "não tem contratado" e "tem
-             contratado sem valor" pedem ações diferentes. */
+             Nem número nem barra. A tela mostra a meta (que é regra, não
+             medição) e diz o que fazer para entrar nela. Dois textos
+             diferentes: "não tem contratado" e "tem contratado sem valor"
+             pedem ações diferentes. */
           <div className="grid gap-4">
             <p className="text-base text-pretty">
               {contratados === 0 ? (
@@ -108,24 +105,18 @@ export function HeroFaturamento({
               )}
             </p>
 
-            <ul className="grid gap-2 rounded-lg bg-muted/60 p-3 text-sm">
-              {marcos.map((m) => (
-                <li key={m.rotulo} className="flex items-baseline gap-2">
-                  <Flag
-                    aria-hidden
-                    className="size-3.5 shrink-0 translate-y-0.5 text-muted-foreground"
-                  />
-                  <span className="font-medium tabular-nums">
-                    {brlInteiro(m.valor)}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {m.rotulo === "Áureo"
-                      ? "· Áureo, o próximo nível"
-                      : "· bônus do programa"}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className="flex items-baseline gap-2 rounded-lg bg-muted/60 p-3 text-sm">
+              <Flag
+                aria-hidden
+                className="size-3.5 shrink-0 translate-y-0.5 text-muted-foreground"
+              />
+              <span className="font-medium tabular-nums">
+                {brlInteiro(meta)}
+              </span>
+              <span className="text-muted-foreground">
+                · o AURUM, a meta do programa
+              </span>
+            </p>
 
             <Link
               href={hrefClientes}
@@ -146,10 +137,10 @@ export function HeroFaturamento({
               >
                 {brlInteiro(faturado)}
               </span>
-              {chegouNoAureo ? (
+              {chegouNoAurum ? (
                 <Badge className="bg-accent text-accent-foreground">
                   <Trophy aria-hidden />
-                  {nivelAtual === "bonus" ? "Bônus alcançado" : "Áureo"}
+                  AURUM
                 </Badge>
               ) : (
                 <span className="text-lg text-muted-foreground tabular-nums">
@@ -159,21 +150,11 @@ export function HeroFaturamento({
             </div>
 
             <p className="text-base text-pretty">
-              {nivelAtual === "bonus" ? (
-                <>
-                  Você passou dos {brlInteiro(bonus)} — bônus do programa.
-                </>
-              ) : nivelAtual === "aureo" ? (
+              {chegouNoAurum ? (
                 <>
                   Você chegou ao{" "}
-                  <span className="font-medium">Áureo</span>! Faltam{" "}
-                  <span
-                    className="font-medium tabular-nums"
-                    title={faltaParaBonus === null ? undefined : brl(faltaParaBonus)}
-                  >
-                    {faltaParaBonus === null ? "—" : brlInteiro(faltaParaBonus)}
-                  </span>{" "}
-                  para o bônus do programa.
+                  <span className="font-medium">AURUM</span>. Meta de{" "}
+                  {brlInteiro(meta)} alcançada.
                 </>
               ) : (
                 <>
@@ -184,30 +165,30 @@ export function HeroFaturamento({
                   >
                     {faltaParaMeta === null ? "—" : brlInteiro(faltaParaMeta)}
                   </span>{" "}
-                  para o Áureo.
+                  para o AURUM.
                 </>
               )}
             </p>
 
             <BarraMarcos
               valor={faturado}
-              max={bonus}
+              max={meta}
               marcos={marcos}
               rotuloAcessivel="Faturamento na mentoria"
               textoAcessivel={
-                nivelAtual === "bonus"
-                  ? `${brlInteiro(faturado)}; Áureo e bônus do programa alcançados.`
-                  : nivelAtual === "aureo"
-                    ? `${brlInteiro(faturado)}; Áureo alcançado, bônus do programa em ${brlInteiro(bonus)}.`
-                    : `${brlInteiro(faturado)} de ${brlInteiro(meta)} até o Áureo; bônus do programa em ${brlInteiro(bonus)}.`
+                chegouNoAurum
+                  ? `${brlInteiro(faturado)}; AURUM alcançado.`
+                  : `${brlInteiro(faturado)} de ${brlInteiro(meta)} até o AURUM.`
               }
             />
 
             <p className="text-xs text-muted-foreground">
-              {/* "100% da meta" ao lado de "Você chegou ao Áureo!" é a mesma
+              {/* "100% da meta" ao lado de "Você chegou ao AURUM" é a mesma
                   informação duas vezes — e o teto de 100 faria 260 mil ler
-                  como 100%, igual a 150 mil. No Áureo o percentual sai. */}
-              {chegouNoAureo || pctMeta === null ? null : <>{pctMeta}% da meta · </>}
+                  como 100%, igual a 150 mil. No AURUM o percentual sai. */}
+              {chegouNoAurum || pctMeta === null ? null : (
+                <>{pctMeta}% da meta · </>
+              )}
               honorários de {comValor}{" "}
               {comValor === 1 ? "cliente contratado" : "clientes contratados"}
             </p>

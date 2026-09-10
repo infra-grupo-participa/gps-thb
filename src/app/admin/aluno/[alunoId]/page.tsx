@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import {
@@ -26,6 +25,7 @@ import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { GerenciarAcesso } from "@/components/admin/gerenciar-acesso";
 import { DiarioResumoCard } from "@/components/admin/diario-resumo-card";
+import { VoltarAoPainel } from "@/components/admin/voltar-ao-painel";
 
 export default async function AdminAlunoInicioPage({
   params,
@@ -88,14 +88,11 @@ export default async function AdminAlunoInicioPage({
         <PageHeader
           titulo={aluno?.nome ?? "Aluno"}
           descricao={aluno?.email}
-          voltar={
-            <Link
-              href="/admin"
-              className="previa-oculta text-sm text-muted-foreground hover:text-foreground"
-            >
-              ← Voltar aos alunos
-            </Link>
-          }
+          // 🔴 `href="/admin"` fixo apagava a aba, a busca, a ordem e os
+          // filtros que a URL do painel guardava — e a âncora por `alunoId`
+          // então apontava para um card fora da nova lista. `VoltarAoPainel`
+          // devolve a ÚLTIMA URL do painel (`admin/painel-url.ts`).
+          voltar={<VoltarAoPainel />}
           acao={
             <GerenciarAcesso alunoId={alunoId} nomeAluno={aluno?.nome ?? null} />
           }

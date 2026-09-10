@@ -69,6 +69,10 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   onboarding_concluido: "Concluiu o questionário inicial",
   favorito_confirmado_pela_equipe: "A equipe assumiu o acompanhamento deste cliente",
   favorito_liberado_pela_equipe: "A equipe liberou o cliente acompanhado",
+  // Contrato do cliente como ANEXO (migração ...214). "Contrato assinado" e não
+  // "anexo": o que a equipe procura na trilha é a PROVA, não o arquivo.
+  cliente_contrato_anexado: "Anexou o contrato assinado do cliente",
+  cliente_contrato_removido: "Removeu o contrato assinado do cliente",
 };
 
 export const ROTULO_ATOR: Record<AtorEvento, string> = {

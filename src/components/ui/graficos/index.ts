@@ -8,7 +8,7 @@
  * desenhos estáticos não pagam esse preço.
  *
  * Regras que valem para os cinco (a razão de cada uma está em `tipos.ts`):
- * `role="img"` + `aria-label` com o resumo em número · tabela de valores
+ * `role="img"` + `aria-label` com o resumo em número · legenda numérica
  * visível por padrão · separação por vão na cor da superfície, nunca por
  * contorno · nenhuma cor fora dos tokens semânticos · zero estado.
  */
@@ -17,7 +17,7 @@ export { BarraEmpilhada } from "./barra-empilhada";
 export { Rosca } from "./rosca";
 export { Linha, type SerieLinha } from "./linha";
 export { Funil } from "./funil";
-export { TabelaValores } from "./tabela-valores";
+export { LegendaValores } from "./legenda-valores";
 export {
   COR_DO_TOM,
   type FormatarValor,

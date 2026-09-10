@@ -1,4 +1,5 @@
 import { CheckCircle2 } from "lucide-react";
+import { TextoComMencoes } from "@/components/admin/texto-com-mencoes";
 import type { AlunoNotaComAutor } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,7 +44,7 @@ function NotaCard({ nota }: { nota: AlunoNotaComAutor }) {
             estoura a largura do card (a maior nota real tem 5.100
             caracteres). */}
         <p className="whitespace-pre-wrap break-words text-sm">
-          {nota.texto}
+          <TextoComMencoes texto={nota.texto} mencoes={nota.mencoes} />
         </p>
 
         {nota.mencoes.length > 0 ? (

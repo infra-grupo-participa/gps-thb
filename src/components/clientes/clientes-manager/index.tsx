@@ -28,7 +28,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LayoutGrid, List as ListIcon, Users } from "lucide-react";
-import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
+import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
 import { META_CLIENTES, resumoHonorarios } from "@/lib/etapa1";
 import {
   criarCliente,
@@ -54,7 +54,9 @@ import { Kanban } from "./clientes-quadro";
 import { ClientesTabela } from "./clientes-tabela";
 import { ConfirmacaoEquipe } from "./confirmacao-equipe";
 import { DialogoExcluirCliente } from "./dialogos";
+import { DialogoNovoCliente } from "./dialogo-novo-cliente";
 import { DialogoDesfavoritar } from "../dialogo-desfavoritar";
+import { DialogoEscolherFavorito } from "../dialogo-escolher-favorito";
 import {
   contarPorFase,
   contarPorGrau,
@@ -68,10 +70,18 @@ export function ClientesManager({
   alunoId,
   clientesIniciais,
   basePath,
+  admin = false,
 }: {
   alunoId: string;
   clientesIniciais: ClienteEtapa1[];
   basePath: string;
+  /**
+   * Modo assistência. É a EQUIPE quem troca e desmarca o cliente acompanhado
+   * (migração ...215): com `false`, a estrela vira sinal assim que o aluno
+   * escolhe e o "Excluir" some do escolhido. Quem autoriza de verdade é a
+   * trigger do banco; esta prop decide o que a tela oferece.
+   */
+  admin?: boolean;
 }) {
   const router = useRouter();
   const [clientes, setClientes] = useState<ClienteEtapa1[]>(clientesIniciais);
@@ -82,10 +92,18 @@ export function ClientesManager({
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("recentes");
   /** Cliente aguardando confirmação de exclusão (PL9). `null` = sem diálogo. */
   const [excluindo, setExcluindo] = useState<ClienteEtapa1 | null>(null);
-  /** Cliente aguardando confirmação de desfavoritar (PL11). */
+  /** Cliente aguardando confirmação de desfavoritar (PL11). Só o admin chega aqui. */
   const [desfavoritando, setDesfavoritando] = useState<ClienteEtapa1 | null>(
     null,
   );
+  /** Cliente aguardando a confirmação de ESCOLHA do aluno (migração ...215). */
+  const [escolhendo, setEscolhendo] = useState<ClienteEtapa1 | null>(null);
+  /** Diálogo "Novo cliente" aberto? Fase e grau nascem no padrão. */
+  const [novoAberto, setNovoAberto] = useState(false);
+  const [novaFase, setNovaFase] = useState<FaseCliente>("prospeccao");
+  const [novoGrau, setNovoGrau] = useState<string>("");
+  /** Id do cliente criado cujo patch de fase/vínculo falhou (ver `criarComFaseEGrau`). */
+  const [criadoSemPatch, setCriadoSemPatch] = useState<string | null>(null);
   const [erroDialogo, setErroDialogo] = useState<string | null>(null);
   /**
    * Falha de escrita FORA de diálogo (fase e estrela são um clique só). Fica na
@@ -130,15 +148,32 @@ export function ClientesManager({
    */
   const confirmado = clientes.find(travadoPelaEquipe) ?? null;
   const existeConfirmado = confirmado !== null;
+  /** Já existe estrela no ambiente (confirmada ou só escolhida pelo aluno)? */
+  const existeFavorito = clientes.some((c) => c.acompanhado_equipe);
+  const ctxEstrela = { admin, existeFavorito, existeConfirmado };
 
   // ---- Ações ----
-  function addCliente() {
+  function abrirNovo() {
+    setErroDialogo(null);
+    setCriadoSemPatch(null);
+    setNovaFase("prospeccao");
+    setNovoGrau("");
+    setNovoAberto(true);
+  }
+
+  /** Cria o cliente já com a fase e o vínculo escolhidos no diálogo (uma chamada). */
+  function criarComFaseEGrau() {
+    setErroDialogo(null);
     startTransition(async () => {
-      const res = await criarCliente(alunoId);
+      const res = await criarCliente(alunoId, {
+        fase: novaFase,
+        grau_relacao: (novoGrau as GrauRelacao) || null,
+      });
       if (res.erro || !res.id) {
-        toast.error("Erro ao adicionar cliente.");
+        setErroDialogo(res.erro ?? "Não foi possível adicionar o cliente.");
         return;
       }
+      setNovoAberto(false);
       router.push(fichaHref(res.id));
     });
   }
@@ -162,15 +197,26 @@ export function ClientesManager({
   }
 
   /**
-   * PL11 — DESMARCAR a estrela re-trava os passos 4 a 8 da Etapa 01 e some com
-   * o banner verde, e isso acontecia em silêncio (o toast só existia ao
-   * ativar), a 8 px do nome do cliente na tabela. Ativar continua num clique:
-   * é reversível e é o caminho que o produto quer.
+   * A estrela.
+   *
+   * 🔴 Para o ALUNO, marcar é ESCOLHA ÚNICA (migração ...215): pergunta antes,
+   * com a consequência escrita, e depois não há mais botão nenhum — a troca é
+   * por chamado. Desmarcar nem chega aqui: `modoEstrela` já não devolve botão.
+   *
+   * Para o ADMIN nada mudou: marcar é um clique (ele é quem troca) e desmarcar
+   * passa pelo `DialogoDesfavoritar`, porque re-trava os passos 4 a 8 da Etapa
+   * 01 de quem não pediu nada.
    */
   function toggleEquipe(cliente: ClienteEtapa1) {
     if (cliente.acompanhado_equipe) {
+      if (!admin) return;
       setErroDialogo(null);
       setDesfavoritando(cliente);
+      return;
+    }
+    if (!admin) {
+      setErroDialogo(null);
+      setEscolhendo(cliente);
       return;
     }
     aplicarEquipe(cliente);
@@ -203,6 +249,7 @@ export function ClientesManager({
         return;
       }
       setDesfavoritando(null);
+      setEscolhendo(null);
       if (ativar) {
         toast.success(
           `A equipe vai acompanhar ${cliente.nome || "este cliente"}. Os próximos passos da Etapa 01 estão liberados.`,
@@ -242,6 +289,7 @@ export function ClientesManager({
         <ConfirmacaoEquipe
           cliente={favorito}
           etapa1Href={`${basePath}/etapa/1`}
+          admin={admin}
         />
       ) : null}
       <Card>
@@ -283,7 +331,7 @@ export function ClientesManager({
                   <LayoutGrid className="size-4" /> Quadro
                 </ViewButton>
               </div>
-              <Button onClick={addCliente} disabled={pending}>
+              <Button onClick={abrirNovo} disabled={pending}>
                 Adicionar
               </Button>
             </div>
@@ -404,7 +452,7 @@ export function ClientesManager({
           <Kanban
             clientes={buscaFiltrada}
             fichaHref={fichaHref}
-            existeConfirmado={existeConfirmado}
+            ctxEstrela={ctxEstrela}
             onMover={mudarFase}
             onToggleEquipe={toggleEquipe}
           />
@@ -421,7 +469,7 @@ export function ClientesManager({
                   key={c.id}
                   cliente={c}
                   fichaHref={fichaHref}
-                  existeConfirmado={existeConfirmado}
+                  ctxEstrela={ctxEstrela}
                   onFase={mudarFase}
                   onEquipe={toggleEquipe}
                   onExcluir={(c) => {
@@ -435,7 +483,7 @@ export function ClientesManager({
             <ClientesTabela
               listaOrdenada={listaOrdenada}
               fichaHref={fichaHref}
-              existeConfirmado={existeConfirmado}
+              ctxEstrela={ctxEstrela}
               pending={pending}
               mudarFase={mudarFase}
               toggleEquipe={toggleEquipe}
@@ -462,7 +510,40 @@ export function ClientesManager({
         />
       ) : null}
 
-      {/* PL11 — desmarcar a estrela re-trava 5 passos da Etapa 01. */}
+      {/* "Novo cliente" — fase e grau ANTES de abrir a ficha. */}
+      {novoAberto ? (
+        <DialogoNovoCliente
+          fase={novaFase}
+          grau={novoGrau}
+          pending={pending}
+          erro={erroDialogo}
+          abrirFichaHref={criadoSemPatch ? fichaHref(criadoSemPatch) : null}
+          onFase={setNovaFase}
+          onGrau={setNovoGrau}
+          onCriar={criarComFaseEGrau}
+          onCancelar={() => {
+            setNovoAberto(false);
+            setErroDialogo(null);
+            setCriadoSemPatch(null);
+          }}
+        />
+      ) : null}
+
+      {/* 🔴 Escolha ÚNICA do aluno (migração ...215) — a troca vira chamado. */}
+      {escolhendo ? (
+        <DialogoEscolherFavorito
+          cliente={escolhendo}
+          pending={pending}
+          erro={erroDialogo}
+          onConfirmar={() => aplicarEquipe(escolhendo)}
+          onCancelar={() => {
+            setEscolhendo(null);
+            setErroDialogo(null);
+          }}
+        />
+      ) : null}
+
+      {/* PL11 — desmarcar a estrela re-trava 5 passos da Etapa 01. Só o admin. */}
       {desfavoritando ? (
         <DialogoDesfavoritar
           desfavoritando={desfavoritando}

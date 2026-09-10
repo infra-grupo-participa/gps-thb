@@ -122,6 +122,32 @@ export function ehAnexoMime(v: string): v is AnexoMime {
 }
 
 /**
+ * Tira separador de caminho e caractere de controle do nome que o usuário
+ * mandou, e corta em 120 (o CHECK das colunas `*_nome` recusa mais que isso).
+ *
+ * Sem regex de propósito: caractere de controle dentro de classe de caractere
+ * é o que `no-control-regex` proíbe, e o filtro explícito diz o que está sendo
+ * tirado — `/`, `\` e todo caractere de controle.
+ *
+ * ⚠️ Mora aqui com o resto do contrato do anexo (mesmos MIMEs, mesmo teto,
+ * mesmo formato de caminho) porque os TRÊS lugares que sobem arquivo no GPS —
+ * chamado, questionário inicial e contrato do cliente (migração ...214) —
+ * gravam o nome na mesma forma de coluna. Eram três cópias idênticas da mesma
+ * função; a quarta cópia seria o dia em que uma delas deixa passar um `\`.
+ */
+export function nomeDeArquivoSeguro(nome: string): string {
+  const limpo = Array.from(nome ?? "")
+    .filter((c) => {
+      if (c === "/" || c === "\\") return false;
+      const cod = c.charCodeAt(0);
+      return cod >= 32 && cod !== 127;
+    })
+    .join("")
+    .trim();
+  return limpo.slice(0, 120);
+}
+
+/**
  * Rótulo de status na visão de quem está lendo. Diz **de quem é a bola**, não o
  * estado interno — é o que faz a fila ser lida sem treinamento.
  */

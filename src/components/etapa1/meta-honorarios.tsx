@@ -1,9 +1,5 @@
 import { Target } from "lucide-react";
-import {
-  BONUS_HONORARIOS,
-  META_HONORARIOS,
-  type ResumoHonorarios,
-} from "@/lib/etapa1";
+import { META_HONORARIOS, type ResumoHonorarios } from "@/lib/etapa1";
 import { brl, brlInteiro } from "@/lib/moeda";
 import { BarraMarcos } from "@/components/ui/barra-marcos";
 import { cn } from "@/lib/utils";
@@ -20,11 +16,9 @@ import { cn } from "@/lib/utils";
  * Barra da meta de faturamento do ambiente (B8): soma de `valor_honorarios`
  * dos clientes em `fase='contratado'`, programa inteiro, valor CONTRATADO.
  *
- * Os DOIS marcos são a régua do programa: R$ 150.000 é o **Áureo**, o próximo
- * nível; passar de R$ 250.000 dá o **bônus do programa** (sem detalhe — o
- * portal não inventa prêmio). O desenho é o mesmo da aba Financeiro, pelo
- * mesmo componente (`BarraMarcos`), para que a home e a aba não mostrem duas
- * réguas diferentes do mesmo número.
+ * A régua é UMA: R$ 150.000 é o **AURUM**, o objetivo do programa. O desenho é
+ * o mesmo da aba Financeiro, pelo mesmo componente (`BarraMarcos`), para que a
+ * home e a aba não mostrem duas réguas diferentes do mesmo número.
  *
  * 🔑 As duas colunas nasceram NULL nas 879 linhas (migração ...090). Um KPI
  * ingênuo sobre coluna recém-criada mostra vazio como se fosse resultado —
@@ -32,12 +26,12 @@ import { cn } from "@/lib/utils";
  * faturamento do aluno que o portal não tem como fazer. Por isso os três
  * estados abaixo são obrigatórios e só o último desenha barra.
  *
- * ⚠️ A comparação `total >= META/BONUS` é a MESMA de `ProgressoFaturamento`
- * (`@/lib/financeiro`), e é comparação contra as constantes de `etapa1.ts` —
- * não uma segunda conta. Ela mora aqui porque este componente também roda no
- * CLIENTE (`clientes-manager`), e `financeiro.ts` importa o cliente Supabase
- * de servidor. Trocar o valor de um marco continua sendo um lugar só:
- * `META_HONORARIOS` / `BONUS_HONORARIOS`.
+ * ⚠️ A comparação `total >= META_HONORARIOS` é a MESMA de
+ * `ProgressoFaturamento` (`@/lib/financeiro`), e é comparação contra a
+ * constante de `etapa1.ts` — não uma segunda conta. Ela mora aqui porque este
+ * componente também roda no CLIENTE (`clientes-manager`), e `financeiro.ts`
+ * importa o cliente Supabase de servidor. Trocar o valor da meta continua
+ * sendo um lugar só: `META_HONORARIOS`.
  *
  * Sem `Card` de propósito: entra dentro do card de resumo da home e dentro do
  * cabeçalho da aba Clientes. Quem chama decide a moldura.
@@ -51,12 +45,9 @@ export function MetaHonorarios({
 }) {
   const { total, contratados, contratadosSemValor, pct } = resumo;
 
-  const chegouNoAureo = total !== null && total >= META_HONORARIOS;
-  const chegouNoBonus = total !== null && total >= BONUS_HONORARIOS;
-
+  const chegouNoAurum = total !== null && total >= META_HONORARIOS;
   const marcos = [
-    { valor: META_HONORARIOS, rotulo: "Áureo", atingido: chegouNoAureo },
-    { valor: BONUS_HONORARIOS, rotulo: "Bônus", atingido: chegouNoBonus },
+    { valor: META_HONORARIOS, rotulo: "AURUM", atingido: chegouNoAurum },
   ];
 
   return (
@@ -75,11 +66,7 @@ export function MetaHonorarios({
               {brlInteiro(total)}
             </span>{" "}
             <span className="text-muted-foreground">
-              {chegouNoBonus
-                ? "· Bônus"
-                : chegouNoAureo
-                  ? "· Áureo"
-                  : `de ${brlInteiro(META_HONORARIOS)}`}
+              {chegouNoAurum ? "· AURUM" : `de ${brlInteiro(META_HONORARIOS)}`}
             </span>
           </span>
         ) : (
@@ -94,47 +81,35 @@ export function MetaHonorarios({
           <BarraMarcos
             className="mt-2"
             valor={total}
-            max={BONUS_HONORARIOS}
+            max={META_HONORARIOS}
             marcos={marcos}
             rotuloAcessivel="Meta de faturamento"
             textoAcessivel={
-              chegouNoBonus
-                ? `${brlInteiro(total)}; Áureo e bônus do programa alcançados.`
-                : chegouNoAureo
-                  ? `${brlInteiro(total)}; Áureo alcançado, bônus do programa em ${brlInteiro(BONUS_HONORARIOS)}.`
-                  : `${brlInteiro(total)} de ${brlInteiro(META_HONORARIOS)} até o Áureo; bônus do programa em ${brlInteiro(BONUS_HONORARIOS)}.`
+              chegouNoAurum
+                ? `${brlInteiro(total)}; AURUM alcançado.`
+                : `${brlInteiro(total)} de ${brlInteiro(META_HONORARIOS)} até o AURUM.`
             }
           />
+          {/* Uma linha só embaixo da barra: quanto falta para o AURUM. */}
           <p className="mt-1.5 text-xs text-muted-foreground">
-            {chegouNoBonus ? (
-              <>Você passou dos {brlInteiro(BONUS_HONORARIOS)} — bônus do programa.</>
-            ) : chegouNoAureo ? (
-              <>
-                Áureo alcançado! Faltam{" "}
-                <span className="tabular-nums">
-                  {brlInteiro(BONUS_HONORARIOS - total)}
-                </span>{" "}
-                para o bônus do programa.
-              </>
+            {chegouNoAurum ? (
+              <>Você chegou ao AURUM.</>
             ) : (
               <>
                 Faltam{" "}
                 <span className="tabular-nums">
                   {brlInteiro(META_HONORARIOS - total)}
                 </span>{" "}
-                para o Áureo · {pct}% da meta
+                para o AURUM · {pct}% da meta
               </>
             )}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            honorários contratados de {contratados}{" "}
-            {contratados === 1 ? "cliente" : "clientes"}
             {contratadosSemValor > 0 ? (
               <>
                 {" · "}
                 <span className="text-atencao-foreground">
-                  {contratadosSemValor} de {contratados} contratados ainda sem
-                  valor registrado
+                  {contratadosSemValor}{" "}
+                  {contratadosSemValor === 1 ? "contratado" : "contratados"} sem
+                  valor
                 </span>
               </>
             ) : null}
@@ -145,8 +120,8 @@ export function MetaHonorarios({
           {contratados === 0 ? (
             <>
               Nenhum cliente contratado ainda. A meta de{" "}
-              {brlInteiro(META_HONORARIOS)} — o nível Áureo — começa a contar
-              quando você mover um cliente para Contratado.
+              {brlInteiro(META_HONORARIOS)} — o AURUM — começa a contar quando
+              você mover um cliente para Contratado.
             </>
           ) : (
             <>

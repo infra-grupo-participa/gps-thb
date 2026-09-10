@@ -163,7 +163,7 @@ export async function registrarNota(
     .slice(0, MAX_MENCOES);
 
   if (notaId && mencoes.length > 0) {
-    await registrarEAvisar(notaId, input.alunoId, ctx.perfil?.nome ?? null, mencoes);
+    await registrarEAvisar(notaId, input.alunoId, ctx.perfil?.nome ?? null, mencoes, texto);
   }
 
   revalidar(input.alunoId);
@@ -179,6 +179,7 @@ async function registrarEAvisar(
   alunoId: string,
   autorNome: string | null,
   mencoes: string[],
+  textoDaNota: string,
 ): Promise<void> {
   const supabase = await createClient();
 
@@ -195,9 +196,10 @@ async function registrarEAvisar(
     return;
   }
 
-  const quantidade = Number(
-    (data as { quantidade?: number } | null)?.quantidade ?? 0,
-  );
+  const retorno = data as
+    | { quantidade?: number; mencionados?: { perfil_id: string; nome: string }[] }
+    | null;
+  const quantidade = Number(retorno?.quantidade ?? 0);
   // Zero válidos (todos inativos, gestor, ou id que nem é perfil): não há a
   // quem avisar, e não é erro.
   if (quantidade < 1) return;
@@ -215,26 +217,32 @@ async function registrarEAvisar(
     .maybeSingle();
   const ativo = (cfg as { valor?: string } | null)?.valor === "true";
 
-  // O NOME DO ALUNO — e nada mais do ambiente. Uma consulta, e só quando há
-  // alguém para avisar e o canal está ligado.
-  let alunoNome = "um aluno";
-  if (ativo) {
-    const { data: aluno } = await supabase
-      .from("thb_alunos")
-      .select("nome")
-      .eq("id", alunoId)
-      .maybeSingle();
-    alunoNome = (aluno as { nome?: string | null } | null)?.nome ?? "um aluno";
-  }
+  if (!ativo) return;
 
-  // 🔴 O payload NUNCA carrega o texto da nota, o tipo, a origem, o nome do
-  // cliente do aluno, e-mail ou telefone. Ver `src/lib/slack.ts`.
+  // O NOME DO ALUNO e os E-MAILS dos mencionados (só para o Slack achar a
+  // conta de cada um; o e-mail não entra na mensagem). Duas consultas, só
+  // quando há alguém para avisar e o canal está ligado.
+  const ids = (retorno?.mencionados ?? []).map((m) => m.perfil_id);
+  const [{ data: aluno }, { data: perfis }] = await Promise.all([
+    supabase.from("thb_alunos").select("nome").eq("id", alunoId).maybeSingle(),
+    ids.length > 0
+      ? supabase.from("perfis").select("id, nome, email").in("id", ids)
+      : Promise.resolve({ data: [] as { id: string; nome: string | null; email: string | null }[] }),
+  ]);
+  const alunoNome = (aluno as { nome?: string | null } | null)?.nome ?? "um aluno";
+  const mencionados = ((perfis ?? []) as { id: string; nome: string | null; email: string | null }[]).map(
+    (p) => ({ nome: p.nome ?? "membro da equipe", email: p.email }),
+  );
+
+  // Decisão do João (10/09): a mensagem leva o trecho da nota (300 caracteres)
+  // e o link direto para o Diário do aluno. Ver o cabeçalho de `src/lib/slack.ts`.
   await notificarMencao(
     {
       autor: autorNome ?? "Alguém da equipe",
       aluno: alunoNome,
       url: `${APP_URL}/admin/aluno/${alunoId}/diario`,
-      quantidade,
+      texto: textoDaNota,
+      mencionados,
     },
     ativo,
   );

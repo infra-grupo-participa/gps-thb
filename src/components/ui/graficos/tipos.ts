@@ -16,8 +16,8 @@
  * Ou seja: **cor nunca pode ser o único canal** nestes gráficos — nem para
  * quem enxerga todas as cores. A consequência está no desenho de todos eles:
  *
- * 1. `TabelaValores` é OBRIGATÓRIA (`mostrarTabela` nasce `true`) e carrega a
- *    identidade em texto, com o quadradinho de cor ao lado, nunca no lugar;
+ * 1. `LegendaValores` é OBRIGATÓRIA (`mostrarLegenda` nasce `true`) e carrega
+ *    a identidade em texto, com o quadradinho de cor ao lado, nunca no lugar;
  * 2. segmento vizinho se separa por um **vão de 2 px na cor da superfície**,
  *    não por contorno — é o vão que faz dois tons próximos lerem como dois;
  * 3. o gráfico inteiro é `role="img"` com `aria-label` contendo o resumo em
@@ -57,8 +57,12 @@ export interface PontoGrafico {
   valor: number;
   /** Sem tom, o gráfico usa o dele (barras e linha são de uma cor só). */
   tom?: TomGrafico;
-  /** Linha de apoio na tabela de valores ("média 3/dia · pico 12 em 02/09"). */
-  hint?: string;
+  /**
+   * Percentual JÁ CALCULADO desta linha, quando o "de quanto" não é o total
+   * da série. O funil usa isto para dizer a conversão da etapa ANTERIOR — e
+   * deixa a primeira etapa sem `pct`, porque "100% de si mesma" é tinta.
+   */
+  pct?: number | null;
 }
 
 /** Formatador do valor exibido. `brlCompacto`, `String`, o que o card quiser. */
@@ -115,7 +119,7 @@ export function escala(valores: number[], tamanho: number): (v: number) => numbe
  *
  * Serve para decidir se um rótulo CABE dentro de um segmento antes de
  * desenhá-lo: rótulo cortado por `overflow` é pior do que rótulo ausente, e o
- * valor nunca se perde — a tabela abaixo carrega todos.
+ * valor nunca se perde — a legenda abaixo carrega todos.
  *
  * 0,58 em é a média da Inter para dígito e minúscula; é estimativa, e por isso
  * a folga exigida por quem chama é generosa (8 px).

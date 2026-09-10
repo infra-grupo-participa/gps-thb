@@ -16,26 +16,20 @@ import { mascaraTelefone } from "@/lib/masks";
 import { brl } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Badge } from "@/components/ui/badge";
-import {
-  EstrelaTravada,
-  GrauChip,
-  MarcaRecusou,
-  StarButton,
-  WhatsappLink,
-} from "./clientes-chips";
-import { fasesDisponiveis, travadoPelaEquipe } from "./ordenacao";
+import { Estrela, GrauChip, MarcaRecusou, WhatsappLink } from "./clientes-chips";
+import { fasesDisponiveis, modoEstrela, type CtxEstrela } from "./ordenacao";
 
 export function Kanban({
   clientes,
   fichaHref,
-  existeConfirmado,
+  ctxEstrela,
   onMover,
   onToggleEquipe,
 }: {
   clientes: ClienteEtapa1[];
   fichaHref: (id: string) => string;
-  /** Ver `ClientesTabela`: com um confirmado no ambiente, a estrela some dos outros. */
-  existeConfirmado: boolean;
+  /** Ver `ClientesTabela`: havendo favorito, a estrela some dos outros. */
+  ctxEstrela: CtxEstrela;
   onMover: (c: ClienteEtapa1, f: FaseCliente) => void;
   onToggleEquipe: (c: ClienteEtapa1) => void;
 }) {
@@ -120,16 +114,11 @@ export function Kanban({
                         >
                           {c.nome || "Sem nome"}
                         </Link>
-                        {travadoPelaEquipe(c) ? (
-                          <EstrelaTravada
-                            desde={c.acompanhamento_confirmado_em}
-                          />
-                        ) : existeConfirmado ? null : (
-                          <StarButton
-                            ativo={c.acompanhado_equipe}
-                            onClick={() => onToggleEquipe(c)}
-                          />
-                        )}
+                        <Estrela
+                          cliente={c}
+                          modo={modoEstrela(c, ctxEstrela)}
+                          onToggle={onToggleEquipe}
+                        />
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-1">
                         <GrauChip grau={c.grau_relacao} />

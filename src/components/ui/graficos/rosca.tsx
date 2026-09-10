@@ -3,7 +3,7 @@ import {
   type FormatarValor,
   type PontoGrafico,
 } from "./tipos";
-import { TabelaValores } from "./tabela-valores";
+import { LegendaValores } from "./legenda-valores";
 
 const R = 42; // raio da linha média do anel
 const ESPESSURA = 14;
@@ -31,8 +31,7 @@ export function Rosca({
   centroValor,
   centroRotulo,
   formatar = String,
-  mostrarTabela = true,
-  tituloTabela,
+  mostrarLegenda = true,
 }: {
   fatias: (PontoGrafico & { tom: NonNullable<PontoGrafico["tom"]> })[];
   resumo: string;
@@ -40,8 +39,7 @@ export function Rosca({
   centroValor: string;
   centroRotulo?: string;
   formatar?: FormatarValor;
-  mostrarTabela?: boolean;
-  tituloTabela?: string;
+  mostrarLegenda?: boolean;
 }) {
   const total = fatias.reduce((s, f) => s + Math.max(0, f.valor), 0);
   const visiveis = fatias.filter((f) => f.valor > 0);
@@ -121,11 +119,10 @@ export function Rosca({
           </text>
         ) : null}
       </svg>
-      {mostrarTabela ? (
+      {mostrarLegenda ? (
         <div className="min-w-[9rem] flex-1">
-          <TabelaValores
-            titulo={tituloTabela ?? resumo}
-            linhas={fatias}
+          <LegendaValores
+              linhas={fatias}
             formatar={formatar}
             total={total || undefined}
           />

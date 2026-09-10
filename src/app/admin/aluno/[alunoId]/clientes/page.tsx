@@ -51,10 +51,14 @@ export default async function AdminAlunoClientesPage({
           descricao="Gerencie os clientes e documentos no ambiente do aluno."
         />
 
+        {/* `admin` mantém a estrela clicável no Modo Assistência: desde a
+            migração ...215 a troca do cliente acompanhado é da EQUIPE, e é
+            aqui que ela acontece. Quem autoriza é a trigger do banco. */}
         <ClientesManager
           alunoId={alunoId}
           clientesIniciais={clientes}
           basePath={base}
+          admin
         />
       </main>
     </>

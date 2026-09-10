@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { useUrlDoPainel } from "@/components/admin/voltar-ao-painel";
 
 export interface NavItem {
   href: string;
@@ -46,6 +47,16 @@ export interface NavItem {
    * vale uma consulta a mais só para pintar a aba.
    */
   badge?: number;
+  /**
+   * Só a aba "Alunos" do painel do admin. O clique leva à **última URL do
+   * painel** (aba, busca, ordem, filtros, lote) em vez de `/admin` pelado —
+   * ver `components/admin/painel-url.ts`.
+   *
+   * `href` continua sendo `/admin`: é ele que decide qual aba está ATIVA
+   * (`pathname` não conhece a consulta) e é ele que aparece antes da
+   * montagem, quando o `sessionStorage` ainda não foi lido.
+   */
+  restauraPainel?: boolean;
 }
 
 const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
@@ -63,6 +74,10 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
 
 export function NavTabs({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
+  // Uma leitura por montagem, para o único item que pede (`restauraPainel`).
+  // Fora do painel do admin ninguém usa o valor — o hook custa um `useEffect`
+  // e um `useState`, e some do caminho de quem não marcou a chave.
+  const urlDoPainel = useUrlDoPainel();
 
   return (
     // `w-max` para o contêiner rolável do header medir a largura real das abas
@@ -73,10 +88,12 @@ export function NavTabs({ items }: { items: NavItem[] }) {
           ? pathname === item.href
           : pathname === item.href || pathname.startsWith(item.href + "/");
         const Icon = item.icon ? ICONES[item.icon] : null;
+        // `ativo` sai do `href` declarado; o destino pode ser mais específico.
+        const destino = item.restauraPainel ? urlDoPainel : item.href;
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={destino}
             aria-current={ativo ? "page" : undefined}
             // Sem prefetch: as abas ficam visíveis em toda tela e o Next
             // pré-buscava todas de uma vez. Como as rotas são dinâmicas, cada

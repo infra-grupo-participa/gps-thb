@@ -11,6 +11,8 @@ import { MessageCircle, Star } from "lucide-react";
 import type { ClienteEtapa1 } from "@/lib/types";
 import { GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { formatarData } from "@/lib/datas";
+import { TEXTO_TROCA_POR_CHAMADO } from "@/components/clientes/acompanhamento-equipe";
+import type { ModoEstrela } from "./ordenacao";
 
 /**
  * O grau de relação do cliente, como chip de leitura.
@@ -61,6 +63,28 @@ export function EstrelaTravada({
   const texto = desde
     ? `A equipe está acompanhando este cliente desde ${formatarData(desde)}. Só a equipe troca.`
     : "A equipe está acompanhando este cliente. Só a equipe troca.";
+  return (
+    <span
+      title={texto}
+      className={"shrink-0 text-accent-foreground " + className}
+    >
+      <Star className="size-4 fill-accent-foreground" aria-hidden />
+      <span className="sr-only">{texto}</span>
+    </span>
+  );
+}
+
+/**
+ * A estrela do cliente que o ALUNO escolheu e a equipe ainda não confirmou:
+ * também é sinal, não botão (migração ...215).
+ *
+ * 🔑 Mesmo desenho da `EstrelaTravada`, e de propósito: para quem usa a tela os
+ * dois estados são o mesmo fato — "este é o cliente da equipe, e a troca não é
+ * um clique". O que muda é a frase. O LINK do Suporte não cabe numa célula de
+ * tabela; ele fica no banner do topo da lista e na ficha, na mesma tela.
+ */
+export function EstrelaEscolhida({ className = "" }: { className?: string }) {
+  const texto = `Este é o cliente que a equipe acompanha. ${TEXTO_TROCA_POR_CHAMADO}.`;
   return (
     <span
       title={texto}
@@ -136,6 +160,40 @@ export function StarButton({
     >
       <Star className={"size-4 " + (ativo ? "fill-accent-foreground" : "")} />
     </button>
+  );
+}
+
+/**
+ * A estrela certa para o modo — UM lugar só, usado pelas três visões (tabela,
+ * quadro e card do celular). Antes cada uma repetia o mesmo ternário de três
+ * ramos, e a regra da ...215 teria de ser escrita três vezes.
+ */
+export function Estrela({
+  cliente,
+  modo,
+  onToggle,
+  className,
+}: {
+  cliente: ClienteEtapa1;
+  modo: ModoEstrela;
+  onToggle: (c: ClienteEtapa1) => void;
+  className?: string;
+}) {
+  if (modo === "ausente") return null;
+  if (modo === "confirmada") {
+    return (
+      <EstrelaTravada
+        desde={cliente.acompanhamento_confirmado_em}
+        className={className}
+      />
+    );
+  }
+  if (modo === "escolhida") return <EstrelaEscolhida className={className} />;
+  return (
+    <StarButton
+      ativo={cliente.acompanhado_equipe}
+      onClick={() => onToggle(cliente)}
+    />
   );
 }
 

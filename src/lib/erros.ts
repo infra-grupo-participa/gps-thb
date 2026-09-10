@@ -167,7 +167,19 @@ const FRASES_DO_BANCO: Record<string, string> = {
   // estrela de um cliente acompanhado — e não saberia por quê nem o que fazer.
   // ══════════════════════════════════════════════════════════════════════
 
-  // trg_etapa1_clientes_acompanhamento_travado (...203) — as 4 recusas da trava
+  // trg_etapa1_clientes_acompanhamento_travado (...203 + ...215)
+  //
+  // ⚠️ A PRIMEIRA é a recusa da ...215 e é a que o aluno vê no dia a dia: a
+  // escolha do cliente acompanhado é UMA, e trocar passa pela equipe. Ela
+  // dispara em dois caminhos (desmarcar a estrela e apagar o cliente marcado)
+  // com a mesma frase de propósito: para o aluno é um problema só.
+  "Para trocar o cliente que a equipe acompanha, abra um chamado no Suporte.":
+    "Para trocar o cliente que a equipe acompanha, abra um chamado no Suporte.",
+
+  // ⚠️ Esta ficou INALCANÇÁVEL com a ...215 (a recusa acima pega o mesmo caso
+  // antes, e com uma frase que diz o que fazer). Continua aqui enquanto a
+  // ...215 puder ser revertida — o custo é uma linha, e o custo de faltar é o
+  // aluno lendo "Sem permissão para esta ação" sem saber por quê.
   "A equipe está acompanhando este cliente — só a equipe pode trocar o cliente acompanhado.":
     "A equipe está acompanhando este cliente. Para trocar, fale com a equipe pelo Suporte.",
   "A equipe está acompanhando este cliente — ele não pode ser excluído.":
@@ -236,6 +248,21 @@ const FRASES_DO_BANCO: Record<string, string> = {
 
   // gps.registrar_mencoes (...207)
   "Nota não encontrada.": "Nota não encontrada.",
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Contrato do cliente como ANEXO (migração ...214)
+  // ══════════════════════════════════════════════════════════════════════
+  //
+  // As frases de anexo (caminho inválido, objeto inexistente, MIME/tamanho,
+  // extensão que não confere) são as MESMAS do questionário e já estão
+  // mapeadas acima: mesmo bucket, mesma conferência, mesma RPC-molde. Não
+  // duplicar aqui é o que garante que as duas telas digam a mesma coisa.
+  "Este cliente não tem contrato anexado.": "Este cliente não tem contrato anexado.",
+
+  // trg_etapa1_clientes_contrato_travado (...214). Quem lê isto é quem chamou
+  // o PostgREST direto — a tela nunca escreve estas colunas.
+  "O contrato do cliente é anexado pelo próprio portal — este campo não pode ser escrito direto.":
+    "O contrato é anexado pelo próprio portal, no botão de anexar da ficha do cliente.",
 };
 
 /**

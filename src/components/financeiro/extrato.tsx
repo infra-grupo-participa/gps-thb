@@ -116,8 +116,7 @@ export function Extrato({
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
               <caption className="sr-only">
-                Pagamentos registrados no cadastro financeiro do Grupo
-                Participa.
+                Pagamentos do seu programa, do mais recente para o mais antigo.
               </caption>
               <thead>
                 {/* `rotulo` (12 px, sentence case, 600) no lugar de

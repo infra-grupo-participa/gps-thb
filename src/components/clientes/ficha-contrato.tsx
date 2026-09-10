@@ -1,9 +1,13 @@
 "use client";
 
 /**
- * A seção "Contrato" da ficha do cliente: honorários contratados e o LINK do
- * contrato (o documento continua no Drive — o portal guarda o endereço, não o
- * arquivo).
+ * A seção "Contrato" da ficha do cliente: honorários contratados e o
+ * **contrato assinado** (anexo, migração ...214).
+ *
+ * 🔴 O "Link do contrato" (`contrato_url`) SAIU da visão principal — é LEGADO.
+ * O campo só reaparece, num bloco recolhido, para quem JÁ tem um link gravado:
+ * esconder um dado que a pessoa digitou seria perdê-lo em silêncio. Ficha nova
+ * nunca mostra o campo, e a prova passa a ser o arquivo.
  *
  * Saiu de `cliente-ficha.tsx` sem uma linha de lógica nova: a ficha passou de
  * 628 para 774 linhas ao ganhar grau de relação e a trava do favorito, e este
@@ -28,6 +32,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Secao } from "@/components/ui/secao";
 import { mascaraMoeda, numeroParaMoeda } from "@/lib/masks";
+import {
+  ContratoAnexo,
+  type ContratoDoCliente,
+} from "@/components/clientes/contrato-anexo";
 
 function LinkDoContrato({ url }: { url: string }) {
   return (
@@ -55,6 +63,11 @@ export function FichaContrato({
   contratoInvalido,
   faseRotulo,
   metaFormatada,
+  clienteId,
+  contratoAnexo,
+  podeAnexar,
+  anexoDesabilitado = false,
+  aoMudarAnexo,
 }: {
   /** `fase === "contratado"` — só aí os campos são editáveis. */
   contratado: boolean;
@@ -72,67 +85,103 @@ export function FichaContrato({
   faseRotulo: string | undefined;
   /** `META_HONORARIOS` já formatada — a ficha calcula uma vez só. */
   metaFormatada: string;
+  clienteId: string;
+  /** O anexo já gravado, ou `null`. Ver `ContratoAnexo`. */
+  contratoAnexo: ContratoDoCliente | null;
+  /** Só o aluno anexa; a equipe baixa e remove. */
+  podeAnexar: boolean;
+  anexoDesabilitado?: boolean;
+  aoMudarAnexo: () => void;
 }) {
-  return (
-    <Secao icone={<FileSignature />} titulo="Contrato" nivel="h3">
-      {contratado ? (
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="f-honorarios">Honorários contratados</Label>
-            <Input
-              id="f-honorarios"
-              inputMode="numeric"
-              value={honorarios}
-              onChange={(e) => onHonorarios(mascaraMoeda(e.target.value))}
-              placeholder="R$ 0,00"
-              aria-describedby="f-honorarios-ajuda"
-            />
-            <p
-              id="f-honorarios-ajuda"
-              className="text-xs leading-snug text-muted-foreground"
-            >
-              Valor contratado com este cliente — não é o que já entrou no
-              caixa. Entra na meta de {metaFormatada} do seu ambiente.
-            </p>
-          </div>
+  // O anexo aparece SEMPRE, em qualquer fase: quem chega ao programa com o caso
+  // já contratado precisa mandar a prova antes de ter mexido na fase, e o
+  // arquivo é o que sustenta o sinal da equipe. Só os HONORÁRIOS seguem presos
+  // a "Contratado" (é a regra da meta, B8).
+  const anexo = (
+    <ContratoAnexo
+      clienteId={clienteId}
+      contrato={contratoAnexo}
+      podeAnexar={podeAnexar}
+      desabilitado={anexoDesabilitado}
+      aoMudar={aoMudarAnexo}
+    />
+  );
 
-          <div className="grid gap-2">
-            <Label htmlFor="f-contrato">Link do contrato</Label>
-            <Input
-              id="f-contrato"
-              type="url"
-              inputMode="url"
-              value={contratoUrl}
-              onChange={(e) => onContratoUrl(e.target.value)}
-              placeholder="https://drive.google.com/..."
-              aria-invalid={contratoInvalido || undefined}
-              aria-describedby={
-                contratoInvalido
-                  ? "f-contrato-ajuda f-contrato-erro"
-                  : "f-contrato-ajuda"
-              }
-            />
+  /** O link antigo, só para quem já tem um gravado. */
+  const legado =
+    contratoLimpo || contratoInvalido ? (
+      <details className="rounded-lg border border-borda-fina bg-superficie-afundada p-3">
+        <summary className="cursor-pointer corpo-sm font-medium">
+          Link do contrato (registro antigo)
+        </summary>
+        <div className="mt-3 grid gap-2">
+          <Label htmlFor="f-contrato">Link do contrato</Label>
+          <Input
+            id="f-contrato"
+            type="url"
+            inputMode="url"
+            value={contratoUrl}
+            onChange={(e) => onContratoUrl(e.target.value)}
+            placeholder="https://drive.google.com/..."
+            aria-invalid={contratoInvalido || undefined}
+            aria-describedby={
+              contratoInvalido
+                ? "f-contrato-ajuda f-contrato-erro"
+                : "f-contrato-ajuda"
+            }
+          />
+          <p
+            id="f-contrato-ajuda"
+            className="text-xs leading-snug text-muted-foreground"
+          >
+            Endereço do arquivo na sua pasta, guardado antes de o portal passar
+            a receber o contrato assinado. Continua valendo; a prova que a
+            equipe lê é o arquivo anexado acima. Apague o campo para removê-lo.
+          </p>
+          {contratoInvalido ? (
             <p
-              id="f-contrato-ajuda"
-              className="text-xs leading-snug text-muted-foreground"
+              id="f-contrato-erro"
+              className="text-xs leading-snug font-medium text-destructive"
             >
-              Cole o link do contrato na sua pasta do Drive. O arquivo não é
-              enviado para o portal.
+              O link precisa começar com https:// e não pode conter espaços.
             </p>
-            {contratoInvalido ? (
-              <p
-                id="f-contrato-erro"
-                className="text-xs leading-snug font-medium text-destructive"
-              >
-                O link precisa começar com https:// e não pode conter espaços.
-              </p>
-            ) : null}
-            {!contratoInvalido && contratoLimpo ? (
-              <LinkDoContrato url={contratoLimpo} />
-            ) : null}
-          </div>
+          ) : null}
+          {!contratoInvalido && contratoLimpo ? (
+            <LinkDoContrato url={contratoLimpo} />
+          ) : null}
         </div>
-      ) : honorariosValor != null || contratoLimpo ? (
+      </details>
+    ) : null;
+
+  return (
+    <Secao
+      icone={<FileSignature />}
+      titulo="Contrato"
+      nivel="h3"
+      classeConteudo="grid gap-5"
+    >
+      {anexo}
+
+      {contratado ? (
+        <div className="grid gap-2 sm:max-w-sm">
+          <Label htmlFor="f-honorarios">Honorários contratados</Label>
+          <Input
+            id="f-honorarios"
+            inputMode="numeric"
+            value={honorarios}
+            onChange={(e) => onHonorarios(mascaraMoeda(e.target.value))}
+            placeholder="R$ 0,00"
+            aria-describedby="f-honorarios-ajuda"
+          />
+          <p
+            id="f-honorarios-ajuda"
+            className="text-xs leading-snug text-muted-foreground"
+          >
+            Valor contratado com este cliente — não é o que já entrou no caixa.
+            Entra na meta de {metaFormatada} do seu ambiente.
+          </p>
+        </div>
+      ) : honorariosValor != null ? (
         // Fora de "Contratado" o valor sobrevive, mas não conta na meta — e
         // isso é ATENÇÃO, não decoração: o token semântico diz o estado.
         <div className="grid gap-1.5 rounded-lg bg-atencao p-3 text-atencao-foreground">
@@ -144,9 +193,6 @@ export function FichaContrato({
             — não contam na meta enquanto o cliente estiver em{" "}
             {faseRotulo ?? "outra fase"}.
           </p>
-          {contratoLimpo && !contratoInvalido ? (
-            <LinkDoContrato url={contratoLimpo} />
-          ) : null}
           <p className="text-xs">
             Mova o cliente de volta para Contratado para editar e voltar a
             contar na meta. O valor não é apagado.
@@ -154,10 +200,11 @@ export function FichaContrato({
         </div>
       ) : (
         <p className="corpo-sm text-muted-foreground">
-          Os honorários e o link do contrato aparecem aqui quando o cliente
-          entra na fase Contratado.
+          Os honorários aparecem aqui quando o cliente entra na fase Contratado.
         </p>
       )}
+
+      {legado}
     </Secao>
   );
 }

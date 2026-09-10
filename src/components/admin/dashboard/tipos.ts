@@ -132,7 +132,18 @@ export const TOM_DA_FAIXA: Record<FaixaTrilha, TomGrafico> = {
 };
 
 /**
- * O filtro de `/admin` que cada faixa abre.
+ * O prefixo de TODO link de card para a lista de alunos.
+ *
+ * 🔴 `aba=ativos` é obrigatório: o padrão de `/admin` passou a ser a aba
+ * "Visão geral" (`ABA_PADRAO`, em `alunos-ativos-lista/estado-na-url.ts`), e
+ * um `/admin?f=sem_login` sem aba devolveria o admin a este mesmo dashboard
+ * com um filtro marcado que ele não veria. Escrito num lugar só para não
+ * depender de nove `href` lembrarem da regra.
+ */
+export const LINK_LISTA = "/admin?aba=ativos";
+
+/**
+ * O que o card 6 abre.
  *
  * ⚠️ Só existem `ordem=progresso` e os filtros da allowlist de
  * `estado-na-url.ts` — não há filtro por faixa de progresso, e inventar um
@@ -140,4 +151,4 @@ export const TOM_DA_FAIXA: Record<FaixaTrilha, TomGrafico> = {
  * por progresso põe exatamente essa gente no topo (ou no fim) da lista, que é
  * o que o card promete.
  */
-export const ORDEM_POR_PROGRESSO = "/admin?ordem=progresso";
+export const ORDEM_POR_PROGRESSO = `${LINK_LISTA}&ordem=progresso`;

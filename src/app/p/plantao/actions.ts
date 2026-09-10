@@ -81,6 +81,41 @@ async function ipHashAtual(): Promise<string | null> {
 }
 
 /**
+ * Registra que a pessoa chegou ao portal por um link de e-mail.
+ *
+ * Responde "o e-mail funcionou?" — pergunta diferente de `presenca_em`, que
+ * responde "a pessoa entrou na sala?". As duas juntas dão o funil:
+ * recebeu → clicou → entrou.
+ *
+ * 🔑 NUNCA lança e NUNCA bloqueia. Roda no caminho de quem está tentando
+ * assistir ao plantão; se o registro falhar, a pessoa não pode ser impedida.
+ * A RPC também é `exception when others then return` pelo mesmo motivo —
+ * métrica jamais atrapalha produto.
+ *
+ * Sem pixel de abertura (decisão do Marcio, 10/09/2026): pixel infla o número
+ * no Gmail, que pré-carrega imagens, e penaliza entregabilidade numa base
+ * cheia de e-mail corporativo. Só clique, que é o sinal que importa.
+ */
+export async function registrarCliqueDeEmail(
+  email: string,
+  slotId: string,
+  origem: string,
+): Promise<void> {
+  try {
+    const h = await headers();
+    await clientePublico().rpc("plantao_registrar_clique", {
+      p_email: email,
+      p_slot_id: slotId,
+      p_origem: origem,
+      p_ip_hash: await ipHashAtual(),
+      p_user_agent: h.get("user-agent") ?? null,
+    });
+  } catch {
+    // Silencioso por desenho — ver o comentário acima.
+  }
+}
+
+/**
  * Calendário do mês. `email` é OPCIONAL: sem ele a rota pública responde o
  * calendário mesmo assim (é o ponto da mudança); com ele, marca qual slot é
  * a inscrição da pessoa.

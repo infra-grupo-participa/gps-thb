@@ -22,6 +22,7 @@ import Link from "next/link";
 import {
   buscarCalendario,
   buscarMinhaInscricao,
+  registrarCliqueDeEmail,
 } from "@/app/p/plantao/actions";
 import { mesAtualSaoPaulo, normalizarEmail, emailValido } from "@/lib/plantao";
 import { CalendarioMes } from "@/components/plantao/calendario-mes";
@@ -42,9 +43,17 @@ function parseMes(m: string | undefined): { ano: number; mes: number } {
 export default async function PlantaoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ m?: string; e?: string; n?: string }>;
+  searchParams: Promise<{
+    m?: string;
+    e?: string;
+    n?: string;
+    /** origem do clique, posta pelos e-mails: sala_1h | abertura | nps */
+    o?: string;
+    /** slot a que o e-mail se referia, para casar o clique */
+    s?: string;
+  }>;
 }) {
-  const { m, e, n } = await searchParams;
+  const { m, e, n, o, s: slotDoEmail } = await searchParams;
   const { ano, mes } = parseMes(m);
 
   const email =
@@ -55,9 +64,17 @@ export default async function PlantaoPage({
   // que a pessoa estava vendo (senão ela perde o lugar no calendário).
   const hrefTrocarEmail = m ? `/p/plantao?m=${m}` : "/p/plantao";
 
+  // Chegou por um link de e-mail? Registra o clique. Vai junto do fetch
+  // porque não bloqueia nada: a action engole qualquer erro, e o par
+  // (recebeu → clicou → entrou) é o que dá o funil do plantão.
+  const veioDeEmail = Boolean(email && o && slotDoEmail);
+
   const [calendario, minhaInscricao] = await Promise.all([
     buscarCalendario(ano, mes, email ?? undefined),
     email ? buscarMinhaInscricao(email) : Promise.resolve(null),
+    veioDeEmail
+      ? registrarCliqueDeEmail(email!, slotDoEmail!, o!)
+      : Promise.resolve(),
   ]);
 
   return (

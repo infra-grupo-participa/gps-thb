@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ThbLogo } from "@/components/thb-logo";
-import { LogoutButton } from "@/components/logout-button";
+import { MenuDeContas } from "@/components/menu-de-contas";
+import { lerContas } from "@/lib/contas-do-navegador";
 import { NavTabs, type NavItem } from "@/components/nav-tabs";
 import { AutoLogout } from "@/components/auto-logout";
-import { Badge } from "@/components/ui/badge";
 
-export function AppHeader({
+export async function AppHeader({
   nome,
   email,
   papelRotulo,
@@ -18,6 +18,15 @@ export function AppHeader({
   homeHref?: string;
   navItems?: NavItem[];
 }) {
+  // 🔑 O header busca as contas SOZINHO. Passar por prop obrigaria as 20
+  // páginas que o renderizam a saber da feature — e a primeira que
+  // esquecesse mostraria um menu sem a troca de conta, sem erro nenhum.
+  //
+  // A conta ATUAL sai da lista: trocar para si mesmo não é troca.
+  const outrasContas = (await lerContas())
+    .filter((c) => c.email !== email)
+    .map(({ userId, email: e, nome: n }) => ({ userId, email: e, nome: n }));
+
   return (
     <>
       {/* O header só é renderizado em tela autenticada, então é o lugar
@@ -46,18 +55,15 @@ export function AppHeader({
           </Link>
 
           <div className="ml-auto flex min-w-0 items-center gap-3">
-            <div className="hidden min-w-0 text-right sm:block">
-              <div className="truncate text-sm leading-tight font-medium">
-                {nome ?? email}
-              </div>
-              <div className="truncate text-xs text-muted-foreground">
-                {email}
-              </div>
-            </div>
-            <Badge variant="secondary" className="hidden md:inline-flex">
-              {papelRotulo}
-            </Badge>
-            <LogoutButton />
+            {/* Perfil, trocar de conta e sair vivem num menu só. O botão de
+                logout solto saiu: eram dois alvos para a mesma área, e a
+                troca de conta não teria onde morar. */}
+            <MenuDeContas
+              nome={nome}
+              email={email}
+              papelRotulo={papelRotulo}
+              outrasContas={outrasContas}
+            />
           </div>
         </div>
 

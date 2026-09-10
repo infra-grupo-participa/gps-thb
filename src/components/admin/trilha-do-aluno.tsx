@@ -52,6 +52,7 @@ export function TrilhaDoAluno({
   dataCorteBackfill,
   truncado,
   janelaAtiva,
+  podeApagarNota = false,
 }: {
   itens: ItemTrilha[];
   alunoId: string;
@@ -60,6 +61,8 @@ export function TrilhaDoAluno({
   truncado?: boolean;
   /** Rótulo da janela de tempo ativa (ex. "30 dias"), para o estado vazio honesto. `null`/ausente = "Tudo". */
   janelaAtiva?: string | null;
+  /** Quem está logado pode apagar nota? (3 e-mails, decidido no servidor) */
+  podeApagarNota?: boolean;
 }) {
   if (itens.length === 0) {
     return (
@@ -98,7 +101,11 @@ export function TrilhaDoAluno({
             <CardContent className="grid divide-y divide-border/60 py-2">
               {grupo.itens.map((item, i) => (
                 <div key={`${grupo.dia}-${i}`} className="py-1">
-                  <TrilhaItem item={item} alunoId={alunoId} />
+                  <TrilhaItem
+                    item={item}
+                    alunoId={alunoId}
+                    podeApagarNota={podeApagarNota}
+                  />
                 </div>
               ))}
             </CardContent>

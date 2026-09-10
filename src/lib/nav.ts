@@ -29,12 +29,24 @@ export function alunoNavItems(
     { href: `${basePath}/clientes`, label: "Clientes", icon: "clientes" },
     { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta" },
     { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" },
+    // ⏸️ FINANCEIRO EM ESPERA (decisão do Marcio, 10/09/2026): "esconder a
+    // aba do financeiro, dado que ainda não está pronta, deixa mockado com
+    // uma aba de em breve".
+    //
+    // A aba CONTINUA aparecendo, apagada e sem link. Sumir com ela faria o
+    // aluno não saber que o Financeiro vai existir; deixá-la clicável o
+    // levaria a uma tela que ainda não conta a história certa.
+    //
+    // 🔑 A regra do sócio (B7-b) continua valendo por baixo: quando o
+    // Financeiro voltar, é só trocar `emBreve: true` por nada — a flag
+    // `opts.financeiro` já decide quem vê.
     ...(opts.financeiro
       ? [
           {
             href: `${basePath}/financeiro`,
             label: "Financeiro",
             icon: "financeiro" as const,
+            emBreve: true,
           },
         ]
       : []),

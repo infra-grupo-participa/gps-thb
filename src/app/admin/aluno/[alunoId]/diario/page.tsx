@@ -23,6 +23,7 @@ import { DiarioForm } from "@/components/admin/diario-form";
 import { DiarioTimeline } from "@/components/admin/diario-timeline";
 import { TrilhaCabecalho } from "@/components/admin/trilha-cabecalho";
 import { TrilhaDoAluno } from "@/components/admin/trilha-do-aluno";
+import { podeApagarNota as consultarPodeApagarNota } from "@/app/admin/diario-actions";
 import { cn } from "@/lib/utils";
 
 /**
@@ -166,6 +167,7 @@ export default async function AdminAlunoDiarioPage({
     marcos,
     marcosTrilha,
     qtdMembros,
+    podeApagarNota,
   ] = await Promise.all([
     carregarAluno(alunoId),
     // A janela vale para as TRÊS fontes da trilha (eventos, notas e ações
@@ -184,7 +186,10 @@ export default async function AdminAlunoDiarioPage({
     // tempo escolhida na tela — ver `getMarcosDeTrilha`. Não usar `eventos`
     // (já filtrado por `desde`) para nenhum dos dois.
     getMarcosDeTrilha(alunoId),
-    contarMembrosDoAmbiente(alunoId),
+    contarMembrosDoAmbiente(alunoId),,
+    // Só 3 pessoas apagam nota (gps.config.notas_podem_apagar). A tela
+    // esconde o botão para os outros; a fronteira real é a RPC.
+    consultarPodeApagarNota()
   ]);
 
   // `truncado` = o teto de 300 cortou dentro da janela. A tela precisa dizer
@@ -286,6 +291,7 @@ export default async function AdminAlunoDiarioPage({
           dataCorteBackfill={dataCorteBackfill}
           truncado={truncado}
           janelaAtiva={janelaAtiva}
+          podeApagarNota={podeApagarNota}
         />
       </main>
     </>

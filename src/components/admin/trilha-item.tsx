@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { DiarioForm } from "@/components/admin/diario-form";
 import { DiarioBaixaButton } from "@/components/admin/diario-baixa-button";
+import { DiarioApagarNota } from "@/components/admin/diario-apagar-nota";
 import {
   ROTULO_VOZ,
   ROTULO_TIPO,
@@ -231,7 +232,16 @@ function ItemEvento({
   );
 }
 
-function ItemNota({ item }: { item: ItemTrilha & { variante: "nota" } }) {
+function ItemNota({
+  item,
+  alunoId,
+  podeApagar,
+}: {
+  item: ItemTrilha & { variante: "nota" };
+  alunoId: string;
+  /** Quem está logado pode apagar nota? Decidido no servidor. */
+  podeApagar: boolean;
+}) {
   const { nota } = item;
   const pendenciaAberta = nota.tipo === "pendencia" && !nota.resolvido_em;
   const pendenciaResolvida = nota.tipo === "pendencia" && nota.resolvido_em;
@@ -283,6 +293,13 @@ function ItemNota({ item }: { item: ItemTrilha & { variante: "nota" } }) {
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>{nota.autor_nome ?? "Equipe"}</span>
         {pendenciaAberta ? <DiarioBaixaButton notaId={nota.id} /> : null}
+        {podeApagar ? (
+          <DiarioApagarNota
+            notaId={nota.id}
+            alunoId={alunoId}
+            trecho={nota.texto.slice(0, 120)}
+          />
+        ) : null}
         {pendenciaResolvida ? (
           <span className="inline-flex items-center gap-1 text-sucesso-foreground">
             <CheckCircle2 className="size-3.5" />
@@ -325,9 +342,12 @@ function ItemAcaoAdministrativa({
 export function TrilhaItem({
   item,
   alunoId,
+  podeApagarNota = false,
 }: {
   item: ItemTrilha;
   alunoId: string;
+  /** Quem está logado pode apagar nota? Vem do servidor (3 e-mails). */
+  podeApagarNota?: boolean;
 }) {
   switch (item.variante) {
     case "macro":
@@ -335,7 +355,9 @@ export function TrilhaItem({
     case "evento":
       return <ItemEvento alunoId={alunoId} evento={item.evento} />;
     case "nota":
-      return <ItemNota item={item} />;
+      return (
+        <ItemNota item={item} alunoId={alunoId} podeApagar={podeApagarNota} />
+      );
     case "acao_administrativa":
       return <ItemAcaoAdministrativa item={item} />;
     default: {

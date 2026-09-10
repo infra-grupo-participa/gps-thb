@@ -16,7 +16,7 @@ import { ThbLogo } from "@/components/thb-logo";
  * 2. **Sem Tailwind e sem token de `globals.css`.** A folha global é importada
  *    pelo layout que quebrou; contar com ela seria apostar que a tela de erro
  *    depende do caminho que já falhou. O CSS vive aqui dentro, com os valores
- *    literais da paleta do Grupo Participa (`#ff6300` + neutros slate) copiados
+ *    literais da paleta do Grupo Participa (laranja do logo + neutros) copiados
  *    de `globals.css`. Se a paleta mudar lá, mude aqui também — é dívida
  *    consciente, o preço de a tela de erro não ter dependência nenhuma.
  *
@@ -103,7 +103,7 @@ const CSS = `
     cursor: pointer;
     transition: background-color 120ms ease, color 120ms ease;
   }
-  .ge-botao--primario { background: #ff6300; color: #ffffff; }
+  .ge-botao--primario { background: #c34107; color: #ffffff; }
   .ge-botao--primario:hover { background: #e05700; }
   .ge-botao--secundario {
     background: #ffffff;
@@ -114,7 +114,7 @@ const CSS = `
   /* Foco visível é obrigatório: sem ele o teclado não sabe onde está, e esta
      tela pode ser a única coisa de pé no portal. */
   .ge-botao:focus-visible {
-    outline: 2px solid #ff6300;
+    outline: 2px solid #ef7d00;
     outline-offset: 2px;
   }
   .ge-codigo {

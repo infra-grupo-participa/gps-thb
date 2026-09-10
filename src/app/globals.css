@@ -73,24 +73,26 @@
        risco    #A32020 sobre #FDECEC = 6,60:1
        neutro   #5C5751 sobre #F1EEEA = 6,18:1 */
   /* Laranja da marca para SUPERFÍCIE GRANDE com texto branco por cima
-     (painel do login, hero do perfil). `--primary` (#FF6300) com branco dá
+     (painel do login, hero do perfil). `--primary` (#EF7D00) com branco dá
      **2,98:1** e reprova até o mínimo de texto grande (3:1) — medido; este
      (#B04300, o mesmo laranja escurecido do `accent-foreground`) dá
      **5,75:1**. Não substitui `--primary`: fill de ação continua sendo ele. */
   --color-marca-solida: #b04300;
   /* Laranja de AÇÃO — o preenchimento do botão primário.
-     `--primary` (#FF6300) com branco dá **2,98:1** (medido no DOM, texto de
+     `--primary` (#EF7D00) com branco dá **2,76:1** (o #FF6300 anterior dava
+     2,98:1 — os dois reprovam; nenhum serve de fill sob texto branco).
+     Medido no DOM, texto de
      14 px): reprovava o WCAG 1.4.3 no botão mais clicado do portal. Este
-     (#C74600) com branco dá **4,88:1** e passa AA. Escolhido em vez do
+     (#C34107, do logo) com branco dá **5,15:1** e passa AA. Escolhido em vez do
      `marca-solida` (#B04300, 5,75:1) de propósito: `marca-solida` é a
      SUPERFÍCIE de marca (login, hero, badge), e se o botão usasse o mesmo tom
      a ação primária deixaria de se distinguir do enfeite. Fica um degrau mais
      claro que a superfície e um degrau mais escuro que a marca decorativa.
      O HOVER é o passo seguinte da mesma escada: `marca-solida`.
-     ⚠️ `#FF6300` continua sendo a marca (ícone, chip, régua da aba ativa,
+     ⚠️ `#EF7D00` (o laranja claro DO LOGO) é a marca (ícone, chip, régua,
      anel de foco) — só não pinta fundo com texto branco por cima.
      Reversível em uma linha: trocar por `var(--primary)` volta ao de antes. */
-  --color-marca-acao: #c74600;
+  --color-marca-acao: #c34107;
 
   --color-sucesso: #e8f5ec;
   --color-sucesso-foreground: #186a3b;
@@ -110,9 +112,30 @@
 
 }
 
-/* Paleta Time Holding Brasil — laranja #FF6300 + neutros QUENTES.
+/* Paleta Time Holding Brasil — laranja EXTRAÍDO DO LOGO + neutros QUENTES.
+   ────────────────────────────────────────────────────────────────────────
+   🔑 As cores saem de `public/logo-thb.svg` (decisão do Marcio, 10/09/2026:
+   "coloca a coloração conforme a paleta do time holding brasil"). O logo tem
+   um degradê de #BC3709 a #EF7D00; o #FF6300 que o sistema usava antes NÃO
+   ESTÁ NO LOGO — era um laranja aproximado.
+
+   ⚠️ O pedido foi "um laranja mais claro que a cor coral". Medido, todo
+   laranja mais claro do degradê REPROVA o contraste AA com texto branco em
+   cima:
+
+       #EF7D00  2,76:1   #EC7900  2,88:1   #E46E01  3,22:1
+       #D65B04  3,92:1   #C34107  5,15:1 ✅  #BC3709  5,69:1 ✅
+
+   Por isso a paleta separa DUAS coisas, como já fazia:
+     • decorativo (ícone, chip, régua, anel de foco, gráfico) → #EF7D00,
+       o laranja CLARO do logo. É o que muda a cara do produto.
+     • preenchimento de botão, onde há texto branco por cima → #C34107,
+       a cor mais clara do logo que ainda passa AA (5,15:1). Era #C74600,
+       que nem estava no logo.
+
+   Neutros QUENTES: eram slate (matiz ~220°, azulado) e brigavam com o
    Os neutros eram slate (matiz ~220°, azulado) e brigavam com o laranja da
-   marca (matiz 23°): card branco puro sobre cinza-azul é a cara de
+   laranja da marca: card branco puro sobre cinza-azul é a cara de
    "dashboard genérico de biblioteca de componentes". Todos os cinzas foram
    regirados para a família da marca, com a mesma clareza. */
 :root {
@@ -124,7 +147,7 @@
   --card-foreground: #1c1917;
   --popover: #ffffff;
   --popover-foreground: #1c1917;
-  --primary: #ff6300;
+  --primary: #ef7d00;
   --primary-foreground: #ffffff;
   --secondary: #f1ede8;
   --secondary-foreground: #1c1917;
@@ -136,13 +159,13 @@
   --muted-foreground: #635d58;
   --accent: #ffedd5;
   /* Todo TEXTO/número laranja usa este, nunca `--primary`: #B04300 sobre a
-     página dá 5,43:1; #FF6300 dá 2,98:1 e reprova o WCAG 1.4.3. */
+     página dá 5,43:1; #EF7D00 dá 2,61:1 e reprova o WCAG 1.4.3. */
   --accent-foreground: #b04300;
   --destructive: #a32020;
   --border: #e7e2dc;
   --input: #d6cfc7;
-  --ring: #ff6300;
-  --chart-1: #ff6300;
+  --ring: #ef7d00;
+  --chart-1: #ef7d00;
   --chart-2: #ff8a4d;
   --chart-3: #c2410c;
   --chart-4: #fdba74;
@@ -154,12 +177,12 @@
   --gap-secao: 1.5rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #1c1917;
-  --sidebar-primary: #ff6300;
+  --sidebar-primary: #ef7d00;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #f1ede8;
   --sidebar-accent-foreground: #1c1917;
   --sidebar-border: #e7e2dc;
-  --sidebar-ring: #ff6300;
+  --sidebar-ring: #ef7d00;
 }
 
 @media (min-width: 768px) {

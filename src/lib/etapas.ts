@@ -129,6 +129,11 @@ const BLOQUEIO_FAVORITO = "Escolha o cliente que a equipe vai acompanhar";
 export interface OpcoesProximoPasso {
   /** O ambiente já tem um cliente marcado como acompanhado pela equipe. */
   temFavorito: boolean;
+  /**
+   * O aluno chegou ao programa COM cliente (respondeu "já tenho" no
+   * questionário inicial)? Quem já tem não é travado pela tarefa dos 30.
+   */
+  jaTemCliente?: boolean;
 }
 
 /**
@@ -153,6 +158,7 @@ export function proximoPasso(
   progressoTodas: ProgressoTarefa[],
   opts: OpcoesProximoPasso,
 ): ProximoPasso | null {
+  const jaTemCliente = opts.jaTemCliente === true;
   const liberadas = [...etapas]
     .filter((e) => e.liberada)
     .sort((a, b) => a.ordem - b.ordem);
@@ -180,7 +186,16 @@ export function proximoPasso(
     // Mesma regra do `Etapa1Guide` — se divergir, o card promete o que o
     // checkbox recusa.
     const motivoBloqueio = (t: TarefaDef): string | null => {
-      if (t.exigeTarefa != null && !estaConcluida(t.exigeTarefa)) {
+      // 🔑 A trava dos 30 vale para quem começa do ZERO. Quem chegou ao
+      // programa COM cliente (respondeu "já tenho" no questionário inicial)
+      // passa direto: mandar quem já está em fechamento voltar para montar
+      // uma lista de 30 nomes é atrasar quem está adiantado.
+      //
+      // Decisão do Marcio, 10/09/2026: "o cara que marcar que vai começar da
+      // captação, sua missão é listar os 30 primeiro, como impedimento, ele
+      // não pode avançar sem listar os 30; se o cara já tem cliente, ele pode
+      // avançar sem listar os 30, direto".
+      if (t.exigeTarefa != null && !jaTemCliente && !estaConcluida(t.exigeTarefa)) {
         return BLOQUEIO_TAREFA;
       }
       if (t.exigeFavorito && !opts.temFavorito) return BLOQUEIO_FAVORITO;

@@ -1,4 +1,5 @@
 import {
+  alunoJaTemCliente,
   getAgendamentosEtapa3,
   getAmbiente,
   getClienteEquipe,
@@ -52,12 +53,15 @@ export async function EtapaConteudo({
     : Promise.resolve({} as Record<number, ModoEnfase>);
 
   if (n === 1) {
-    const [progresso, enfases, clientes, ambiente] = await Promise.all([
-      pProgresso,
-      pEnfases,
-      getClientesEtapa1(alunoId),
-      getAmbiente(alunoId),
-    ]);
+    const [progresso, enfases, clientes, ambiente, jaTemCliente] =
+      await Promise.all([
+        pProgresso,
+        pEnfases,
+        getClientesEtapa1(alunoId),
+        getAmbiente(alunoId),
+        // Quem chegou COM cliente não é travado pela tarefa dos 30.
+        alunoJaTemCliente(alunoId),
+      ]);
     // Os passos 4+ da Etapa 01 só liberam após escolher o cliente da equipe.
     const temFavorito = clientes.some((c) => c.acompanhado_equipe);
     return (
@@ -70,6 +74,7 @@ export async function EtapaConteudo({
         enfasesIniciais={enfases}
         isAdmin={isAdmin}
         temFavorito={temFavorito}
+        jaTemCliente={jaTemCliente}
       />
     );
   }

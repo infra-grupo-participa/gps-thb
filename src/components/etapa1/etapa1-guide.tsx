@@ -47,6 +47,7 @@ export function Etapa1Guide({
   enfasesIniciais = {},
   isAdmin = false,
   temFavorito = false,
+  jaTemCliente = false,
 }: {
   alunoId: string;
   clientesIniciais: ClienteEtapa1[];
@@ -57,6 +58,11 @@ export function Etapa1Guide({
   isAdmin?: boolean;
   /** Aluno já escolheu o cliente acompanhado pela equipe? Libera os passos 4+. */
   temFavorito?: boolean;
+  /**
+   * O aluno chegou COM cliente (respondeu "já tenho" no questionário
+   * inicial)? Quem já tem não é travado pela tarefa dos 30.
+   */
+  jaTemCliente?: boolean;
 }) {
   const [manual, setManual] = useState<Record<number, boolean>>(() => {
     const m: Record<number, boolean> = {};
@@ -267,8 +273,13 @@ export function Etapa1Guide({
             />
             {TAREFAS_ETAPA1.map((t) => {
               const travadoPorFavorito = Boolean(t.exigeFavorito) && !temFavorito;
+              // A trava dos 30 vale para quem começa do zero. Quem chegou
+              // COM cliente passa direto (decisão do Marcio, 10/09/2026) —
+              // ver `proximoPasso` em `src/lib/etapas.ts`, mesma regra.
               const travadoPorTarefa =
-                t.exigeTarefa != null && !tarefaConcluida(t.exigeTarefa);
+                t.exigeTarefa != null &&
+                !jaTemCliente &&
+                !tarefaConcluida(t.exigeTarefa);
               const bloqueada = travadoPorFavorito || travadoPorTarefa;
               const faltam = META_CLIENTES - Math.min(comDados, META_CLIENTES);
               const concluida = tarefaConcluida(t.num);

@@ -1,17 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LifeBuoy } from "lucide-react";
+import { Clock } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById } from "@/lib/data";
-import {
-  getExtratoDoAluno,
-  getFinanceiroDoAluno,
-  getProgressoFaturamento,
-} from "@/lib/financeiro";
-import { alunoNavItems, navDoAluno } from "@/lib/nav";
+import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
-import { FinanceiroView } from "@/components/financeiro/financeiro-view";
-import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -45,81 +36,36 @@ export default async function FinanceiroPage() {
   if (ctx.papel === "admin") redirect("/admin");
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
-  const alunoId = ctx.alunoId;
+  const sessao = ctx;
 
-  if (ctx.papelMembro !== "titular") {
-    // `alunoId` é o ambiente, ou seja, o cadastro do TITULAR; `membroAlunoId`
-    // é o do sócio logado — o header mostra o nome dele, o texto mostra o do
-    // titular. Sem cadastro legível, o texto cai numa frase que não depende
-    // de nome nenhum, em vez de exibir um espaço em branco.
-    const [pessoa, titular] = await Promise.all([
-      getAlunoById(ctx.membroAlunoId ?? alunoId),
-      getAlunoById(alunoId),
-    ]);
-    const nomeTitular = titular?.nome?.trim();
-
-    return (
-      <>
-        <AppHeader
-          nome={pessoa?.nome ?? ctx.user.email ?? null}
-          email={ctx.user.email ?? null}
-          papelRotulo="Aluno"
-          navItems={navDoAluno(ctx)}
-        />
-        <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
-          <PageHeader titulo="Financeiro" />
-          <EmptyState
-            icone={<LifeBuoy />}
-            titulo="O Financeiro é do titular do ambiente"
-            descricao={`O contrato do programa está no nome de ${
-              nomeTitular || "quem contratou o programa"
-            }. Se precisar de algo dele, fale com a equipe pelo Suporte.`}
-            acao={
-              <Link href="/chamados" className={buttonVariants()}>
-                Ir para o Suporte
-              </Link>
-            }
-          />
-        </main>
-      </>
-    );
-  }
-
-  // Um lote só: as quatro leituras são independentes e o caminho crítico da
-  // aba é o round-trip a sa-east-1, não a CPU. Em série seriam ~4 idas a
-  // sa-east-1 empilhadas no LCP da aba.
-  const [aluno, resultado, extrato, progresso] = await Promise.all([
-    getAlunoById(alunoId),
-    getFinanceiroDoAluno(alunoId),
-    getExtratoDoAluno(alunoId),
-    getProgressoFaturamento(alunoId),
-  ]);
-  // Extrato é apoio: falha ou ausência dele NÃO derruba a aba — a seção some
-  // e o resto da tela continua respondendo "quanto eu faturei" e "quanto
-  // falta pagar".
-  const linhasExtrato = extrato.estado === "ok" ? extrato.linhas : [];
-  const extratoTruncado = extrato.estado === "ok" && extrato.truncado;
-
+  // ⏸️ EM ESPERA (decisão do Marcio, 10/09/2026). A aba já aparece apagada
+  // com "em breve" (`navDoAluno`), mas a ROTA continuava aberta por URL —
+  // esconder o link nunca foi fronteira. Quem digitar `/financeiro` vê a
+  // mesma promessa, não a tela pela metade.
+  //
+  // 🔑 O corpo antigo (cálculo, guarda do sócio B7-b, avisos de dado
+  // ausente) NÃO ficou comentado aqui: código morto que nem compila é pior
+  // que código removido. Ele está inteiro no git — `git show 985b708 --
+  // src/app/financeiro/page.tsx` devolve a página que funcionava. As RPCs
+  // (`gps.financeiro_do_aluno`, `financeiro_extrato_do_aluno`) seguem VIVAS
+  // e guardadas no banco; nada foi apagado do lado do dado.
   return (
     <>
       <AppHeader
-        nome={aluno?.nome ?? ctx.user.email ?? null}
-        email={ctx.user.email ?? null}
+        nome={null}
+        email={sessao.user?.email ?? null}
         papelRotulo="Aluno"
-        navItems={alunoNavItems("", { financeiro: true })}
+        navItems={navDoAluno(sessao)}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
+      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-6">
         <PageHeader
           titulo="Financeiro"
-          descricao="Quanto você já faturou na mentoria e como está o pagamento do seu programa."
+          descricao="Seu progresso de faturamento e o pagamento do programa."
         />
-        <FinanceiroView
-          progresso={progresso}
-          resultado={resultado}
-          linhasExtrato={linhasExtrato}
-          extratoTruncado={extratoTruncado}
-          ehAdmin={false}
-          basePath=""
+        <EmptyState
+          icone={<Clock />}
+          titulo="Em breve"
+          descricao="Estamos finalizando esta área. Assim que ela ficar pronta, você verá aqui o seu faturamento no programa e a situação do seu pagamento."
         />
       </main>
     </>

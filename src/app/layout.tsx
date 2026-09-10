@@ -47,9 +47,9 @@ export default function RootLayout({
             não move o foco — nunca leva a lugar errado. */}
         <a
           href="#conteudo"
-          // ⚠️ CONTRASTE — era `bg-primary` (#FF6300) com branco: **2,98:1**,
+          // ⚠️ CONTRASTE — era `bg-primary` (laranja claro do logo) com branco,
           // justamente no controle que existe para acessibilidade.
-          // `marca-acao` (#C74600) com branco dá **4,88:1**, medido.
+          // que reprova AA; `marca-acao` (#C34107, do logo) dá **5,15:1**.
           className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-marca-acao focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white focus:shadow-lg focus:outline-none focus:ring-3 focus:ring-ring/50"
         >
           Pular para o conteúdo

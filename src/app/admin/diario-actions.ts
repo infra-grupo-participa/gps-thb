@@ -297,3 +297,71 @@ export async function darBaixaPendencia(
   revalidar((data[0] as { aluno_id: string }).aluno_id);
   return { ok: true };
 }
+
+/**
+ * Quem pode apagar nota do diário. A lista vive em
+ * `gps.config.notas_podem_apagar` — trocar quem apaga é um update, sem deploy.
+ *
+ * 🔑 Isto é só para a TELA decidir se mostra o botão. A fronteira real é
+ * `gps.admin_apagar_nota`, que confere a mesma lista no servidor: esconder o
+ * botão não protege nada, e quem chamar a action direto recebe 42501.
+ */
+export async function podeApagarNota(): Promise<boolean> {
+  if (!(await ehAdmin())) return false;
+  const ctx = await getContextoSessao();
+  const email = (ctx?.user?.email ?? "").trim().toLowerCase();
+  if (!email) return false;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("config")
+    .select("valor")
+    .eq("chave", "notas_podem_apagar")
+    .maybeSingle();
+
+  const lista = ((data as { valor?: string } | null)?.valor ?? "")
+    .toLowerCase()
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+  return lista.includes(email);
+}
+
+/**
+ * Apaga uma nota do diário.
+ *
+ * 🔴 É DELETE de verdade, não soft-delete. Nota do Diário pode conter dado
+ * pessoal de TERCEIRO (cliente do aluno, situação familiar) — foi por isso
+ * que a tabela nasceu só-admin. Marcar como "apagada" e manter a linha não
+ * cumpriria o pedido.
+ *
+ * A nota some; o FATO de ter sido apagada fica, no evento `nota_apagada`.
+ */
+export async function apagarNota(
+  notaId: string,
+  alunoId: string,
+): Promise<ResultadoDiarioAcao> {
+  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .schema("gps")
+    .rpc("admin_apagar_nota", { p_nota_id: notaId });
+
+  if (error) {
+    logErro("admin/apagarNota", error, { notaId });
+    return {
+      ok: false,
+      erro:
+        error.code === "42501"
+          ? "Só Marcio, Elaine e Isabela podem apagar notas do diário."
+          : "Não foi possível apagar a nota.",
+    };
+  }
+
+  revalidatePath(`/admin/aluno/${alunoId}/diario`);
+  revalidatePath("/admin");
+  return { ok: true };
+}

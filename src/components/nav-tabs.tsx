@@ -39,6 +39,14 @@ export interface NavItem {
   /** Item exclusivo do admin — some na pré-visualização. */
   adminOnly?: boolean;
   /**
+   * A aba aparece, mas NÃO é link: vira um rótulo apagado com "em breve".
+   *
+   * 🔑 Existe para o que ainda não está pronto ficar VISÍVEL como promessa,
+   * em vez de sumir. Esconder a aba faria o aluno não saber que aquilo vai
+   * existir; deixá-la clicável o levaria a uma tela incompleta.
+   */
+  emBreve?: boolean;
+  /**
    * Contador ao lado do rótulo (ex.: chamados esperando a equipe). `undefined`
    * = a página não sabe o número; 0 = sabe e é zero, e aí a pílula NÃO aparece
    * (badge com "0" é ruído: alerta é fila, não informação).
@@ -90,6 +98,29 @@ export function NavTabs({ items }: { items: NavItem[] }) {
         const Icon = item.icon ? ICONES[item.icon] : null;
         // `ativo` sai do `href` declarado; o destino pode ser mais específico.
         const destino = item.restauraPainel ? urlDoPainel : item.href;
+        if (item.emBreve) {
+          return (
+            <span
+              key={item.href}
+              aria-disabled="true"
+              className={cn(
+                "-mb-px inline-flex shrink-0 cursor-default items-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-sm whitespace-nowrap text-muted-foreground/70",
+                item.adminOnly && "previa-oculta",
+              )}
+            >
+              {Icon ? <Icon className="size-4" aria-hidden /> : null}
+              {item.label}
+              <Badge
+                variant="neutral"
+                icone={false}
+                className="h-5 px-1.5 text-[10px] font-normal"
+              >
+                em breve
+              </Badge>
+            </span>
+          );
+        }
+
         return (
           <Link
             key={item.href}

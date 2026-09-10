@@ -87,6 +87,7 @@ export type {
 export { getMinhaSolicitacao, getSolicitacoes } from "@/lib/data/solicitacoes";
 
 export {
+  alunoJaTemCliente,
   getMeuOnboarding,
   getOnboardingDoAluno,
   urlDoAnexoOnboarding,

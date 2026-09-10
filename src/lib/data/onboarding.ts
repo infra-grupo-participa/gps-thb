@@ -283,3 +283,36 @@ export async function urlDoAnexoOnboarding(
  * chamam na mesma renderização — sem isto seriam duas idas à RPC por request.
  */
 export const getMeuOnboarding = cache(getMeuOnboardingSemCache);
+
+/**
+ * O aluno chegou ao programa COM cliente?
+ *
+ * Responde `origem_cliente1 = 'ja_tenho'` no questionário inicial. É o que
+ * dispensa a trava dos 30 (decisão do Marcio, 10/09/2026): mandar quem já
+ * está em fechamento voltar para montar uma lista de 30 nomes atrasaria quem
+ * está adiantado.
+ *
+ * 🔑 `false` quando não há resposta. O padrão seguro é TRAVAR: quem ainda não
+ * respondeu o questionário está, por definição, começando — e a trava é o
+ * comportamento que o Marcio pediu para o caso geral.
+ *
+ * Lê pelo AMBIENTE (não pela pessoa): num ambiente com sócio, o que vale é a
+ * resposta do titular, que é quem tem o contrato e a jornada.
+ */
+export async function alunoJaTemCliente(alunoId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .from("onboarding_respostas")
+    .select("origem_cliente1")
+    .eq("ambiente_aluno_id", alunoId)
+    .eq("origem_cliente1", "ja_tenho")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logErro("data/alunoJaTemCliente", error, { alunoId });
+    return false;
+  }
+  return data != null;
+}

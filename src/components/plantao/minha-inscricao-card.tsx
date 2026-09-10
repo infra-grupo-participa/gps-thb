@@ -19,15 +19,20 @@
  *   isso em vez de deixar a pessoa descobrir só no clique;
  * - depois → "esta sala já encerrou" (some o botão de entrar; NPS mora em
  *   `NpsForm`, componente separado, renderizado por quem chama este card).
+ *
+ * `aoCancelar`/`aoRevelarLink` são INJETADAS (default = Server Actions
+ * públicas, por e-mail). A aba logada do Programa (`/plantao`) passa as
+ * próprias, que identificam a pessoa pela SESSÃO — `email` chega como `""`
+ * nesse caso e as ações injetadas simplesmente o ignoram.
  */
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CalendarClockIcon, CheckCircle2Icon, CopyIcon, VideoIcon, XCircleIcon } from "lucide-react";
-import type { MinhaInscricao } from "@/lib/plantao-tipos";
+import type { MinhaInscricao, ResultadoAcao } from "@/lib/plantao-tipos";
 import { rotuloData, urlSegura } from "@/lib/plantao";
-import { cancelar, revelarLink } from "@/app/p/plantao/actions";
+import { cancelar as cancelarPublico, revelarLink as revelarLinkPublico } from "@/app/p/plantao/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -44,13 +49,28 @@ function formatarContagem(ms: number): string {
 export function MinhaInscricaoCard({
   inscricao,
   email,
+  aoCancelar,
+  aoRevelarLink,
 }: {
   inscricao: MinhaInscricao;
-  /** E-mail informado no formulário de identificação — dono da inscrição. */
+  /**
+   * E-mail informado no formulário de identificação — dono da inscrição na
+   * rota pública. Na aba logada não há e-mail nenhum: passa `""`, e as
+   * ações injetadas (que identificam pela sessão) o ignoram.
+   */
   email: string;
+  /** Ação de cancelamento. Default = rota pública (por e-mail). */
+  aoCancelar?: (email: string, inscricaoId: string) => Promise<ResultadoAcao>;
+  /** Ação de revelar o link. Default = rota pública (por e-mail). */
+  aoRevelarLink?: (
+    email: string,
+    inscricaoId: string,
+  ) => Promise<ResultadoAcao & { zoomUrl?: string }>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const cancelarAcao = aoCancelar ?? cancelarPublico;
+  const revelarLinkAcao = aoRevelarLink ?? revelarLinkPublico;
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [agora, setAgora] = useState(() => Date.now());
   // Confirmação em DOIS cliques dentro do próprio card, com a consequência
@@ -87,7 +107,7 @@ export function MinhaInscricaoCard({
   function confirmarEEntrar() {
     setPedindo(null);
     startTransition(async () => {
-      const res = await revelarLink(email, inscricao.inscricaoId);
+      const res = await revelarLinkAcao(email, inscricao.inscricaoId);
       if (!res.ok) {
         toast.error(res.erro);
         return;
@@ -107,7 +127,7 @@ export function MinhaInscricaoCard({
   function cancelarInscricao() {
     setPedindo(null);
     startTransition(async () => {
-      const res = await cancelar(email, inscricao.inscricaoId);
+      const res = await cancelarAcao(email, inscricao.inscricaoId);
       if (!res.ok) {
         toast.error(res.erro);
         return;

@@ -18,7 +18,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon, CalendarDaysIcon } from "lucide-react";
-import type { SlotPublico, MinhaInscricao } from "@/lib/plantao-tipos";
+import type { SlotPublico, MinhaInscricao, ResultadoAcao } from "@/lib/plantao-tipos";
 import { rotuloData, hojeSaoPaulo } from "@/lib/plantao";
 import {
   Dialog,
@@ -83,8 +83,13 @@ function diasDaGrade(ano: number, mes: number): (string | null)[] {
  * ⚠️ Sem isto, trocar de mês descartava `?e=`/`?n=` e a pessoa tinha de se
  * identificar de novo — reexpondo o e-mail numa navegação nova, e perdendo a
  * marcação de "seu plantão" no calendário. Achado do `security-pentester`.
+ *
+ * `base` é o caminho da rota (`/p/plantao` na pública, `/plantao` na aba
+ * logada do Programa) — na aba logada não existe `email`/`nome` para
+ * preservar, só o mês.
  */
 function hrefMes(
+  base: string,
   ano: number,
   mes: number,
   email: string | null,
@@ -93,7 +98,7 @@ function hrefMes(
   const qs = new URLSearchParams({ m: paramMes(ano, mes) });
   if (email) qs.set("e", email);
   if (nome) qs.set("n", nome);
-  return `/p/plantao?${qs.toString()}`;
+  return `${base}?${qs.toString()}`;
 }
 
 export function CalendarioMes({
@@ -103,16 +108,26 @@ export function CalendarioMes({
   email,
   nome,
   minhaInscricaoAtiva,
+  basePath = "/p/plantao",
+  aoInscrever,
 }: {
   ano: number;
   mes: number;
   slots: SlotPublico[];
-  /** E-mail informado no formulário de identificação, ou null (rota pública sem identificação ainda). */
+  /** E-mail informado no formulário de identificação, ou null (rota pública sem identificação ainda; sempre null na aba logada). */
   email: string | null;
-  /** Nome informado junto com o e-mail — só usado para a chamada de `inscrever`. */
+  /** Nome informado junto com o e-mail — só usado para a chamada de `inscrever` na rota pública. */
   nome: string | null;
   /** Inscrição ativa (não encerrada) do aluno, ou null. Trava escolher outro plantão. */
   minhaInscricaoAtiva: MinhaInscricao | null;
+  /** Caminho da rota, para a navegação de mês. Default = rota pública. */
+  basePath?: string;
+  /** Repassada para `InscricaoPainel` — ver o comentário lá. */
+  aoInscrever?: (
+    email: string | null,
+    nome: string | null,
+    slotId: string,
+  ) => Promise<ResultadoAcao>;
 }) {
   const [diaAberto, setDiaAberto] = useState<string | null>(null);
 
@@ -134,7 +149,10 @@ export function CalendarioMes({
   const hojeIso = hojeSaoPaulo();
 
   const slotsDoDiaAberto = diaAberto ? (porDia.get(diaAberto) ?? []) : [];
-  const identificado = Boolean(email && nome);
+  // Na aba logada (`aoInscrever` presente) não há e-mail/nome para pedir —
+  // a sessão já identifica a pessoa, então o aviso de identificação nunca
+  // se aplica ali.
+  const identificado = aoInscrever ? true : Boolean(email && nome);
 
   return (
     <div className="grid gap-3">
@@ -156,7 +174,7 @@ export function CalendarioMes({
       {/* Cabeçalho: navegação do mês */}
       <div className="flex items-center justify-between gap-2 rounded-xl border bg-card p-3 shadow-sm">
         <Link
-          href={hrefMes(anterior.ano, anterior.mes, email, nome)}
+          href={hrefMes(basePath, anterior.ano, anterior.mes, email, nome)}
           className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground foco-visivel"
           aria-label="Mês anterior"
         >
@@ -167,7 +185,7 @@ export function CalendarioMes({
           {rotuloMes(mes, ano)}
         </div>
         <Link
-          href={hrefMes(proximo.ano, proximo.mes, email, nome)}
+          href={hrefMes(basePath, proximo.ano, proximo.mes, email, nome)}
           className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground foco-visivel"
           aria-label="Próximo mês"
         >
@@ -289,6 +307,7 @@ export function CalendarioMes({
             nome={nome}
             minhaInscricaoAtiva={minhaInscricaoAtiva}
             onConcluido={() => setDiaAberto(null)}
+            aoInscrever={aoInscrever}
           />
         </DialogContent>
       </Dialog>

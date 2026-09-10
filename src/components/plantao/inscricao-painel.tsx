@@ -16,15 +16,20 @@
  * 08/09/2026 — o aluno escolhe melhor o horário sabendo o movimento), mas
  * NUNCA existe estado "esgotado" e NUNCA se mostra QUEM está inscrito. É
  * número agregado; nome de participante é dado de terceiro.
+ *
+ * `aoInscrever` é INJETADA (default = a Server Action pública, por e-mail).
+ * A aba logada do Programa (`/plantao`) passa a própria — que identifica a
+ * pessoa pela SESSÃO e não recebe e-mail/nome nenhum — sem duplicar este
+ * componente. Ver `src/app/plantao/actions.ts`.
  */
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { UserRoundIcon, UsersIcon, ClockIcon } from "lucide-react";
-import type { SlotPublico, MinhaInscricao } from "@/lib/plantao-tipos";
+import type { SlotPublico, MinhaInscricao, ResultadoAcao } from "@/lib/plantao-tipos";
 import { faixaHorario, rotuloData } from "@/lib/plantao";
-import { inscrever } from "@/app/p/plantao/actions";
+import { inscrever as inscreverPublico } from "@/app/p/plantao/actions";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -46,30 +51,52 @@ export function InscricaoPainel({
   nome,
   minhaInscricaoAtiva,
   onConcluido,
+  aoInscrever,
 }: {
   slots: SlotPublico[];
-  /** E-mail informado no formulário de identificação (rota pública). */
+  /**
+   * E-mail informado no formulário de identificação (rota pública), ou
+   * `null` na aba logada — ali a identidade é a SESSÃO, resolvida no
+   * servidor, e este componente nunca lê nem envia e-mail.
+   */
   email: string | null;
-  /** Nome informado junto com o e-mail. */
+  /** Nome informado junto com o e-mail. `null` na aba logada, pelo mesmo motivo. */
   nome: string | null;
   /** Inscrição ativa (não encerrada) do aluno, em QUALQUER dia — trava escolher outro plantão. */
   minhaInscricaoAtiva: MinhaInscricao | null;
   onConcluido: () => void;
+  /**
+   * Ação de inscrição. Default = rota pública (`inscrever(email, nome,
+   * slotId)`, por e-mail). A aba logada passa a própria Server Action, que
+   * ignora `email`/`nome` e identifica a pessoa por `gps.pessoa_atual()`.
+   */
+  aoInscrever?: (
+    email: string | null,
+    nome: string | null,
+    slotId: string,
+  ) => Promise<ResultadoAcao>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const inscreverAcao = aoInscrever ?? inscreverPublico;
 
-  const identificado = Boolean(email && nome);
+  // Na rota pública a identificação é obrigatória (o e-mail é a identidade);
+  // na aba logada não há e-mail/nome nenhum para pedir — a sessão já basta.
+  const exigeIdentificacao = !aoInscrever;
+  const identificado = exigeIdentificacao ? Boolean(email && nome) : true;
   const temInscricaoAtiva = minhaInscricaoAtiva !== null;
   const minha = slots.find((s) => s.minhaInscricao);
 
   function inscreverNoSlot(slot: SlotPublico) {
-    if (!email || !nome) {
+    if (exigeIdentificacao && (!email || !nome)) {
       toast.error("Informe seu nome e e-mail antes de se inscrever.");
       return;
     }
     startTransition(async () => {
-      const res = await inscrever(email, nome, slot.slotId);
+      // Na aba logada `email`/`nome` são null de propósito: a action da aba
+      // resolve a pessoa pela SESSÃO e ignora os dois primeiros argumentos.
+      // O guard acima já garante que a rota pública nunca chega aqui sem eles.
+      const res = await inscreverAcao(email ?? "", nome ?? "", slot.slotId);
       if (!res.ok) {
         toast.error(res.erro);
         return;

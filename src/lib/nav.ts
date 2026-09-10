@@ -29,6 +29,26 @@ export function alunoNavItems(
     { href: `${basePath}/clientes`, label: "Clientes", icon: "clientes" },
     { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta" },
     { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" },
+    // 🎧 Plantão de Dúvidas — aba do aluno do PROGRAMA dentro do sistema
+    // (decisão do Marcio, 10/09/2026). Não confundir com a rota pública
+    // `/p/plantao` (embedada na Hotmart, exclusiva do Acelera): esta aba usa
+    // `/plantao` (sem `/p/`) e RPCs próprias (`gps.plantao_*_logado`), que
+    // identificam a pessoa pela SESSÃO — nunca por e-mail digitado.
+    //
+    // 🔑 `basePath === ""` é o sinal de "é o aluno de verdade" (só ele chama
+    // com basePath vazio; `assistenciaNavItems` sempre passa
+    // `/admin/aluno/<id>`). A rota `/plantao` só existe para o ALUNO — não
+    // há `admin/aluno/[id]/plantao/page.tsx` (fora do escopo desta feature):
+    // sem este filtro, o link apareceria no modo assistência e o admin
+    // cairia num 404 ao clicar. Se um dia existir tela de assistência para
+    // o Plantão do Programa, é só tirar a condição.
+    //
+    // Ícone reaproveitado ("materiais", o mesmo do Plantão no admin em
+    // `adminNavItems`) — não existe chave dedicada a calendário/plantão em
+    // `NavItem["icon"]` e a regra do projeto é não inventar uma nova.
+    ...(basePath === ""
+      ? [{ href: "/plantao", label: "Plantão", icon: "materiais" as const }]
+      : []),
     // ⏸️ FINANCEIRO EM ESPERA (decisão do Marcio, 10/09/2026): "esconder a
     // aba do financeiro, dado que ainda não está pronta, deixa mockado com
     // uma aba de em breve".

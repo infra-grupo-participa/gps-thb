@@ -146,6 +146,133 @@ Funções: `gps.aluno_atual()` (aluno_id do usuário logado), `gps.touch_atualiz
 RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos próprios registros
 (via `gps.aluno_atual()`).
 
+## 🔴 Conferência dos 141 × 159 — o gargalo do acesso (10/09/2026)
+
+O Marcio estranhou: a planilha oficial tem **141 compradores** e o sistema
+mostrava **159 titulares**. A investigação achou três coisas diferentes
+misturadas — e a diferença NÃO era 18.
+
+### O que a planilha realmente diz
+
+**141 linhas, mas 135 pessoas.** Seis linhas são a mesma pessoa repetida
+(Eliane Lobato 3×; Heber, Jenisvaldo, Manuel e Rosângela 2× cada). E ela
+tem uma coluna que ninguém estava usando: **`Sócio?` — 71 titulares e 70
+sócios**.
+
+### O gargalo: 65 SÓCIOS viraram TITULARES
+
+Cruzando por e-mail:
+
+| Situação | Pessoas |
+|---|---:|
+| Titular na planilha, titular no sistema | 69 |
+| Sócio na planilha, sócio no sistema | 3 |
+| 🔴 **Sócio na planilha, TITULAR no sistema** | **65** |
+| Titular na planilha, sócio no sistema | 8 |
+| No sistema, fora da planilha | 25 |
+
+`69 + 65 + 25 = 159`. A conta fecha.
+
+**Causa:** os ambientes nasceram de **11 origens diferentes**
+(`planilha_acessos_2026` 55, `sip_sinal_trilha` 32, `central_2026` 28,
+`gps_cadastro_manual` 11, `sip_ativacao_hm` 11, `csv_acessos_2026_*` 15,
+webhooks 5, outras). **Nenhuma delas carregava "sócio de quem"** — todo
+e-mail virava um ambiente novo.
+
+⚠️ **Os 65 NÃO foram convertidos** (decisão do Marcio, 10/09): eles têm
+direito ao acesso, o erro é de CLASSIFICAÇÃO, não de permissão. Converter
+exige saber de quem cada um é sócio — dado que a planilha não tem — e
+fundir ambiente errado misturaria clientes de pessoas diferentes.
+
+### 🔑 Os 9 que pagaram e NÃO estão na planilha
+
+O primeiro impulso foi "tirar o acesso de todos os 25 excedentes". A
+conferência caso a caso mostrou que **9 têm contrato pago em
+`cs.contatos_hm`**, e cinco pagaram o valor CHEIO:
+
+| Nome | Pagou | Entrou por |
+|---|---:|---|
+| Guilherme Henrique Canal da Rocha | R$ 15.300 | `webhook_hotmart_ht` |
+| Naiara Dias Fiuza Silvestre | R$ 15.300 | `central_2026` |
+| Dienifer Raupp Duarte | R$ 15.000 | `csv_acessos_2026_novo` |
+| Anderson Silva Resende | R$ 15.000 | `webhook_hotmart_ht` |
+| Gustavo de Castro | R$ 15.000 | `central_2026` |
+| Neide de Moura Vasconcelos | R$ 8.380 | `webhook_hotmart_hm` |
+| Thiago Barbosa Ferreira | R$ 4.417 | `webhook_hotmart_ht` |
+| Scarlett Zeilinger Coelho | R$ 2.701 | `sip_ativacao_hm` |
+| Marina Ribeiro Lima | R$ 2.552 | `csv_acessos_2026_novo` |
+
+**Eles não entraram por brecha — entraram por WEBHOOK e por ativação do
+SIP, ou seja, o sistema reconheceu o pagamento.** É a PLANILHA que está
+incompleta, não o acesso que está errado. Mantidos por decisão do Marcio.
+
+### O que foi removido: 17 ambientes (159 -> 142)
+
+**Rodada 1 — 11 ambientes:** 3 contas de teste (`joao@`, `joaozao@`,
+`joaozaoao@advmais.com`; o "João Teste REAL" tinha 37 clientes de teste) e
+8 sem contrato, sem cliente e sem uso.
+
+**Rodada 2 — 6 ambientes** (decisão do Marcio: "dos que não estão na lista
+dos 141, os que estão sem login recente podem ser removidos também").
+Corte em **30 dias sem login**, aplicado SÓ aos sobressalentes:
+
+| Nome | Sem logar | Clientes | Pago |
+|---|---:|---:|---:|
+| Marina Ribeiro Lima | 56 dias | 0 | R$ 2.552 |
+| Dienifer Raupp Duarte | 55 dias | 0 | **R$ 15.000** |
+| Naiara Dias Fiuza Silvestre | 50 dias | 2 | **R$ 15.300** |
+| Neide de Moura Vasconcelos | 44 dias | 0 | R$ 8.380 |
+| Gustavo de Castro | 40 dias | 0 | **R$ 15.000** |
+| Joyce Carina Budtinger | 35 dias | 1 | R$ 0 |
+
+🔴 **R$ 56.233 em pagamentos registrados foram cortados**, incluindo três
+de valor cheio. Levei o número à mesa antes de executar; a decisão foi
+seguir. **Se alguma dessas pessoas voltar reclamando, o acesso se recria
+em um clique** ("Criar acesso" no painel) — `public.thb_alunos` foi
+preservado, então o cadastro, o documento e o histórico comercial
+continuam lá. O que se perde é o conteúdo do ambiente (a Naiara tinha 2
+clientes cadastrados; a Joyce, 1).
+
+### Os 7 sobressalentes que FICARAM
+
+Todas as remoções por `gps.admin_excluir_acesso`, que **preserva
+`public.thb_alunos`** (base compartilhada com o sip) e grava trilha em
+`gps.acessos_log` — **17 linhas em 10/09/2026**.
+
+Ficaram, por terem login recente:
+
+| Nome | Último login | Clientes | Pago |
+|---|---|---:|---:|
+| Guilherme Henrique Canal da Rocha | 09/09 | 17 | R$ 15.300 |
+| Eder Fagundes da Silva | 03/09 | 30 | R$ 0 |
+| Anderson Silva Resende | 31/08 | 0 | R$ 15.000 |
+| Quelen Soper | 24/08 | 2 | R$ 0 |
+| Scarlett Zeilinger Coelho | 20/08 | 10 | R$ 2.701 |
+| Thiago Barbosa Ferreira | 11/08 | 3 | R$ 4.417 |
+| conta de teste do onboarding | 10/09 | 0 | — |
+
+**Resultado: 159 → 142 titulares.**
+
+### ⚠️ O que continua aberto
+
+1. **142 ≠ 135.** Sobram 7: os 6 sobressalentes com login recente + a
+   conta de teste do onboarding. Todos preservados por decisão explícita.
+2. **A planilha precisa ganhar os 9** que pagaram por webhook — enquanto
+   ela for a fonte de verdade e não os incluir, a conferência vai divergir
+   de novo.
+3. **Falta a coluna "sócio de quem"** para corrigir os 65.
+4. 🔴 **Não existe fonte única de verdade.** Enquanto 11 origens puderem
+   criar ambiente sem cruzar com `cs.contatos_hm`, o número volta a
+   divergir. **Toda criação de ambiente deveria conferir lastro
+   comercial** — hoje nenhuma confere.
+
+Conferência (o número tem de bater com a planilha + as 13 exceções):
+```sql
+select count(*) from gps.membros where papel = 'titular';   -- 142
+select count(*) from gps.acessos_log
+ where acao like '%exclu%' and criado_em::date = '2026-09-10';  -- 17
+```
+
 ## Dados alterados a mão em 09/09/2026 (war-room) — NÃO viram migration
 
 O dia 09/09 teve correções aplicadas direto no banco sob pressão. As de

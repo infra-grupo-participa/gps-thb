@@ -195,7 +195,12 @@ function ItemMacro({
  * algum dia vier igual ao verbo (redundante), evita duplicar o texto.
  */
 function rotuloCompletoEvento(evento: AlunoEventoComAutor): string {
-  const verbo = ROTULO_TIPO_EVENTO[evento.tipo];
+  // `?? evento.tipo` pelo mesmo motivo de `rotuloAcaoAdmin` (auditoria de
+  // 11/09/2026): o CHECK do banco pode ganhar um tipo antes do catálogo do TS,
+  // e sem o fallback a trilha imprime "undefined · <rótulo>". Foi o que
+  // aconteceria com `nota_apagada`. O catálogo agora exige o rótulo em
+  // compilação; isto é a rede embaixo.
+  const verbo = ROTULO_TIPO_EVENTO[evento.tipo] ?? evento.tipo;
   if (!evento.rotulo || evento.rotulo === verbo) return verbo;
   return `${verbo} · ${evento.rotulo}`;
 }

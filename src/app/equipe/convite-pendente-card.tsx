@@ -57,7 +57,17 @@ export function ConvitePendenteCard({ convite }: { convite: ConvitePendente }) {
 
         {reenvio.ok && reenvio.link ? (
           <div className="rounded-md border border-dashed bg-muted/40 p-3 text-xs">
-            <p className="mb-1 font-medium text-foreground">Novo link gerado</p>
+            {/* 🔴 `emailEnviado` era devolvido pela action e IGNORADO aqui
+                (auditoria de 11/09/2026). O formulário de convite
+                (`convite-socio-form.tsx`) já tratava; o REENVIO não — então o
+                titular clicava "Reenviar", via "Novo link gerado" e ia embora
+                achando que o sócio tinha recebido. O link abaixo é o único
+                caminho quando o e-mail não sai. */}
+            <p className="mb-1 font-medium text-foreground">
+              {reenvio.emailEnviado === false
+                ? "O e-mail não saiu — envie este link ao seu sócio"
+                : "Novo link gerado"}
+            </p>
             <code className="block truncate">{reenvio.link}</code>
           </div>
         ) : null}

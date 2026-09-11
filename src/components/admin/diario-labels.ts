@@ -73,6 +73,8 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   // "anexo": o que a equipe procura na trilha é a PROVA, não o arquivo.
   cliente_contrato_anexado: "Anexou o contrato assinado do cliente",
   cliente_contrato_removido: "Removeu o contrato assinado do cliente",
+  // `gps.admin_apagar_nota`: a nota some, o FATO de ter sido apagada fica.
+  nota_apagada: "Nota do diário apagada pela equipe",
 };
 
 export const ROTULO_ATOR: Record<AtorEvento, string> = {
@@ -107,6 +109,15 @@ const ROTULO_ACAO_ADMIN: Record<string, string> = {
   acessos_criados_em_lote: "Acessos criados em lote",
   // gps.admin_trocar_email_login (migração ...252)
   email_login_alterado: "E-mail do login alterado pela equipe",
+  // 🔴 FALTAVAM (auditoria de 11/09/2026). O comment do CHECK diz que este
+  // mapa o espelha, mas o espelho ficou para trás quando as migrações ...244
+  // (convite de sócio) e ...250 (aprovação de troca) acrescentaram valores.
+  // Já havia 4 linhas em produção mostrando o código cru para a equipe.
+  socio_convidado: "Sócio convidado pelo titular",
+  socio_convite_aceito: "Convite de sócio aceito",
+  socio_convite_revogado: "Convite de sócio revogado",
+  chamado_solicitacao_aprovada: "Troca de cliente aprovada pela equipe",
+  chamado_solicitacao_declinada: "Troca de cliente recusada pela equipe",
 };
 
 /** Rótulo legível de uma ação administrativa, com fallback para o código cru. */

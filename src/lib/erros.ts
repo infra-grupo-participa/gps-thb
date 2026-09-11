@@ -257,6 +257,14 @@ const FRASES_DO_BANCO: Record<string, string> = {
     "Só o titular do ambiente pode convidar um sócio.",
   "Este ambiente já tem um sócio.":
     "Este ambiente já tem um sócio. Para trocar, fale com a equipe pelo Suporte.",
+  // 🔴 A MESMA situação, frase DIFERENTE no banco (auditoria de 11/09/2026).
+  // `socio_convite_criar` levanta a de cima; `socio_convite_aceitar` levanta
+  // esta, com o sufixo. `traduzirErroBanco` casa por igualdade EXATA, então
+  // sem esta linha o sócio que clica num convite tardio caía no genérico de
+  // 23505 ("Já existe um registro com esses dados") — sem entender o que
+  // houve nem com quem falar. As duas precisam coexistir.
+  "Este ambiente já tem um sócio. Fale com a equipe pelo Suporte.":
+    "Este ambiente já tem um sócio. Para trocar, fale com a equipe pelo Suporte.",
   "Já existe um convite em aberto para este ambiente.":
     "Já existe um convite em aberto. Revogue o atual antes de convidar outra pessoa.",
   "Este e-mail é o seu — o sócio precisa de um e-mail próprio.":

@@ -484,6 +484,15 @@ export const TIPOS_EVENTO = [
   // prova sem rastro seria o único jeito de esse sinal apagar sozinho.
   "cliente_contrato_anexado",
   "cliente_contrato_removido",
+  // 🔴 FALTAVA AQUI (auditoria de 11/09/2026). `gps.admin_apagar_nota` já
+  // grava este tipo no banco desde a migração que a criou, e o CHECK de
+  // `gps.aluno_eventos.tipo` o aceita — mas o catálogo do TS não o conhecia.
+  // Como `ROTULO_TIPO_EVENTO` é `Record<TipoEvento, string>`, um tipo ausente
+  // daqui NÃO quebra o build: ele simplesmente não é exigido, e a trilha
+  // imprimiria `undefined · <nota>` na primeira nota apagada.
+  // Zero linhas hoje (`select distinct tipo` → 0) — era bomba armada, não
+  // incêndio. Acrescentar aqui é o que obriga o rótulo a existir.
+  "nota_apagada",
 ] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 

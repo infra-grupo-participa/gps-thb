@@ -283,10 +283,22 @@ export function GerenciarAcessoPainel({
           telefone: res.telefone ?? null,
         });
       }
-      toast.success(
-        `E-mail do login trocado para ${res.emailNovo}.` +
-          (res.senha ? " Senha nova gerada." : ""),
-      );
+      // 🔴 `cadastroAlinhado === false` era CALCULADO, DEVOLVIDO e NUNCA LIDO
+      // (auditoria de 11/09/2026): o login trocava, o `update` em
+      // `thb_alunos` falhava, e o toast dizia sucesso do mesmo jeito. O
+      // cadastro ficava velho e ninguém sabia. `undefined` = o admin não
+      // pediu para alinhar; só o `false` explícito é a falha.
+      if (res.cadastroAlinhado === false) {
+        toast.warning(
+          `E-mail do login trocado para ${res.emailNovo}, mas o e-mail do ` +
+            `cadastro NÃO foi alterado. Ajuste em "Resolver" ou tente de novo.`,
+        );
+      } else {
+        toast.success(
+          `E-mail do login trocado para ${res.emailNovo}.` +
+            (res.senha ? " Senha nova gerada." : ""),
+        );
+      }
       carregarStatus();
       router.refresh();
     });

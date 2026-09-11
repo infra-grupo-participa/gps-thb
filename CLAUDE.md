@@ -1775,6 +1775,65 @@ não apareciam.
   úteis, 139 nós de texto e 0 falha de contraste, 18 focáveis com nome, 0 overflow em 1024/390.
   ⚠️ **Não validado logado em `/admin`** (sem credencial de admin de teste).
 
+### 🧭 GPS × SIP — públicos diferentes, não duas filas (2026-09-11)
+
+Regra de negócio que o Marcio esclareceu em 11/09, e que muda como se lê a
+sobreposição entre os dois sistemas:
+
+> *"o gps eh a fase 1 do sip, o sip eh destinado para quem eh do aurum pra
+> cima, quem eh da base do thb, que comprou o hm, participa do gps"*
+
+| Sistema | Público |
+|---|---|
+| **GPS** (este repo) | quem comprou o **Holding Masters** — a base do THB |
+| **SIP** | **Aurum pra cima** |
+
+O GPS é a **fase 1**; o SIP atende o degrau seguinte. Não são duas esteiras
+para a mesma pessoa — são dois públicos.
+
+**Consequências práticas:**
+
+1. 🔴 **Aurum NÃO entra no GPS.** Toda regra de elegibilidade exclui as
+   ofertas de Aurum. Medido em 11/09: um critério que usasse só
+   `hm_product_catalog.categoria` pegaria **113 pessoas em vez de 79**, e
+   **12 dos excedentes eram Aurum** (ofertas de R$ 13.000 a R$ 59.000,
+   todas com `categoria='diferenca'`).
+2. A coluna "Pendente de Liberação" da esteira do `/hm` **não é concorrente**
+   da fila do GPS. O GPS pode **exibir** o estágio do SIP como informação,
+   mas **não escreve** nele — este repo lê `cs.*`, nunca escreve (a única
+   exceção documentada é `cs.contatos_hm.aluno_id`, pela Central).
+
+### 🔑 Elegibilidade ao Programa: só o HM CHEIO (2026-09-11)
+
+> *"quem so comprou sinal, ou o acelera, ainda nao faz parte da base de
+> alunos, entende?"* — Marcio, 11/09/2026
+
+**Sinal e Acelera NÃO dão direito ao Programa.** Só o pagamento do pacote
+cheio (~R$ 15.000, pago à vista ou como saldo/diferença) coloca a pessoa na
+fila de liberação.
+
+⚠️ **Os campos do catálogo não bastam sozinhos** — medido em 11/09 contra a
+verdade conhecida (os 74 titulares que já estavam no Programa):
+
+| Critério | Pega | Acerta | Problema |
+|---|---:|---:|---|
+| `categoria in (diferenca, compra_cheia)` + `concede_trilha` | 113 | 88 | +12 Aurum, +22 de oferta sem categoria |
+| `valor_tabela >= 4000` e nome sem "aurum" | **79** | **74** | ✅ bate com a realidade |
+
+Por que a categoria falha: **`categoria='diferenca'` vai de R$ 645 a
+R$ 59.000** (mistura saldo de HM com Aurum), e **`concede_trilha` é `true`
+até nas ofertas de sinal** — sozinha ela não separa nada. Das ofertas
+ativas, **35 estão com `categoria` nula** e **118 com `papel` nulo**.
+
+🔑 **Oferta desconhecida vai para TRIAGEM, nunca é assumida.** É a lição das
+436 transações do Acelera que ficaram fora do sistema por oferta não
+catalogada (war-room de 09/09).
+
+🔴 **A fila NUNCA cria login automático** (pedido literal, repetido duas
+vezes). Ela registra, calcula e mostra; liberar é clique da equipe. E **quem
+já tem `gps.membros` não aparece na fila** — ela é para quem falta, não para
+mexer em quem já entrou.
+
 ### 🔴 `"use server"` só exporta função async — o defeito que já pegou 3 vezes (2026-09-11)
 
 **A regra, sem exceção:** módulo com `"use server"` no topo só pode exportar
@@ -1837,11 +1896,20 @@ Medido em `gps.acessos_log`: **9 pessoas reais** com senha redefinida 2–3
 vezes, várias em 15–20 min (Álvaro 17:25→17:39, Marco Túlio 15:26→15:46,
 Flávia 13:56→14:15).
 
-Agora os três caminhos que exibem senha pedem confirmação nomeada antes de
-fechar: `gerenciar-acesso/painel.tsx`, `criar-acesso.tsx` e
-`gerenciar-acesso/adicionar-socio.tsx` — este último guarda a senha em estado
-**local**, então avisa o painel por `onCredenciais(true)`, porque o `Dialog`
-não é dele. **Componente novo que mostrar senha tem de acender esse sinal.**
+Agora os **quatro** caminhos que exibem senha pedem confirmação nomeada antes
+de fechar: `gerenciar-acesso/painel.tsx`, `criar-acesso.tsx`,
+`gerenciar-acesso/adicionar-socio.tsx` (guarda a senha em estado **local**,
+então avisa o painel por `onCredenciais(true)`, porque o `Dialog` não é dele) e
+`alunos-ativos-lista/lote-acesso.tsx`.
+
+🔴 **O do lote ficou de fora na primeira passada e foi pego pela auditoria de
+acabamento, no mesmo dia** — justamente o de maior escala: até 20 senhas de uma
+vez, e as de quem não recebeu e-mail só existem naquela tela. Ali a guarda só
+acende quando há senha que ninguém mais tem (`semEmail.length > 0`); lote em
+que todos receberam e-mail fecha direto, sem atrito à toa.
+
+**Componente novo que mostrar senha tem de acender esse sinal** — e a lista
+acima tem de crescer junto.
 
 "Concluir" continua fechando direto: ali o admin está dizendo que já copiou.
 

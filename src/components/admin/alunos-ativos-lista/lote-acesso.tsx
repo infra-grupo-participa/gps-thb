@@ -297,9 +297,36 @@ function RelatorioDoLote({
   const decisao = resultados.filter((r) => !r.ok && r.precisaDecisao);
   const falhas = resultados.filter((r) => !r.ok && !r.precisaDecisao);
   const semEmail = criados.filter((r) => !r.emailEnviado);
+  /**
+   * 🔴 O QUARTO CAMINHO QUE MOSTRA SENHA (auditoria de 11/09/2026).
+   *
+   * Os outros três (`gerenciar-acesso/painel.tsx`, `criar-acesso.tsx`,
+   * `adicionar-socio.tsx`) ganharam a guarda de Esc/clique-fora no mesmo dia,
+   * depois da queixa da Ana Camila — e este ficou de fora, justamente o de
+   * maior escala: até 20 senhas de uma vez, e as de `semEmail` só existem
+   * NESTA tela (o e-mail não saiu para essas pessoas).
+   *
+   * `auth.users` guarda o hash bcrypt: fechada a tela, ninguém recupera essas
+   * senhas — nem a equipe. Medido em 11/09: 9 pessoas tiveram senha
+   * redefinida 2–3 vezes, várias em 15–20 min, por causa desse defeito.
+   *
+   * A guarda só acende quando há senha **que ninguém mais tem** (`semEmail`);
+   * lote em que todos receberam e-mail fecha direto, sem atrito à toa.
+   */
+  const [confirmaDescartar, setConfirmaDescartar] = useState(false);
+  const temSenhaNaTela = semEmail.length > 0;
+
+  function pedirParaFechar() {
+    if (temSenhaNaTela) {
+      setConfirmaDescartar(true);
+      return;
+    }
+    onFechar();
+  }
 
   return (
-    <Dialog open onOpenChange={(v) => !v && onFechar()}>
+    <>
+    <Dialog open onOpenChange={(v) => !v && pedirParaFechar()}>
       <DialogContent className="max-h-[85dvh] gap-4 overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-heading titulo-h2">
@@ -443,10 +470,45 @@ function RelatorioDoLote({
         </ul>
 
         <div className="flex justify-end">
-          <Button onClick={onFechar}>Fechar</Button>
+          {/* O botão explícito também passa pela guarda: fechar é fechar,
+              venha do Esc, do clique-fora ou daqui. */}
+          <Button onClick={pedirParaFechar}>Fechar</Button>
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Fora do `Dialog` principal, com o gatilho montado atrás — regra de
+        foco do PL10, igual aos outros diálogos do repo. */}
+    {confirmaDescartar ? (
+      <DialogoConfirmacao
+        aberto
+        titulo="Fechar sem copiar as senhas?"
+        descricao={
+          <>
+            {semEmail.length === 1
+              ? "1 pessoa deste lote não recebeu o e-mail"
+              : `${semEmail.length} pessoas deste lote não receberam o e-mail`}
+            {" "}— a senha delas só aparece aqui, agora. O sistema guarda a
+            senha cifrada, e cifra não se desfaz.
+          </>
+        }
+        consequencia={
+          <>
+            Depois de fechar, <strong>ninguém consegue ver essas senhas de
+            novo</strong> — nem a equipe. Para dar acesso a essas pessoas será
+            preciso definir outra senha, uma a uma.
+          </>
+        }
+        rotuloConfirmar="Fechar mesmo assim"
+        rotuloCancelar="Voltar e copiar"
+        onConfirmar={() => {
+          setConfirmaDescartar(false);
+          onFechar();
+        }}
+        onCancelar={() => setConfirmaDescartar(false)}
+      />
+    ) : null}
+    </>
   );
 }
 

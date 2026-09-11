@@ -25,6 +25,9 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { getContextoSessao } from "@/lib/auth";
+import { enviarPlantaoConfirmacao } from "@/lib/email-plantao";
+import { logErro } from "@/lib/log";
 import type {
   ResultadoAcao,
   SlotPublico,
@@ -135,10 +138,41 @@ export async function inscreverLogado(
   if (error) return { ok: false, erro: "Não foi possível concluir a inscrição." };
 
   const row = (Array.isArray(data) ? data[0] : data) as
-    | { ok: boolean; motivo: string | null }
+    | {
+        ok: boolean;
+        motivo: string | null;
+        data: string | null;
+        hora_inicio: string | null;
+        mentora_nome: string | null;
+      }
     | undefined;
 
   if (!row?.ok) return { ok: false, erro: row?.motivo || "Não foi possível se inscrever." };
+
+  // 🔑 Confirmação no ato (pedido do Marcio, 10/09/2026). Esta RPC já devolve
+  // data, hora e mentora — não precisa de consulta extra.
+  //
+  // ⚠️ `void`: falha de e-mail NUNCA derruba a inscrição, que já está gravada.
+  if (row.data && row.hora_inicio) {
+    void (async () => {
+      try {
+        const ctx = await getContextoSessao();
+        const para = ctx?.user.email;
+        if (!para) return;
+        await enviarPlantaoConfirmacao({
+          para,
+          nome: ctx.perfil?.nome ?? null,
+          data: row.data!,
+          horaInicio: row.hora_inicio!,
+          mentoraNome: row.mentora_nome ?? "a mentora",
+          doPrograma: true,
+        });
+      } catch (e) {
+        logErro("plantao/confirmacaoLogado", e, { slotId });
+      }
+    })();
+  }
+
   return { ok: true };
 }
 

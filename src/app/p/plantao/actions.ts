@@ -26,6 +26,8 @@ import { createHash } from "crypto";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { JANELA_ANTES_MIN } from "@/lib/plantao-tipos";
 import { normalizarEmail } from "@/lib/plantao";
+import { enviarPlantaoConfirmacao } from "@/lib/email-plantao";
+import { logErro } from "@/lib/log";
 import type {
   ResultadoAcao,
   SlotPublico,
@@ -248,7 +250,46 @@ export async function inscrever(
     return { ok: false, erro: row?.motivo || "Não foi possível se inscrever." };
   }
 
+  // 🔑 CONFIRMAÇÃO NO ATO (pedido do Marcio, 10/09/2026). Até aqui quem se
+  // inscrevia não recebia NADA até 1 hora antes — ficava sem saber se a
+  // inscrição tinha pegado.
+  //
+  // ⚠️ Falha de e-mail NUNCA derruba a inscrição: ela já está gravada. O
+  //    pior caso é a pessoa não receber a confirmação, que é exatamente o
+  //    que acontecia antes desta linha existir.
+  void enviarConfirmacaoDaInscricao(supabase, slotId, emailNormalizado, nome.trim(), false);
+
   return { ok: true, inscricaoId: row.inscricao_id ?? undefined };
+}
+
+/**
+ * Busca os dados do slot e manda a confirmação. Solta (`void`): a inscrição
+ * não espera o e-mail, e erro aqui só vira log.
+ */
+async function enviarConfirmacaoDaInscricao(
+  supabase: ReturnType<typeof clientePublico>,
+  slotId: string,
+  para: string,
+  nome: string,
+  doPrograma: boolean,
+): Promise<void> {
+  try {
+    const { data } = await supabase.rpc("plantao_slot_publico", { p_slot_id: slotId });
+    const slot = (Array.isArray(data) ? data[0] : data) as
+      | { data: string; hora_inicio: string; mentora_nome: string }
+      | undefined;
+    if (!slot?.data) return;
+    await enviarPlantaoConfirmacao({
+      para,
+      nome,
+      data: slot.data,
+      horaInicio: slot.hora_inicio,
+      mentoraNome: slot.mentora_nome,
+      doPrograma,
+    });
+  } catch (e) {
+    logErro("plantao/confirmacaoInscricao", e, { slotId });
+  }
 }
 
 /**

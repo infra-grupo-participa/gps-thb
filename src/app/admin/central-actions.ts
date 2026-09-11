@@ -449,3 +449,38 @@ export async function destravarOnboarding(
     jaEstava: (data as { ja_estava?: boolean } | null)?.ja_estava === true,
   };
 }
+
+/**
+ * Marca (ou desmarca) o parceiro como FINALIZADO.
+ *
+ * Decisão do Marcio (10/09/2026): *"somente a equipe considera o aluno como
+ * finalizado, depende da aprovação prévia da equipe"*.
+ *
+ * 🔴 Antes a fase virava sozinha ao somar R$ 150 mil em honorários — e era a
+ * PRIMEIRA condição do `case`, então passava por cima até da trava dos 30. O
+ * Carlos Henrique escancarou isso: 10 clientes, R$ 500 mil digitados, e
+ * "Finalizado" na tela sem ninguém ter aprovado nada.
+ *
+ * Agora `gps.membros.finalizado_em` é o único caminho, e a RPC do painel
+ * devolve `pronto_para_finalizar` — o sinal que a equipe olha para decidir.
+ */
+export async function marcarFinalizado(
+  alunoId: string,
+  finalizado: boolean,
+): Promise<{ erro?: string; nome?: string }> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("admin_marcar_finalizado", {
+      p_aluno_id: alunoId,
+      p_finalizado: finalizado,
+    });
+
+  if (error) return { erro: traduzirErroBanco("marcarFinalizado", error, { alunoId }) };
+
+  revalidatePath("/admin");
+  revalidatePath(`/admin/aluno/${alunoId}`);
+  return { nome: (data as { nome?: string } | null)?.nome };
+}

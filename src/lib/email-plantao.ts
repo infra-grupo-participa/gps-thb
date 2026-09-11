@@ -335,3 +335,81 @@ export async function enviarPlantaoSala(params: {
     texto,
   });
 }
+
+/**
+ * Confirmação no ATO da inscrição.
+ *
+ * Pedido do Marcio (10/09/2026): *"no ato da inscrição do plantão, receber um
+ * e-mail de confirmação"*.
+ *
+ * 🔴 SEM O LINK DA SALA, de propósito. Revelar o Zoom é o que GRAVA PRESENÇA
+ * (`plantao_revelar_link`), e a sala só abre 1 hora antes. Mandar o link aqui
+ * furaria a contagem de presença e o controle de janela — a decisão de não
+ * expor o Zoom em e-mail é de 09/2026 e continua valendo.
+ *
+ * O que este e-mail faz é o que faltava: dizer "deu certo, está marcado, é
+ * neste dia e nesta hora". Quem se inscrevia não recebia nada até 1 hora
+ * antes, e ficava sem saber se a inscrição pegou.
+ */
+export async function enviarPlantaoConfirmacao(params: {
+  para: string;
+  nome?: string | null;
+  data: string;
+  horaInicio: string;
+  mentoraNome: string;
+  /** `true` quando a inscrição veio da aba logada do Programa. */
+  doPrograma?: boolean;
+}): Promise<ResultadoEmail> {
+  const { para, nome, data, horaInicio, mentoraNome, doPrograma } = params;
+  const primeiroNome = (nome?.trim().split(/\s+/)[0] || "").trim();
+  const ola = primeiroNome ? `Olá, ${primeiroNome}!` : "Olá!";
+  const dataLonga = dataLongaBrasilia(data);
+  const hora = horaCurta(horaInicio);
+  // A aba logada vive em `/plantao`; a pública, em `/p/plantao`. Mandar a
+  // pessoa para a porta errada faria o Programa cair na tela que pede e-mail.
+  const portalUrl = `${APP_URL}${doPrograma ? "/plantao" : "/p/plantao"}`;
+
+  const corpo = `
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${esc(ola)}</p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      Sua inscrição está confirmada:
+      <strong>${esc(dataLonga)}</strong>, às <strong>${esc(hora)}</strong>,
+      com <strong>${esc(mentoraNome)}</strong>.
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      <strong>O link da sala chega 1 hora antes</strong>, por e-mail. Não
+      precisa fazer mais nada até lá.
+    </p>
+    ${botao(portalUrl, "Ver minha inscrição", LARANJA_ACELERA)}
+    <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6560;">
+      Precisa cancelar? Dá para fazer no portal até 1 hora antes do início.
+    </p>
+    <p style="margin:12px 0 0;font-size:13px;line-height:1.6;color:#6b6560;">
+      Problemas para entrar? <a href="${MONITORIA_URL}" style="color:#9a3412;font-weight:bold;">Fale com a monitoria</a>.
+    </p>`;
+
+  const texto = [
+    ola,
+    "",
+    `Sua inscrição está confirmada: ${dataLonga}, às ${hora}, com ${mentoraNome}.`,
+    "O link da sala chega 1 hora antes, por e-mail. Não precisa fazer mais nada até lá.",
+    "",
+    `Ver minha inscrição: ${portalUrl}`,
+    "Precisa cancelar? Dá para fazer no portal até 1 hora antes do início.",
+    "",
+    `Problemas para entrar? Fale com a monitoria: ${MONITORIA_URL}`,
+  ].join("\n");
+
+  return enviar({
+    de: DE_ACELERA,
+    para,
+    assunto: `Inscrição confirmada — ${dataLonga}, ${hora}`,
+    html: layout({
+      marca: "acelera",
+      preheader: `Plantão marcado: ${dataLonga}, às ${hora}, com ${mentoraNome}.`,
+      titulo: "Inscrição confirmada",
+      corpo,
+    }),
+    texto,
+  });
+}

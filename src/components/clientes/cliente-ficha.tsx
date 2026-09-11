@@ -205,6 +205,38 @@ export function ClienteFicha({
   const problemasEmFalta = tentouSalvar && problemas.length === 0;
 
   const contratado = fase === "contratado";
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔑 FICHA RECÉM-CRIADA (decisões do Marcio, 10/09/2026)
+  // ═══════════════════════════════════════════════════════════════════════
+  //
+  // *"Andamento do contato vai ficar inabilitado quando ele fizer o cadastro
+  // do cliente pela primeira vez, sem ser uma alteração"* e *"contrato fica
+  // desabilitado na hora de cadastrar o cliente, isso fica disponível somente
+  // quando ele tiver em execução"*.
+  //
+  // O diálogo de criação grava nome + fase + grau e abre a ficha em seguida —
+  // então "primeira vez" é a ficha que ainda não tem TELEFONE, o campo que a
+  // pessoa preenche logo ao chegar aqui. Assim que ela salva com telefone, os
+  // campos abrem: a partir daí toda visita é alteração.
+  const fichaNova = !cliente.telefone;
+
+  // ✅ O CONTRATO JÁ ESTAVA CERTO: `FichaContrato` recebe `contratado` e só
+  // deixa editar quando a fase é "contratado" — que é exatamente "quando ele
+  // tiver em execução" (pedido do Marcio, 10/09/2026). Nada a mudar aqui.
+
+  // 🔑 O BOTÃO NÃO OFERECE O QUE NÃO VAI DAR CERTO (Marcio, 10/09/2026):
+  // *"se não cadastrar tudo, o botão de salvar ficha fica em branco"*.
+  //
+  // O essencial é NOME + TELEFONE — é o que faz a ficha contar para os 30 da
+  // Etapa 01. Sem eles, salvar produz uma ficha que não conta, e a pessoa não
+  // tem como saber disso olhando a tela.
+  //
+  // ⚠️ Os PROBLEMAS ficam de fora desta trava, de propósito: 355 dos 879
+  // clientes estão sem nenhum marcado (medido em 10/09), e travar o salvar
+  // por causa deles prenderia 39 ambientes. Eles seguem como aviso âmbar
+  // (`problemasEmFalta`), que avisa sem impedir.
+  const faltaEssencial = !nome.trim() || !telefone.trim();
   const honorariosValor = moedaParaNumero(honorarios);
   // Mesma regra do CHECK no banco (migração ...090): https, sem espaço, de 12 a
   // 2000 caracteres. Aqui é conveniência — a garantia é a do banco.
@@ -655,9 +687,17 @@ export function ClienteFicha({
               id="f-reg"
               value={registro}
               onChange={(e) => setRegistro(e.target.value)}
+              disabled={fichaNova}
+              aria-describedby={fichaNova ? "f-reg-ajuda" : undefined}
               placeholder="Anotações sobre as conversas, ligações e combinados."
               rows={4}
             />
+            {fichaNova ? (
+              <p id="f-reg-ajuda" className="corpo-sm text-muted-foreground">
+                Você preenche depois, quando voltar a esta ficha para registrar
+                o contato.
+              </p>
+            ) : null}
           </div>
         </Secao>
         </CardContent>
@@ -677,15 +717,17 @@ export function ClienteFicha({
             aria-live="polite"
             className="mr-auto corpo-sm text-muted-foreground"
           >
-            {alterado
-              ? "Você tem alterações não salvas nesta ficha."
-              : "Tudo salvo."}
+            {faltaEssencial
+              ? "Preencha o nome e o telefone para salvar — são eles que fazem a ficha contar para os 30."
+              : alterado
+                ? "Você tem alterações não salvas nesta ficha."
+                : "Tudo salvo."}
           </p>
         )}
         {/* O botão NUNCA é desabilitado por `alterado`: se a comparação
             errar por um campo, o aluno fica preso sem conseguir salvar a
             ficha. O sinal é informativo; salvar de novo é inofensivo. */}
-        <Button onClick={salvar} disabled={pending}>
+        <Button onClick={salvar} disabled={pending || faltaEssencial}>
           {pending ? "Salvando..." : "Salvar ficha"}
         </Button>
       </div>

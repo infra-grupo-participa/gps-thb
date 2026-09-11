@@ -94,8 +94,13 @@ export function DialogoNovoCliente({
         <DialogHeader>
           <DialogTitle>Novo cliente</DialogTitle>
           <DialogDescription>
-            Quem é o cliente e em que ponto ele está. O telefone e o resto você
-            preenche na ficha, que abre em seguida.
+            {/* Dizia "o telefone e o resto" — tratando como acessório o campo
+                que decide se a ficha CONTA para os 30 (ficha completa = nome +
+                telefone). 18 fichas em 9 ambientes ficaram sem telefone; duas
+                pessoas estão a uma ficha de destravar a Etapa 01. */}
+            Quem é o cliente e em que ponto ele está. Na ficha que abre em
+            seguida, preencha o telefone — sem ele a ficha não conta para os
+            30.
           </DialogDescription>
         </DialogHeader>
 

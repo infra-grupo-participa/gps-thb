@@ -429,9 +429,12 @@ export function OnboardingPortal({
           // ser montada lá. O `onboarding-gate` passa `proximoPasso={null}`
           // de propósito (calcular exigiria 3 consultas em toda página do
           // parceiro) — mas este caso não precisa de cálculo.
+          // 🔴 Era `origem === "captacao"` (11/09/2026): quem respondeu "já
+          // tenho esse cliente" saía com o botão genérico, embora TAMBÉM
+          // precise montar a lista dos 30. Medido: 22 pessoas concluíram o
+          // onboarding e não cadastraram ninguém.
           proximoPassoHref={
-            proximoPasso?.href ??
-            (origem === "captacao" ? "/clientes" : undefined)
+            proximoPasso?.href ?? (origem !== null ? "/clientes" : undefined)
           }
           onFechar={fechar}
           onVoltar={() => {

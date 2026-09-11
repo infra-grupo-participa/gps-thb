@@ -89,6 +89,18 @@ export function PassoFase({
         onEscolher={setFase}
         desabilitado={desabilitado}
       />
+      {/* 🔴 A SAÍDA DO BECO (11/09/2026). Desde a decisão de 10/09 ("ter
+          cliente = croqui apresentado"), `agendado` e `viabilidade_feita`
+          saíram das opções — as duas que restam cobrem só quem já apresentou
+          o croqui. Quem respondeu "já tenho esse cliente" no passo anterior e
+          ainda NÃO apresentou não tem em que clicar, e a fase é obrigatória.
+          Existe "Voltar", mas nada dizia que a saída era mudar a resposta
+          anterior. Não mexe nas opções — só conta o caminho. */}
+      <p className="corpo-sm text-muted-foreground">
+        Não se encaixa em nenhuma das duas? Volte e escolha{" "}
+        <strong>&ldquo;Quero que façamos desde a captação&rdquo;</strong> — é o
+        caminho de quem ainda vai apresentar o croqui.
+      </p>
       <div className="grid gap-3 rounded-xl bg-superficie-afundada p-3">
         <div className="grid gap-1.5">
           <Label htmlFor="onb-nome">Qual o nome desse cliente?</Label>
@@ -107,15 +119,23 @@ export function PassoFase({
             value={pais}
             onChange={(e) => setPais(e.target.value)}
           >
+            {/* `disabled` no placeholder, como no campo de grau logo abaixo.
+                Sem ele o "Escolha…" é uma opção selecionável e o campo PARECE
+                respondido — a trava só cobra no "Continuar", e a frase de erro
+                nasce no rodapé, fora da viewport do diálogo. */}
             {PAISES.map((op) => (
-              <option key={op.id} value={op.id}>
+              <option key={op.id} value={op.id} disabled={op.id === ""}>
                 {op.rotulo}
               </option>
             ))}
           </select>
           <p className="corpo-sm text-muted-foreground">
-            De onde vem este lead. A equipe usa isso para saber como falar com
-            ele.
+            {/* Dizia "de onde vem este lead" — para quem acabou de responder
+                que JÁ TEM o cliente, chamá-lo de lead contradiz a pergunta
+                anterior. E o país não é origem: é o que define o formato do
+                telefone no campo seguinte. */}
+            Em que país este cliente mora. É o que define o formato do número
+            de WhatsApp abaixo.
           </p>
         </div>
         <div className="grid gap-1.5">
@@ -173,7 +193,28 @@ export function PassoFase({
             A equipe já acompanha um cliente neste ambiente. Este cliente entra
             na sua lista de clientes, sem trocar o que a equipe já acompanha.
           </AvisoInline>
-        ) : null}
+        ) : (
+          // 🔴 A ASSIMETRIA QUE CUSTOU 4 DOS 5 CHAMADOS DO PRIMEIRO DIA
+          // (11/09/2026). A tela avisava quando NÃO ia marcar a estrela e
+          // ficava calada quando IA — que é o caso da maioria.
+          //
+          // Medido: **14 dos 17** favoritos do sistema nasceram AQUI, sem
+          // nenhum clique do parceiro; só 3 vieram da estrela na aba
+          // Clientes. A Vania tem `cliente_favoritado` e
+          // `onboarding_concluido` no MESMO microssegundo e escreveu no
+          // chamado: "ao salvar ele já apareceu como favorito, e não será o
+          // caso deste cliente".
+          //
+          // Não muda o comportamento — `onboarding_concluir` continua
+          // marcando. Muda o que a pessoa SABE ao decidir, e diz onde se
+          // troca depois, para o caminho não ser o Suporte.
+          <AvisoInline>
+            Este será o <strong>cliente que a equipe vai acompanhar</strong> com
+            você até a sua primeira holding sair. Se depois você preferir outro,
+            troca a qualquer momento na aba Clientes, enquanto a equipe ainda
+            não tiver assumido.
+          </AvisoInline>
+        )}
       </div>
     </div>
   );

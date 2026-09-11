@@ -36,6 +36,16 @@ export function PassoSenha({
       <p className="corpo text-muted-foreground">
         Você entrou com uma senha temporária. Crie a sua agora.
       </p>
+      {/* 🔴 A TELA PARECIA FIM DE LINHA (11/09/2026). Medido: 11 pessoas
+          entraram pelo código de acesso, chegaram aqui e fecharam a aba —
+          sessão viva, zero eventos, zero clientes. Nada dizia que havia um
+          questionário curto depois, e a barra mostra "1 de N" sem contar o
+          que é N. Uma frase de expectativa é a correção mais barata do
+          funil inteiro. */}
+      <p className="corpo-sm text-muted-foreground">
+        Depois dela são poucas perguntas rápidas, para a equipe saber de onde
+        você parte. Leva menos de dois minutos.
+      </p>
       <AvisoInline>
         Esta senha vale para todos os portais do Time Holding Brasil.
       </AvisoInline>

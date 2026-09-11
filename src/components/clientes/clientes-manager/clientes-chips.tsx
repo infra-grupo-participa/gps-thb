@@ -192,8 +192,21 @@ export function StarButton({
     <button
       type="button"
       onClick={onClick}
+      // 🔴 "Marcar como cliente da equipe" não dizia o que a escolha
+      // significa, e `title` é tooltip de HOVER — não existe no celular nem
+      // para leitor de tela. Dois parceiros marcaram achando que era
+      // preferência pessoal ("achei que favoritar era apenas para sinalizar
+      // por onde queria começar"). O diálogo de confirmação já tem a copy
+      // certa, mas ele só aparece DEPOIS do clique.
       title={
-        ativo ? "Cliente acompanhado pela equipe" : "Marcar como cliente da equipe"
+        ativo
+          ? "Este é o cliente que a equipe acompanha"
+          : "Escolher como o cliente que a equipe vai acompanhar até a sua primeira holding"
+      }
+      aria-label={
+        ativo
+          ? "Este é o cliente que a equipe acompanha"
+          : "Escolher como o cliente que a equipe vai acompanhar até a sua primeira holding"
       }
       className={
         "foco-visivel shrink-0 rounded-sm transition " +

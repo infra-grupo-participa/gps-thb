@@ -331,8 +331,15 @@ export function ClientesManager({
                   contrato assinado. */}
               <span className="mt-1 block text-xs text-muted-foreground">
                 {preenchidos} com nome · {comDados} com nome e telefone.
-                A meta de {META_CLIENTES} é da Etapa 01; clientes em andamento e
-                em execução contam aqui também.
+                {/* 🔴 O número estava aqui; o MOTIVO dele, não (11/09/2026).
+                    A home manda para cá quem tem 0 clientes — 82 pessoas — e
+                    a conta que destrava a Etapa 01 aparecia sem dizer o que
+                    destrava. "Com dados" também não explicava a si mesmo:
+                    ficha completa é nome + telefone, e é por isso que o
+                    telefone não é opcional. */}{" "}
+                É essa conta — nome <strong>e</strong> telefone — que destrava
+                os passos 4 a 8 da Etapa 01. Clientes em andamento e em
+                execução contam aqui também.
               </span>
             </>
           }

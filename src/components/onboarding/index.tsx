@@ -19,7 +19,7 @@ import {
 } from "@/lib/types";
 import { BarraDePassos } from "./barra-de-passos";
 import { PassoSenha } from "./passo-senha";
-import { PassoFase, PassoHonorarios, PassoOrigem } from "./passo-cliente";
+import { PassoFase, PassoOrigem } from "./passo-cliente";
 import { PassoTexto } from "./passo-texto";
 import { Rodape } from "./rodape";
 import { passoDeAbertura, sequenciaDePassos } from "./sequencia";
@@ -108,14 +108,15 @@ export function OnboardingPortal({
   const [telefone, setTelefone] = useState(r.clienteTelefone ?? "");
   const [grau, setGrau] = useState<GrauRelacao | "">(r.clienteGrauRelacao ?? "");
   const [pais, setPais] = useState(r.clientePais ?? "");
-  const [pactuados, setPactuados] = useState<boolean | null>(
-    r.honorariosPactuados ?? null,
-  );
-  const [honorarios, setHonorarios] = useState(
+  // 🔑 SÓ LEITURA desde 10/09/2026: o passo 4 saiu e ninguém mais escreve
+  // nestes campos pela tela. Eles continuam sendo ENVIADOS em `concluir()`
+  // porque quem já respondeu antes da mudança (8 pessoas, medido) tem o
+  // valor gravado — mandar `null` apagaria o que elas informaram.
+  const pactuados = r.honorariosPactuados ?? null;
+  const honorarios =
     r.valorHonorarios != null
       ? mascaraMoeda(String(Math.round(r.valorHonorarios * 100)))
-      : "",
-  );
+      : "";
   const [ajuda, setAjuda] = useState(r.ajudaPronta ?? "");
   const [favoritado, setFavoritado] = useState<boolean | null>(null);
 
@@ -330,14 +331,11 @@ export function OnboardingPortal({
             />
           ) : null}
 
-          {passo === 4 ? (
-            <PassoHonorarios
-              honorarios={honorarios}
-              setHonorarios={setHonorarios}
-              pactuados={pactuados}
-              setPactuados={setPactuados}
-            />
-          ) : null}
+          {/* 🔴 O PASSO 4 (honorários + anexos) foi REMOVIDO da sequência em
+              10/09/2026 (`sequencia.ts`): valor e contrato vivem só na ficha
+              do cliente, que já tem os dois campos e só os libera quando a
+              fase é "contratado". O bloco que renderizava `PassoHonorarios`
+              saiu junto — deixá-lo seria código que nunca roda. */}
 
           {passo === 5 ? (
             <PassoTexto
@@ -356,6 +354,28 @@ export function OnboardingPortal({
                     : "Pronto. A equipe já recebeu as suas respostas."}
                 </span>
               </p>
+              {/* 🔴 QUEM VEM DA CAPTAÇÃO PRECISA SABER O QUE FAZER AGORA.
+                  MEDIDO em 10/09/2026: das 22 pessoas que concluíram o
+                  onboarding escolhendo "captação", **21 saíram do portal e não
+                  voltaram** — concluíram há 2 horas em média e cadastraram
+                  ZERO clientes.
+
+                  A tela dizia só "Pronto. A equipe já recebeu as suas
+                  respostas." — que soa como fim de tarefa, não como começo.
+                  Quem não tem cliente 1 sai daqui sem nada para fazer, e a
+                  lista dos 30 é justamente o trabalho que começa agora. */}
+              {origem === "captacao" ? (
+                <div className="grid gap-1.5 rounded-xl border border-marca-acao/40 bg-primary/[0.04] p-3">
+                  <p className="corpo font-medium">
+                    Seu próximo passo: montar a lista dos 30
+                  </p>
+                  <p className="corpo-sm text-muted-foreground">
+                    É de lá que sai o seu cliente 1. Basta{" "}
+                    <strong>nome e telefone</strong> de cada pessoa — o resto
+                    você preenche depois, quando souber.
+                  </p>
+                </div>
+              ) : null}
               {favoritado === true ? (
                 <p className="corpo text-muted-foreground">
                   O seu cliente 1 já está cadastrado e marcado como o cliente
@@ -391,7 +411,15 @@ export function OnboardingPortal({
           podeFechar={podeFechar}
           salvando={salvando}
           razaoTravado={razaoTravado}
-          proximoPassoHref={proximoPasso?.href}
+          // 🔑 Para quem vem da CAPTAÇÃO o destino é sempre `/clientes`, e
+          // isso não custa consulta nenhuma: é a lista dos 30, que só pode
+          // ser montada lá. O `onboarding-gate` passa `proximoPasso={null}`
+          // de propósito (calcular exigiria 3 consultas em toda página do
+          // parceiro) — mas este caso não precisa de cálculo.
+          proximoPassoHref={
+            proximoPasso?.href ??
+            (origem === "captacao" ? "/clientes" : undefined)
+          }
           onFechar={fechar}
           onVoltar={() => {
             const i = sequencia.indexOf(passo);

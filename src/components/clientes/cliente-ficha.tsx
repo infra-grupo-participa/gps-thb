@@ -352,6 +352,10 @@ export function ClienteFicha({
           ? "Ficha salva."
           : "Ficha salva — falta o telefone para ela contar para os 30.",
       );
+      // 🔑 `fichaNova` vem de `cliente.telefone`, que é prop do servidor:
+      // sem o refresh, quem acabou de salvar o telefone continuaria vendo
+      // "Registro do contato" desabilitado até navegar para outra tela.
+      router.refresh();
     });
   }
 
@@ -694,8 +698,10 @@ export function ClienteFicha({
             />
             {fichaNova ? (
               <p id="f-reg-ajuda" className="corpo-sm text-muted-foreground">
-                Você preenche depois, quando voltar a esta ficha para registrar
-                o contato.
+                {/* Dizia "quando voltar a esta ficha", e quem acabou de
+                    digitar o telefone via o campo ainda cinza e achava que
+                    precisava sair e entrar de novo. */}
+                Salve o telefone e este campo abre.
               </p>
             ) : null}
           </div>

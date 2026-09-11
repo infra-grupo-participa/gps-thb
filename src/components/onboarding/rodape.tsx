@@ -62,7 +62,13 @@ export function Rodape(p: {
               className={buttonVariants()}
             >
               <Sparkles aria-hidden />
-              Ir para o meu próximo passo
+              {/* O rótulo segue o DESTINO: "próximo passo" é vago para quem
+                  vai montar a lista dos 30 — e é justamente quem estava
+                  saindo do portal sem fazer nada (21 de 22, medido em
+                  10/09/2026). */}
+              {p.proximoPassoHref === "/clientes"
+                ? "Cadastrar meus clientes"
+                : "Ir para o meu próximo passo"}
             </Link>
           ) : (
             <Button onClick={p.onFechar}>

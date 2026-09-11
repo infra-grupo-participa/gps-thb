@@ -1,11 +1,18 @@
 import { redirect } from "next/navigation";
 import { LifeBuoy, Lock } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById } from "@/lib/data";
-import { getChamadosDoAmbiente, getSuporteAberto } from "@/lib/chamados-data";
+import { createClient } from "@/lib/supabase/server";
+import { getAlunoById, getMembrosDoAmbiente } from "@/lib/data";
+import { getClientesEtapa1, getClienteEquipe } from "@/lib/data/clientes";
 import {
+  getChamadosCategoriasAtivo,
+  getChamadosDoAmbiente,
+  getSuporteAberto,
+} from "@/lib/chamados-data";
+import {
+  CATEGORIAS_CHAMADO,
   CHAMADOS_MAX_ABERTOS,
-  CHAMADO_ASSUNTO_MAXIMO,
+  type CategoriaChamado,
 } from "@/lib/chamados-tipos";
 import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
@@ -29,24 +36,18 @@ export const metadata = { title: "Suporte" };
  */
 
 /**
- * `?assunto=` é PREFILL, nada mais: quem chega da ficha do cliente ("abra um
- * chamado" para trocar o cliente acompanhado) já encontra o campo escrito.
- *
- * Tratado como texto normal, e o tratamento é o mínimo honesto: uma linha só
- * (CR/LF e caracteres de controle fora — o assunto vira `subject` de e-mail lá
- * na frente, e quebra de linha em cabeçalho é injeção), colapso de espaços e o
- * teto que o campo já tem. **Não é a fronteira**: quem valida de verdade
- * continua sendo `abrirChamado`, e é o React que escapa o texto na tela.
+ * `?categoria=` é PREFILL de qual aba do diálogo abre — não pré-aprovação de
+ * nada. Hoje só quem chega da ficha do cliente usa (`hrefChamadoTroca`, em
+ * `acompanhamento-equipe.tsx`, com `troca_cliente`). Categoria fora da
+ * allowlist cai em `null` (o diálogo abre na primeira opção).
  */
-const CONTROLE = new RegExp("[\u0000-\u001f\u007f]+", "g");
-
-function assuntoDaUrl(bruto: string | string[] | undefined): string {
-  if (typeof bruto !== "string") return "";
-  return bruto
-    .replace(CONTROLE, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, CHAMADO_ASSUNTO_MAXIMO);
+function categoriaDaUrl(
+  bruto: string | string[] | undefined,
+): CategoriaChamado | null {
+  if (typeof bruto !== "string") return null;
+  return (CATEGORIAS_CHAMADO as readonly string[]).includes(bruto)
+    ? (bruto as CategoriaChamado)
+    : null;
 }
 
 export default async function ChamadosPage({
@@ -54,24 +55,51 @@ export default async function ChamadosPage({
 }: {
   searchParams: Promise<{ [k: string]: string | string[] | undefined }>;
 }) {
-  const assuntoInicial = assuntoDaUrl((await searchParams).assunto);
+  const categoriaInicial = categoriaDaUrl((await searchParams).categoria);
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
   if (ctx.papel === "admin") redirect("/admin/chamados");
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
   const alunoId = ctx.alunoId;
-  const [aluno, chamados, suporteAberto] = await Promise.all([
+  const [aluno, chamados, suporteAberto, categoriasAtivo] = await Promise.all([
     getAlunoById(alunoId),
     getChamadosDoAmbiente(alunoId),
     getSuporteAberto(),
+    getChamadosCategoriasAtivo(),
   ]);
+
+  // O formulário de troca só precisa de clientes/sócio quando a feature está
+  // ligada — poupa duas idas ao banco no caminho comum (interruptor
+  // desligado é o padrão de hoje, e continuará sendo até o Marcio ligar).
+  const [clientes, favorito, membros] = categoriasAtivo
+    ? await Promise.all([
+        getClientesEtapa1(alunoId),
+        getClienteEquipe(alunoId),
+        getMembrosDoAmbiente(alunoId),
+      ])
+    : [[], null, []];
+
+  const socioAtual = membros.find((m) => m.papel === "socio") ?? null;
+  const socioAtualNome = await nomeDoSocio(socioAtual?.pessoa_aluno_id ?? null);
 
   const vivos = chamados.filter((c) => c.status !== "fechado");
   const noLimite = vivos.length >= CHAMADOS_MAX_ABERTOS;
   // Três razões diferentes para não haver botão — e a tela diz qual é. Botão
   // que some sem explicação é o defeito que esta fase existe para não repetir.
   const podeAbrir = suporteAberto && !noLimite;
+
+  const dialogo = podeAbrir ? (
+    <ChamadoNovoDialog
+      categoriaInicial={categoriaInicial}
+      categoriasAtivo={categoriasAtivo}
+      clientes={clientes.map((c) => ({ id: c.id, nome: c.nome }))}
+      clienteAtualId={favorito?.id ?? null}
+      clienteAtualNome={favorito?.nome ?? null}
+      socioAtualNome={socioAtualNome}
+      temSocio={Boolean(socioAtual)}
+    />
+  ) : null;
 
   return (
     <>
@@ -85,11 +113,7 @@ export default async function ChamadosPage({
         <PageHeader
           titulo="Suporte"
           descricao="Fale com a equipe por aqui. Abra um chamado, acompanhe a resposta e feche quando resolver."
-          acao={
-            podeAbrir ? (
-              <ChamadoNovoDialog assuntoInicial={assuntoInicial} />
-            ) : null
-          }
+          acao={dialogo}
         />
 
         {!suporteAberto ? (
@@ -119,11 +143,7 @@ export default async function ChamadosPage({
             icone={<LifeBuoy />}
             titulo="Você ainda não abriu nenhum chamado."
             descricao="Precisa de ajuda com o portal? Abra um chamado e a equipe responde por aqui."
-            acao={
-              podeAbrir ? (
-                <ChamadoNovoDialog assuntoInicial={assuntoInicial} />
-              ) : null
-            }
+            acao={dialogo}
           />
         ) : (
           <ChamadosLista
@@ -135,4 +155,20 @@ export default async function ChamadosPage({
       </main>
     </>
   );
+}
+
+/**
+ * Nome do sócio ATUAL, via `thb_alunos` — mesmo padrão de `pessoasDosMembros`
+ * em `src/app/equipe/page.tsx` (sem `pessoa_aluno_id`, sem consulta).
+ * `null` quando não há sócio ou o vínculo com o cadastro ainda não foi feito.
+ */
+async function nomeDoSocio(pessoaAlunoId: string | null): Promise<string | null> {
+  if (!pessoaAlunoId) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("thb_alunos")
+    .select("nome")
+    .eq("id", pessoaAlunoId)
+    .maybeSingle();
+  return (data as { nome: string | null } | null)?.nome ?? null;
 }

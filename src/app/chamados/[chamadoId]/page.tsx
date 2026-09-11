@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById } from "@/lib/data";
-import { getChamado, getSuporteAberto } from "@/lib/chamados-data";
+import {
+  getChamado,
+  getSolicitacaoDoChamado,
+  getSuporteAberto,
+} from "@/lib/chamados-data";
 import { rotuloStatus } from "@/lib/chamados-tipos";
 import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
@@ -11,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChamadoThread } from "@/components/chamados/chamado-thread";
 import { ChamadoResponder } from "@/components/chamados/chamado-responder";
 import { estadoDaResposta } from "@/components/chamados/estado-resposta";
+import { FaixaSolicitacao } from "@/components/chamados/faixa-solicitacao";
 
 export const metadata = { title: "Chamado" };
 
@@ -40,6 +45,10 @@ export default async function ChamadoPage({
   if (!dados) notFound();
 
   const { chamado, mensagens } = dados;
+  const solicitacao =
+    chamado.categoria === "troca_cliente" || chamado.categoria === "troca_socio"
+      ? await getSolicitacaoDoChamado(chamadoId)
+      : null;
   const estado = estadoDaResposta(
     chamado,
     mensagens.length,
@@ -76,6 +85,7 @@ export default async function ChamadoPage({
         />
 
         <div className="grid gap-6">
+          {solicitacao ? <FaixaSolicitacao solicitacao={solicitacao} /> : null}
           <ChamadoThread mensagens={mensagens} visao="aluno" />
           <ChamadoResponder
             chamadoId={chamado.id}

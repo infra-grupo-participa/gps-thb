@@ -21,6 +21,47 @@
  * lista — quem valida é o banco —, então é união de literais, não tupla. */
 export type StatusChamado = "aberto" | "respondido" | "fechado";
 
+/**
+ * Categoria do chamado (feature de 11/09/2026, `gps.chamados_categorias_ativo`).
+ *
+ * `troca_cliente` e `troca_socio` abrem uma `ChamadoSolicitacao` associada
+ * (atual × novo, aprovar/declinar). `sistema` e `outros` seguem o formulário
+ * de sempre — texto livre, sem alvo.
+ *
+ * União de literais, não tupla: quem valida é o banco. `CATEGORIAS_CHAMADO`
+ * abaixo é só para a UI iterar (select, chip de filtro).
+ */
+export type CategoriaChamado =
+  | "sistema"
+  | "troca_cliente"
+  | "troca_socio"
+  | "outros";
+
+export const CATEGORIAS_CHAMADO: readonly CategoriaChamado[] = [
+  "sistema",
+  "troca_cliente",
+  "troca_socio",
+  "outros",
+] as const;
+
+/**
+ * Rótulo em português — FONTE ÚNICA para as duas telas (parceiro e equipe).
+ * Nenhum componente escreve a copy de categoria de novo lugar nenhum.
+ */
+export const ROTULO_CATEGORIA_CHAMADO: Record<CategoriaChamado, string> = {
+  sistema: "Dificuldade no sistema",
+  troca_cliente: "Troca de cliente",
+  troca_socio: "Troca de sócio",
+  outros: "Outros",
+};
+
+export function rotuloCategoriaChamado(
+  categoria: CategoriaChamado | null | undefined,
+): string {
+  if (!categoria) return ROTULO_CATEGORIA_CHAMADO.sistema;
+  return ROTULO_CATEGORIA_CHAMADO[categoria] ?? ROTULO_CATEGORIA_CHAMADO.sistema;
+}
+
 export interface Chamado {
   id: string;
   /** AMBIENTE (thb_alunos.id do titular), nunca a pessoa logada. */
@@ -32,6 +73,36 @@ export interface Chamado {
   ultima_mensagem_em: string;
   fechado_em: string | null;
   fechado_por: string | null;
+  /**
+   * `null` = chamado aberto antes da feature de categoria, ou o interruptor
+   * `chamados_categorias_ativo` estava desligado no momento — a UI trata como
+   * "Dificuldade no sistema" (`rotuloCategoriaChamado`), nunca como erro.
+   */
+  categoria: CategoriaChamado | null;
+}
+
+/** Os dois tipos de solicitação de troca — mesmo fluxo de aprovação. */
+export type TipoSolicitacao = "troca_cliente" | "troca_socio";
+export type EstadoSolicitacao = "pendente" | "aprovada" | "declinada";
+
+/**
+ * `gps.chamado_solicitacoes` — o "atual × novo" de uma troca.
+ *
+ * 🔑 `alvo_atual_rotulo`/`alvo_novo_rotulo` são CÓPIA do nome no instante do
+ * pedido (contrato do banco). A tela usa SEMPRE estes dois campos — nunca
+ * busca o nome do cliente/sócio de novo, porque ele pode ter sido apagado ou
+ * trocado entre o pedido e a leitura.
+ */
+export interface ChamadoSolicitacao {
+  chamado_id: string;
+  tipo: TipoSolicitacao;
+  alvo_atual_id: string | null;
+  alvo_novo_id: string | null;
+  alvo_atual_rotulo: string | null;
+  alvo_novo_rotulo: string | null;
+  estado: EstadoSolicitacao;
+  decidida_em: string | null;
+  motivo_decisao: string | null;
 }
 
 /** Linha da fila de `/admin/chamados` — o nome do ambiente vem junto. */
@@ -121,6 +192,11 @@ export const CHAMADO_ASSUNTO_MINIMO = 3;
 export const CHAMADO_REABRIR_DIAS = 7;
 export const ANEXO_RETENCAO_DIAS = 180;
 export const BUCKET_CHAMADOS = "gps-chamados";
+
+/** Motivo de aprovar/declinar solicitação — mesmo limite de
+ * `AcoesAcompanhamento` (`confirmarAcompanhamento`/`liberarAcompanhamento`). */
+export const SOLICITACAO_MOTIVO_MINIMO = 3;
+export const SOLICITACAO_MOTIVO_MAXIMO = 300;
 
 /** `<aluno_id>/<uuid>.<ext>` — o MESMO formato que o CHECK e a policy exigem. */
 export const ANEXO_PATH_REGEX =

@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ChamadosFila,
+  parseFiltroCategoria,
   parseFiltroFila,
 } from "@/components/admin/chamados-fila";
 import { ChamadosConfig } from "@/components/admin/chamados-config";
@@ -36,14 +37,15 @@ export const metadata = { title: "Admin — Chamados" };
 export default async function AdminChamadosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ f?: string }>;
+  searchParams: Promise<{ f?: string; c?: string }>;
 }) {
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const { f } = await searchParams;
+  const { f, c } = await searchParams;
   const filtro = parseFiltroFila(f);
+  const filtroCategoria = parseFiltroCategoria(c);
 
   const [fila, config, paraExpurgo] = await Promise.all([
     getFilaChamados(),
@@ -93,7 +95,11 @@ export default async function AdminChamadosPage({
           </TabsList>
 
           <TabsContent value="fila">
-            <ChamadosFila chamados={fila} filtro={filtro} />
+            <ChamadosFila
+              chamados={fila}
+              filtro={filtro}
+              filtroCategoria={filtroCategoria}
+            />
           </TabsContent>
 
           <TabsContent value="config">

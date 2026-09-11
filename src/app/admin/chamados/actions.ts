@@ -20,11 +20,14 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin, getContextoSessao } from "@/lib/auth";
+import { traduzirErroBanco, type ErroDeBanco } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import { emailValido } from "@/lib/texto";
 import {
   ANEXO_PATH_REGEX,
   BUCKET_CHAMADOS,
+  SOLICITACAO_MOTIVO_MAXIMO,
+  SOLICITACAO_MOTIVO_MINIMO,
   type ResultadoAcao,
 } from "@/lib/chamados-tipos";
 
@@ -180,5 +183,127 @@ export async function expurgarAnexo(item: {
   }
 
   revalidatePath("/admin/chamados");
+  return { ok: true };
+}
+
+/**
+ * Frases das RPCs `gps.chamado_aprovar_solicitacao`/`_declinar_solicitacao`.
+ *
+ * Mesma DUPLICAÇÃO deliberada de `src/app/chamados/actions.ts` (comentário lá:
+ * "mora em FRASES, e não em erros.ts, porque é copy de UM domínio"): as duas
+ * actions de chamado não importam uma da outra para não acoplar dois módulos
+ * `"use server"` distintos por um mapa de 6 linhas.
+ *
+ * ⚠️ A confirmar contra o texto EXATO que o banco levanta (ver relatório: "as
+ * frases de erro que espera do banco"). Match por igualdade exata.
+ */
+const FRASES_SOLICITACAO: Record<string, string> = {
+  "sem permissao": "Sem permissão para esta ação.",
+  "solicitacao nao encontrada": "Solicitação não encontrada.",
+  "esta solicitacao ja foi decidida": "Esta solicitação já foi decidida.",
+  "escreva o motivo do declinio":
+    "Escreva o motivo — o parceiro vai ver por que o pedido não foi aceito.",
+  "o motivo passa de 300 caracteres": "O motivo passa de 300 caracteres.",
+  "cliente novo nao encontrado neste ambiente":
+    "O cliente novo não existe mais neste ambiente. Decline e peça para o parceiro abrir de novo.",
+};
+
+function traduzirErroSolicitacao(escopo: string, error: ErroDeBanco): string {
+  return traduzirErroBanco(escopo, error, undefined, FRASES_SOLICITACAO);
+}
+
+/**
+ * Aprovar EXECUTA a troca (decisão do Marcio, briefing 11/09): a RPC muda o
+ * cliente/sócio acompanhado e fecha a solicitação num só passo — não há
+ * segunda confirmação depois desta. O diálogo que chama esta action
+ * (`DialogoConfirmacao`) é quem tem de deixar isso claro, nomeando os dois
+ * lados da troca.
+ *
+ * `alunoId` só serve para revalidar as rotas certas — quem autoriza é
+ * `gp_is_admin()` dentro da RPC.
+ */
+export async function aprovarSolicitacaoChamado(
+  chamadoId: string,
+  alunoId: string,
+  motivo: string,
+): Promise<ResultadoAcao> {
+  if (!(await ehAdmin())) return { ok: false, erro: "Ação restrita à equipe." };
+  if (!chamadoId) return { ok: false, erro: "Chamado não encontrado." };
+
+  const texto = (motivo ?? "").trim();
+  // O motivo é OPCIONAL em aprovar (a decisão já está no clique do botão
+  // nomeado); quando vier, respeita o mesmo teto de 300 do declínio.
+  if (texto.length > SOLICITACAO_MOTIVO_MAXIMO) {
+    return { ok: false, erro: `O motivo passa de ${SOLICITACAO_MOTIVO_MAXIMO} caracteres.` };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .schema("gps")
+    .rpc("chamado_aprovar_solicitacao", {
+      p_chamado_id: chamadoId,
+      p_motivo: texto || null,
+    });
+
+  if (error) {
+    return {
+      ok: false,
+      erro: traduzirErroSolicitacao("aprovarSolicitacaoChamado", error),
+    };
+  }
+
+  revalidatePath("/admin/chamados");
+  revalidatePath(`/admin/chamados/${chamadoId}`);
+  revalidatePath("/chamados", "layout");
+  if (alunoId) {
+    revalidatePath(`/admin/aluno/${alunoId}`, "layout");
+    revalidatePath("/clientes", "layout");
+    revalidatePath("/equipe", "layout");
+  }
+  return { ok: true };
+}
+
+/**
+ * Declinar NÃO muda cliente/sócio nenhum — só fecha a solicitação com o
+ * motivo, que o parceiro lê na thread do chamado. A conversa por mensagem
+ * continua podendo acontecer antes ou depois.
+ */
+export async function declinarSolicitacaoChamado(
+  chamadoId: string,
+  alunoId: string,
+  motivo: string,
+): Promise<ResultadoAcao> {
+  if (!(await ehAdmin())) return { ok: false, erro: "Ação restrita à equipe." };
+  if (!chamadoId) return { ok: false, erro: "Chamado não encontrado." };
+
+  const texto = (motivo ?? "").trim();
+  if (texto.length < SOLICITACAO_MOTIVO_MINIMO) {
+    return {
+      ok: false,
+      erro: `Escreva o motivo — o parceiro vai ver por que o pedido não foi aceito (mínimo de ${SOLICITACAO_MOTIVO_MINIMO} caracteres).`,
+    };
+  }
+  if (texto.length > SOLICITACAO_MOTIVO_MAXIMO) {
+    return { ok: false, erro: `O motivo passa de ${SOLICITACAO_MOTIVO_MAXIMO} caracteres.` };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .schema("gps")
+    .rpc("chamado_declinar_solicitacao", {
+      p_chamado_id: chamadoId,
+      p_motivo: texto,
+    });
+
+  if (error) {
+    return {
+      ok: false,
+      erro: traduzirErroSolicitacao("declinarSolicitacaoChamado", error),
+    };
+  }
+
+  revalidatePath("/admin/chamados");
+  revalidatePath(`/admin/chamados/${chamadoId}`);
+  revalidatePath("/chamados", "layout");
   return { ok: true };
 }

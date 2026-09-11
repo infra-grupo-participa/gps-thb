@@ -43,20 +43,26 @@ const MOTIVO_MIN = 3;
 const MOTIVO_MAX = 300;
 
 /**
- * O caminho de saída, num lugar só. Vai como `?assunto=` para o Suporte, que
- * usa o valor como texto inicial do campo (prefill, nada mais — quem valida
- * continua sendo `abrirChamado`).
+ * O caminho de saída, num lugar só. Vai como `?categoria=troca_cliente` para
+ * o Suporte, que abre o diálogo já na categoria "Troca de cliente" — com o
+ * cliente ATUAL preenchido pelo sistema (ele já sabe quem é) e o seletor do
+ * NOVO pronto para busca.
+ *
+ * 🔴 ANTES ia como `?assunto=` (prefill de TEXTO no campo Assunto). Migrado em
+ * 11/09/2026: a categoria é o caminho estrutural agora, e o antigo prefill de
+ * texto livre some — "nome digitado errado vira retrabalho" (decisão do
+ * Marcio no briefing da feature).
  */
 /**
  * 🔴 Recebe `basePath` porque o link ABSOLUTO ejetava o admin do ambiente:
  * `/chamados` redireciona quem é admin para `/admin/chamados`, e ele perdia
- * o aluno, o cliente e o `?assunto=`. No Modo Assistência o destino tem de
- * ser `/admin/aluno/<id>/chamados`.
+ * o aluno e o `?categoria=`. No Modo Assistência o destino tem de ser
+ * `/admin/aluno/<id>/chamados`.
  *
  * Default vazio = o caminho do aluno, que é o caso mais comum.
  */
 export function hrefChamadoTroca(basePath = ""): string {
-  return `${basePath}/chamados?assunto=Trocar%20cliente%20acompanhado`;
+  return `${basePath}/chamados?categoria=troca_cliente`;
 }
 
 /**

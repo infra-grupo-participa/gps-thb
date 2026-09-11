@@ -4,7 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatarDataHora } from "@/lib/datas";
-import { rotuloStatus, type ChamadoNaFila } from "@/lib/chamados-tipos";
+import {
+  CATEGORIAS_CHAMADO,
+  ROTULO_CATEGORIA_CHAMADO,
+  rotuloCategoriaChamado,
+  rotuloStatus,
+  type CategoriaChamado,
+  type ChamadoNaFila,
+} from "@/lib/chamados-tipos";
 import { cn } from "@/lib/utils";
 
 /**
@@ -33,6 +40,27 @@ export type FiltroFila = (typeof FILTROS)[number]["valor"];
 
 export function parseFiltroFila(v: string | undefined): FiltroFila {
   return v === "aberto" || v === "respondido" ? v : "todos";
+}
+
+/**
+ * Filtro por categoria (`?c=`), somando ao de status (`?f=`) — MESMA
+ * allowlist em URL, mesmo padrão de `parseFiltroFila`: valor fora da lista
+ * cai em "todos" em silêncio, nunca em erro de rota.
+ */
+export type FiltroCategoria = "todos" | CategoriaChamado;
+
+export function parseFiltroCategoria(v: string | undefined): FiltroCategoria {
+  return (CATEGORIAS_CHAMADO as readonly string[]).includes(v ?? "")
+    ? (v as CategoriaChamado)
+    : "todos";
+}
+
+function hrefFila(filtro: FiltroFila, categoria: FiltroCategoria): string {
+  const params = new URLSearchParams();
+  if (filtro !== "todos") params.set("f", filtro);
+  if (categoria !== "todos") params.set("c", categoria);
+  const q = params.toString();
+  return q ? `/admin/chamados?${q}` : "/admin/chamados";
 }
 
 /** Iniciais do ambiente, para dar rosto a fila. */
@@ -75,16 +103,24 @@ function diasParado(iso: string, agora: number): number {
 export function ChamadosFila({
   chamados,
   filtro,
+  filtroCategoria = "todos",
 }: {
   chamados: ChamadoNaFila[];
   filtro: FiltroFila;
+  filtroCategoria?: FiltroCategoria;
 }) {
-  const visiveis =
+  const porStatus =
     filtro === "todos" ? chamados : chamados.filter((c) => c.status === filtro);
+  const visiveis =
+    filtroCategoria === "todos"
+      ? porStatus
+      : porStatus.filter(
+          (c) => (c.categoria ?? "sistema") === filtroCategoria,
+        );
   const agora = agoraMs();
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       <nav aria-label="Filtrar a fila por situação" className="flex flex-wrap gap-1">
         {FILTROS.map((op) => {
           const qtd =
@@ -94,7 +130,7 @@ export function ChamadosFila({
           return (
             <Link
               key={op.valor}
-              href={op.valor === "todos" ? "/admin/chamados" : `/admin/chamados?f=${op.valor}`}
+              href={hrefFila(op.valor, filtroCategoria)}
               prefetch={false}
               aria-current={filtro === op.valor ? "true" : undefined}
               className={cn(
@@ -107,6 +143,32 @@ export function ChamadosFila({
               )}
             >
               {op.rotulo} ({qtd})
+            </Link>
+          );
+        })}
+      </nav>
+
+      <nav aria-label="Filtrar a fila por categoria" className="flex flex-wrap gap-1">
+        {(["todos", ...CATEGORIAS_CHAMADO] as const).map((cat) => {
+          const rotulo = cat === "todos" ? "Todas as categorias" : ROTULO_CATEGORIA_CHAMADO[cat];
+          const qtd =
+            cat === "todos"
+              ? porStatus.length
+              : porStatus.filter((c) => (c.categoria ?? "sistema") === cat).length;
+          return (
+            <Link
+              key={cat}
+              href={hrefFila(filtro, cat)}
+              prefetch={false}
+              aria-current={filtroCategoria === cat ? "true" : undefined}
+              className={cn(
+                "foco-visivel rounded-full border px-3 py-1 text-xs font-medium transition",
+                filtroCategoria === cat
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-borda-forte bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {rotulo} ({qtd})
             </Link>
           );
         })}
@@ -176,6 +238,9 @@ export function ChamadosFila({
                           className="text-[10px]"
                         >
                           {rotuloStatus(c.status, "admin")}
+                        </Badge>
+                        <Badge variant="outline" icone={false} className="text-[10px]">
+                          {rotuloCategoriaChamado(c.categoria)}
                         </Badge>
                         {espera ? (
                           <Badge

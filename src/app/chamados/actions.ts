@@ -35,6 +35,7 @@ import {
   ANEXO_PATH_REGEX,
   ANEXO_TAMANHO_MAXIMO,
   BUCKET_CHAMADOS,
+  CATEGORIAS_CHAMADO,
   CHAMADO_ASSUNTO_MAXIMO,
   CHAMADO_ASSUNTO_MINIMO,
   CHAMADO_TEXTO_MAXIMO,
@@ -42,6 +43,7 @@ import {
   ehAnexoMime,
   nomeDeArquivoSeguro,
   type AnexoInput,
+  type CategoriaChamado,
   type ResultadoAbrir,
   type ResultadoAcao,
 } from "@/lib/chamados-tipos";
@@ -87,6 +89,28 @@ const FRASES: Record<string, string> = {
   "extensao do anexo nao confere com o tipo do arquivo":
     "Formato não aceito. Envie PNG, JPG, WEBP ou PDF.",
   "anexo maior que 5 MB": "Arquivo maior que 5 MB.",
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Categoria + solicitação de troca (feature de 11/09/2026). Frases
+  // ESPERADAS de `gps.chamado_abrir`/`gps.chamado_aprovar_solicitacao`/
+  // `gps.chamado_declinar_solicitacao` — a confirmar contra o texto exato
+  // que o banco levanta (ver relatório: "frases que espero do banco").
+  // Chave em minúsculas e sem acento, no MESMO estilo das guardas acima.
+  "categoria invalida": "Categoria inválida. Recarregue a página e tente de novo.",
+  "informe o cliente para quem voce quer trocar":
+    "Escolha o cliente para quem você quer trocar.",
+  "informe o novo socio":
+    "Informe o novo sócio antes de enviar.",
+  "cliente novo nao encontrado neste ambiente":
+    "Não encontramos este cliente no seu ambiente. Atualize a página e tente de novo.",
+  "voce ja tem uma solicitacao de troca pendente":
+    "Você já tem uma solicitação de troca em análise. Aguarde a equipe decidir antes de abrir outra.",
+  "solicitacao nao encontrada": "Solicitação não encontrada.",
+  "esta solicitacao ja foi decidida":
+    "Esta solicitação já foi decidida.",
+  "escreva o motivo do declinio":
+    "Escreva o motivo — o parceiro vai ver por que o pedido não foi aceito.",
+  "o motivo passa de 300 caracteres": "O motivo passa de 300 caracteres.",
 };
 
 function traduzirErro(escopo: string, error: ErroDeBanco): string {
@@ -176,14 +200,31 @@ export async function criarUploadAssinadoDeAnexo(input: {
   return { ok: true, path, token: data.token, nome };
 }
 
+/**
+ * `categoria`/`alvoNovoId` são opcionais na assinatura porque o formulário
+ * simples (interruptor desligado, ou categoria sistema/outros) não os manda —
+ * a RPC aceita `p_categoria`/`p_alvo_novo_id` nulos e se comporta como o
+ * `chamado_abrir` de sempre.
+ */
+function categoriaValida(v: unknown): v is CategoriaChamado {
+  return (CATEGORIAS_CHAMADO as readonly unknown[]).includes(v);
+}
+
 /** Abre um chamado (um INSERT atômico: o arquivo já subiu antes). */
 export async function abrirChamado(input: {
   assunto: string;
   texto: string;
+  categoria?: CategoriaChamado;
+  /** Cliente/sócio NOVO — obrigatório só quando a categoria é uma troca. */
+  alvoNovoId?: string;
   anexo?: AnexoInput;
 }): Promise<ResultadoAbrir> {
   const assunto = (input.assunto ?? "").trim();
   const texto = (input.texto ?? "").trim();
+  const categoria =
+    input.categoria && categoriaValida(input.categoria)
+      ? input.categoria
+      : null;
 
   if (
     assunto.length < CHAMADO_ASSUNTO_MINIMO ||
@@ -198,6 +239,18 @@ export async function abrirChamado(input: {
       erro: "A mensagem passa de 4.000 caracteres. Encurte e envie de novo.",
     };
   }
+  if (
+    (categoria === "troca_cliente" || categoria === "troca_socio") &&
+    !input.alvoNovoId
+  ) {
+    return {
+      ok: false,
+      erro:
+        categoria === "troca_cliente"
+          ? "Escolha o cliente para quem você quer trocar."
+          : "Informe o novo sócio antes de enviar.",
+    };
+  }
   const erroAnexo = validarAnexo(input.anexo);
   if (erroAnexo) return { ok: false, erro: erroAnexo };
 
@@ -209,6 +262,11 @@ export async function abrirChamado(input: {
     p_anexo_nome: input.anexo ? nomeDeArquivoSeguro(input.anexo.nome) : null,
     p_anexo_mime: input.anexo?.mime ?? null,
     p_anexo_tamanho: input.anexo?.tamanho ?? null,
+    p_categoria: categoria,
+    p_alvo_novo_id:
+      categoria === "troca_cliente" || categoria === "troca_socio"
+        ? (input.alvoNovoId ?? null)
+        : null,
   });
 
   if (error) return { ok: false, erro: traduzirErro("abrirChamado", error) };

@@ -27,10 +27,14 @@ import {
   type ChamadoMensagem,
   type ChamadoMensagemComAutor,
   type ChamadoNaFila,
+  type ChamadoSolicitacao,
 } from "@/lib/chamados-tipos";
 
 const COLUNAS_CHAMADO =
-  "id, aluno_id, aberto_por, assunto, status, criado_em, ultima_mensagem_em, fechado_em, fechado_por";
+  "id, aluno_id, aberto_por, assunto, status, criado_em, ultima_mensagem_em, fechado_em, fechado_por, categoria";
+
+const COLUNAS_SOLICITACAO =
+  "chamado_id, tipo, alvo_atual_id, alvo_novo_id, alvo_atual_rotulo, alvo_novo_rotulo, estado, decidida_em, motivo_decisao";
 
 const COLUNAS_MENSAGEM =
   "id, chamado_id, autor_id, autor_papel, criado_em, texto, anexo_path, anexo_nome, anexo_mime, anexo_tamanho, anexo_expurgado_em";
@@ -116,6 +120,55 @@ export async function getChamado(chamadoId: string): Promise<{
       (mensagens ?? []) as ChamadoMensagem[],
     ),
   };
+}
+
+/**
+ * A solicitação de troca (atual × novo) de UM chamado, ou `null` quando o
+ * chamado não é `troca_cliente`/`troca_socio` — categoria `sistema`/`outros`
+ * nunca tem linha em `gps.chamado_solicitacoes`.
+ *
+ * A RLS de `chamado_solicitacoes` segue a MESMA regra de `chamados` (dono do
+ * ambiente ou admin): quem já pôde ler o chamado pela `getChamado` acima
+ * também pode ler a solicitação dele.
+ */
+export async function getSolicitacaoDoChamado(
+  chamadoId: string,
+): Promise<ChamadoSolicitacao | null> {
+  if (!chamadoId) return null;
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .schema("gps")
+    .from("chamado_solicitacoes")
+    .select(COLUNAS_SOLICITACAO)
+    .eq("chamado_id", chamadoId)
+    .maybeSingle();
+
+  if (error) {
+    logErro("getSolicitacaoDoChamado", error, { chamadoId });
+    return null;
+  }
+  return (data as ChamadoSolicitacao) ?? null;
+}
+
+/**
+ * O interruptor da feature (categoria + fluxo de aprovação). Falha de leitura
+ * devolve `false` — sem categoria é o comportamento de HOJE (o formulário
+ * simples), então um erro de rede não pode empurrar ninguém para uma tela
+ * nova que ainda não foi testada.
+ */
+export async function getChamadosCategoriasAtivo(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("chamados_categorias_ativo");
+  if (error) {
+    logErro("getChamadosCategoriasAtivo", error, {
+      rpc: "gps.chamados_categorias_ativo",
+    });
+    return false;
+  }
+  return data === true;
 }
 
 /**
@@ -226,6 +279,34 @@ export async function getFilaChamados(): Promise<ChamadoNaFila[]> {
     aluno_nome: porId.get(c.aluno_id)?.nome ?? null,
     aluno_email: porId.get(c.aluno_id)?.email ?? null,
   }));
+}
+
+/**
+ * Solicitações (atual × novo) de um LOTE de chamados, num `.in()` só — para a
+ * fila do admin mostrar "Maria → João" no chip sem N+1 (1 consulta para os
+ * até `LIMITE_FILA` chamados da tela, não uma por linha).
+ */
+export async function getSolicitacoesDosChamados(
+  chamadoIds: string[],
+): Promise<Map<string, ChamadoSolicitacao>> {
+  const ids = [...new Set(chamadoIds.filter(Boolean))];
+  if (ids.length === 0) return new Map();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .from("chamado_solicitacoes")
+    .select(COLUNAS_SOLICITACAO)
+    .in("chamado_id", ids);
+
+  if (error) {
+    logErro("getSolicitacoesDosChamados", error);
+    return new Map();
+  }
+
+  return new Map(
+    ((data ?? []) as ChamadoSolicitacao[]).map((s) => [s.chamado_id, s]),
+  );
 }
 
 /**

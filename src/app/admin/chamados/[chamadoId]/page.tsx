@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById } from "@/lib/data";
-import { getChamado } from "@/lib/chamados-data";
+import { getChamado, getSolicitacaoDoChamado } from "@/lib/chamados-data";
 import { rotuloStatus } from "@/lib/chamados-tipos";
 import { adminNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
@@ -13,6 +13,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { ChamadoThread } from "@/components/chamados/chamado-thread";
 import { ChamadoResponder } from "@/components/chamados/chamado-responder";
 import { estadoDaResposta } from "@/components/chamados/estado-resposta";
+import { FaixaSolicitacao } from "@/components/chamados/faixa-solicitacao";
+import { AcoesSolicitacao } from "@/components/admin/chamados/acoes-solicitacao";
 
 /**
  * 🔑 `cache()` do React: `generateMetadata` e a página pedem o MESMO chamado, e
@@ -70,7 +72,12 @@ export default async function AdminChamadoPage({
   if (!dados) notFound();
 
   const { chamado, mensagens } = dados;
-  const aluno = await getAlunoById(chamado.aluno_id);
+  const ehTroca =
+    chamado.categoria === "troca_cliente" || chamado.categoria === "troca_socio";
+  const [aluno, solicitacao] = await Promise.all([
+    getAlunoById(chamado.aluno_id),
+    ehTroca ? getSolicitacaoDoChamado(chamadoId) : Promise.resolve(null),
+  ]);
   const estado = estadoDaResposta(chamado, mensagens.length, "admin", true);
 
   return (
@@ -116,6 +123,16 @@ export default async function AdminChamadoPage({
         />
 
         <div className="grid gap-6">
+          {solicitacao ? (
+            <div className="grid gap-3">
+              <FaixaSolicitacao solicitacao={solicitacao} />
+              <AcoesSolicitacao
+                chamadoId={chamado.id}
+                alunoId={chamado.aluno_id}
+                solicitacao={solicitacao}
+              />
+            </div>
+          ) : null}
           <ChamadoThread mensagens={mensagens} visao="admin" />
           <ChamadoResponder
             chamadoId={chamado.id}

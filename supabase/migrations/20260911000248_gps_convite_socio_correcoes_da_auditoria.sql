@@ -1,0 +1,45 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Correções da auditoria da feature Equipe (REPROVADO → corrigido)
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Retrato do que já está aplicado por substituição textual sobre
+-- `pg_get_functiondef` (padrão da casa; nunca recopiar corpo de migration
+-- antiga — a regra da …234).
+--
+-- ## 1. `socio_convite_aceitar` reconfere o TETO no aceite
+--
+-- O teto de `criar` vale no instante do convite. Entre convidar e aceitar, a
+-- equipe pode adicionar um sócio pela Central — e o aceite criaria um
+-- **segundo sócio**, sem nenhuma constraint impedindo
+-- (`membros_um_titular_por_ambiente` é parcial, só para titular). A CTE `soc`
+-- do painel duplicaria a linha do card.
+--
+-- Agora recusa com 23505 e frase própria. ⚠️ SEM `update` antes do `raise`:
+-- a exceção desfaz a escrita da própria transação — o convite segue
+-- `pendente` e some pelo prazo de 7 dias ou pelo botão Revogar.
+--
+-- ## 2. `socio_convite_criar` alinha a guarda de expirado com o ÍNDICE
+--
+-- A guarda filtrava `expira_em > now()`; o índice parcial
+-- `socio_convites_um_pendente_por_ambiente` só olha `status='pendente'`.
+-- Convite expirado seguia `pendente` para sempre: a guarda deixava passar e o
+-- insert estourava **23505 cru** (`duplicate key…`) — o check mentindo para o
+-- índice.
+--
+-- Agora fecha o expirado (`status='revogado'`) ANTES de conferir, e a
+-- conferência passou a ser só por `status='pendente'`, igual ao índice.
+--
+-- PROVA (rollback, cenários construídos de propósito):
+--   A) convite pendente + equipe adiciona sócio → aceite recusa
+--      "Este ambiente já tem um sócio. Fale com a equipe pelo Suporte."
+--   B) convite expirado → novo convite CRIADO (vaga liberada, sem 23505 cru)
+--   Revalidação 6/6: criar · teto · recusa genérica · não-adoção de login ·
+--   aceite (1 sócio no ambiente) · reuso do token.
+--
+-- Conferência de que está no ar:
+--   select p.proname,
+--          pg_get_functiondef(p.oid) ~ 'já tem um sócio. Fale com a equipe' as teto_no_aceite,
+--          pg_get_functiondef(p.oid) ~ 'set status = ''revogado''' as fecha_expirado
+--     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+--    where n.nspname = 'gps'
+--      and p.proname in ('socio_convite_aceitar', 'socio_convite_criar');

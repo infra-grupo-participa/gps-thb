@@ -222,6 +222,46 @@ const FRASES_DO_BANCO: Record<string, string> = {
   "A equipe está acompanhando este cliente. Para trocar, abra um chamado no Suporte.":
     "A equipe já assumiu este cliente. Para trocar, abra um chamado no Suporte.",
 
+  // ═══ Feature Equipe — convite de sócio (…244/…246) ═══
+  // 🔴 As 15 frases vieram de `pg_get_functiondef` do BANCO, não do arquivo
+  // da migração (11/09/2026). O match é por igualdade EXATA — acento e
+  // travessão inclusive —, então frase copiada à mão vira "Algum dado
+  // enviado está fora do formato aceito".
+  //
+  // A primeira é a mais cara de errar: ela carrega a decisão do Marcio de
+  // NÃO adotar login existente. Sem o mapa, o sócio que já tem conta no
+  // grupo lia "formato aceito", tentava de novo, queimava o rate limit e
+  // abria chamado — em vez de simplesmente entrar com a senha que já tem.
+  "Este e-mail já tem acesso aos sistemas do grupo. Entre com a sua senha atual e fale com a equipe para concluir o vínculo.":
+    "Este e-mail já tem acesso aos sistemas do Grupo Participa. Entre com a sua senha atual — e, se precisar de ajuda para concluir o vínculo, fale com a equipe pelo Suporte.",
+
+  "Não confere. Confira o link e o e-mail.":
+    "Não confere. Confira o link do convite e o e-mail — o convite só vale para o e-mail que o titular informou.",
+  "Este recurso ainda não está disponível.":
+    "O convite de sócio ainda não está liberado. Assim que abrir, o botão aparece na aba Equipe.",
+  // "Informe o e-mail do sócio." já está no mapa (linha ~86, vem de
+  // `gps.admin_adicionar_socio` com o texto idêntico) — chave repetida é
+  // erro de compilação, não último-ganha.
+  "Só o titular do ambiente pode convidar um sócio.":
+    "Só o titular do ambiente pode convidar um sócio.",
+  "Este ambiente já tem um sócio.":
+    "Este ambiente já tem um sócio. Para trocar, fale com a equipe pelo Suporte.",
+  "Já existe um convite em aberto para este ambiente.":
+    "Já existe um convite em aberto. Revogue o atual antes de convidar outra pessoa.",
+  "Este e-mail é o seu — o sócio precisa de um e-mail próprio.":
+    "Este e-mail é o seu — o sócio precisa entrar com um e-mail próprio.",
+  "Este e-mail é da equipe — não pode virar sócio de um ambiente.":
+    "Este e-mail é de alguém da equipe do Grupo Participa e não pode entrar como sócio.",
+  "Muitos convites enviados nas últimas 24 horas. Tente novamente mais tarde.":
+    "Muitos convites enviados nas últimas 24 horas. Tente de novo amanhã ou fale com a equipe.",
+  "Muitas tentativas. Aguarde 15 minutos e tente de novo.":
+    "Muitas tentativas. Aguarde 15 minutos e tente de novo.",
+  "Convite não encontrado.": "Convite não encontrado.",
+  "Este convite já não está mais pendente.":
+    "Este convite já foi aceito ou revogado.",
+  // `Sem permissão.` e `A senha precisa ter ao menos 8 caracteres.` já estão
+  // no mapa (vêm de outras RPCs com o mesmo texto) — não duplicar.
+
   // ═══ gps.entrada_pelo_codigo (/entrar) ═══
   // 🔴 Nenhuma destas estava mapeada: todas caíam em 22023 → "Algum dado
   // enviado está fora do formato aceito." — a frase que a Vanessa leu quando

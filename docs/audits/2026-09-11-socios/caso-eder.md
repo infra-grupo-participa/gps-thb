@@ -17,7 +17,7 @@ era **duplicidade de CPF em dois e-mails**.
 | Ele entrou? | ✅ Sim, **10/09 19:45** |
 | Onboarding | ✅ Refez e **concluiu** (passo 6, origem "captação") |
 | Financeiro | ✅ Vinculado (log `financeiro_vinculado`, 10/09 18:06) |
-| **Os 30 clientes** | 🔴 **Perdidos.** Não há vestígio em lixeira, evento ou log |
+| **Os 30 clientes** | ✅ **RECUPERADOS em 11/09** — ver abaixo |
 
 ## A raiz: dois cadastros, mesmo CPF
 
@@ -37,11 +37,72 @@ SEM login), com sócio **Josi Toste Campos**. Por isso ele apareceu como
 recente. Com a duplicata, quem se cadastrasse pelo e-mail antigo grudaria na
 linha errada.
 
-## Decisões pendentes
+## ✅ Como os 30 clientes foram recuperados (11/09/2026)
 
-**1. Os 30 clientes.** Não são recuperáveis por backup (o restore não pôde ser
-trazido para projeto novo). A única saída é **pedir a lista a ele** — ele
-montou uma vez, provavelmente tem em algum lugar.
+**O caminho que funcionou: "Restore to a New Project".**
+
+O que eu havia dito na véspera — "não são recuperáveis" — estava errado. O
+projeto tinha **backups físicos habilitados** (`walg_enabled: true`), e o de
+**10/09 às 06:30 UTC (03:30 BRT)** era anterior à exclusão das 15:20.
+
+### Por que NÃO se restaura por cima da produção
+
+Medido antes de decidir: um PITR/restore para antes das 15:20 apagaria
+
+| o que se perderia | qtd |
+|---|---:|
+| clientes cadastrados depois | **210** |
+| onboardings concluídos | **66** |
+| acessos criados no evento | 9 |
+| chamados | 6 |
+| inscrições do plantão | 20 |
+
+Recuperar 30 destruindo 210 não é recuperação. O projeto separado existe
+justamente para não fazer essa troca.
+
+### Os caminhos que estavam fechados (conferidos, não supostos)
+
+| caminho | por quê |
+|---|---|
+| WAL | só 16 MB retidos; os slots estavam atualizados, o log de ontem já reciclado |
+| tuplas mortas | autovacuum passou em `etapa1_clientes` às **15:21**, 1 min após o delete |
+| `pg_dirtyread` | não disponível no Supabase |
+| eventos órfãos | zero — a exclusão em cascata levou tudo |
+| API de restore | só existe sobre a produção; o clone é **exclusivo do painel web** |
+
+### O passo a passo (para repetir, se precisar)
+
+1. Painel → `database/backups/restore-to-new-project`, escolher o backup
+   ANTERIOR ao incidente. Custa ~US$0,34/dia (cobrança por hora).
+2. 🔴 **Assim que o projeto subir, DESLIGAR TODOS OS CRONS.** Ele vem com
+   `pg_cron` + `pg_net` ativos, incluindo `plantao-emails-sala` (*/5 min), que
+   dispara e-mail REAL pela Resend. No nosso caso ele chegou a rodar 1× às
+   11:10 e devolveu `0 rows` — ninguém recebeu e-mail duplicado, mas foi por
+   pouco.
+3. Gerar o INSERT no banco de ORIGEM com `quote_nullable`/`quote_literal`.
+   ⚠️ `format('%s', boolean)` imprime `f`/`t`, que **não é literal SQL válido**
+   — usar `::text` no booleano, que dá `false`/`true`.
+4. Conferir no destino que o ambiente está vazio e os IDs livres.
+5. Inserir e conferir campo a campo contra a origem.
+6. **Apagar o projeto** (`DELETE /v1/projects/{ref}`).
+
+### O resultado
+
+| | backup | produção depois |
+|---|---:|---:|
+| clientes | 30 | **30** |
+| com nome + telefone | 28 | **28** |
+| favorito | Ricardo Cancio | **Ricardo Cancio** |
+| com anotação de contato | 8 | **8** |
+| datas de criação | 17–27/07 | **17–27/07** |
+
+Os IDs originais foram preservados, então nada quebra em referência antiga.
+
+⚠️ As triggers de congelamento (`nivel_relacionamento`, `status`) barram
+**UPDATE**, não INSERT — provado em rollback antes de gravar. Por isso os
+valores históricos (`frio`/`morno`/`quente`, `pendente`) entraram intactos.
+
+## Decisões pendentes
 
 **2. O cadastro duplicado.** Hoje não causa dano (o membro está no cadastro
 certo, o de 29/06), mas é uma armadilha: qualquer fluxo futuro que case por

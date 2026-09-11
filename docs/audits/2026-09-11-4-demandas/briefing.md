@@ -86,6 +86,31 @@ As aulas são **`tutorialUrl` hardcoded em `src/lib/etapa1.ts`** e agregadas por
 `src/lib/materiais.ts`. Aula nova = editar TypeScript + **deploy**. É
 exatamente a autonomia que falta.
 
+### 🔴 Decisões e achados (11/09/2026)
+
+| # | Decisão |
+|---|---|
+| 1 | **Só YouTube não listado.** Sem Vimeo/Loom/Drive — menos superfície, e é onde as gravações vão ficar. |
+| 2 | **Não migrar o acervo atual.** Decisão do Marcio: *"os links encurtados que temos, pode manter — faremos somente para o cadastro de novos"*. |
+| 3 | Guardar o **`youtube_id`** (11 chars), não a URL. CHECK de formato é a barreira contra `javascript:` virando `src` de iframe. |
+| 4 | Embed por **`youtube-nocookie.com`** — domínio sem cookie de rastreio. |
+
+**🔑 Achado que justifica a decisão 2:** as aulas de hoje apontam para `1sh.co`
+e `membros.holdingmasters.com.br`, e **as duas redirecionam para tela de
+login** (testado por `curl -IL`). Não são embedáveis de forma alguma — migrar
+seria trabalho para produzir um iframe que mostraria a tela de login da
+Holding Masters.
+
+**🔑 CSP — o que conferir antes de mexer:** hoje existe só `frame-ancestors`
+(quem pode embedar o GPS), **não `frame-src`** (quem o GPS pode embedar). Sem
+`default-src`, o iframe funcionaria sem allowlist — mas é frouxo para URL que
+o admin digita.
+
+⚠️ Ao acrescentar `frame-src`, **incluir `drive.google.com`**: a aba Pasta
+embeda `embeddedfolderview` (`src/lib/pasta.ts:22`). Medido em 11/09: **0 de
+142 ambientes têm pasta configurada**, então esquecer não quebraria nada
+*hoje* — mas o código está no ar e alguém pode configurar amanhã.
+
 ### O que precisa ser desenhado
 - Tabela de vídeos no banco (título, URL, a que etapa/tarefa pertence, ordem,
   publicado/rascunho) + CRUD no `/admin`.

@@ -19,10 +19,21 @@ import type { ContextoSessao } from "@/lib/auth";
  * assistência passa `true`. Esconder a aba NÃO é a fronteira: a página
  * `/financeiro` reconfere no servidor e a RPC `gps.financeiro_do_aluno`
  * levanta 42501 para o sócio.
+ *
+ * `equipe`: aba da feature "Equipe" (11/09/2026) — ao contrário do
+ * Financeiro, os DOIS papéis veem (titular convida/gerencia; sócio só vê a
+ * lista). Mesmo assim a flag é OBRIGATÓRIA e sem default, pelo motivo geral
+ * do comentário acima: um `{ equipe = true }` faria a aba nascer visível em
+ * toda página nova por esquecimento, mesmo sem essa página ter buscado o
+ * dado de convite/membros.
  */
 export function alunoNavItems(
   basePath: string,
-  opts: { financeiro: boolean; financeiroEmBreve?: boolean },
+  opts: {
+    financeiro: boolean;
+    financeiroEmBreve?: boolean;
+    equipe: boolean;
+  },
 ): NavItem[] {
   return [
     { href: basePath || "/", label: "Início", icon: "inicio", exact: true },
@@ -92,6 +103,12 @@ export function alunoNavItems(
     // dentro da página e com texto — nunca a presença da aba: esconder o
     // canal de suporte deixaria o aluno sem saber que ele existe, que é
     // exatamente o defeito que esta fase corrige.
+    // 🔴 Feature "Equipe" (11/09/2026): atrás de flag OBRIGATÓRIA, igual ao
+    // Financeiro — ver o comentário no topo do arquivo. Posição: logo antes
+    // de "Perfil" (decisão do plano da feature).
+    ...(opts.equipe
+      ? [{ href: `${basePath}/equipe`, label: "Equipe", icon: "equipe" as const }]
+      : []),
     { href: `${basePath}/perfil`, label: "Perfil", icon: "perfil" },
   ];
 }
@@ -117,6 +134,10 @@ export function alunoNavItems(
 export function navDoAluno(ctx: ContextoSessao, basePath = ""): NavItem[] {
   return alunoNavItems(basePath, {
     financeiro: ctx.papelMembro === "titular",
+    // Equipe é dos DOIS papéis (ao contrário do Financeiro): titular convida
+    // e gerencia, sócio só vê a lista — a página `/equipe` decide o que
+    // renderizar a partir de `ctx.papelMembro`, a aba não escolhe por ele.
+    equipe: true,
   });
 }
 
@@ -156,6 +177,9 @@ export function assistenciaNavItems(
       financeiro: true,
       // A equipe entra no Financeiro do aluno; só o aluno vê "em breve".
       financeiroEmBreve: false,
+      // A equipe também enxerga a aba Equipe no modo assistência — é onde ela
+      // resolve chamado sobre convite/sócio olhando a mesma tela do aluno.
+      equipe: true,
     }).map((item) =>
       opts.ambienteCompartilhado && item.href === hrefFinanceiro
         ? { ...item, adminOnly: true }

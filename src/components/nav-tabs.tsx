@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Home,
   Users,
+  UsersRound,
   BookOpen,
   FolderOpen,
   UserRound,
@@ -33,7 +34,8 @@ export interface NavItem {
     | "diario"
     | "financeiro"
     | "suporte"
-    | "resolver";
+    | "resolver"
+    | "equipe";
   /** casa exatamente (para o "Início"). */
   exact?: boolean;
   /** Item exclusivo do admin — some na pré-visualização. */
@@ -78,6 +80,7 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
   financeiro: Wallet,
   suporte: LifeBuoy,
   resolver: Stethoscope,
+  equipe: UsersRound,
 };
 
 export function NavTabs({ items }: { items: NavItem[] }) {

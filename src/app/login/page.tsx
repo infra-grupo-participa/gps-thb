@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock } from "lucide-react";
+import { Clock, CheckCircle2 } from "lucide-react";
 import { LoginForm } from "./login-form";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { AvisoInline } from "@/components/ui/aviso-inline";
@@ -13,15 +13,18 @@ export const metadata = { title: "Entrar" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ redirect?: string; motivo?: string }>;
+  searchParams: Promise<{ redirect?: string; motivo?: string; ok?: string }>;
 }) {
-  const { redirect, motivo } = await searchParams;
+  const { redirect, motivo, ok } = await searchParams;
   const redirectTo = destinoInterno(redirect);
   // `auto-logout.tsx` manda para `/login?motivo=inatividade` depois de 30 min
   // parado. Nenhuma tela lia o parâmetro: a sessão caía no meio do uso e o
   // aluno reencontrava o login limpo, sem uma palavra — parecia defeito.
   // Allowlist de um valor só: nada do que vem na URL é ecoado na tela.
   const porInatividade = motivo === "inatividade";
+  // `/convite` manda para cá com `?ok=convite` depois do aceite (feature
+  // Equipe, 11/09/2026) — mesma allowlist de um valor só.
+  const contaCriadaPorConvite = ok === "convite";
 
   return (
     <AuthLayout>
@@ -44,6 +47,16 @@ export default async function LoginPage({
           <AvisoInline icone={Clock}>
             Sua sessão foi encerrada por inatividade. Entre de novo.
           </AvisoInline>
+        </div>
+      ) : null}
+
+      {contaCriadaPorConvite ? (
+        <div
+          role="status"
+          className="mb-4 flex items-start gap-2 rounded-lg border border-borda-fina bg-superficie-afundada p-3 text-sm"
+        >
+          <CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-sucesso-foreground" />
+          <span>Conta criada! Entre com o e-mail e a senha que você acabou de escolher.</span>
         </div>
       ) : null}
 

@@ -321,3 +321,69 @@ export async function enviarAcessoLiberado(params: {
     texto,
   });
 }
+
+/**
+ * E-mail do convite de sócio (feature Equipe, 11/09/2026): o TITULAR convida
+ * a pessoa que vai compartilhar o mesmo ambiente (clientes, tarefas e
+ * progresso). LGPD: o convidado não pediu este e-mail, então o texto diz
+ * QUEM convidou, POR QUE ele está recebendo isto e como ignorar com
+ * segurança — mesma linha do rodapé padrão de `layout()`, reforçada aqui
+ * porque é a única mensagem deste tipo no portal.
+ *
+ * Falha de envio NUNCA bloqueia o convite (contrato `{ ok, erro? }` de
+ * `enviar()`) — quem chama (`src/app/equipe/actions.ts`) mostra o link para
+ * o titular copiar quando `ok` vier `false`.
+ */
+export async function enviarConviteSocio(params: {
+  paraEmail: string;
+  nomeTitular: string;
+  link: string;
+}): Promise<ResultadoEmail> {
+  const { paraEmail, nomeTitular, link } = params;
+
+  const corpo = `
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">Olá!</p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      <strong>${esc(nomeTitular)}</strong> convidou você para ser sócio(a) no
+      <strong>Programa de Implementação Assistida</strong> do Time Holding Brasil — vocês vão
+      compartilhar o mesmo ambiente: os mesmos clientes, tarefas e progresso.
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      Para aceitar, crie sua senha pelo botão abaixo. O link vale por <strong>7 dias</strong>.
+    </p>
+    ${botao(link, "Aceitar o convite e criar minha senha")}
+    <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#78716c;">
+      Se o botão não funcionar, copie e cole este endereço no navegador:<br />
+      <a href="${esc(link)}" style="color:${LARANJA};">${esc(link)}</a>
+    </p>
+    <p style="margin:0;font-size:13px;line-height:1.6;color:#78716c;">
+      Se você não esperava este convite ou não conhece ${esc(nomeTitular)}, é só ignorar esta
+      mensagem — nada será criado sem o seu aceite.
+    </p>`;
+
+  const texto = [
+    "Olá!",
+    "",
+    `${nomeTitular} convidou você para ser sócio(a) no Programa de Implementação Assistida`,
+    "do Time Holding Brasil — vocês vão compartilhar o mesmo ambiente: os mesmos clientes,",
+    "tarefas e progresso.",
+    "",
+    "Para aceitar, crie sua senha pelo link abaixo. Ele vale por 7 dias.",
+    "",
+    `Aceitar convite: ${link}`,
+    "",
+    `Se você não esperava este convite ou não conhece ${nomeTitular}, é só ignorar esta`,
+    "mensagem — nada será criado sem o seu aceite.",
+  ].join("\n");
+
+  return enviar({
+    para: paraEmail,
+    assunto: `${nomeTitular} convidou você para o Programa de Implementação Assistida`,
+    html: layout({
+      preheader: `${nomeTitular} convidou você para compartilhar o ambiente do programa.`,
+      titulo: "Você foi convidado(a) para ser sócio(a)",
+      corpo,
+    }),
+    texto,
+  });
+}

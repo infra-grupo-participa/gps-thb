@@ -95,6 +95,14 @@ export interface Membro {
   user_id: string | null;
   papel: PapelMembro;
   perfil: PerfilAluno;
+  /**
+   * `public.thb_alunos.id` da PESSOA deste membro (`gps.pessoa_atual()` usa a
+   * mesma coluna). `null` = membro ainda sem pessoa vinculada (a Central
+   * resolve com "Vincular pessoa"). Existe no tipo desde a feature Equipe
+   * (11/09/2026) — é por ele que a aba busca nome/e-mail em `thb_alunos` sem
+   * casar por e-mail (que multiplica).
+   */
+  pessoa_aluno_id?: string | null;
 }
 
 /**

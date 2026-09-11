@@ -6,9 +6,9 @@ import { destinoInterno } from "@/lib/nav";
 
 /**
  * Atualiza a sessão do Supabase a cada requisição e protege rotas.
- * Rotas públicas: /login, /resgate, /auth/*, assets, /p/* (Plantão de Dúvidas — tem
- * identidade PRÓPRIA, isolada de `auth.users`; ver `src/lib/plantao-tipos.ts`).
- * Todo o resto exige sessão.
+ * Rotas públicas: /login, /resgate, /entrar, /convite, /auth/*, assets, /p/*
+ * (Plantão de Dúvidas — tem identidade PRÓPRIA, isolada de `auth.users`; ver
+ * `src/lib/plantao-tipos.ts`). Todo o resto exige sessão.
  *
  * ⚠️ `/p/` com a barra: sem a barra, `pathname.startsWith("/p")` tornaria
  * `/perfil` e `/pasta` públicas também.
@@ -50,6 +50,11 @@ export async function updateSession(request: NextRequest) {
     // código do grupo, sem senha. Se cair na guarda de sessão, o proxy manda
     // para o `/login` e a tela vira inalcançável para quem ela atende.
     pathname === "/entrar" ||
+    // 🔴 Feature Equipe (11/09/2026): quem chega em `/convite?t=<token>` é
+    // exatamente quem AINDA NÃO TEM CONTA no portal — o convidado a virar
+    // sócio. Se cair na guarda de sessão, o proxy manda para `/login` e o
+    // link do e-mail vira inalcançável para o único público que ele atende.
+    pathname === "/convite" ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||

@@ -367,7 +367,6 @@ export function AlunosAtivosLista({
             key={a.alunoId}
             {...a}
             atendimentoDe={atendimentoDe}
-            agora={agora}
             selecao={
               emLote
                 ? {

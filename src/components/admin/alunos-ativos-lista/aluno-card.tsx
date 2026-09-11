@@ -8,9 +8,7 @@
  * do admin por LGPD, migração 20260908000001). Não reaproveitar em rota de
  * aluno.
  *
- * Sem estado: recebe o ambiente por spread (`{...a}`) e o "agora" fixado uma
- * vez pela lista — recalcular o relógio a cada card faria "há N dias" mudar no
- * meio da rolagem.
+ * Sem estado: recebe o ambiente por spread (`{...a}`).
  *
  * 🎨 Onda B (B10) — DENSIDADE. Seis alunos ocupavam 900 px: ~150 px por card
  * para três linhas de informação, com a metade direita em branco. E todos os
@@ -22,6 +20,16 @@
  *   mudava de largura conforme o texto e nada alinhava entre cards;
  * - o rótulo "COMPLETOS · 30 LISTADOS" em caixa alta quebrava em duas linhas
  *   de 9 px e virava ruído: passou a sentence case em uma linha.
+ *
+ * 🧹 LIMPEZA "CLEAN" (feature Equipe, 11/09/2026 — decisão do Marcio):
+ * saíram o badge "N pessoas" (redundante com o nome do sócio escrito por
+ * baixo), o chip "com login" (100% dos cards tinham; não separava ninguém) e
+ * o badge "onboarding concluído" (notícia é a FALTA, não a conclusão — o
+ * filtro continua achando quem não terminou). "Entrou em" e "último acesso"
+ * viraram `title` no nome (era o que estourava a altura do card); "sem
+ * login" continua badge, porque aquele SIM é sinal de atenção. Entrou o nome
+ * do sócio como segunda linha da identidade — sem consulta nova (ver
+ * `AlunoGps.socioNome` em `src/lib/data/alunos.ts`).
  */
 
 import Link from "next/link";
@@ -36,7 +44,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { descreverAcesso, honorariosDoCard } from "./ordenacao";
+import { honorariosDoCard } from "./ordenacao";
 import { marcarUltimoAluno } from "./ancora";
 import { META_CLIENTES, TAMANHO_RESUMO } from "./tipos";
 
@@ -74,23 +82,26 @@ function Metrica({
  *
  * 🔑 "Não iniciado" **não vira chip**: hoje são os 158 ambientes, e um chip
  * repetido em todo card não separa ninguém — só engorda a linha de badges. O
- * chip aparece quando há notícia ("começou" / "respondeu"), que é quando ele
- * muda o que a equipe faz. O FILTRO continua servindo para achar quem não
- * respondeu, e o card 3 do dashboard leva direto a ele.
+ * chip aparece quando há notícia ("começou"), que é quando ele muda o que a
+ * equipe faz. O FILTRO continua servindo para achar quem não respondeu, e o
+ * card 3 do dashboard leva direto a ele.
+ *
+ * 🧹 "onboarding concluído" SAIU (limpeza "clean" da feature Equipe,
+ * 11/09/2026): a notícia acionável é a FALTA de onboarding, não a ordem —
+ * concluído não pede nada da equipe, e o filtro "onboarding concluído"
+ * continua achando quem terminou sem precisar do chip no card.
  */
 const CHIP_ONBOARDING: Partial<
   Record<StatusOnboarding, { rotulo: string; variante: "success" | "warning" }>
 > = {
   // Atenção: começou e não terminou é o que a equipe pode destravar.
   em_andamento: { rotulo: "onboarding em andamento", variante: "warning" },
-  concluido: { rotulo: "onboarding concluído", variante: "success" },
 };
 
 export function AlunoCard({
   aluno,
   alunoId,
   temLogin,
-  qtdMembros,
   pct,
   clientesPreenchidos,
   clientesComDados,
@@ -106,14 +117,12 @@ export function AlunoCard({
   listaIncompleta,
   prontoParaFinalizar,
   favorito,
+  socioNome,
   atendimentoDe,
-  agora,
   selecao,
 }: AlunoGps & {
   /** Nunca `undefined`: o card sempre tem o que ler, sem `?.` espalhado. */
   atendimentoDe: (alunoId: string) => AtendimentoDoAluno;
-  /** "Agora" fixado uma vez pela lista inteira. */
-  agora: number;
   /**
    * Seleção em lote. Só chega quando o filtro "sem login" está ativo — o
    * checkbox é para uma ação (criar acesso) que só existe para quem não tem
@@ -188,18 +197,12 @@ export function AlunoCard({
           <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="truncate font-medium">{nome}</span>
-            {temLogin ? (
-              <Badge variant="secondary" className="text-[10px]">
-                com login
-              </Badge>
-            ) : (
+            {/* "com login" saiu (limpeza "clean", 11/09/2026): estava em
+                100% dos cards e não separava ninguém. "sem login" FICA — é
+                o único dos dois estados que pede uma ação da equipe. */}
+            {!temLogin ? (
               <Badge variant="outline" className="text-[10px]">
                 sem login
-              </Badge>
-            )}
-            {qtdMembros > 1 ? (
-              <Badge variant="outline" className="text-[10px]">
-                {qtdMembros} pessoas
               </Badge>
             ) : null}
             {pendencias > 0 ? (
@@ -263,28 +266,37 @@ export function AlunoCard({
             ) : null}
           </div>
 
-          {/* E-mail e histórico de acesso numa linha só: eram duas de quatro
-              linhas de 16 px, e é o que fazia o card passar de 96 px. Nenhum
-              dado saiu. */}
-          <div className="truncate text-xs text-muted-foreground">
+          {/* Nome do sócio como segunda linha da identidade (feature Equipe,
+              11/09/2026) — "+ Fulano". Só aparece quando a RPC já traz
+              `socioNome` (pendente de migração, ver `AlunoGps.socioNome`);
+              sem consulta própria, nunca N+1. */}
+          {socioNome ? (
+            <div className="truncate text-xs text-muted-foreground">
+              + {socioNome}
+            </div>
+          ) : null}
+
+          {/* E-mail numa linha só. "Entrou em" e "último acesso" saíram do
+              texto visível e viraram `title` (limpeza "clean", 11/09/2026):
+              era o que estourava a altura do card, e a data já estava
+              disponível a quem passasse o mouse/focasse. `descreverAcesso`
+              ("há N dias") depende do relógio — por isso o `title`, que é
+              estático, usa a data cheia (`formatarDataHora`), nunca o
+              relativo. */}
+          <div
+            className="truncate text-xs text-muted-foreground"
+            title={
+              [
+                desde ? `Entrou em ${formatarData(desde)}` : null,
+                ultimoAcesso
+                  ? `Último acesso em ${formatarDataHora(ultimoAcesso)}`
+                  : "Nunca acessou",
+              ]
+                .filter(Boolean)
+                .join(" · ") || undefined
+            }
+          >
             {aluno?.email}
-            {desde ? <> · entrou em {formatarData(desde)}</> : null}
-            {ultimoAcesso ? (
-              <>
-                {" "}
-                · último acesso{" "}
-                {/* "há N dias" depende do relógio: o valor do SSR pode cair
-                    num dia diferente do da hidratação. */}
-                <span
-                  suppressHydrationWarning
-                  title={formatarDataHora(ultimoAcesso)}
-                >
-                  {descreverAcesso(ultimoAcesso, agora)}
-                </span>
-              </>
-            ) : (
-              <> · nunca entrou</>
-            )}
           </div>
 
           {/* O SUBNOME do favorito (pedido do Marcio, WAR-ROOM 10/09):

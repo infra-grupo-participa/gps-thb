@@ -79,7 +79,15 @@ export async function getMembroDoUsuario(
   return (data as Membro) ?? null;
 }
 
-/** Todos os membros (titular + sócios) de um ambiente. */
+/**
+ * Todos os membros (titular + sócios) de um ambiente.
+ *
+ * `pessoa_aluno_id` entrou no select na feature Equipe (11/09/2026): é a
+ * chave para buscar nome/e-mail em `thb_alunos` (ver `src/app/equipe/page.tsx`)
+ * sem casar pessoa por e-mail. Coluna a mais no mesmo select, sem N+1 —
+ * consumidores existentes (financeiro, perfil, chamados do admin) ignoram o
+ * campo que não pedem.
+ */
 export async function getMembrosDoAmbiente(
   alunoId: string,
 ): Promise<Membro[]> {
@@ -87,7 +95,7 @@ export async function getMembrosDoAmbiente(
   const { data } = await supabase
     .schema("gps")
     .from("membros")
-    .select("id, aluno_id, user_id, papel, perfil")
+    .select("id, aluno_id, user_id, papel, perfil, pessoa_aluno_id")
     .eq("aluno_id", alunoId)
     .order("papel", { ascending: true });
   return (data ?? []) as Membro[];
@@ -224,6 +232,15 @@ export interface AlunoGps {
    * consulta por aluno.
    */
   favorito: { nome: string; fase: FaseCliente } | null;
+  /**
+   * Nome do sócio do ambiente, como segunda linha da identidade no card
+   * (`+ Nome do Sócio`). `null`/`undefined` = ambiente sem sócio OU a RPC
+   * ainda não traz a coluna — os dois casos são "não mostrar", nunca um erro.
+   * Não é populado por consulta própria (zero N+1): depende de
+   * `gps.admin_painel_alunos` ganhar `socio_nome` (pendente, ver
+   * `docs/audits/2026-09-11-socios/medicao-painel-socio.md`).
+   */
+  socioNome?: string | null;
 }
 
 /**
@@ -274,6 +291,16 @@ interface LinhaPainelAlunos {
    */
   favorito_nome?: string | null;
   favorito_fase?: string | null;
+  /**
+   * Nome do SÓCIO do ambiente (medição em
+   * `docs/audits/2026-09-11-socios/medicao-painel-socio.md`: CTE separada só
+   * com `papel='socio'`, 0,60 ms, 3,3× mais rápida que o LEFT JOIN dentro da
+   * CTE principal, que matava o Index Only Scan). Opcional no tipo porque
+   * `gps.admin_painel_alunos` AINDA NÃO tem esta coluna — pendente de
+   * migração futura. Até lá chega `undefined` e o card não mostra a segunda
+   * linha do sócio (mesmo padrão honesto de `favorito_nome`).
+   */
+  socio_nome?: string | null;
 }
 
 /**
@@ -473,6 +500,7 @@ export async function getAlunosGps(opts?: {
       prontoParaFinalizar: l.pronto_para_finalizar ?? false,
       finalizadoEm: l.finalizado_em ?? null,
       favorito: mapearFavorito(l.favorito_nome, l.favorito_fase),
+      socioNome: l.socio_nome ?? null,
     };
   });
 

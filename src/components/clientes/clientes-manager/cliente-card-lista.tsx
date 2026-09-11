@@ -25,7 +25,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Estrela, GrauChip, MarcaRecusou, WhatsappLink } from "./clientes-chips";
+import {
+  Estrela,
+  GrauChip,
+  MarcaRecusou,
+  MarcaSemDados,
+  WhatsappLink,
+} from "./clientes-chips";
 import {
   fasesDisponiveis,
   modoEstrela,
@@ -78,6 +84,7 @@ export function ClienteCardLista({
           {c.nome || "Sem nome"}
         </Link>
         <GrauChip grau={c.grau_relacao} className="mt-0.5" />
+        <MarcaSemDados cliente={c} />
         <MarcaRecusou cliente={c} />
       </div>
 

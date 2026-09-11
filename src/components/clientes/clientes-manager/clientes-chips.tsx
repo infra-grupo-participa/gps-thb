@@ -100,6 +100,47 @@ export function EstrelaEscolhida({ className = "" }: { className?: string }) {
 }
 
 /**
+ * A ficha não conta para os 30 — e isso NÃO era visível em lugar nenhum.
+ *
+ * 🔴 Achado da auditoria de 11/09/2026: a trava da fase Inicial conta
+ * `comDados` (nome + telefone), mas a lista mostrava as fichas incompletas
+ * exatamente como as completas. O subtítulo dizia "31 de 30 com dados" e o
+ * parceiro não tinha como saber QUAIS fichas faltavam.
+ *
+ * Medido no banco: 18 fichas assim em 9 ambientes. O caso mais caro é de
+ * alguém com **41 fichas e só 31 completas** — a 10 telefones de destravar,
+ * sem nenhum sinal na tela. Outros dois estão a UM telefone.
+ *
+ * Some sozinha quando o telefone é preenchido. Não é erro nem cobrança: é o
+ * aviso de que aquela linha ainda não entrou na conta.
+ */
+export function MarcaSemDados({
+  cliente,
+  className = "ml-2",
+}: {
+  cliente: ClienteEtapa1;
+  className?: string;
+}) {
+  const falta = !cliente.nome?.trim()
+    ? "o nome"
+    : !cliente.telefone
+      ? "o telefone"
+      : null;
+  if (!falta) return null;
+  return (
+    <span
+      title={`Esta ficha ainda não conta para os 30: falta ${falta}.`}
+      className={
+        "inline-flex shrink-0 items-center rounded-full bg-atencao px-1.5 py-0.5 align-middle text-[10px] font-medium text-atencao-foreground " +
+        className
+      }
+    >
+      Falta {falta}
+    </span>
+  );
+}
+
+/**
  * Vestígio do modelo antigo de 5 status: sem esta marca, o cliente que disse
  * "não" sumiria dentro de "Prospecção" e o aluno o reprospectaria. Some
  * sozinha quando a coluna `status` for removida do banco.

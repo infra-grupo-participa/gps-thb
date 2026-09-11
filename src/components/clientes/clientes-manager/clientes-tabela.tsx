@@ -33,7 +33,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Estrela, GrauChip, MarcaRecusou, WhatsappLink } from "./clientes-chips";
+import {
+  Estrela,
+  GrauChip,
+  MarcaRecusou,
+  MarcaSemDados,
+  WhatsappLink,
+} from "./clientes-chips";
 import {
   fasesDisponiveis,
   modoEstrela,
@@ -112,7 +118,8 @@ export function ClientesTabela({
                 {c.acompanhado_equipe ? (
                   <Badge className="ml-2 text-[10px]">Equipe</Badge>
                 ) : null}
-                <MarcaRecusou cliente={c} />
+                <MarcaSemDados cliente={c} />
+        <MarcaRecusou cliente={c} />
               </TableCell>
               <TableCell>
                 {c.grau_relacao ? (

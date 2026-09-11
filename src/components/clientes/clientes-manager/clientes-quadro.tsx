@@ -16,7 +16,13 @@ import { mascaraTelefone } from "@/lib/masks";
 import { brl } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Badge } from "@/components/ui/badge";
-import { Estrela, GrauChip, MarcaRecusou, WhatsappLink } from "./clientes-chips";
+import {
+  Estrela,
+  GrauChip,
+  MarcaRecusou,
+  MarcaSemDados,
+  WhatsappLink,
+} from "./clientes-chips";
 import { fasesDisponiveis, modoEstrela, type CtxEstrela } from "./ordenacao";
 
 export function Kanban({
@@ -122,6 +128,7 @@ export function Kanban({
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-1">
                         <GrauChip grau={c.grau_relacao} />
+                        <MarcaSemDados cliente={c} className="" />
                         <MarcaRecusou cliente={c} className="" />
                       </div>
                       {/* "Perda pela inércia" (bloco abaixo dos chips)

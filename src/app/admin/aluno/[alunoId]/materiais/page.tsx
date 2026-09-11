@@ -6,6 +6,8 @@ import {
   getEtapasLiberadasPara,
   getAmbiente,
   contarMembrosDoAmbiente,
+  getVideosAtivo,
+  getVideosDoAlunoAdmin,
 } from "@/lib/data";
 import { etapasComLiberacaoDoAluno } from "@/lib/etapas";
 import { listarMateriais } from "@/lib/materiais";
@@ -14,6 +16,7 @@ import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { MateriaisView } from "@/components/materiais/materiais-view";
+import { GravacoesSecao } from "@/components/materiais/gravacoes-secao";
 
 /** Título da aba — sem isto, herdava o rótulo genérico do portal. */
 export const metadata = { title: "Materiais" };
@@ -32,14 +35,16 @@ export default async function AdminAlunoMateriaisPage({
   if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapasGlobais, overrides, qtdMembros] = await Promise.all([
-    getAlunoById(alunoId),
-    getEtapas(),
-    // Mesma regra do ambiente do aluno: o admin vê o acervo com a liberação
-    // individual já aplicada (e continua podendo abrir o bloqueado).
-    getEtapasLiberadasPara(alunoId),
-    contarMembrosDoAmbiente(alunoId),
-  ]);
+  const [aluno, etapasGlobais, overrides, qtdMembros, videosAtivo] =
+    await Promise.all([
+      getAlunoById(alunoId),
+      getEtapas(),
+      // Mesma regra do ambiente do aluno: o admin vê o acervo com a liberação
+      // individual já aplicada (e continua podendo abrir o bloqueado).
+      getEtapasLiberadasPara(alunoId),
+      contarMembrosDoAmbiente(alunoId),
+      getVideosAtivo(),
+    ]);
   const etapas = etapasComLiberacaoDoAluno(etapasGlobais, overrides);
   const nomes: Record<number, string> = {};
   const liberadas: Record<number, boolean> = {};
@@ -67,13 +72,34 @@ export default async function AdminAlunoMateriaisPage({
           descricao="Acervo de aulas e modelos de todas as etapas."
         />
 
-        <MateriaisView
-          materiais={listarMateriais({ etapasLiberadas: liberadas, incluirBloqueados: true })}
-          etapaNomes={nomes}
-          etapasLiberadas={liberadas}
-          basePath={base}
-          podeAbrirBloqueadas
-        />
+        {/* 🔴 A seção de gravações FALTAVA aqui (achado do Marcio, 11/09/2026):
+            a demanda 5 entregou a biblioteca de vídeos só em
+            `src/app/materiais/page.tsx`, a rota do aluno, e este espelho do
+            Modo Assistência ficou sem. Resultado: o vídeo publicado não
+            aparecia na prévia "como o aluno vê".
+
+            🔑 `getVideosDoAlunoAdmin` e NÃO `getVideosDoAluno`: a RPC do aluno
+            resolve por `gps.aluno_atual()` e recusa (42501) quando quem chama
+            é admin. A irmã administrativa aplica o MESMO corte (publicado +
+            etapa liberada, override do aluno vencendo o global) para este
+            `alunoId`. Tela nova sob `admin/aluno/[alunoId]/**` que mostre
+            conteúdo do aluno precisa deste par. */}
+        <div className="grid gap-8">
+          {videosAtivo ? (
+            <GravacoesSecao
+              videos={await getVideosDoAlunoAdmin(alunoId)}
+              etapaNomes={nomes}
+            />
+          ) : null}
+
+          <MateriaisView
+            materiais={listarMateriais({ etapasLiberadas: liberadas, incluirBloqueados: true })}
+            etapaNomes={nomes}
+            etapasLiberadas={liberadas}
+            basePath={base}
+            podeAbrirBloqueadas
+          />
+        </div>
       </main>
     </>
   );

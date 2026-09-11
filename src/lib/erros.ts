@@ -436,6 +436,25 @@ const FRASES_DO_BANCO: Record<string, string> = {
   // ── Anexo: variante que faltava (as outras já estão mapeadas acima) ────
   "tipo de anexo invalido": "Formato não aceito. Envie PNG, JPG, WEBP ou PDF.",
 
+  // ═══ gps.admin_trocar_email_login — troca de e-mail do login pelo admin
+  // (…252, 11/09/2026) ═══
+  // Frases NOSSAS (`raise exception`), copiadas caractere por caractere do
+  // `raise` da função — o match é por igualdade EXATA, acento e travessão
+  // inclusive. "Sem permissão.", "A senha precisa ter ao menos 8
+  // caracteres.", "Membro não encontrado.", "Este membro ainda não tem
+  // login.", "Informe um e-mail válido." e "O login deste membro não existe
+  // mais." JÁ estão mapeadas acima (vêm de outras RPCs com o texto idêntico)
+  // — chave repetida é erro de compilação, não último-ganha.
+  "A troca de e-mail do login está desligada no momento.":
+    "A troca de e-mail do login está desligada no momento.",
+  "Esta conta é da equipe — o e-mail do login não pode ser trocado por aqui.":
+    "Esta conta é da equipe — o e-mail do login não pode ser trocado por aqui.",
+  "Este já é o e-mail do login.": "Este já é o e-mail do login.",
+  "Este e-mail já está em uso por outra conta.":
+    "Este e-mail já está em uso por outra conta.",
+  "Esta conta tem papel em outro sistema do grupo. Confirme para trocar o e-mail em todos.":
+    "Esta conta tem papel em outro sistema do grupo. Confirme para trocar o e-mail em todos.",
+
   // ── Config ausente (cron/RPC do Plantão, migrações ...170 a ...176) ────
   // Não é erro do usuário: é a chave da Resend faltando em `gps.config`. Quem
   // vê isto é a equipe, e a frase precisa dizer que ninguém recebeu o e-mail.

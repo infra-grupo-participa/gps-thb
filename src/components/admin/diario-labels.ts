@@ -105,6 +105,8 @@ const ROTULO_ACAO_ADMIN: Record<string, string> = {
   favorito_confirmado: "Acompanhamento do cliente confirmado pela equipe",
   favorito_liberado: "Acompanhamento do cliente liberado pela equipe",
   acessos_criados_em_lote: "Acessos criados em lote",
+  // gps.admin_trocar_email_login (migração ...252)
+  email_login_alterado: "E-mail do login alterado pela equipe",
 };
 
 /** Rótulo legível de uma ação administrativa, com fallback para o código cru. */

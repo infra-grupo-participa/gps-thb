@@ -41,9 +41,9 @@ import {
   excluirAcessoAluno,
   excluirMembroAluno,
   statusAcessoAluno,
-  type MembroAcesso,
-  type StatusAcesso,
+  trocarEmailLogin,
 } from "@/app/admin/senha-actions";
+import type { MembroAcesso, StatusAcesso } from "@/lib/acesso-tipos";
 import {
   Dialog,
   DialogContent,
@@ -62,7 +62,12 @@ import {
 } from "@/components/admin/credenciais-view";
 import { AdicionarSocio } from "./adicionar-socio";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
-import { DialogoOutrosPortais, DialogoRemoverSocio } from "./dialogos";
+import {
+  DialogoOutrosPortais,
+  DialogoRemoverSocio,
+  DialogoTrocarEmail,
+} from "./dialogos";
+import { EmailDeMembro } from "./email-de-membro";
 import { ExcluirAmbiente } from "./excluir-ambiente";
 import { MembrosView } from "./membros-view";
 import { SenhaDeMembro } from "./senha-de-membro";
@@ -124,6 +129,24 @@ export function GerenciarAcessoPainel({
     membro: MembroAcesso;
     programas: string[];
   } | null>(null);
+  /**
+   * Troca de e-mail do login (11/09/2026, molde de F.3). `membroEmail` é o
+   * membro cujo e-mail está sendo trocado (`tela === "email-membro"`);
+   * `gerarSenha`/`alinharCadastro` nascem marcados (pedido literal do
+   * Marcio) e são desmarcáveis. `confirmaEmailOutros` guarda a confirmação
+   * pendente (outro portal, ou e-mail já em uso) ANTES de qualquer escrita —
+   * mesmo contrato de `confirmaOutros` acima.
+   */
+  const [membroEmail, setMembroEmail] = useState<MembroAcesso | null>(null);
+  const [emailNovo, setEmailNovo] = useState("");
+  const [gerarSenha, setGerarSenha] = useState(true);
+  const [alinharCadastro, setAlinharCadastro] = useState(true);
+  const [confirmaEmailOutros, setConfirmaEmailOutros] = useState<{
+    membro: MembroAcesso;
+    programas: string[];
+    emailJaEmUso: boolean;
+    erro: string | null;
+  } | null>(null);
   const [pending, startTransition] = useTransition();
 
   function carregarStatus() {
@@ -169,6 +192,16 @@ export function GerenciarAcessoPainel({
     setTela("senha-membro");
   }
 
+  /** Abre a tela de troca de e-mail do login de UM membro do ambiente. */
+  function abrirEmailDeMembro(m: MembroAcesso) {
+    setMembroEmail(m);
+    setEmailNovo("");
+    setGerarSenha(true);
+    setAlinharCadastro(true);
+    setConfirmaEmailOutros(null);
+    setTela("email-membro");
+  }
+
   /**
    * `confirmarOutrosSistemas` só vai `true` depois que o admin leu quais são
    * os outros portais e confirmou. Enquanto for `false`, a action pode voltar
@@ -200,6 +233,59 @@ export function GerenciarAcessoPainel({
         res.papel === "titular"
           ? "Senha do titular definida. Ele já pode entrar agora."
           : "Senha do sócio definida. Ele já pode entrar agora.",
+      );
+      carregarStatus();
+      router.refresh();
+    });
+  }
+
+  /**
+   * Espelha `definirSenhaDeMembro` linha a linha. `confirmarOutros` só vai
+   * `true` depois que o admin leu os portais e confirmou — a action pode
+   * voltar sem ter tocado em nada até lá.
+   */
+  function trocarEmailDeMembro(m: MembroAcesso, confirmarOutros = false) {
+    startTransition(async () => {
+      const res = await trocarEmailLogin(m.membroId, emailNovo, {
+        alinharCadastro,
+        confirmarOutrosSistemas: confirmarOutros || undefined,
+        senha: gerarSenha ? undefined : null,
+      });
+      if (res.precisaConfirmar) {
+        setConfirmaEmailOutros({
+          membro: m,
+          programas: res.programas ?? [],
+          emailJaEmUso: false,
+          erro: null,
+        });
+        return;
+      }
+      if (res.erro) {
+        if (res.emailJaEmUso) {
+          setConfirmaEmailOutros({
+            membro: m,
+            programas: [],
+            emailJaEmUso: true,
+            erro: res.erro,
+          });
+          return;
+        }
+        toast.error(res.erro);
+        return;
+      }
+      setConfirmaEmailOutros(null);
+      if (res.senha) {
+        setCredenciais({
+          email: res.emailNovo!,
+          senha: res.senha,
+          emailEnviado: Boolean(res.emailEnviado),
+          nome: res.nome ?? null,
+          telefone: res.telefone ?? null,
+        });
+      }
+      toast.success(
+        `E-mail do login trocado para ${res.emailNovo}.` +
+          (res.senha ? " Senha nova gerada." : ""),
       );
       carregarStatus();
       router.refresh();
@@ -342,7 +428,9 @@ export function GerenciarAcessoPainel({
                 ? "Adicionar sócio ao ambiente"
                 : tela === "senha-membro"
                   ? "Definir a senha deste membro"
-                  : "Acesso do ambiente"}
+                  : tela === "email-membro"
+                    ? "Trocar o e-mail do login"
+                    : "Acesso do ambiente"}
             </DialogTitle>
             <DialogDescription>
               {tela === "adicionar-socio"
@@ -351,7 +439,11 @@ export function GerenciarAcessoPainel({
                   ? `${membroSenha?.email ?? "Membro sem e-mail"} — ${
                       membroSenha?.papel === "titular" ? "titular" : "sócio"
                     } deste ambiente.`
-                  : `${nomeAluno ?? "Parceiro"} — defina a senha na hora, sem depender de e-mail.`}
+                  : tela === "email-membro"
+                    ? `${membroEmail?.email ?? "Membro sem e-mail"} — ${
+                        membroEmail?.papel === "titular" ? "titular" : "sócio"
+                      } deste ambiente.`
+                    : `${nomeAluno ?? "Parceiro"} — defina a senha na hora, sem depender de e-mail.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -386,6 +478,20 @@ export function GerenciarAcessoPainel({
               pending={pending}
               definirSenhaDeMembro={definirSenhaDeMembro}
             />
+          ) : tela === "email-membro" && membroEmail ? (
+            <EmailDeMembro
+              membroEmail={membroEmail}
+              emailNovo={emailNovo}
+              setEmailNovo={setEmailNovo}
+              gerarSenha={gerarSenha}
+              setGerarSenha={setGerarSenha}
+              alinharCadastro={alinharCadastro}
+              setAlinharCadastro={setAlinharCadastro}
+              setMembroEmail={setMembroEmail}
+              setTela={setTela}
+              pending={pending}
+              trocarEmailDeMembro={trocarEmailDeMembro}
+            />
           ) : (
             <div className="grid gap-5">
               <MembrosView
@@ -398,6 +504,7 @@ export function GerenciarAcessoPainel({
                   setRemovendo(m);
                 }}
                 onDefinirSenhaMembro={abrirSenhaDeMembro}
+                onTrocarEmail={abrirEmailDeMembro}
               />
 
               <div className="grid gap-2">
@@ -475,6 +582,26 @@ export function GerenciarAcessoPainel({
             definirSenhaDeMembro(confirmaOutros.membro, true)
           }
           onCancelar={() => setConfirmaOutros(null)}
+        />
+      ) : null}
+
+      {/* Confirma a troca de e-mail do login — ou, se o e-mail já está em
+          uso por outra conta, avisa sem botão de confirmar (PL10, gatilho
+          montado atrás: a tela de e-mail continua aberta). */}
+      {confirmaEmailOutros ? (
+        <DialogoTrocarEmail
+          emailAntigo={membroEmail?.email ?? null}
+          emailNovo={emailNovo.trim().toLowerCase()}
+          programas={confirmaEmailOutros.programas}
+          gerarSenha={gerarSenha}
+          alinharCadastro={alinharCadastro}
+          emailJaEmUso={confirmaEmailOutros.emailJaEmUso}
+          pending={pending}
+          erro={confirmaEmailOutros.erro}
+          onConfirmar={() =>
+            trocarEmailDeMembro(confirmaEmailOutros.membro, true)
+          }
+          onCancelar={() => setConfirmaEmailOutros(null)}
         />
       ) : null}
 

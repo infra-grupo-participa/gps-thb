@@ -62,6 +62,7 @@ export {
 export {
   getVideosAtivo,
   getVideosDoAluno,
+  getVideosDoAlunoAdmin,
   getVideosAdmin,
 } from "@/lib/data/videos";
 // `mapearStatusAcesso` NÃO passa por aqui: `src/app/admin/senha-actions.ts`

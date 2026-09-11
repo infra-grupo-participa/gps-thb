@@ -85,6 +85,43 @@ export async function getVideosDoAluno(etapa?: number): Promise<VideoDoAluno[]> 
 }
 
 /**
+ * O que o aluno VERIA — chamado pelo ADMIN, no Modo Assistência.
+ *
+ * 🔴 Existe porque `getVideosDoAluno` acima cai em `gps.videos_do_aluno`, que
+ * resolve o aluno por `gps.aluno_atual()` e RECUSA com 42501 quando é nulo —
+ * e no Modo Assistência quem chama é o admin, que não é aluno de ambiente
+ * nenhum. Sem esta irmã, a prévia "como o aluno vê" ficava SEM a seção de
+ * gravações e o vídeo recém-publicado não aparecia (achado do Marcio,
+ * 11/09/2026).
+ *
+ * `gps.videos_do_aluno_admin` aplica o MESMO corte (publicado + etapa
+ * liberada, com o override do aluno vencendo o global) para um `alunoId`
+ * explícito. Se a regra de visibilidade mudar em uma, tem de mudar na outra —
+ * senão a prévia deixa de ser prévia.
+ */
+export async function getVideosDoAlunoAdmin(
+  alunoId: string,
+  etapa?: number,
+): Promise<VideoDoAluno[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("videos_do_aluno_admin", { p_aluno_id: alunoId, p_etapa: etapa ?? null });
+  if (error) {
+    logErro("getVideosDoAlunoAdmin", error, { alunoId });
+    return [];
+  }
+  return ((data ?? []) as LinhaVideoAluno[]).map((l) => ({
+    id: l.id,
+    titulo: l.titulo,
+    descricao: l.descricao,
+    youtubeId: l.youtube_id,
+    etapa: l.etapa,
+    ordem: l.ordem,
+  }));
+}
+
+/**
  * Todos os vídeos (publicados e rascunho) — só para o painel do ADMIN.
  * `ehAdmin()` é defesa em profundidade; a fronteira real é a RLS de
  * `gps.videos`.

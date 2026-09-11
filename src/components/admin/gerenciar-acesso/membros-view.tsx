@@ -10,11 +10,11 @@
  * linha montada atrás dele — é assim que o foco volta ao botão "Remover".
  */
 
-import { KeyRound, Users, UserPlus, UserMinus } from "lucide-react";
+import { KeyRound, Mail, Users, UserPlus, UserMinus } from "lucide-react";
 import type {
   MembroAcesso,
   StatusAcesso,
-} from "@/app/admin/senha-actions";
+} from "@/lib/acesso-tipos";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatarData, formatarDataHora } from "@/lib/datas";
@@ -26,6 +26,7 @@ export function MembrosView({
   onAdicionarSocio,
   onExcluirMembro,
   onDefinirSenhaMembro,
+  onTrocarEmail,
 }: {
   status: StatusAcesso | null;
   carregando: boolean;
@@ -34,6 +35,8 @@ export function MembrosView({
   onExcluirMembro: (m: MembroAcesso) => void;
   /** F.3 — abre a tela de senha do membro (só quem já tem login). */
   onDefinirSenhaMembro: (m: MembroAcesso) => void;
+  /** Troca o e-mail do login deste membro (só quem já tem login). */
+  onTrocarEmail: (m: MembroAcesso) => void;
 }) {
   if (carregando) {
     return (
@@ -90,7 +93,13 @@ export function MembrosView({
                   : " · nunca entrou"}
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            {/* `flex-wrap` aqui também: com os TRÊS botões rotulados (Definir
+                senha · Trocar e-mail · Remover), a soma passa da largura útil
+                do diálogo em 390 px — sem quebra interna eles estourariam a
+                linha. Não há `DropdownMenu` no design system desta pasta
+                (`src/components/ui/`) para agrupar os dois secundários; ver
+                nota no relato do agente. */}
+            <div className="flex shrink-0 flex-wrap items-center gap-1">
               {/* Sem `userId` não há conta em `auth.users` para receber senha:
                   o botão SOME em vez de aparecer desabilitado sem explicação —
                   o diagnóstico da linha acima já diz "sem senha/nunca entrou". */}
@@ -103,6 +112,17 @@ export function MembrosView({
                   onClick={() => onDefinirSenhaMembro(m)}
                 >
                   <KeyRound className="size-4" /> Definir senha
+                </Button>
+              ) : null}
+              {m.userId ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => onTrocarEmail(m)}
+                >
+                  <Mail className="size-4" /> Trocar e-mail
                 </Button>
               ) : null}
               {m.papel === "socio" ? (

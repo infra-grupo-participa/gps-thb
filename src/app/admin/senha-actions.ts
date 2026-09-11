@@ -12,6 +12,17 @@ import { logErro } from "@/lib/log";
 import { mapearStatusAcesso } from "@/lib/data/central";
 import { MSG_SENHA_MINIMO, SENHA_MINIMO } from "@/lib/senha-regras";
 import type { PapelMembro } from "@/lib/types";
+import type { MembroAcesso, StatusAcesso } from "@/lib/acesso-tipos";
+
+// `MembroAcesso`/`StatusAcesso` moraram aqui como `export interface` até
+// 11/09/2026 (feature "trocar e-mail do login pela tela do admin") — bomba
+// armada num módulo `"use server"`, que só pode exportar função async. Os
+// tipos agora vivem em `@/lib/acesso-tipos`; os componentes cliente que só
+// precisavam do tipo (dialogos.tsx, membros-view.tsx, painel.tsx,
+// senha-de-membro.tsx) importam de lá com `import type`. Reexportado aqui
+// só para não quebrar quem ainda importa `type { MembroAcesso } from
+// "@/app/admin/senha-actions"` — preferir sempre `@/lib/acesso-tipos`.
+export type { MembroAcesso, StatusAcesso };
 
 /**
  * Gestão do acesso do aluno pelo painel — sem depender de e-mail e sem
@@ -28,32 +39,6 @@ import type { PapelMembro } from "@/lib/types";
 // MESMO gerador que `src/app/admin/actions.ts` usa ao criar o acesso. Um
 // módulo `"use server"` não pode exportar função síncrona, por isso ela não
 // mora aqui.
-
-export interface MembroAcesso {
-  membroId: string;
-  papel: PapelMembro;
-  userId: string | null;
-  email: string | null;
-  temSenha: boolean;
-  emailConfirmado: boolean;
-  ultimoAcesso: string | null;
-}
-
-export interface StatusAcesso {
-  temLogin: boolean;
-  emailCadastro: string | null;
-  emailLogin: string | null;
-  emailBate: boolean;
-  emailConfirmado: boolean;
-  temSenha: boolean;
-  ultimoAcesso: string | null;
-  noGps: boolean;
-  vinculoCompleto: boolean;
-  solicitacaoPendente: boolean;
-  /** Ambiente compartilhado: todos os membros (titular + sócios). */
-  qtdMembros: number;
-  membros: MembroAcesso[];
-}
 
 /** Diagnóstico do acesso: mostra exatamente onde o aluno trava. */
 export async function statusAcessoAluno(
@@ -523,6 +508,189 @@ export async function excluirMembroAluno(
 
   revalidatePath("/admin", "layout");
   return {};
+}
+
+/**
+ * Troca o e-mail do LOGIN de um membro pela tela do admin (feature "trocar
+ * e-mail do login", 11/09/2026) — resolve sem SQL manual o que só um dev
+ * conseguia em 10-11/09/2026: Eder Fagundes (login `@adv.oabmg.org.br`, ele
+ * usava o Gmail), Rubens Barros (typo `rubens.barros1967@gmai.coml` — o "l"
+ * do gmail foi parar depois do ".com": ele ENTRAVA, mas nenhum e-mail do
+ * sistema chegava nele) e Mauricio de Oliveira (login comercial, ele usava o
+ * Gmail e acabou se auto-cadastrando de novo).
+ *
+ * 🔴 A troca GERA SENHA NOVA por padrão (pedido literal do Marcio, 11/09):
+ * "isso irá gerar uma nova senha, que eles vão disponibilizar". Faz sentido
+ * pelo caso real — se o e-mail estava errado, a pessoa nunca recebeu a
+ * senha original mesmo. `opts.senha` deixado de fora (undefined) gera uma
+ * com `gerarSenhaTemporaria()`, o MESMO gerador de `definirSenhaMembro`;
+ * passar `opts.senha = null` explicitamente preserva a senha atual (o caso
+ * do Rubens: ele já entrava bem, só não recebia e-mail — trocar a senha
+ * dele à toa seria atrito sem motivo).
+ *
+ * MESMA GUARDA CROSS-SISTEMA das irmãs (`definirSenhaMembro`,
+ * `adicionarSocioAluno`): antes de trocar o e-mail (e a senha) de uma conta
+ * que é privilegiada em OUTRO portal do grupo, o admin confirma. Falha da
+ * RPC de programas ⇒ falha FECHADA, nunca segue sem saber.
+ */
+export async function trocarEmailLogin(
+  membroId: string,
+  emailNovo: string,
+  opts?: { alinharCadastro?: boolean; confirmarOutrosSistemas?: boolean; senha?: string | null },
+): Promise<{
+  erro?: string;
+  emailAntigo?: string;
+  emailNovo?: string;
+  papel?: PapelMembro;
+  precisaConfirmar?: boolean;
+  programas?: string[];
+  emailJaEmUso?: boolean;
+  cadastroAlinhado?: boolean;
+  senha?: string;
+  emailEnviado?: boolean;
+  nome?: string | null;
+  telefone?: string | null;
+}> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+
+  const emailNovoNormalizado = emailNovo?.trim().toLowerCase();
+  if (!emailNovoNormalizado || !emailValido(emailNovoNormalizado)) {
+    return { erro: "Informe um e-mail válido." };
+  }
+
+  // `opts.senha === null` é o pedido explícito de PRESERVAR a senha atual
+  // (caso Rubens). `undefined` (opts.senha não informado) é o caminho normal
+  // desde 11/09: gera uma senha temporária nova.
+  const gerarNova = opts?.senha !== null;
+  const senha = gerarNova ? (opts?.senha?.trim() || gerarSenhaTemporaria()) : null;
+  if (senha !== null && senha.length < SENHA_MINIMO) {
+    return { erro: MSG_SENHA_MINIMO };
+  }
+
+  const supabase = await createClient();
+
+  // Pentest de 09/09 (MÉDIO), mesma guarda de `definirSenhaMembro`:
+  // `gps.admin_alvo_e_equipe` só enxerga `public.perfis`, mas `auth.users` é
+  // compartilhado por 7 sistemas. O e-mail ATUAL é quem importa aqui — é a
+  // conta que vai levar o e-mail (e a senha) novos.
+  if (opts?.confirmarOutrosSistemas !== true) {
+    const { data: membro } = await supabase
+      .schema("gps")
+      .from("membros")
+      .select("aluno_id")
+      .eq("id", membroId)
+      .maybeSingle();
+    if (membro?.aluno_id) {
+      const { data: status } = await supabase
+        .schema("gps")
+        .rpc("admin_status_acesso", { p_aluno_id: membro.aluno_id });
+      const emailAtualDoMembro = (
+        (status as { membros?: { membro_id: string; email: string | null }[] } | null)?.membros ?? []
+      ).find((m) => m.membro_id === membroId)?.email;
+      if (emailAtualDoMembro) {
+        const { data: prog, error: erroProg } = await supabase
+          .schema("gps")
+          .rpc("admin_programas_do_email", { p_email: emailAtualDoMembro });
+        // Falha FECHADA: sem saber em quais portais a conta tem papel, não se
+        // troca e-mail (nem senha) nenhuma.
+        if (erroProg) {
+          return { erro: traduzirErroBanco("admin/trocarEmailLogin.programas", erroProg) };
+        }
+        const programas = (
+          (prog as { programas?: { programa: string }[] } | null)?.programas ?? []
+        )
+          .map((x) => x.programa)
+          .filter((nome) => nome !== "GPS");
+        if (programas.length > 0) {
+          return { precisaConfirmar: true, programas };
+        }
+      }
+    }
+  }
+
+  const { data, error } = await supabase.schema("gps").rpc("admin_trocar_email_login", {
+    p_membro_id: membroId,
+    p_email: emailNovoNormalizado,
+    p_confirmar_outros_sistemas: opts?.confirmarOutrosSistemas === true,
+    p_senha: senha,
+  });
+
+  if (error) {
+    // P0003 = e-mail já em uso por outra conta. SEM caminho de confirmação
+    // (ao contrário de `adicionarSocioAluno`): esta função nunca funde
+    // identidade.
+    if (error.code === "P0003") {
+      return {
+        erro: traduzirErroBanco("admin/trocarEmailLogin", error, { membroId }),
+        emailJaEmUso: true,
+      };
+    }
+    return { erro: traduzirErroBanco("admin/trocarEmailLogin", error, { membroId }) };
+  }
+
+  const resultado = (data ?? {}) as {
+    email_antigo?: string;
+    email_novo?: string;
+    papel?: PapelMembro;
+    pessoa_aluno_id?: string | null;
+    senha_definida?: boolean;
+  };
+
+  let cadastroAlinhado: boolean | undefined;
+  if (opts?.alinharCadastro !== false) {
+    // 🔑 SEMPRE por `pessoa_aluno_id`, nunca `aluno_id`: para o sócio,
+    // `gps.membros.aluno_id` é o AMBIENTE (o titular) — gravar por ele
+    // alinharia o cadastro da pessoa errada.
+    if (resultado.pessoa_aluno_id) {
+      const { error: erroAlunos } = await supabase
+        .from("thb_alunos")
+        .update({ email: emailNovoNormalizado })
+        .eq("id", resultado.pessoa_aluno_id);
+      // Falha do alinhamento NÃO desfaz a troca do login — o login já é o
+      // efeito que importa; o cadastro pode ser corrigido depois.
+      cadastroAlinhado = !erroAlunos;
+      if (erroAlunos) {
+        logErro("admin/trocarEmailLogin.alinharCadastro", erroAlunos, { membroId });
+      }
+    } else {
+      cadastroAlinhado = false;
+    }
+  }
+
+  // Nome/telefone para o `CredenciaisView`, pelo E-MAIL NOVO (é o que já foi
+  // gravado no cadastro, quando alinhado) ou, na falta, pelo antigo — mesmo
+  // `ilike`/`emailParaIlike` de `definirSenhaMembro` (thb_alunos guarda o que
+  // a pessoa digitou; o login vem sempre em minúsculas do GoTrue).
+  const { data: aluno } = await supabase
+    .from("thb_alunos")
+    .select("nome, telefone")
+    .ilike("email", emailParaIlike(emailNovoNormalizado))
+    .maybeSingle();
+
+  let emailEnviado: boolean | undefined;
+  if (senha !== null) {
+    // Manda para o endereço NOVO — é o que funciona; o antigo é justamente
+    // o quebrado. Falha de envio não desfaz nada.
+    const envio = await enviarCredenciaisAcesso({
+      para: emailNovoNormalizado,
+      nome: aluno?.nome ?? null,
+      senha,
+      precisaConfirmar: false,
+    });
+    emailEnviado = envio.ok;
+  }
+
+  revalidatePath("/admin", "layout");
+  return {
+    emailAntigo: resultado.email_antigo,
+    emailNovo: resultado.email_novo,
+    papel: resultado.papel,
+    cadastroAlinhado,
+    senha: senha ?? undefined,
+    emailEnviado,
+    nome: aluno?.nome ?? null,
+    telefone: aluno?.telefone ?? null,
+  };
 }
 
 /** Envia ao aluno o e-mail de redefinição de senha (fluxo do Supabase). */

@@ -3,7 +3,7 @@ import { ehAdmin, getContextoSessao } from "@/lib/auth";
 import { logErro } from "@/lib/log";
 import { traduzirErroBanco } from "@/lib/erros";
 import type { OverridesLiberacao } from "@/lib/etapas";
-import type { StatusAcesso, MembroAcesso } from "@/app/admin/senha-actions";
+import type { StatusAcesso, MembroAcesso } from "@/lib/acesso-tipos";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Central de resolução — as LEITURAS.

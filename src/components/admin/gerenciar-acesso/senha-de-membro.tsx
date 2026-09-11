@@ -12,7 +12,7 @@
  */
 
 import { KeyRound } from "lucide-react";
-import type { MembroAcesso } from "@/app/admin/senha-actions";
+import type { MembroAcesso } from "@/lib/acesso-tipos";
 import { Button } from "@/components/ui/button";
 import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";

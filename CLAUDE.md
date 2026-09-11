@@ -1775,6 +1775,76 @@ não apareciam.
   úteis, 139 nós de texto e 0 falha de contraste, 18 focáveis com nome, 0 overflow em 1024/390.
   ⚠️ **Não validado logado em `/admin`** (sem credencial de admin de teste).
 
+### 🔴 `"use server"` só exporta função async — o defeito que já pegou 3 vezes (2026-09-11)
+
+**A regra, sem exceção:** módulo com `"use server"` no topo só pode exportar
+`async function`. `export type`, `export interface`, `export const`, `export
+class` — todos passam pelo `tsc` e pelo `next build`, e **quebram em runtime**.
+
+O Turbopack gera no chunk do servidor uma referência ao **valor** do que foi
+exportado. Tipo não existe em runtime; constante existe, mas o módulo sai do
+build com **zero exports** e quem o importa recebe `undefined`.
+
+| Quando | O que era | O que caiu |
+|---|---|---|
+| 10/09 | `export const LOTE_ACESSOS_MAXIMO` em `admin/actions.ts` | `/admin` com 500 |
+| 11/09 | `export type { ErroDeBanco }` em `admin/videos/actions.ts` | `/admin/videos` com `ReferenceError` ao salvar |
+| 11/09 | `export interface SalvarVideoInput`, no mesmo arquivo | ainda não tinha disparado |
+
+**Onde o tipo mora:** num `src/lib/<assunto>-tipos.ts` ao lado
+(`acessos-lote.ts`, `videos-tipos.ts`), importado por `import type` dos dois
+lados. O arquivo de actions importa; nunca reexporta.
+
+**Como achar antes de o usuário achar:**
+```bash
+for f in $(grep -rl '"use server"' src/ --include=*.ts --include=*.tsx); do
+  head -1 "$f" | grep -q '"use server"' || continue
+  grep -nE "^export (type|interface|const|let|var|enum|class) " "$f"     | sed "s|^|$f:|"
+done
+```
+⚠️ **Varredura de 11/09: 15 arquivos ainda têm `export interface`/`export type`
+em módulo de servidor** (`admin/actions.ts`, `clientes/actions.ts`,
+`equipe/actions.ts`, `entrar/actions.ts`, `login/actions.ts`,
+`cadastro/actions.ts`, `onboarding/actions.ts`, `admin/senha-actions.ts`,
+`admin/diario-actions.ts`, `admin/plantao/{slots,mentoras}-actions.ts`, os 3
+`anexo-actions.ts` e `convite/actions.ts`). **Nenhum caiu ainda** — o tipo só
+vira referência a valor quando o Turbopack decide emiti-la, e o gatilho exato
+não é previsível. **É bomba armada, não teoria.** Não sair migrando tudo de uma
+vez (é a área mais quente do produto); migrar o arquivo quando encostar nele.
+
+⚠️ `npm run build` **não** pega: o erro é de execução do chunk. Só o log de
+runtime da Hostinger mostra
+(`mcp__hostinger-hosting__hosting_getNode_jsRuntimeLogsV1`). **Quando uma tela
+do admin cair com 500 sem causa óbvia, LER O LOG antes de teorizar** — em 11/09
+eu sugeri "instabilidade" sem prova e o Marcio perdeu uma tentativa por isso.
+
+### 🔑 A senha do admin não sobrevive ao fechamento (2026-09-11)
+
+Queixa da Ana Camila: *"não consigo pegar a senha dessa criatura"*.
+
+**Senha não é consultável e nunca será.** `auth.users.encrypted_password` é
+hash bcrypt — irreversível por construção. Sistema que "mostra a senha do
+usuário" a guarda em texto puro, o que é falha grave (LGPD + OWASP). **Não
+implementar consulta de senha, mesmo se pedido de novo:** a resposta certa é
+definir uma senha nova.
+
+O defeito real era o que **apagava** a senha antes de o admin copiar:
+`<Dialog onOpenChange={onOpenChange}>` fechava no Esc e no clique-fora sem
+perguntar, e o `key={abertura}` do `index.tsx` remonta o painel a cada
+abertura — reabrir traz `credenciais = null`.
+
+Medido em `gps.acessos_log`: **9 pessoas reais** com senha redefinida 2–3
+vezes, várias em 15–20 min (Álvaro 17:25→17:39, Marco Túlio 15:26→15:46,
+Flávia 13:56→14:15).
+
+Agora os três caminhos que exibem senha pedem confirmação nomeada antes de
+fechar: `gerenciar-acesso/painel.tsx`, `criar-acesso.tsx` e
+`gerenciar-acesso/adicionar-socio.tsx` — este último guarda a senha em estado
+**local**, então avisa o painel por `onCredenciais(true)`, porque o `Dialog`
+não é dele. **Componente novo que mostrar senha tem de acender esse sinal.**
+
+"Concluir" continua fechando direto: ali o admin está dizendo que já copiou.
+
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
 
 **Decisão do Marcio.** O motivo é **operacional, não técnico**: o fluxo não estava fluindo e

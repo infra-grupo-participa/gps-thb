@@ -13,9 +13,23 @@
  * portal do grupo (`auth.users` é compartilhado por 7 sistemas). A action
  * devolve `precisaConfirmar` SEM ter mudado nada; é o segundo diálogo que
  * transforma isso em decisão consciente do admin.
+ *
+ * 🔑 `DialogoTrocarEmail` (11/09/2026) — a mesma lógica, para a troca de
+ * e-mail do login. Quando `emailJaEmUso` é `true` NÃO é confirmação: é erro
+ * dentro do próprio diálogo, sem botão de confirmar — `admin_trocar_email_login`
+ * nunca funde identidade (P0003), então não há "trocar mesmo assim" possível.
  */
 
-import type { MembroAcesso } from "@/app/admin/senha-actions";
+import type { MembroAcesso } from "@/lib/acesso-tipos";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 
 export function DialogoRemoverSocio({
@@ -84,6 +98,101 @@ export function DialogoOutrosPortais({
   rotuloConfirmar="Trocar mesmo assim"
   rotuloConfirmando="Trocando…"
   confirmando={pending}
+      onConfirmar={onConfirmar}
+      onCancelar={onCancelar}
+    />
+  );
+}
+
+/**
+ * Confirma a troca de e-mail do login (nomeando origem → destino, os portais
+ * afetados, se cai sessão, se sai senha nova e se o cadastro é alinhado
+ * junto). Quando `emailJaEmUso` é `true`, não há o que confirmar — a RPC
+ * recusa com P0003 e não funde identidade; o diálogo vira aviso de erro, sem
+ * botão de confirmar, com a instrução do que fazer.
+ */
+export function DialogoTrocarEmail({
+  emailAntigo,
+  emailNovo,
+  programas,
+  gerarSenha,
+  alinharCadastro,
+  emailJaEmUso,
+  pending,
+  erro,
+  onConfirmar,
+  onCancelar,
+}: {
+  emailAntigo: string | null;
+  emailNovo: string;
+  /** Portais do grupo onde esta conta também tem papel (fora do "programa"). */
+  programas: string[];
+  gerarSenha: boolean;
+  alinharCadastro: boolean;
+  emailJaEmUso: boolean;
+  pending: boolean;
+  erro: string | null;
+  onConfirmar: () => void;
+  onCancelar: () => void;
+}) {
+  if (emailJaEmUso) {
+    return (
+      <Dialog open onOpenChange={(v) => !v && onCancelar()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Este e-mail já tem outra conta</DialogTitle>
+            <DialogDescription>{emailNovo}</DialogDescription>
+          </DialogHeader>
+          <p className="text-sm">
+            <strong>{emailNovo}</strong> já é o login de outra conta no grupo.
+            A troca não funde identidades — remova o acesso duplicado antes
+            (em &ldquo;Gerenciar acesso&rdquo; daquele outro ambiente) ou use
+            um endereço diferente para este membro.
+          </p>
+          <p aria-live="assertive" className="text-xs text-destructive empty:hidden">
+            {erro}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={onCancelar}>
+              Voltar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <DialogoConfirmacao
+      aberto
+      destrutivo={programas.length > 0}
+      titulo="Trocar o e-mail do login?"
+      descricao={`${emailAntigo ?? "sem e-mail"} → ${emailNovo}`}
+      consequencia={
+        <>
+          O login passa de <strong>{emailAntigo ?? "sem e-mail"}</strong>{" "}
+          para <strong>{emailNovo}</strong>.{" "}
+          {programas.length > 0 ? (
+            <>
+              Esta conta também é usada em:{" "}
+              <strong>{programas.join(", ")}</strong>. A troca vale para
+              todos os portais do grupo.{" "}
+            </>
+          ) : null}
+          As sessões abertas desta pessoa caem, e ela só entra de novo com o
+          e-mail novo.{" "}
+          {gerarSenha
+            ? "Uma senha nova também será gerada."
+            : "A senha atual é mantida."}{" "}
+          {alinharCadastro
+            ? "O e-mail do cadastro é atualizado junto."
+            : "O e-mail do cadastro não muda."}
+        </>
+      }
+      rotuloConfirmar="Trocar e-mail"
+      rotuloConfirmando="Trocando…"
+      confirmando={pending}
+      erro={erro}
       onConfirmar={onConfirmar}
       onCancelar={onCancelar}
     />

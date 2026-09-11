@@ -66,18 +66,32 @@ export function AcaoDaLinha({
       return precisa ? linkFicha : null;
 
     case "email_bate":
-      // A única porta do repo para `atualizarEmailAluno`. Alinha o CADASTRO
-      // ao LOGIN (nunca o contrário): o login é o que a pessoa digita e vale
-      // nos outros portais do grupo.
-      return precisa && emailLogin && emailValido(emailLogin) ? (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={pendente}
-          onClick={() => onAlinharEmail(emailCadastro, emailLogin)}
-        >
-          <Mail className="size-4" /> Alinhar o cadastro
-        </Button>
+      // Duas direções para o mesmo diagnóstico — nomeadas para não se
+      // confundirem: "Alinhar o cadastro" leva o CADASTRO a bater com o
+      // LOGIN (única porta do repo para `atualizarEmailAluno`, o login é o
+      // que a pessoa digita e vale nos outros portais do grupo);
+      // "Trocar o e-mail do login" é um LINK para "Gerenciar acesso" — a
+      // Central não ganha segunda porta de escrita, quem troca o login é o
+      // painel (`gps.admin_trocar_email_login`).
+      return precisa ? (
+        <>
+          {emailLogin && emailValido(emailLogin) ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pendente}
+              onClick={() => onAlinharEmail(emailCadastro, emailLogin)}
+            >
+              <Mail className="size-4" /> Alinhar o cadastro
+            </Button>
+          ) : null}
+          <Link
+            href={`${base}#acesso`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <KeyRound className="size-4" /> Trocar o e-mail do login
+          </Link>
+        </>
       ) : null;
 
     case "vinculo_programa":

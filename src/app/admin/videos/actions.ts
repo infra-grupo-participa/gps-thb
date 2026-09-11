@@ -26,12 +26,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { extrairYoutubeId } from "@/lib/youtube";
-import { traduzirErroBanco, type ErroDeBanco } from "@/lib/erros";
+import { traduzirErroBanco } from "@/lib/erros";
 import {
   VIDEO_DESCRICAO_MAXIMO,
   VIDEO_TITULO_MAXIMO,
   VIDEO_TITULO_MINIMO,
   type ResultadoAcao,
+  type SalvarVideoInput,
 } from "@/lib/videos-tipos";
 
 /**
@@ -51,16 +52,6 @@ const FRASES_VIDEO: Record<string, string> = {
   "Etapa não encontrada.": "Etapa não encontrada.",
   "Vídeo não encontrado.": "Vídeo não encontrado. Atualize a lista e tente de novo.",
 };
-
-export interface SalvarVideoInput {
-  id?: string;
-  titulo: string;
-  descricao: string;
-  url: string;
-  /** `null` = vídeo GERAL, sem amarra a nenhuma etapa (`gps.videos.etapa`). */
-  etapa: number | null;
-  ordem: number;
-}
 
 /**
  * Cria ou edita um vídeo. `id` presente = edição.
@@ -154,6 +145,16 @@ export async function excluirVideo(id: string): Promise<ResultadoAcao> {
   return { ok: true };
 }
 
-// `ErroDeBanco` reexportado só para o tipo não precisar ser importado duas
-// vezes por quem eventualmente testar esta action fora daqui.
-export type { ErroDeBanco };
+// 🔴 NÃO REEXPORTAR TIPO DAQUI. Havia um `export type { ErroDeBanco }` nesta
+// linha, e ele DERRUBOU a tela de vídeos em produção (11/09/2026):
+//
+//     ReferenceError: ErroDeBanco is not defined
+//
+// Módulo `"use server"` só pode exportar função async. O `export type` passa
+// pelo `tsc` (é válido em tipos) e pelo `next build`, mas o Turbopack gera
+// uma referência ao VALOR no chunk do servidor — e tipo não existe em
+// runtime. A página inteira estourava ao ser montada.
+//
+// É a mesma classe do `export const LOTE_ACESSOS_MAXIMO` que zerou os
+// exports de `admin/actions.ts` e derrubou `/admin` com 500 (registrado no
+// CLAUDE.md). Quem precisar do tipo importa de `@/lib/erros`.

@@ -10,3 +10,22 @@ export type ResultadoAcao = { ok: true } | { ok: false; erro: string };
 export const VIDEO_TITULO_MINIMO = 3;
 export const VIDEO_TITULO_MAXIMO = 200;
 export const VIDEO_DESCRICAO_MAXIMO = 2000;
+
+/**
+ * Entrada de `salvarVideo` (`src/app/admin/videos/actions.ts`).
+ *
+ * 🔴 MORA AQUI, não no arquivo da action. Módulo `"use server"` só pode
+ * exportar função async — tipo exportado de lá passa pelo `tsc` e pelo
+ * build, mas o Turbopack gera referência ao VALOR no chunk do servidor e a
+ * página estoura em runtime com `ReferenceError: <Tipo> is not defined`.
+ * Foi o que derrubou a tela de vídeos em 11/09/2026.
+ */
+export interface SalvarVideoInput {
+  id?: string;
+  titulo: string;
+  descricao: string;
+  url: string;
+  /** `null` = vídeo GERAL, sem amarra a nenhuma etapa (`gps.videos.etapa`). */
+  etapa: number | null;
+  ordem: number;
+}

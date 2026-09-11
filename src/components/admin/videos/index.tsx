@@ -26,8 +26,10 @@ import {
   salvarVideo,
   publicarVideo,
   excluirVideo,
-  type SalvarVideoInput,
 } from "@/app/admin/videos/actions";
+// 🔴 O TIPO vem de `videos-tipos`, nunca do módulo `"use server"` — ver a
+// nota lá. Importar tipo da action derrubou esta tela em produção.
+import type { SalvarVideoInput } from "@/lib/videos-tipos";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {

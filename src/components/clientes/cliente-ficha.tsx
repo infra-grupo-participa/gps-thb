@@ -257,13 +257,19 @@ export function ClienteFicha({
       contratoLimpo.length > 2000);
 
   /**
-   * 🔴 Para o ALUNO, marcar a estrela é escolha única (migração ...215):
-   * pergunta antes, com a consequência escrita. Desmarcar nem chega aqui —
-   * `mostraEstrela` já não desenha o botão. Para a EQUIPE nada mudou.
+   * 🔴 Para o ALUNO, marcar a estrela pergunta antes, com a consequência
+   * escrita. DESMARCAR, o parceiro faz sozinho enquanto a equipe não assumiu.
+   *
+   * 🔴 Era `if (!admin) return` para qualquer favorito (corrigido em
+   * 11/09/2026): depois que o botão voltou a aparecer para o não-confirmado,
+   * esta linha o deixava MUDO — clique sem efeito, sem erro, sem toast. Pior
+   * que o bug original, que ao menos dava uma mensagem.
+   *
+   * A trava real é `confirmado` (= `travadoPelaEquipe`), a mesma do banco.
    */
   function toggleEquipe() {
     if (acompanhado) {
-      if (!admin) return;
+      if (!admin && confirmado) return;
       setErroDialogo(null);
       setDesfavoritando(true);
       return;

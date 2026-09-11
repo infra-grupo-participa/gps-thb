@@ -5,7 +5,10 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 import type { ClienteEtapa1 } from "@/lib/types";
 import { formatarData } from "@/lib/datas";
 import { buttonVariants } from "@/components/ui/button";
-import { LinkTrocaPorChamado } from "@/components/clientes/acompanhamento-equipe";
+import {
+  LinkTrocaPorChamado,
+  TEXTO_TROCA_LIVRE,
+} from "@/components/clientes/acompanhamento-equipe";
 
 /** Banner do cliente escolhido para o acompanhamento da equipe. */
 export function ConfirmacaoEquipe({
@@ -57,9 +60,17 @@ export function ConfirmacaoEquipe({
               A troca do cliente acompanhado é feita na ficha dele, aqui no Modo
               Assistência.
             </p>
-          ) : (
+          ) : cliente.acompanhamento_confirmado_em ? (
             <p className="corpo-sm text-sucesso-foreground">
               <LinkTrocaPorChamado /> — a equipe faz a troca com você.
+            </p>
+          ) : (
+            // 🔴 Enquanto a equipe não assumiu, a troca é do parceiro
+            // (11/09/2026). Este banner mandava abrir chamado já no instante
+            // da escolha, como o resto da copy do favorito.
+            <p className="corpo-sm text-sucesso-foreground">
+              {TEXTO_TROCA_LIVRE}: clique na estrela deste cliente ou marque
+              outro.
             </p>
           )}
         </div>

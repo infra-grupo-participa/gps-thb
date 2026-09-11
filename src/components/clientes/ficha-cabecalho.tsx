@@ -138,7 +138,7 @@ export function FichaCabecalho({
           basePath={basePath}
         />
       ) : escolhidoPeloAluno ? (
-        <AvisoEscolhaFeita basePath={basePath} />
+        <AvisoEscolhaFeita />
       ) : outroNome != null ? (
         <AvisoOutroConfirmado
           nome={outroNome}

@@ -196,7 +196,7 @@ export function ClientesTabela({
                       recusa o DELETE com 42501 (`...203` para o confirmado,
                       `...215` para o escolhido pelo aluno). O caminho existe e
                       está escrito na ficha (Suporte). */}
-                  {podeExcluirCliente(c, ctxEstrela.admin) ? (
+                  {podeExcluirCliente(c) ? (
                     <Button
                       variant="ghost-danger"
                       size="icon-sm"

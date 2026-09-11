@@ -163,8 +163,7 @@ export function ClientesManager({
   const confirmado = clientes.find(travadoPelaEquipe) ?? null;
   const existeConfirmado = confirmado !== null;
   /** Já existe estrela no ambiente (confirmada ou só escolhida pelo aluno)? */
-  const existeFavorito = clientes.some((c) => c.acompanhado_equipe);
-  const ctxEstrela = { admin, existeFavorito, existeConfirmado };
+  const ctxEstrela = { admin, existeConfirmado };
 
   // ---- Ações ----
   function abrirNovo() {
@@ -224,7 +223,10 @@ export function ClientesManager({
    */
   function toggleEquipe(cliente: ClienteEtapa1) {
     if (cliente.acompanhado_equipe) {
-      if (!admin) return;
+      // 🔴 `travadoPelaEquipe`, não `acompanhado_equipe`: enquanto a equipe
+      // não confirma, o parceiro desmarca sozinho (11/09/2026). Com a checagem
+      // antiga o botão aparecia e o clique não fazia nada.
+      if (!admin && travadoPelaEquipe(cliente)) return;
       setErroDialogo(null);
       setDesfavoritando(cliente);
       return;

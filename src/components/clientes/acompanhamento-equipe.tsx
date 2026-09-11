@@ -102,15 +102,12 @@ export function LinkTrocaPorChamado({
  * O aviso da ficha do cliente que o ALUNO escolheu e a equipe ainda não
  * confirmou (migração ...215).
  *
- * Não existe botão aqui, e não é esquecimento: a partir da ...215 o banco
- * recusa (42501) que o aluno desmarque a estrela, marque outro cliente ou
- * apague este. A tela diz o que aconteceu e por onde se troca.
+ * 🔴 O caminho da troca é LIVRE aqui (corrigido em 11/09/2026): enquanto
+ * `acompanhamento_confirmado_em` é nulo, a trigger devolve `old` e o parceiro
+ * desmarca sozinho. Este aviso mandava abrir chamado desde o primeiro
+ * instante — foi o que gerou os 5 chamados do primeiro dia de uso.
  */
-export function AvisoEscolhaFeita({
-  basePath = "",
-}: {
-  basePath?: string;
-} = {}) {
+export function AvisoEscolhaFeita() {
   return (
     <div className="grid gap-2 rounded-xl border border-borda-fina bg-superficie-afundada p-3.5">
       <p className="corpo-sm">
@@ -120,7 +117,8 @@ export function AvisoEscolhaFeita({
         contrato assinado, perfil DISC e problemas.
       </p>
       <p className="corpo-sm text-muted-foreground">
-        <LinkTrocaPorChamado basePath={basePath} /> — a equipe faz a troca com você.
+        {TEXTO_TROCA_LIVRE}: basta clicar na estrela deste cliente ou marcar
+        outro. Depois que ela assumir, a troca passa a ser pelo Suporte.
       </p>
     </div>
   );

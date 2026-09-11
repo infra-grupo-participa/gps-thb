@@ -214,6 +214,35 @@ const FRASES_DO_BANCO: Record<string, string> = {
   "Só a equipe confirma ou libera o acompanhamento deste cliente.":
     "Só a equipe confirma ou libera o acompanhamento deste cliente.",
 
+  // 🔴 A frase que a trigger levanta HOJE (a de cima tem travessão e é a
+  // versão antiga). O match é por igualdade exata, então sem esta linha a
+  // recusa caía em "Sem permissão para esta ação." — genérica, sem caminho.
+  // Só alcança quem a equipe JÁ confirmou; enquanto não confirma, a troca é
+  // livre desde 11/09/2026.
+  "A equipe está acompanhando este cliente. Para trocar, abra um chamado no Suporte.":
+    "A equipe já assumiu este cliente. Para trocar, abra um chamado no Suporte.",
+
+  // ═══ gps.entrada_pelo_codigo (/entrar) ═══
+  // 🔴 Nenhuma destas estava mapeada: todas caíam em 22023 → "Algum dado
+  // enviado está fora do formato aceito." — a frase que a Vanessa leu quando
+  // o problema real era outro. Quem usa esta tela é justamente quem não
+  // consegue entrar; uma recusa sem motivo ali vira chamado.
+  "Código incorreto.": "Código incorreto. Confira o código que a equipe passou.",
+  "Não encontramos este e-mail no Programa. Confira se é o mesmo da sua compra.":
+    "Não encontramos este e-mail no Programa. Confira se é o mesmo da sua compra.",
+  "Muitas tentativas deste dispositivo. Aguarde 15 minutos.":
+    "Muitas tentativas deste dispositivo. Aguarde 15 minutos e tente de novo.",
+  "Esta conta é da equipe — entre com a sua senha.":
+    "Esta conta é da equipe — entre com a sua senha, não pelo código.",
+  "Este caminho está indisponível no momento.":
+    "Este caminho está indisponível no momento. Fale com a equipe.",
+
+  // ═══ gps.resgate_concluir (/resgate) ═══
+  // A recusa genérica de `resgate_iniciar` ("Não confere…") fica como está:
+  // é anti-enumeração deliberada. Esta aqui não é — o link já foi validado.
+  "Este link expirou. Recomece o resgate.":
+    "Este link expirou. Recomece o resgate com o código e o seu e-mail.",
+
   // gps.admin_confirmar_acompanhamento / gps.admin_liberar_acompanhamento (...203)
   "Cliente não encontrado.": "Cliente não encontrado.",
   "Este cliente não é o cliente acompanhado deste aluno. Marque a estrela antes de confirmar.":

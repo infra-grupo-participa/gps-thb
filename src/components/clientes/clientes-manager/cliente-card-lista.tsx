@@ -132,7 +132,7 @@ export function ClienteCardLista({
             e o nome do cliente vai no `aria-label`, então o leitor de tela
             ganha precisão em vez de ouvir "Excluir" oito vezes seguidas.
             🔴 Some no cliente acompanhado — o DELETE volta 42501. */}
-        {podeExcluirCliente(c, ctxEstrela.admin) ? (
+        {podeExcluirCliente(c) ? (
           <Button
             variant="ghost-danger"
             size="icon-sm"

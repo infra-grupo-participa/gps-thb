@@ -88,15 +88,20 @@ export type ModoEstrela = "botao" | "escolhida" | "confirmada" | "ausente";
 /** Quem está vendo a tela e o que já existe no ambiente. */
 export type CtxEstrela = {
   admin: boolean;
-  existeFavorito: boolean;
+  // `existeFavorito` saiu em 11/09/2026: a escolha do parceiro deixou de
+  // esconder a estrela dos outros. Só a CONFIRMAÇÃO da equipe esconde.
   existeConfirmado: boolean;
 };
 
 export function modoEstrela(c: ClienteEtapa1, ctx: CtxEstrela): ModoEstrela {
   if (travadoPelaEquipe(c)) return "confirmada";
   if (ctx.admin) return ctx.existeConfirmado ? "ausente" : "botao";
+  // 🔴 `existeConfirmado`, não `existeFavorito` (11/09/2026): enquanto a
+  // equipe não assumiu, o parceiro troca de ideia — a estrela dos OUTROS
+  // clientes tem de continuar clicável, senão quem escolheu errado não tem
+  // botão em tela nenhuma. Medido: 29 ambientes, 570 clientes sem saída.
   if (c.acompanhado_equipe) return "escolhida";
-  return ctx.existeFavorito ? "ausente" : "botao";
+  return ctx.existeConfirmado ? "ausente" : "botao";
 }
 
 
@@ -104,12 +109,15 @@ export function modoEstrela(c: ClienteEtapa1, ctx: CtxEstrela): ModoEstrela {
  * "Excluir" pode ser oferecido?
  *
  * Confirmado: não, para ninguém (a trava da ...203 continua, e a ficha diz o
- * caminho). Favorito ainda não confirmado: não para o ALUNO — a ...215 recusa
- * o DELETE com a mesma frase do Suporte —, sim para o admin, que é quem troca.
+ * caminho).
+ *
+ * 🔴 Favorito ainda NÃO confirmado: sim, inclusive para o aluno (11/09/2026).
+ * A trigger corrigida devolve `old` quando `acompanhamento_confirmado_em` é
+ * nulo — o banco permite. A linha `if (!admin && c.acompanhado_equipe)` que
+ * estava aqui escondia a lixeira de 39 clientes que o banco deixaria apagar.
  */
-export function podeExcluirCliente(c: ClienteEtapa1, admin: boolean): boolean {
+export function podeExcluirCliente(c: ClienteEtapa1): boolean {
   if (travadoPelaEquipe(c)) return false;
-  if (!admin && c.acompanhado_equipe) return false;
   return true;
 }
 

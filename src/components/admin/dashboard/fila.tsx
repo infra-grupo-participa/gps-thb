@@ -37,14 +37,47 @@ export function FilaEBase({
   // "sócios" é um subconjunto de pessoas, "ativos" um subconjunto de sócios, e
   // "convites" nem virou pessoa ainda. O macro do card é titulares + sócios;
   // estas linhas detalham, não empilham.
+  // 🔑 SUBMÉTRICAS DE ACESSO POR PAPEL (11/09/2026, pedido do Marcio: "total
+  // de acessos, porém em submétricas quem é titular de quem é sócio").
+  //
+  // O macro do card é o total de PESSOAS com acesso; cada linha abre em
+  // "quantos desses entraram". "Nunca entrou" só aparece quando existe — e é
+  // o mesmo corte do filtro `nunca_entrou` da lista, para os dois números
+  // nunca divergirem.
   const linhasEquipe = [
-    { rotulo: "Titulares", valor: equipe.titulares },
-    { rotulo: "Sócios", valor: equipe.socios },
-    ...(equipe.socios > 0
-      ? [{ rotulo: "Sócios ativos (30 dias)", valor: equipe.sociosAtivos30d }]
+    {
+      rotulo: "Titulares",
+      valor: equipe.titulares,
+      detalhe:
+        equipe.titulares > 0
+          ? `${equipe.titularesJaEntraram} já entraram · ${equipe.titularesAtivos30d} nos últimos 30 dias`
+          : null,
+    },
+    {
+      rotulo: "Sócios",
+      valor: equipe.socios,
+      detalhe:
+        equipe.socios > 0
+          ? `${equipe.sociosJaEntraram} já entraram · ${equipe.sociosAtivos30d} nos últimos 30 dias`
+          : "nenhum sócio no sistema ainda",
+    },
+    ...(equipe.nuncaEntraram > 0
+      ? [
+          {
+            rotulo: "Nunca entraram",
+            valor: equipe.nuncaEntraram,
+            detalhe: "têm conta criada e ainda não abriram o portal",
+          },
+        ]
       : []),
     ...(equipe.convitesPendentes > 0
-      ? [{ rotulo: "Convites em aberto", valor: equipe.convitesPendentes }]
+      ? [
+          {
+            rotulo: "Convites em aberto",
+            valor: equipe.convitesPendentes,
+            detalhe: "aguardando o sócio aceitar",
+          },
+        ]
       : []),
   ];
 
@@ -131,8 +164,15 @@ export function FilaEBase({
               key={l.rotulo}
               className="-mx-2 flex items-baseline justify-between gap-3 rounded-md px-2 py-1.5"
             >
-              <span className="min-w-0 corpo text-muted-foreground">
-                {l.rotulo}
+              <span className="min-w-0">
+                <span className="block corpo text-muted-foreground">
+                  {l.rotulo}
+                </span>
+                {l.detalhe ? (
+                  <span className="block text-xs text-muted-foreground/80">
+                    {l.detalhe}
+                  </span>
+                ) : null}
               </span>
               <span className="shrink-0 numero tabular-nums">{l.valor}</span>
             </li>

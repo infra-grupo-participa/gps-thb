@@ -127,6 +127,12 @@ export interface DashboardEquipe {
   socios: number;
   sociosAtivos30d: number;
   sociosNuncaEntraram: number;
+  /** Titulares/sócios que JÁ abriram o portal ao menos uma vez. */
+  titularesJaEntraram: number;
+  sociosJaEntraram: number;
+  titularesAtivos30d: number;
+  /** Tem conta e NUNCA entrou — o mesmo corte do filtro `nunca_entrou`. */
+  nuncaEntraram: number;
   /** Ambientes com mais de um membro (titular + sócio dividindo o portal). */
   ambientesCompartilhados: number;
   /** Convites de sócio em aberto, ainda dentro do prazo de 7 dias. */
@@ -236,6 +242,10 @@ export function mapearDashboard(d: Record<string, unknown>): Dashboard {
       socios: n(eqp.socios),
       sociosAtivos30d: n(eqp.socios_ativos_30d),
       sociosNuncaEntraram: n(eqp.socios_nunca_entraram),
+      titularesJaEntraram: n(eqp.titulares_ja_entraram),
+      sociosJaEntraram: n(eqp.socios_ja_entraram),
+      titularesAtivos30d: n(eqp.titulares_ativos_30d),
+      nuncaEntraram: n(eqp.nunca_entraram),
       ambientesCompartilhados: n(eqp.ambientes_compartilhados),
       convitesPendentes: n(eqp.convites_pendentes),
     },

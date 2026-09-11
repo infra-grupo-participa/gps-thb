@@ -42,6 +42,7 @@ export const FILTROS = [
   "sem_nota",
   "chamado",
   "sem_login",
+  "nunca_entrou",
   "tem_fechamento",
   "onb_nao",
   "onb_andamento",

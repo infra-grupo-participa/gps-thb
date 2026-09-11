@@ -81,6 +81,26 @@ export const DEFINICAO_DOS_FILTROS: Record<FiltroId, DefinicaoDeFiltro> = {
     predicado: (a) => !a.temLogin,
     disponivel: sempre,
   },
+  /**
+   * TEM conta e NUNCA abriu o portal — diferente de `sem_login`, que é
+   * "conta nem existe". Dois estados, duas ações da equipe: um pede criar
+   * acesso, o outro pede ligar para a pessoa.
+   *
+   * 🔑 `ultimoAcesso` vem de `auth.users.last_sign_in_at`; `null` significa
+   * "nunca entrou" e NUNCA é preenchido com a data de cadastro no lugar
+   * (regra registrada em `ordenacao.ts`).
+   *
+   * Pedido do Marcio em 11/09/2026. Entre titulares dá 1 hoje — mas passa a
+   * valer com a feature Equipe: convite aceito CRIA a conta, e o sócio que
+   * nunca abriu o portal depois disso é exatamente quem a equipe precisa
+   * achar.
+   */
+  nunca_entrou: {
+    rotulo: "Nunca entrou",
+    frase: "que nunca entraram",
+    predicado: (a) => a.temLogin && a.ultimoAcesso === null,
+    disponivel: sempre,
+  },
   tem_fechamento: {
     rotulo: "Com cliente em fechamento",
     frase: "com cliente em fechamento",

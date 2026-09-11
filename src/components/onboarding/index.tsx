@@ -230,14 +230,27 @@ export function OnboardingPortal({
       return;
     }
     // Quem só veio trocar a senha vai para o aviso final; quem está no
-    // questionário RETOMA onde parou (mesma regra da abertura: 8/9 em aberto
-    // voltam ao 7) — senha temporária nova no meio do questionário não pode
-    // mandar a pessoa de volta à primeira pergunta.
-    const retomada =
-      dados.status !== "concluido" && dados.passoAtual >= 8
-        ? 7
-        : Math.max(1, dados.passoAtual);
-    irPara(soSenha ? 6 : retomada);
+    // questionário RETOMA onde parou — senha temporária nova no meio do
+    // questionário não pode mandar a pessoa de volta à primeira pergunta.
+    //
+    // 🔴 Era uma cópia da regra com a faixa ERRADA (`>= 8 ? 7 : …`): 8 e 9
+    // eram os passos do tour, que saíram; o banco trava `passo_atual` em
+    // 0..6. Pior que o número velho, faltava a GARANTIA de `passoDeAbertura`
+    // — o passo calculado podia não existir na sequência desta pessoa (quem
+    // escolheu "captação" não tem 3 nem 5), e o portal abriria num passo que
+    // a barra não conhece. Hoje ninguém está nesse estado (máx. `passo_atual`
+    // = 3); a correção é para não voltar a ficar.
+    irPara(
+      soSenha
+        ? 6
+        : passoDeAbertura({
+            precisaTrocarSenha: false, // acabou de trocar
+            status: dados.status,
+            passoAtual: dados.passoAtual,
+            origem,
+            soSenha: false,
+          }),
+    );
   }
 
   /** A razão pela qual o "Continuar" está travado. Vazio = pode seguir. */

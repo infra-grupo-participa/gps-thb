@@ -1,0 +1,52 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Titular × sócio: no cartão do aluno e em números no dashboard
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Dois pedidos do Marcio (11/09/2026):
+--   1. "olhando no cartão do aluno, quero saber quem é o sócio dele"
+--   2. "no dashboard principal, a visualização de titulares e sócios, pra
+--       gente saber quem é quem no sistema em números"
+--
+-- ## 1. `gps.admin_painel_alunos` ganha `socio_nome`
+--
+-- 🔑 CTE SEPARADA, não join na CTE `amb` que já existe. Medido:
+--      base (hoje)            0,31 ms ·   95 buffers · Index Only Scan
+--      join dentro de `amb`   1,98 ms · 1049 buffers · PERDE o Index Only
+--      CTE `soc` separada     0,60 ms ·  163 buffers · preserva ✅
+-- O join em `thb_alunos` dentro de `amb` força heap fetch nas 153 linhas de
+-- membro para aproveitar só as 10 que são sócio. A CTE toca apenas as 10.
+--
+-- `drop` antes é obrigatório (42P13: mudar `returns table` não passa por
+-- `create or replace`). Corpo extraído com `pg_get_functiondef` DO BANCO,
+-- nunca recopiado de migration antiga — a regra da …234, que já custou os 5
+-- cards de classe revertidos em silêncio.
+--
+-- Não-regressão conferida com JWT de admin, antes e depois:
+--      captação 16 · execução 1 · inicial 126  (143 ambientes)
+-- E o campo novo: 10 ambientes com `socio_nome`, o mesmo total de sócios.
+--
+-- ## 2. `gps.admin_dashboard` ganha o bloco `equipe`
+--
+-- Reusa a MESMA varredura de `gps.membros` que o bloco `acesso` já faz — o
+-- `papel` é o único eixo novo, então não é consulta a mais.
+--
+-- Devolve: titulares · socios · socios_ativos_30d · socios_nunca_entraram ·
+-- ambientes_compartilhados · convites_pendentes.
+--
+-- 🔑 `socios_ativos_30d` é o número que interessa. Medido em 11/09: **10
+-- sócios com login e só 4 acessando nos últimos 30 dias**. Cadastrar sócio
+-- não é o mesmo que ter sócio participando — e é isso que a tela precisa
+-- dizer à equipe.
+--
+-- REVERSÃO: as duas funções voltam pelo corpo anterior; nenhuma tabela muda.
+--
+-- ⚠️ Este arquivo é RETRATO do que já está aplicado (as duas funções foram
+-- atualizadas por substituição textual sobre `pg_get_functiondef`). A
+-- conferência abaixo diz se o banco tem o que esta migração descreve:
+--
+--   select p.proname,
+--          pg_get_functiondef(p.oid) ~ 'socio_nome' as tem_socio
+--     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+--    where n.nspname = 'gps'
+--      and p.proname in ('admin_painel_alunos', 'admin_dashboard');
+--   -- ESPERADO: as duas com `true`.

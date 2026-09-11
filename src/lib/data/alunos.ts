@@ -234,10 +234,13 @@ export interface AlunoGps {
   favorito: { nome: string; fase: FaseCliente } | null;
   /**
    * Nome do sócio do ambiente, como segunda linha da identidade no card
-   * (`+ Nome do Sócio`). `null`/`undefined` = ambiente sem sócio OU a RPC
-   * ainda não traz a coluna — os dois casos são "não mostrar", nunca um erro.
-   * Não é populado por consulta própria (zero N+1): depende de
-   * `gps.admin_painel_alunos` ganhar `socio_nome` (pendente, ver
+   * (`+ Nome do Sócio`). `null` = ambiente sem sócio — "não mostrar", nunca
+   * um erro.
+   *
+   * ✅ Vem de `gps.admin_painel_alunos` (migração …247), numa **CTE separada**
+   * que toca só as linhas de sócio. Zero N+1, e o join NÃO entrou na CTE
+   * `amb` de propósito: ali ele mataria o Index Only Scan (1,98 ms contra
+   * 0,60 ms — medido em 11/09/2026,
    * `docs/audits/2026-09-11-socios/medicao-painel-socio.md`).
    */
   socioNome?: string | null;

@@ -115,11 +115,30 @@ export interface DashboardGrauRelacao {
   naoInformado: number;
 }
 
+/**
+ * Quem é quem no sistema, em números (pedido do Marcio, 11/09/2026).
+ *
+ * 🔑 `sociosAtivos30d` é o número que importa, não `socios`: em 11/09 havia
+ * 10 sócios com login e só 4 acessando nos últimos 30 dias. Cadastrar sócio
+ * não é o mesmo que ter sócio participando — e a tela precisa dizer isso.
+ */
+export interface DashboardEquipe {
+  titulares: number;
+  socios: number;
+  sociosAtivos30d: number;
+  sociosNuncaEntraram: number;
+  /** Ambientes com mais de um membro (titular + sócio dividindo o portal). */
+  ambientesCompartilhados: number;
+  /** Convites de sócio em aberto, ainda dentro do prazo de 7 dias. */
+  convitesPendentes: number;
+}
+
 export interface Dashboard {
   geradoEm: string;
   referencia: DashboardReferencia;
   programa: DashboardPrograma;
   acesso: DashboardAcesso;
+  equipe: DashboardEquipe;
   onboarding: DashboardOnboarding;
   clientes: DashboardClientes;
   honorarios: DashboardHonorarios;
@@ -170,6 +189,7 @@ export function mapearDashboard(d: Record<string, unknown>): Dashboard {
   const ref = (d.referencia ?? {}) as Record<string, unknown>;
   const pro = (d.programa ?? {}) as Record<string, unknown>;
   const ace = (d.acesso ?? {}) as Record<string, unknown>;
+  const eqp = (d.equipe ?? {}) as Record<string, unknown>;
   const onb = (d.onboarding ?? {}) as Record<string, unknown>;
   const cli = (d.clientes ?? {}) as Record<string, unknown>;
   const hon = (d.honorarios ?? {}) as Record<string, unknown>;
@@ -210,6 +230,14 @@ export function mapearDashboard(d: Record<string, unknown>): Dashboard {
       nuncaEntraram: n(ace.nunca_entraram),
       semAcesso30d: n(ace.sem_acesso_30d),
       ativos30d: n(ace.ativos_30d),
+    },
+    equipe: {
+      titulares: n(eqp.titulares),
+      socios: n(eqp.socios),
+      sociosAtivos30d: n(eqp.socios_ativos_30d),
+      sociosNuncaEntraram: n(eqp.socios_nunca_entraram),
+      ambientesCompartilhados: n(eqp.ambientes_compartilhados),
+      convitesPendentes: n(eqp.convites_pendentes),
     },
     onboarding: {
       pessoas,

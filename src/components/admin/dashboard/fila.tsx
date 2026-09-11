@@ -1,4 +1,4 @@
-import { FileSignature, LifeBuoy, UserRoundPlus } from "lucide-react";
+import { FileSignature, LifeBuoy, UserRoundPlus, UsersRound } from "lucide-react";
 import Link from "next/link";
 
 import { BarraEmpilhada, Barras, pctDe } from "@/components/ui/graficos";
@@ -31,7 +31,23 @@ export function FilaEBase({
   atendimento: ResumoAtendimento;
   ambientesCarregados: number;
 }) {
-  const { honorarios } = dados;
+  const { honorarios, equipe } = dados;
+
+  // 🔴 Quatro números que NÃO se somam entre si (mesma regra do card da fila):
+  // "sócios" é um subconjunto de pessoas, "ativos" um subconjunto de sócios, e
+  // "convites" nem virou pessoa ainda. O macro do card é titulares + sócios;
+  // estas linhas detalham, não empilham.
+  const linhasEquipe = [
+    { rotulo: "Titulares", valor: equipe.titulares },
+    { rotulo: "Sócios", valor: equipe.socios },
+    ...(equipe.socios > 0
+      ? [{ rotulo: "Sócios ativos (30 dias)", valor: equipe.sociosAtivos30d }]
+      : []),
+    ...(equipe.convitesPendentes > 0
+      ? [{ rotulo: "Convites em aberto", valor: equipe.convitesPendentes }]
+      : []),
+  ];
+
   const grauInformado = dados.grauRelacao.itens.reduce((s, g) => s + g.qtd, 0);
   const totalGrau = grauInformado + dados.grauRelacao.naoInformado;
 
@@ -84,6 +100,41 @@ export function FilaEBase({
                   {l.valor}
                 </span>
               </Link>
+            </li>
+          ))}
+        </ul>
+      </CardDashboard>
+
+      {/* 🔑 QUEM É QUEM, EM NÚMEROS (pedido do Marcio, 11/09/2026).
+          O número que a equipe precisa ver não é "10 sócios" — é quantos
+          deles ESTÃO USANDO. Em 11/09: 10 com login, 4 ativos nos últimos 30
+          dias. Cadastrar sócio não é o mesmo que ter sócio participando, e a
+          tela diz isso com a linha de contexto, não com um gráfico. */}
+      <CardDashboard
+        icone={<UsersRound />}
+        rotulo="Titulares e sócios"
+        valor={String(equipe.titulares + equipe.socios)}
+        variante="grafico"
+        contexto={`Pessoas com acesso, em ${equipe.titulares} ambientes.`}
+        link={null}
+        semLink={
+          equipe.socios === 0
+            ? "Nenhum sócio no sistema ainda."
+            : `${equipe.ambientesCompartilhados} ${
+                equipe.ambientesCompartilhados === 1 ? "ambiente é" : "ambientes são"
+              } compartilhado${equipe.ambientesCompartilhados === 1 ? "" : "s"} entre titular e sócio.`
+        }
+      >
+        <ul className="grid gap-0.5">
+          {linhasEquipe.map((l) => (
+            <li
+              key={l.rotulo}
+              className="-mx-2 flex items-baseline justify-between gap-3 rounded-md px-2 py-1.5"
+            >
+              <span className="min-w-0 corpo text-muted-foreground">
+                {l.rotulo}
+              </span>
+              <span className="shrink-0 numero tabular-nums">{l.valor}</span>
             </li>
           ))}
         </ul>

@@ -70,6 +70,11 @@ export function CriarAcessoPainel({
    * que esse mesmo login já é usado. `null` = nada a confirmar.
    */
   const [adocao, setAdocao] = useState<string[] | null>(null);
+  /**
+   * Esc / clique-fora com a senha ainda na tela: confirma antes de
+   * descartar. A senha nao se recupera depois (hash bcrypt).
+   */
+  const [confirmaDescartarSenha, setConfirmaDescartarSenha] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function reset() {
@@ -83,6 +88,7 @@ export function CriarAcessoPainel({
     setErroDiag(null);
     setErroAcao(null);
     setAdocao(null);
+    setConfirmaDescartarSenha(false);
   }
 
   async function buscar(e: React.FormEvent) {
@@ -206,7 +212,21 @@ export function CriarAcessoPainel({
       {/* Reabrir começa do zero pela `key` do botão (o painel remonta), não por
           um `reset()` no fechamento — que faria o conteúdo piscar durante a
           animação de saída. */}
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* 🔴 MESMA GUARDA DO `gerenciar-acesso/painel.tsx`: enquanto a senha
+          está na tela, Esc e clique-fora pedem confirmação. `auth.users`
+          guarda o hash bcrypt — fechada esta tela, a senha não existe mais em
+          lugar nenhum. Medido em 11/09/2026: 9 pessoas reais tiveram a senha
+          redefinida 2–3 vezes, várias em 15–20 min. */}
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          if (!v && credenciais) {
+            setConfirmaDescartarSenha(true);
+            return;
+          }
+          onOpenChange(v);
+        }}
+      >
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
@@ -490,6 +510,35 @@ export function CriarAcessoPainel({
             if (pending) return;
             setAdocao(null);
           }}
+        />
+      ) : null}
+
+      {/* Esc / clique-fora com a senha ainda na tela. */}
+      {confirmaDescartarSenha ? (
+        <DialogoConfirmacao
+          aberto
+          titulo="Fechar sem copiar a senha?"
+          descricao={
+            <>
+              A senha de <strong>{credenciais?.email}</strong> só aparece
+              aqui, agora. O sistema guarda a senha cifrada, e cifra não se
+              desfaz.
+            </>
+          }
+          consequencia={
+            <>
+              Depois de fechar, <strong>ninguém consegue ver esta senha de
+              novo</strong> — nem a equipe. Para dar acesso à pessoa será
+              preciso definir outra.
+            </>
+          }
+          rotuloConfirmar="Fechar mesmo assim"
+          rotuloCancelar="Voltar e copiar"
+          onConfirmar={() => {
+            setConfirmaDescartarSenha(false);
+            onOpenChange(false);
+          }}
+          onCancelar={() => setConfirmaDescartarSenha(false)}
         />
       ) : null}
     </>

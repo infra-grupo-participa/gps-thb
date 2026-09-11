@@ -61,6 +61,7 @@ import {
   type Credenciais,
 } from "@/components/admin/credenciais-view";
 import { AdicionarSocio } from "./adicionar-socio";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { DialogoOutrosPortais, DialogoRemoverSocio } from "./dialogos";
 import { ExcluirAmbiente } from "./excluir-ambiente";
 import { MembrosView } from "./membros-view";
@@ -89,6 +90,18 @@ export function GerenciarAcessoPainel({
   const [carregando, setCarregando] = useState(true);
   const [senha, setSenha] = useState(sugerirSenha);
   const [credenciais, setCredenciais] = useState<Credenciais | null>(null);
+  /**
+   * Esc / clique-fora com a senha na tela: confirma antes de descartar.
+   * A senha não se recupera depois (hash bcrypt) — ver o comentário no
+   * `<Dialog>` lá embaixo.
+   */
+  const [confirmaDescartarSenha, setConfirmaDescartarSenha] = useState(false);
+  /**
+   * A senha do SÓCIO recém-adicionado mora no estado de `AdicionarSocio`, não
+   * aqui — mas o `Dialog` é deste arquivo. Sem este sinal, Esc e clique-fora
+   * na tela do sócio fechariam tudo e a senha sumiria sem aviso.
+   */
+  const [senhaDeSocioNaTela, setSenhaDeSocioNaTela] = useState(false);
   const [confirmaExclusao, setConfirmaExclusao] = useState("");
   /** Sócio aguardando confirmação de remoção (PL10). `null` = diálogo fechado. */
   const [removendo, setRemovendo] = useState<MembroAcesso | null>(null);
@@ -297,7 +310,31 @@ export function GerenciarAcessoPainel({
     <>
       {/* O botão que abre isto mora no `index.tsx` — ele fica no HTML inicial;
           este módulo só chega depois do clique. */}
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* 🔴 ENQUANTO A SENHA ESTÁ NA TELA, O DIÁLOGO NÃO FECHA POR ACIDENTE.
+          Medido em 11/09/2026: 9 pessoas REAIS tiveram a senha redefinida
+          2–3 vezes, várias com 15–20 min de intervalo (Álvaro 17:25→17:39,
+          Marco Túlio 15:26→15:46, Flávia 13:56→14:15). É o sintoma de
+          "gerei a senha, fechei sem anotar, gerei de novo".
+
+          A senha só existe NESTE render: `auth.users` guarda o hash bcrypt,
+          que é irreversível — fechada a tela, ninguém no mundo a recupera,
+          nem admin, nem eu, nem o Supabase. E o `key={abertura}` do
+          `index.tsx` remonta o painel a cada abertura, então reabrir traz
+          `credenciais = null`.
+
+          Por isso Esc e clique-fora passam a pedir confirmação enquanto
+          houver credencial viva. "Concluir" continua fechando direto — ali o
+          admin está dizendo que já copiou. */}
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          if (!v && (credenciais || senhaDeSocioNaTela)) {
+            setConfirmaDescartarSenha(true);
+            return;
+          }
+          onOpenChange(v);
+        }}
+      >
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
@@ -321,11 +358,14 @@ export function GerenciarAcessoPainel({
           {tela === "adicionar-socio" ? (
             <AdicionarSocio
               ambienteAlunoId={alunoId}
+              onCredenciais={setSenhaDeSocioNaTela}
               onVoltar={() => {
+                setSenhaDeSocioNaTela(false);
                 setTela("principal");
                 carregarStatus();
               }}
               onAdicionado={() => {
+                setSenhaDeSocioNaTela(false);
                 setTela("principal");
                 carregarStatus();
                 router.refresh();
@@ -435,6 +475,38 @@ export function GerenciarAcessoPainel({
             definirSenhaDeMembro(confirmaOutros.membro, true)
           }
           onCancelar={() => setConfirmaOutros(null)}
+        />
+      ) : null}
+
+      {/* Esc / clique-fora com a senha ainda na tela. Fora do `Dialog`
+          principal pela mesma razão do PL10: o foco volta para dentro do
+          painel ao cancelar, em vez de se perder. */}
+      {confirmaDescartarSenha ? (
+        <DialogoConfirmacao
+          aberto
+          titulo="Fechar sem copiar a senha?"
+          descricao={
+            <>
+              A senha de <strong>{credenciais?.email}</strong> só aparece
+              aqui, agora. O sistema guarda a senha cifrada, e cifra não se
+              desfaz.
+            </>
+          }
+          consequencia={
+            <>
+              Depois de fechar, <strong>ninguém consegue ver esta senha de
+              novo</strong> — nem a equipe. Para dar acesso à pessoa será
+              preciso definir outra.
+            </>
+          }
+          rotuloConfirmar="Fechar mesmo assim"
+          rotuloCancelar="Voltar e copiar"
+          onConfirmar={() => {
+            setConfirmaDescartarSenha(false);
+            setSenhaDeSocioNaTela(false);
+            onOpenChange(false);
+          }}
+          onCancelar={() => setConfirmaDescartarSenha(false)}
         />
       ) : null}
     </>

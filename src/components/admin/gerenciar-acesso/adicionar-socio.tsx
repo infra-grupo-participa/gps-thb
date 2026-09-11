@@ -29,10 +29,17 @@ export function AdicionarSocio({
   ambienteAlunoId,
   onVoltar,
   onAdicionado,
+  onCredenciais,
 }: {
   ambienteAlunoId: string;
   onVoltar: () => void;
   onAdicionado: () => void;
+  /**
+   * Avisa o painel de que HÁ (ou deixou de haver) senha na tela. O `Dialog`
+   * vive no `painel.tsx` e a senha do sócio mora aqui: sem este sinal, Esc e
+   * clique-fora fechariam o diálogo e a senha some para sempre (hash bcrypt).
+   */
+  onCredenciais: (tem: boolean) => void;
 }) {
   const [termo, setTermo] = useState("");
   const [resultados, setResultados] = useState<AlunoBusca[]>([]);
@@ -95,6 +102,9 @@ export function AdicionarSocio({
         nome: sel.nome,
         telefone: sel.telefone,
       });
+      // O `Dialog` do painel passa a recusar Esc e clique-fora enquanto a
+      // senha do sócio estiver visível.
+      onCredenciais(true);
       toast.success("Sócio adicionado ao ambiente.");
     });
   }
@@ -106,7 +116,13 @@ export function AdicionarSocio({
   if (credenciais) {
     return (
       <div className="grid gap-4">
-        <CredenciaisView credenciais={credenciais} onConcluir={onAdicionado} />
+        <CredenciaisView
+          credenciais={credenciais}
+          onConcluir={() => {
+            onCredenciais(false);
+            onAdicionado();
+          }}
+        />
       </div>
     );
   }

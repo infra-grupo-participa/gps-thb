@@ -180,7 +180,7 @@ export function TarefaItem({
               onClick={() =>
                 onEnfase(overrideAtual === "realce" ? null : "realce")
               }
-              title="Realçar para o aluno"
+              title="Realçar para o parceiro"
             >
               <Sparkles className="size-3.5" />
             </EnfaseBtn>
@@ -189,7 +189,7 @@ export function TarefaItem({
               onClick={() =>
                 onEnfase(overrideAtual === "esmaecer" ? null : "esmaecer")
               }
-              title="Esmaecer para o aluno"
+              title="Esmaecer para o parceiro"
             >
               <EyeOff className="size-3.5" />
             </EnfaseBtn>

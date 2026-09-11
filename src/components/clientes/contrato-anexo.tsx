@@ -306,7 +306,7 @@ export function ContratoAnexo({
         </div>
       ) : (
         <p className="corpo-sm text-muted-foreground">
-          Nenhum contrato anexado. Quem envia o arquivo é o aluno, pelo portal
+          Nenhum contrato anexado. Quem envia o arquivo é o parceiro, pelo portal
           dele.
         </p>
       )}

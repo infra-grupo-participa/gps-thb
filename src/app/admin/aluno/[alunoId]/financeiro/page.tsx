@@ -13,7 +13,7 @@ import { AssistBanner } from "@/components/admin/assist-banner";
 import { FinanceiroView } from "@/components/financeiro/financeiro-view";
 import { PageHeader } from "@/components/ui/page-header";
 
-export const metadata = { title: "Financeiro do aluno" };
+export const metadata = { title: "Financeiro do parceiro" };
 
 /**
  * O mesmo extrato que o aluno vê, do lado da equipe — é a tela que o admin
@@ -69,11 +69,11 @@ export default async function AdminAlunoFinanceiroPage({
               href={`/admin/aluno/${alunoId}`}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
-              ← Voltar ao ambiente do aluno
+              ← Voltar ao ambiente do parceiro
             </Link>
           }
-          titulo={`Financeiro de ${aluno?.nome ?? "aluno"}`}
-          descricao="Faturamento do aluno na mentoria e o contrato do programa, lido do cadastro financeiro do Grupo Participa. Somente leitura — o portal não edita esses valores. O sócio do ambiente não vê esta aba."
+          titulo={`Financeiro de ${aluno?.nome ?? "parceiro"}`}
+          descricao="Faturamento do parceiro na mentoria e o contrato do programa, lido do cadastro financeiro do Grupo Participa. Somente leitura — o portal não edita esses valores. O sócio do ambiente não vê esta aba."
         />
         <FinanceiroView
           progresso={progresso}

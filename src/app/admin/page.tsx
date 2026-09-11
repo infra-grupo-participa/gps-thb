@@ -27,7 +27,7 @@ import { RegistrarUrlDoPainel } from "@/components/admin/voltar-ao-painel";
 import { AvisoInline } from "@/components/ui/aviso-inline";
 import { EmptyState } from "@/components/ui/empty-state";
 
-export const metadata = { title: "Admin — Alunos" };
+export const metadata = { title: "Admin — Parceiros" };
 
 /**
  * Quantas vezes o admin já pediu "Mostrar mais". O lote DOBRA a cada rodada
@@ -126,12 +126,12 @@ export default async function AdminPage({
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Painel do administrador"
-          descricao="Gerencie os acessos e acompanhe os alunos em implementação assistida."
+          descricao="Gerencie os acessos e acompanhe os parceiros em implementação assistida."
           acao={<CriarAcesso />}
         />
 
         {/* Grava a URL do painel (aba, busca, ordem, filtros, lote) a cada
-            mudança, para o "← Voltar aos alunos" da ficha do aluno devolver
+            mudança, para o "← Voltar aos parceiros" da ficha do parceiro devolver
             esta mesma tela. Ver `admin/painel-url.ts`. */}
         <RegistrarUrlDoPainel />
 
@@ -154,7 +154,7 @@ export default async function AdminPage({
               // continua funcionando.
               <AvisoInline>
                 Não foi possível carregar a visão do programa agora. A aba
-                Alunos não depende dela.
+                Parceiros não depende dela.
               </AvisoInline>
             )
           }

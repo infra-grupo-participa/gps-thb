@@ -35,7 +35,7 @@ export function ChamadoThread({
           ? "Equipe"
           : visao === "aluno"
             ? "Você"
-            : (m.autor_nome ?? "Aluno");
+            : (m.autor_nome ?? "Parceiro");
 
         return (
           <li key={m.id}>

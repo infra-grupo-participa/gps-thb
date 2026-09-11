@@ -195,7 +195,7 @@ export function PlantaoInscritos({
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
-              <TableHead>Aluno</TableHead>
+              <TableHead>Parceiro</TableHead>
               <TableHead>Presença</TableHead>
               <TableHead>NPS</TableHead>
               <TableHead className="text-right">Ações</TableHead>

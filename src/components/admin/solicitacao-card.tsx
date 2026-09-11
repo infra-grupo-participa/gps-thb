@@ -60,8 +60,8 @@ export function SolicitacaoCard({
 
   function aprovar() {
     if (!selecionado) {
-      setErroAprovar("Selecione o aluno correspondente antes de aprovar.");
-      toast.error("Selecione o aluno correspondente antes de aprovar.");
+      setErroAprovar("Selecione o parceiro correspondente antes de aprovar.");
+      toast.error("Selecione o parceiro correspondente antes de aprovar.");
       return;
     }
     setErroAprovar(null);
@@ -151,20 +151,20 @@ export function SolicitacaoCard({
                 size="sm"
                 onClick={() => setBuscaAberta((v) => !v)}
               >
-                Trocar aluno
+                Trocar parceiro
               </Button>
             </div>
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-muted-foreground">
-                Nenhum aluno correspondente encontrado por e-mail.
+                Nenhum parceiro correspondente encontrado por e-mail.
               </span>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => setBuscaAberta((v) => !v)}
               >
-                Buscar aluno
+                Buscar parceiro
               </Button>
             </div>
           )}
@@ -175,7 +175,7 @@ export function SolicitacaoCard({
                 <Input
                   value={termo}
                   onChange={(e) => setTermo(e.target.value)}
-                  placeholder="Nome ou e-mail do aluno"
+                  placeholder="Nome ou e-mail do parceiro"
                 />
                 <Button type="submit" variant="secondary" disabled={buscando}>
                   {buscando ? "..." : "Buscar"}
@@ -262,7 +262,7 @@ export function SolicitacaoCard({
       >
         <div className="grid gap-2">
           <Label htmlFor={`motivo-${solicitacao.id}`}>
-            Motivo (o aluno vê)
+            Motivo (o parceiro vê)
           </Label>
           <Textarea
             id={`motivo-${solicitacao.id}`}

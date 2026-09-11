@@ -76,7 +76,7 @@ export function DialogoCancelamento({
           {slot.inscritosQtd === 0
             ? "Ninguém está inscrito neste plantão."
             : `${slot.inscritosQtd} inscrito(s) serão avisados por e-mail e a inscrição deles será cancelada.`}{" "}
-          O plantão sai do ar para os alunos, mas continua aqui no histórico.
+          O plantão sai do ar para os parceiros, mas continua aqui no histórico.
         </>
       }
       rotuloConfirmar="Cancelar plantão"

@@ -118,7 +118,7 @@ export function PerfilHero({
               Olá{primeiroNome ? `, ${primeiroNome}` : ""}!
             </div>
             <div className="font-heading text-xl font-semibold text-balance">
-              {aluno.nome ?? "Aluno"}
+              {aluno.nome ?? "Parceiro"}
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {turma ? (

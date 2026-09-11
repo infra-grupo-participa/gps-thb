@@ -16,7 +16,7 @@ import { PreviaAlunoToggle } from "@/components/admin/previa-aluno";
  * haveria como sair dela.
  */
 export function AssistBanner({ aluno }: { aluno: Aluno | null }) {
-  const nome = aluno?.nome ?? "aluno";
+  const nome = aluno?.nome ?? "parceiro";
 
   return (
     <>
@@ -34,7 +34,7 @@ export function AssistBanner({ aluno }: { aluno: Aluno | null }) {
           <span className="text-muted-foreground">
             Você está no ambiente de{" "}
             <span className="font-medium text-foreground">{nome}</span>. As
-            alterações são salvas na conta do aluno.
+            alterações são salvas na conta do parceiro.
           </span>
         </div>
       </div>

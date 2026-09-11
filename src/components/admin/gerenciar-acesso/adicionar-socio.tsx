@@ -63,7 +63,7 @@ export function AdicionarSocio({
 
   function selecionar(a: AlunoBusca) {
     if (a.id === ambienteAlunoId) {
-      toast.error("Este aluno já é o titular deste ambiente.");
+      toast.error("Este parceiro já é o titular deste ambiente.");
       return;
     }
     setSel(a);
@@ -126,7 +126,7 @@ export function AdicionarSocio({
             onClick={() => setSel(null)}
             className="text-left text-xs text-muted-foreground hover:text-foreground"
           >
-            ← escolher outro aluno
+            ← escolher outro parceiro
           </button>
           <div className="rounded-md border p-3 text-sm">
             <div className="font-medium">{sel.nome}</div>
@@ -198,7 +198,7 @@ export function AdicionarSocio({
             {resultados.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
                 {termo.trim().length >= 2 && !buscando
-                  ? "Nenhum aluno encontrado."
+                  ? "Nenhum parceiro encontrado."
                   : "Digite ao menos 2 caracteres e busque."}
               </p>
             ) : (

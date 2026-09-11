@@ -341,7 +341,7 @@ export function PlantaoCalendario({
           <DialogHeader>
             <DialogTitle>{diaAberto ? rotuloData(diaAberto) : ""}</DialogTitle>
             <DialogDescription>
-              Slot sem link do Zoom cadastrado NÃO aparece para o aluno, mesmo
+              Slot sem link do Zoom cadastrado NÃO aparece para o parceiro, mesmo
               que esteja marcado como publicado.
             </DialogDescription>
           </DialogHeader>

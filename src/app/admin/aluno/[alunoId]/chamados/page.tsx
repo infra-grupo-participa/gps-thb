@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ChamadosLista } from "@/components/chamados/chamados-lista";
 
-export const metadata = { title: "Chamados do aluno" };
+export const metadata = { title: "Chamados do parceiro" };
 
 /**
  * Modo assistência: a MESMA lista que o aluno vê, do lado da equipe — inclusive
@@ -65,17 +65,17 @@ export default async function AdminAlunoChamadosPage({
               href={`/admin/aluno/${alunoId}`}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
-              ← Voltar ao ambiente do aluno
+              ← Voltar ao ambiente do parceiro
             </Link>
           }
-          titulo={`Chamados de ${aluno?.nome ?? "aluno"}`}
+          titulo={`Chamados de ${aluno?.nome ?? "parceiro"}`}
           descricao="Todos os chamados deste ambiente, abertos e fechados. Responder e fechar acontece na thread."
         />
 
         {chamados.length === 0 ? (
           <EmptyState
             icone={<LifeBuoy />}
-            titulo="Este aluno nunca abriu um chamado."
+            titulo="Este parceiro nunca abriu um chamado."
             descricao="A aba Suporte já aparece no portal dele. Quando abrir, o chamado entra na fila da equipe."
           />
         ) : (

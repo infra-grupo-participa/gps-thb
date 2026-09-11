@@ -48,8 +48,8 @@ export function PastaConfigForm({
       <CardHeader>
         <CardTitle className="text-base">Link da pasta (Drive)</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Cole o link da pasta do Google Drive deste aluno (compartilhada entre
-          a equipe e o aluno).
+          Cole o link da pasta do Google Drive deste parceiro (compartilhada entre
+          a equipe e o parceiro).
         </p>
       </CardHeader>
       <CardContent>

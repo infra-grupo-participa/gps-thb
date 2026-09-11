@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/select";
 
 const ROTULO_PLANO: Record<string, string> = {
-  aluno: "Aluno",
+  aluno: "Parceiro",
   diamante: "Diamante",
   platina: "Platina",
   super_diamante: "Super Diamante",
@@ -164,7 +164,7 @@ export function CadastrarAlunoForm({
         toast.error(res.erro ?? "Não foi possível cadastrar.");
         return;
       }
-      toast.success("Aluno cadastrado na base.");
+      toast.success("Parceiro cadastrado na base.");
       onCadastrado(res.aluno);
     });
   }
@@ -187,7 +187,7 @@ export function CadastrarAlunoForm({
             <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">
-                Este aluno já está na base
+                Este parceiro já está na base
               </p>
               <p className="mt-0.5 text-xs">
                 Encontrado pelo{" "}
@@ -202,7 +202,7 @@ export function CadastrarAlunoForm({
                 className="mt-2"
                 onClick={() => onUsarExistente(duplicado)}
               >
-                Usar este aluno
+                Usar este parceiro
               </Button>
             </div>
           </div>
@@ -234,8 +234,8 @@ export function CadastrarAlunoForm({
             placeholder="000.000.000-00"
             dica={
               doc
-                ? `${doc} — usado para vincular o login do aluno.`
-                : "Recomendado: é por ele que o cadastro do aluno se vincula."
+                ? `${doc} — usado para vincular o login do parceiro.`
+                : "Recomendado: é por ele que o cadastro do parceiro se vincula."
             }
           />
         </div>
@@ -383,7 +383,7 @@ export function CadastrarAlunoForm({
         {pending ? "Cadastrando..." : "Cadastrar e continuar"}
       </Button>
       <p className="text-xs text-muted-foreground">
-        O aluno entra na base do Time Holding Brasil. Em seguida você escolhe
+        O parceiro entra na base do Time Holding Brasil. Em seguida você escolhe
         criar o login agora ou só o ambiente.
       </p>
     </form>

@@ -34,8 +34,8 @@ import { cn } from "@/lib/utils";
 const carregarAluno = cache(getAlunoById);
 
 /**
- * O nome do aluno no título da aba. Com oito abas abertas — o dia normal da
- * equipe — "Diário do aluno" oito vezes não distingue de quem é cada uma.
+ * O nome do parceiro no título da aba. Com oito abas abertas — o dia normal da
+ * equipe — "Diário do parceiro" oito vezes não distingue de quem é cada uma.
  *
  * ⚠️ Guarda de papel aqui também: o Diário é exclusivo do admin por LGPD, e
  * metadata é gerada em paralelo com a página. Sem a guarda, o nome do aluno
@@ -47,11 +47,11 @@ export async function generateMetadata({
   params: Promise<{ alunoId: string }>;
 }) {
   const ctx = await getContextoSessao();
-  if (!ctx || ctx.papel !== "admin") return { title: "Diário do aluno" };
+  if (!ctx || ctx.papel !== "admin") return { title: "Diário do parceiro" };
   const { alunoId } = await params;
   const aluno = await carregarAluno(alunoId);
   const nome = aluno?.nome?.trim();
-  return { title: nome ? `Diário — ${nome}` : "Diário do aluno" };
+  return { title: nome ? `Diário — ${nome}` : "Diário do parceiro" };
 }
 
 type Foco = "tudo" | "aluno" | "equipe";
@@ -59,7 +59,7 @@ type Janela = "30" | "90" | "tudo";
 
 const OPCOES_FOCO: { valor: Foco; rotulo: string }[] = [
   { valor: "tudo", rotulo: "Tudo" },
-  { valor: "aluno", rotulo: "Só aluno" },
+  { valor: "aluno", rotulo: "Só parceiro" },
   { valor: "equipe", rotulo: "Só equipe" },
 ];
 
@@ -220,7 +220,7 @@ export default async function AdminAlunoDiarioPage({
       <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader
           titulo={`Diário de ${aluno?.nome ?? ""}`}
-          descricao="Trilha única: o que o aluno fez no portal e o que a equipe observou, combinou ou deixou pendente. Visível só para o admin."
+          descricao="Trilha única: o que o parceiro fez no portal e o que a equipe observou, combinou ou deixou pendente. Visível só para o admin."
         />
 
         <div className="mb-6">

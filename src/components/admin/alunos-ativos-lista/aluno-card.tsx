@@ -104,6 +104,7 @@ export function AlunoCard({
   aptoAoSaldo,
   classe,
   listaIncompleta,
+  prontoParaFinalizar,
   favorito,
   atendimentoDe,
   agora,
@@ -128,7 +129,7 @@ export function AlunoCard({
   );
   const pendencias = atendimento.pendenciasAbertas;
   const chamados = atendimento.chamadosAbertos;
-  const nome = aluno?.nome ?? "Aluno sem nome";
+  const nome = aluno?.nome ?? "Parceiro sem nome";
   // Um ambiente que espera a equipe (pendência aberta ou chamado aberto) NÃO
   // pode ter a mesma moldura de um em dia — era a queixa do diagnóstico, e a
   // faixa lateral custa 3 px, não uma cor de fundo que competiria com o texto.
@@ -214,6 +215,19 @@ export function AlunoCard({
                 não saberia que a base está incompleta.
                 Só aparece FORA da Inicial: lá dentro, todo mundo está
                 montando a lista e o selo seria ruído em 111 cartões. */}
+            {/* 🔑 "Pronto para finalizar" é SINAL, não estado: quem bate a
+                meta fica onde está até a equipe aprovar (decisão do Marcio,
+                10/09/2026). Antes a fase virava sozinha — e o Carlos foi
+                para "Finalizado" com 10 clientes e um valor digitado. */}
+            {prontoParaFinalizar ? (
+              <Badge
+                variant="success"
+                className="text-[10px]"
+                title="Bateu a meta de R$ 150 mil. Só a equipe marca como finalizado — abra o ambiente para aprovar."
+              >
+                pronto para finalizar
+              </Badge>
+            ) : null}
             {listaIncompleta && classe !== "inicial" ? (
               <Badge
                 variant="warning"

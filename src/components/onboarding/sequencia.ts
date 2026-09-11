@@ -53,7 +53,20 @@ export function sequenciaDePassos(opts: {
   const passos: number[] = [];
   if (opts.teveSenhaNaAbertura) passos.push(0);
   passos.push(1, 2);
-  if (opts.origem !== "captacao") passos.push(3, 4, 5);
+  // 🔴 O PASSO 4 (honorários + anexos) SAIU em 10/09/2026, por decisão do
+  // Marcio: *"anexo de documento e anexo de comprovação dos honorários devem
+  // ser removidos do onboarding também"*.
+  //
+  // O valor e o contrato passaram a viver só na FICHA DO CLIENTE, que já tem
+  // os dois campos e só os libera quando a fase é "contratado" — ou seja, no
+  // momento em que eles existem de verdade. Pedir no onboarding era cobrar
+  // prova de algo que a pessoa acabou de declarar.
+  //
+  // ⚠️ Quem estiver PARADO no passo 4 agora não fica preso: `passoDeAbertura`
+  //    garante que o passo de retomada sempre existe na sequência — quem tem
+  //    `passo_atual = 4` gravado reabre no 3, que é o maior passo válido
+  //    anterior. Foi para isso que a garantia foi escrita.
+  if (opts.origem !== "captacao") passos.push(3, 5);
   passos.push(6);
   return passos;
 }

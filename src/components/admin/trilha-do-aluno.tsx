@@ -76,7 +76,7 @@ export function TrilhaDoAluno({
         descricao={
           janelaAtiva
             ? "Escolha uma janela maior acima, ou registre uma nota para começar a trilha deste período."
-            : "Cada acesso do aluno e cada nota da equipe entram aqui automaticamente."
+            : "Cada acesso do parceiro e cada nota da equipe entram aqui automaticamente."
         }
       />
     );
@@ -131,8 +131,8 @@ export function TrilhaDoAluno({
                 : "."
             } Antes do início do log, só a data de cadastro de cada cliente foi preservada — as edições anteriores não foram registradas.`
           : truncado
-            ? "Log detalhado desde o início do acompanhamento deste aluno — parte deste período não está sendo exibida (ver aviso acima)."
-            : "Log detalhado desde o início do acompanhamento deste aluno."}
+            ? "Log detalhado desde o início do acompanhamento deste parceiro — parte deste período não está sendo exibida (ver aviso acima)."
+            : "Log detalhado desde o início do acompanhamento deste parceiro."}
       </p>
     </div>
   );

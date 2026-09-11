@@ -129,7 +129,7 @@ export function CadastroForm() {
 
       <details className="text-sm">
         <summary className="cursor-pointer text-muted-foreground">
-          Não é aluno ainda? Informe seus dados
+          Não é parceiro ainda? Informe seus dados
         </summary>
         <div className="mt-3 flex flex-col gap-4">
           <div className="flex flex-col gap-2">

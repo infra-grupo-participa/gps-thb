@@ -208,7 +208,7 @@ export default async function HomePage() {
       <AppHeader
         nome={nomeExibicao ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
-        papelRotulo="Aluno"
+        papelRotulo="Parceiro"
         navItems={navDoAluno(ctx)}
       />
       {/* `pb-16`: o conteúdo encostava no fim da viewport (B.3 do plano). */}

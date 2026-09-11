@@ -119,7 +119,7 @@ export function ChamadoResponder({
           <DialogDescription>
             {visao === "aluno"
               ? "Você pode reabrir respondendo aqui mesmo nos próximos 7 dias. Depois disso, é preciso abrir um chamado novo."
-              : "O aluno pode reabrir respondendo nos próximos 7 dias. Depois disso, ele precisa abrir um chamado novo."}
+              : "O parceiro pode reabrir respondendo nos próximos 7 dias. Depois disso, ele precisa abrir um chamado novo."}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex flex-wrap justify-end gap-2">
@@ -161,7 +161,7 @@ export function ChamadoResponder({
 
         <div className="grid gap-2">
           <Label htmlFor={idTexto}>
-            {visao === "admin" ? "Responder ao aluno" : "Responder"}
+            {visao === "admin" ? "Responder ao parceiro" : "Responder"}
           </Label>
           <Textarea
             id={idTexto}
@@ -169,7 +169,7 @@ export function ChamadoResponder({
             onChange={(e) => setTexto(e.target.value)}
             placeholder={
               visao === "admin"
-                ? "A resposta da equipe. O aluno recebe um e-mail avisando (sem o texto)."
+                ? "A resposta da equipe. O parceiro recebe um e-mail avisando (sem o texto)."
                 : "Conte o que faltou ou responda o que a equipe perguntou."
             }
             rows={4}

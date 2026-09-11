@@ -38,7 +38,7 @@ export default async function AdminAlunoEtapaPage({
     getAlunoById(alunoId),
     getEtapas(),
     // O espelho do admin tem de dizer o que o ALUNO vê: com a liberação
-    // individual, "Bloqueada para o aluno" só é verdade depois do override.
+    // individual, "Bloqueada para o parceiro" só é verdade depois do override.
     getEtapasLiberadasPara(alunoId),
     contarMembrosDoAmbiente(alunoId),
   ]);
@@ -66,12 +66,12 @@ export default async function AdminAlunoEtapaPage({
               href={base}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
-              ← Voltar ao início do aluno
+              ← Voltar ao início do parceiro
             </Link>
           }
           acao={
             !etapaInfo?.liberada ? (
-              <Badge variant="outline">Bloqueada para o aluno</Badge>
+              <Badge variant="outline">Bloqueada para o parceiro</Badge>
             ) : null
           }
         />

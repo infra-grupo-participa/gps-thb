@@ -7,7 +7,7 @@
  * 🔴 Por que a aba não pode ser estado local aqui: a página é um Server
  * Component e o calendário navega o mês por `?m=YYYY-MM`. Com `defaultValue`,
  * cada clique na seta do mês recarregava o servidor e jogava o admin de volta
- * em "Calendário" — mesmo que ele estivesse em "Alunos" ou "Mentoras". Na URL,
+ * em "Calendário" — mesmo que ele estivesse em "Parceiros" ou "Mentoras". Na URL,
  * a aba sobrevive à navegação do mês, ao F5, ao voltar do navegador e ao link
  * colado num chat da equipe.
  *
@@ -63,7 +63,7 @@ export function PlantaoAbas({
     <Tabs value={aba} onValueChange={(v) => trocar(String(v))}>
       <TabsList variant="line">
         <TabsTrigger value="calendario">Calendário</TabsTrigger>
-        <TabsTrigger value="acessos">Alunos</TabsTrigger>
+        <TabsTrigger value="acessos">Parceiros</TabsTrigger>
         <TabsTrigger value="mentoras">Mentoras</TabsTrigger>
       </TabsList>
 

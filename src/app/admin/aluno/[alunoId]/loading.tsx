@@ -14,7 +14,7 @@ export default function AdminAlunoLoading() {
         <PageHeader
           voltar={
             <span className="text-sm text-muted-foreground">
-              ← Voltar aos alunos
+              ← Voltar aos parceiros
             </span>
           }
           titulo={<SkeletonTexto className="h-7 w-64 max-w-full" />}

@@ -8,10 +8,10 @@
  * 1. sucesso, com `reativada: true` quando a pessoa já tinha inscrição
  *    cancelada neste slot e voltou para a lista;
  * 2. erro "não está na base do Acelera" — mensagem vem pronta do banco
- *    (`FRASES_INSCRITOS`); aqui só se acrescenta o atalho para a aba Alunos;
+ *    (`FRASES_INSCRITOS`); aqui só se acrescenta o atalho para a aba Parceiros;
  * 3. `slotConflitanteId` — a pessoa já tem outra inscrição ativa; mostra o
  *    aviso com um link para o outro slot no calendário (`?m=` do mês dele
- *    não é conhecido aqui, então o link vai para a aba Alunos/Calendário do
+ *    não é conhecido aqui, então o link vai para a aba Parceiros/Calendário do
  *    mês atual — não inventamos uma data que a resposta não trouxe).
  */
 
@@ -116,7 +116,7 @@ export function InscreverForm({ slotId }: { slotId: string }) {
           <p>{erro}</p>
           {semBaseAcelera ? (
             <p className="text-xs text-muted-foreground">
-              Use a aba <strong>Alunos</strong> → <strong>Liberar aluno</strong>{" "}
+              Use a aba <strong>Parceiros</strong> → <strong>Liberar parceiro</strong>{" "}
               antes de tentar inscrever de novo.
             </p>
           ) : null}

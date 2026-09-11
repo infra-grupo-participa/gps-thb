@@ -9,7 +9,7 @@ import { AssistBanner } from "@/components/admin/assist-banner";
 import { PerfilEditor } from "@/components/perfil/perfil-editor";
 import type { Aluno } from "@/lib/types";
 
-export const metadata = { title: "Perfil do aluno" };
+export const metadata = { title: "Perfil do parceiro" };
 
 export default async function AdminAlunoPerfilPage({
   params,
@@ -58,7 +58,7 @@ export default async function AdminAlunoPerfilPage({
               href={base}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
-              ← Voltar ao ambiente do aluno
+              ← Voltar ao ambiente do parceiro
             </Link>
           }
         />

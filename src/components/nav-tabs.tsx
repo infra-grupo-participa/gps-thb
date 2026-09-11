@@ -56,7 +56,7 @@ export interface NavItem {
    */
   badge?: number;
   /**
-   * Só a aba "Alunos" do painel do admin. O clique leva à **última URL do
+   * Só a aba "Parceiros" do painel do admin. O clique leva à **última URL do
    * painel** (aba, busca, ordem, filtros, lote) em vez de `/admin` pelado —
    * ver `components/admin/painel-url.ts`.
    *

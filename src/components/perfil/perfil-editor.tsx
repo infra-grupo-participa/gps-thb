@@ -93,7 +93,7 @@ export function PerfilEditor({
           </div>
           <div className="min-w-0">
             <div className="truncate text-lg font-semibold">
-              {aluno.nome ?? "Aluno"}
+              {aluno.nome ?? "Parceiro"}
             </div>
             <div className="truncate text-sm text-primary-foreground/80">
               {aluno.email}

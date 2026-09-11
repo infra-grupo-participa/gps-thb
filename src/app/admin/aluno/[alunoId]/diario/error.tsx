@@ -25,7 +25,7 @@ export default function DiarioError({
   return (
     <ErroPainel
       titulo="Não foi possível carregar o diário"
-      descricao="A trilha do aluno não veio agora. Nenhum registro foi perdido — tente de novo ou volte à ficha do aluno."
+      descricao="A trilha do parceiro não veio agora. Nenhum registro foi perdido — tente de novo ou volte à ficha do parceiro."
       digest={error.digest}
     >
       <Button onClick={() => reset()}>Tentar de novo</Button>
@@ -33,7 +33,7 @@ export default function DiarioError({
         href={voltarPara}
         className={buttonVariants({ variant: "outline" })}
       >
-        {alunoId ? "Voltar à ficha do aluno" : "Ir para o painel"}
+        {alunoId ? "Voltar à ficha do parceiro" : "Ir para o painel"}
       </Link>
     </ErroPainel>
   );

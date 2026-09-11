@@ -21,7 +21,7 @@ export function AmbienteCompartilhadoBanner({
           <>
             Ambiente de{" "}
             <span className="font-medium text-foreground">
-              {nomeTitular ?? "outro aluno"}
+              {nomeTitular ?? "outro parceiro"}
             </span>{" "}
             — você está como sócio e compartilha os mesmos clientes e
             progresso.

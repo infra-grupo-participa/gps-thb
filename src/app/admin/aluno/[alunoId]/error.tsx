@@ -26,8 +26,8 @@ export default function AssistenciaError({
 }) {
   return (
     <ErroPainel
-      titulo="Não foi possível abrir o ambiente deste aluno"
-      descricao="Nada do ambiente foi alterado. Tente de novo, ou volte à lista de alunos."
+      titulo="Não foi possível abrir o ambiente deste parceiro"
+      descricao="Nada do ambiente foi alterado. Tente de novo, ou volte à lista de parceiros."
       digest={error.digest}
     >
       <Button onClick={() => reset()}>Tentar de novo</Button>

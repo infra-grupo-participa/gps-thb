@@ -336,21 +336,51 @@ export async function definirSenhaMembro(
  */
 export async function excluirAcessoAluno(
   alunoId: string,
+  /**
+   * 🔴 A SEGUNDA CONFIRMAÇÃO, quando o ambiente tem trabalho dentro.
+   *
+   * Sem ela o banco RECUSA com P0004 e diz o que seria perdido — em vez de
+   * apagar em silêncio, que foi o que custou os 30 clientes do Eder Fagundes
+   * em 10/09/2026. Ambiente vazio continua saindo no primeiro clique.
+   */
+  confirmarPerda = false,
 ): Promise<{
   erro?: string;
   loginApagado?: boolean;
   email?: string | null;
   /** Preenchido quando o login FICOU (tem registros em outro portal do grupo) e só o ambiente foi apagado (…217). */
   loginPreservadoMotivo?: string | null;
+  /** O que o ambiente tinha — devolvido quando o banco recusa, para a tela dizer. */
+  conteudo?: { clientes: number; progresso: number; notas: number; chamados: number };
+  /** `true` = o banco recusou porque há conteúdo; a tela pede a confirmação. */
+  precisaConfirmarPerda?: boolean;
 }> {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("gps")
-    .rpc("admin_excluir_acesso", { p_aluno_id: alunoId });
+    .rpc("admin_excluir_acesso", {
+      p_aluno_id: alunoId,
+      p_confirmar_perda: confirmarPerda,
+    });
 
   if (error) {
+    // P0004 = o ambiente tem conteúdo e ninguém confirmou a perda. Não é
+    // falha: é a pergunta que faltava ser feita.
+    if (error.code === "P0004") {
+      const n = (error.message.match(/\d+/g) ?? []).map(Number);
+      return {
+        erro: error.message,
+        precisaConfirmarPerda: true,
+        conteudo: {
+          clientes: n[0] ?? 0,
+          progresso: n[1] ?? 0,
+          notas: n[2] ?? 0,
+          chamados: n[3] ?? 0,
+        },
+      };
+    }
     return { erro: traduzirErroBanco("admin/excluirAcessoAluno", error) };
   }
 

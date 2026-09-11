@@ -45,7 +45,7 @@ export function SecaoPessoas({
     <BlocoDeCorrecao
       aberto={aberto}
       titulo={`Corrigir as ${membros.length === 1 ? "pessoas" : `${membros.length} pessoas`} deste ambiente`}
-      ajuda="Senha, adotar um login existente, adicionar sócio e remover membro ficam em Gerenciar acesso, na ficha do aluno."
+      ajuda="Senha, adotar um login existente, adicionar sócio e remover membro ficam em Gerenciar acesso, na ficha do parceiro."
     >
       <ul className="grid gap-2.5">
         {membros.map((m) => (

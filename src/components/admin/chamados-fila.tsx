@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 const FILTROS = [
   { valor: "todos", rotulo: "Todos" },
   { valor: "aberto", rotulo: "Aguardando a equipe" },
-  { valor: "respondido", rotulo: "Aguardando o aluno" },
+  { valor: "respondido", rotulo: "Aguardando o parceiro" },
 ] as const;
 
 export type FiltroFila = (typeof FILTROS)[number]["valor"];
@@ -122,7 +122,7 @@ export function ChamadosFila({
           }
           descricao={
             chamados.length === 0
-              ? "Quando um aluno abrir um chamado, ele aparece aqui — o mais parado no topo. Chamados fechados ficam no ambiente de cada aluno."
+              ? "Quando um parceiro abrir um chamado, ele aparece aqui — o mais parado no topo. Chamados fechados ficam no ambiente de cada parceiro."
               : "Troque o filtro acima para ver o resto da fila."
           }
         />

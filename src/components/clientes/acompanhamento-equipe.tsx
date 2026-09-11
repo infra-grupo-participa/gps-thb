@@ -232,7 +232,7 @@ function CampoMotivo({
   const idAjuda = `${id}-ajuda`;
   return (
     <div className="grid gap-2">
-      <Label htmlFor={id}>Motivo (fica no histórico do aluno)</Label>
+      <Label htmlFor={id}>Motivo (fica no histórico do parceiro)</Label>
       <Textarea
         id={id}
         value={valor}
@@ -246,7 +246,7 @@ function CampoMotivo({
       />
       <p id={idAjuda} className="corpo-sm text-muted-foreground">
         Obrigatório, de {MOTIVO_MIN} a {MOTIVO_MAX} caracteres (
-        {valor.trim().length}/{MOTIVO_MAX}). Aparece na trilha deste aluno.
+        {valor.trim().length}/{MOTIVO_MAX}). Aparece na trilha deste parceiro.
       </p>
     </div>
   );
@@ -309,7 +309,7 @@ export function AcoesAcompanhamento({
       toast.success(
         acao === "confirmar"
           ? `A equipe assumiu o acompanhamento de ${nome}.`
-          : `${nome} voltou a poder ser trocado pelo aluno.`,
+          : `${nome} voltou a poder ser trocado pelo parceiro.`,
       );
       aoMudar();
     });
@@ -325,7 +325,7 @@ export function AcoesAcompanhamento({
       <p className="corpo-sm text-muted-foreground">
         {confirmado
           ? "A equipe assumiu o acompanhamento deste cliente. Liberar solta a fase e a exclusão; a troca do cliente continua sendo da equipe."
-          : "Confirmar o acompanhamento registra que a equipe assumiu este cliente. A escolha do aluno já é definitiva desde que ele marcou a estrela."}
+          : "Confirmar o acompanhamento registra que a equipe assumiu este cliente. A escolha do parceiro já é definitiva desde que ele marcou a estrela."}
       </p>
       <div className="flex flex-wrap gap-2">
         {confirmado ? (
@@ -369,8 +369,8 @@ export function AcoesAcompanhamento({
                   a fase deste cliente não volta para Prospecção e ele não pode
                   ser excluído
                 </strong>
-                ; o aluno continua editando o resto da ficha. A troca do cliente
-                acompanhado já era da equipe desde que o aluno marcou a estrela
+                ; o parceiro continua editando o resto da ficha. A troca do cliente
+                acompanhado já era da equipe desde que o parceiro marcou a estrela
                 (migração ...215). A trava é do banco — vale também fora desta
                 tela.
               </>
@@ -392,7 +392,7 @@ export function AcoesAcompanhamento({
           erro={
             erro ??
             (tentou && motivoCurto
-              ? `Escreva o motivo — ele fica no histórico deste aluno (mínimo de ${MOTIVO_MIN} caracteres).`
+              ? `Escreva o motivo — ele fica no histórico deste parceiro (mínimo de ${MOTIVO_MIN} caracteres).`
               : null)
           }
           onConfirmar={confirmar}
@@ -406,7 +406,7 @@ export function AcoesAcompanhamento({
             placeholder={
               acao === "confirmar"
                 ? "Ex.: combinado na reunião de 10/09 — a equipe segue com este caso até a execução."
-                : "Ex.: o cliente desistiu; o aluno vai escolher outro."
+                : "Ex.: o cliente desistiu; o parceiro vai escolher outro."
             }
           />
         </DialogoConfirmacao>

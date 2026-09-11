@@ -59,7 +59,7 @@ export function DiarioResumoCard({
           className="size-5 shrink-0 text-muted-foreground"
         />
         <div className="min-w-0 flex-1">
-          <div className="rotulo text-muted-foreground">Diário do aluno</div>
+          <div className="rotulo text-muted-foreground">Diário do parceiro</div>
           <div className="corpo-sm text-muted-foreground">
             Nenhuma nota registrada — registre a primeira.
           </div>
@@ -91,7 +91,7 @@ export function DiarioResumoCard({
       />
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex flex-wrap items-center gap-1.5">
-          <span className="rotulo text-muted-foreground">Diário do aluno</span>
+          <span className="rotulo text-muted-foreground">Diário do parceiro</span>
           <Badge variant="outline" className="text-[10px]">
             {ROTULO_VOZ[nota.voz]}
           </Badge>

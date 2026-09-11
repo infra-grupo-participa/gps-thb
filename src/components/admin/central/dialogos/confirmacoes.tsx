@@ -31,7 +31,7 @@ import {
 } from "../tipos";
 
 /**
- * "Motivo (fica no histórico do aluno)" — o mesmo desenho do "Motivo (o aluno
+ * "Motivo (fica no histórico do parceiro)" — o mesmo desenho do "Motivo (o parceiro
  * vê)" da recusa de solicitação. Aqui ele é **obrigatório**: as RPCs de trilha
  * recusam menos de 3 caracteres, e o motivo é o que a trilha do Diário mostra
  * meses depois para explicar por que aquela etapa abriu.
@@ -53,7 +53,7 @@ function CampoMotivo({
   const idAjuda = `${id}-ajuda`;
   return (
     <div className="grid gap-2">
-      <Label htmlFor={id}>Motivo (fica no histórico do aluno)</Label>
+      <Label htmlFor={id}>Motivo (fica no histórico do parceiro)</Label>
       <Textarea
         id={id}
         value={valor}
@@ -67,7 +67,7 @@ function CampoMotivo({
       />
       <p id={idAjuda} className="corpo-sm text-muted-foreground">
         Obrigatório, de {MOTIVO_MIN} a {MOTIVO_MAX} caracteres ({valor.trim().length}
-        /{MOTIVO_MAX}). Aparece na trilha deste aluno.
+        /{MOTIVO_MAX}). Aparece na trilha deste parceiro.
       </p>
     </div>
   );
@@ -131,7 +131,7 @@ export function ConfirmacaoDaAcao({
     erro:
       erro ??
       (tentou && precisaMotivo && motivoCurto
-        ? `Escreva o motivo — ele fica no histórico deste aluno (mínimo de ${MOTIVO_MIN} caracteres).`
+        ? `Escreva o motivo — ele fica no histórico deste parceiro (mínimo de ${MOTIVO_MIN} caracteres).`
         : null),
     onConfirmar: confirmar,
     onCancelar,
@@ -239,18 +239,18 @@ export function ConfirmacaoDaAcao({
         <DialogoConfirmacao
           {...comum}
           destrutivo={false}
-          titulo={`Liberar a ${rotuloEtapa(acao.etapa.etapa)} só para este aluno?`}
+          titulo={`Liberar a ${rotuloEtapa(acao.etapa.etapa)} só para este parceiro?`}
           descricao={acao.etapa.nome}
           consequencia={
             <>
               A <strong>{rotuloEtapa(acao.etapa.etapa)}</strong> abre{" "}
-              <strong>só para este aluno</strong>. Os outros continuam com a
+              <strong>só para este parceiro</strong>. Os outros continuam com a
               regra geral, que hoje diz{" "}
               <strong>{acao.etapa.global ? "liberada" : "bloqueada"}</strong>.
               Para desfazer, use &ldquo;Voltar à regra geral&rdquo;.
             </>
           }
-          rotuloConfirmar="Liberar para este aluno"
+          rotuloConfirmar="Liberar para este parceiro"
           rotuloConfirmando="Liberando…"
         >
           {campo}
@@ -261,12 +261,12 @@ export function ConfirmacaoDaAcao({
       return (
         <DialogoConfirmacao
           {...comum}
-          titulo={`Travar a ${rotuloEtapa(acao.etapa.etapa)} só para este aluno?`}
+          titulo={`Travar a ${rotuloEtapa(acao.etapa.etapa)} só para este parceiro?`}
           descricao={acao.etapa.nome}
           consequencia={
             <>
               <strong>
-                O aluno perde o acesso a esta etapa mesmo que ela esteja liberada
+                O parceiro perde o acesso a esta etapa mesmo que ela esteja liberada
                 para todo mundo.
               </strong>{" "}
               A regra geral continua{" "}
@@ -275,7 +275,7 @@ export function ConfirmacaoDaAcao({
               use &ldquo;Voltar à regra geral&rdquo;.
             </>
           }
-          rotuloConfirmar="Travar para este aluno"
+          rotuloConfirmar="Travar para este parceiro"
           rotuloConfirmando="Travando…"
         >
           {campo}
@@ -291,12 +291,12 @@ export function ConfirmacaoDaAcao({
           descricao={acao.etapa.nome}
           consequencia={
             <>
-              A exceção deste aluno é removida e a{" "}
+              A exceção deste parceiro é removida e a{" "}
               <strong>{rotuloEtapa(acao.etapa.etapa)}</strong> volta a seguir a
               regra geral, que hoje diz{" "}
               <strong>{acao.etapa.global ? "liberada" : "bloqueada"}</strong>.
               {acao.etapa.liberada && !acao.etapa.global ? (
-                <> O aluno perde o acesso que tinha por exceção.</>
+                <> O parceiro perde o acesso que tinha por exceção.</>
               ) : null}
             </>
           }
@@ -317,7 +317,7 @@ export function ConfirmacaoDaAcao({
             <>
               <strong>{acao.concluidas}</strong>{" "}
               {acao.concluidas === 1 ? "tarefa volta" : "tarefas voltam"} a ficar
-              {acao.concluidas === 1 ? " pendente" : " pendentes"} para o aluno.
+              {acao.concluidas === 1 ? " pendente" : " pendentes"} para o parceiro.
               Nada é apagado: cada uma fica registrada como reaberta na trilha
               dele, e dá para marcar de novo na tela da etapa.
             </>

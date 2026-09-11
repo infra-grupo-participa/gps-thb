@@ -74,7 +74,7 @@ function congelarPessoas(lista: AlunoGps[]): Map<string, PessoaDoLote> {
   for (const a of lista) {
     if (mapa.has(a.alunoId)) continue;
     mapa.set(a.alunoId, {
-      nome: a.aluno?.nome ?? a.aluno?.email ?? "Aluno sem nome",
+      nome: a.aluno?.nome ?? a.aluno?.email ?? "Parceiro sem nome",
       telefone: a.aluno?.telefone ?? null,
       email: a.aluno?.email ?? null,
     });
@@ -106,7 +106,7 @@ export function LoteDeAcesso({
    * `candidatos` é a lista do filtro "sem login" — e o `router.refresh()` que
    * o próprio lote dispara ESVAZIA essa lista (quem ganhou login sai do
    * filtro). Ler nome/telefone dela na hora de desenhar o relatório fazia
-   * justamente quem ficou **sem e-mail** virar "Aluno", com a mensagem de
+   * justamente quem ficou **sem e-mail** virar "Parceiro", com a mensagem de
    * WhatsApp saindo sem nome e sem link — no único caso em que a senha só
    * existe ali, naquela tela.
    */
@@ -116,7 +116,7 @@ export function LoteDeAcesso({
   const qtd = selecionados.length;
   const acimaDoTeto = qtd > LOTE_ACESSOS_MAXIMO;
   const nomeDe = new Map(
-    candidatos.map((a) => [a.alunoId, a.aluno?.nome ?? a.aluno?.email ?? "Aluno sem nome"]),
+    candidatos.map((a) => [a.alunoId, a.aluno?.nome ?? a.aluno?.email ?? "Parceiro sem nome"]),
   );
 
   function criar(adotarLoginsExistentes = false) {
@@ -148,8 +148,8 @@ export function LoteDeAcesso({
         <p className="min-w-0 flex-1 corpo-sm">
           <span className="font-medium">
             {qtd === 0
-              ? "Nenhum aluno selecionado"
-              : `${qtd} ${qtd === 1 ? "aluno selecionado" : "alunos selecionados"}`}
+              ? "Nenhum parceiro selecionado"
+              : `${qtd} ${qtd === 1 ? "parceiro selecionado" : "parceiros selecionados"}`}
           </span>
           <span className="text-muted-foreground">
             {" "}
@@ -201,7 +201,7 @@ export function LoteDeAcesso({
 
       <DialogoConfirmacao
         aberto={confirmando}
-        titulo={`Criar acesso para ${qtd} ${qtd === 1 ? "aluno" : "alunos"}?`}
+        titulo={`Criar acesso para ${qtd} ${qtd === 1 ? "parceiro" : "parceiros"}?`}
         descricao={
           <span className="line-clamp-3">
             {selecionados.map((a) => nomeDe.get(a.alunoId)).join(", ")}
@@ -385,7 +385,7 @@ function RelatorioDoLote({
                   />
                 )}
                 <span className="min-w-0 flex-1 truncate corpo-sm font-medium">
-                  {pessoas.get(r.alunoId)?.nome ?? "Aluno"}
+                  {pessoas.get(r.alunoId)?.nome ?? "Parceiro"}
                 </span>
                 <span
                   className={`shrink-0 rotulo ${

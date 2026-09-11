@@ -29,11 +29,11 @@ import { DiarioResumoCard } from "@/components/admin/diario-resumo-card";
 import { VoltarAoPainel } from "@/components/admin/voltar-ao-painel";
 
 /**
- * Título estático, não o nome do aluno: o nome só existe depois da query, e
+ * Título estático, não o nome do parceiro: o nome só existe depois da query, e
  * `generateMetadata` custaria uma segunda leitura do ambiente por abertura de
- * tela. "Ambiente do aluno" já separa esta aba das outras do painel.
+ * tela. "Ambiente do parceiro" já separa esta aba das outras do painel.
  */
-export const metadata = { title: "Ambiente do aluno" };
+export const metadata = { title: "Ambiente do parceiro" };
 
 export default async function AdminAlunoInicioPage({
   params,
@@ -105,7 +105,7 @@ export default async function AdminAlunoInicioPage({
 
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
-          titulo={aluno?.nome ?? "Aluno"}
+          titulo={aluno?.nome ?? "Parceiro"}
           descricao={aluno?.email}
           // 🔴 `href="/admin"` fixo apagava a aba, a busca, a ordem e os
           // filtros que a URL do painel guardava — e a âncora por `alunoId`

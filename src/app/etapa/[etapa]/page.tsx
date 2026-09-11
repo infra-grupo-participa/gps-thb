@@ -65,7 +65,7 @@ export default async function EtapaAlunoPage({
       <AppHeader
         nome={aluno?.nome ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
-        papelRotulo="Aluno"
+        papelRotulo="Parceiro"
         navItems={navDoAluno(ctx)}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">

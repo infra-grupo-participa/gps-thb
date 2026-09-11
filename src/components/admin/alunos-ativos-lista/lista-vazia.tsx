@@ -38,14 +38,14 @@ export function ListaVazia({
       icone={<Search />}
       titulo={
         buscando
-          ? `Nenhum aluno para «${termo.trim()}»`
+          ? `Nenhum parceiro para «${termo.trim()}»`
           : filtrosAtivos.length > 0
-            ? `Nenhum aluno ${filtrosAtivos.join(" e ")}.`
-            : "Nenhum aluno para exibir."
+            ? `Nenhum parceiro ${filtrosAtivos.join(" e ")}.`
+            : "Nenhum parceiro para exibir."
       }
       descricao={
         buscando && filtrosAtivos.length > 0
-          ? `A busca foi feita só entre os alunos filtrados por ${filtrosAtivos.join(
+          ? `A busca foi feita só entre os parceiros filtrados por ${filtrosAtivos.join(
               " e ",
             )}. Limpe os filtros para procurar na lista inteira.`
           : buscando

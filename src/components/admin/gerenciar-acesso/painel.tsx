@@ -207,7 +207,7 @@ export function GerenciarAcessoPainel({
         nome: res.nome ?? nomeAluno ?? null,
         telefone: res.telefone ?? null,
       });
-      toast.success("Senha definida. O aluno já pode entrar agora.");
+      toast.success("Senha definida. O parceiro já pode entrar agora.");
       router.refresh();
     });
   }
@@ -223,10 +223,31 @@ export function GerenciarAcessoPainel({
     });
   }
 
-  function excluirAmbiente() {
+  function excluirAmbiente(confirmarPerda = false) {
     startTransition(async () => {
-      const res = await excluirAcessoAluno(alunoId);
+      const res = await excluirAcessoAluno(alunoId, confirmarPerda);
       if (res.erro) {
+        // 🔴 P0004: o ambiente TEM conteúdo e ninguém confirmou a perda.
+        // Não é erro — é a pergunta que faltava. Em 10/09/2026 a exclusão
+        // de um ambiente levou 30 clientes sem que ninguém fosse avisado.
+        if (res.precisaConfirmarPerda && res.conteudo) {
+          const c = res.conteudo;
+          const partes = [
+            c.clientes > 0 ? `${c.clientes} cliente(s)` : null,
+            c.progresso > 0 ? `${c.progresso} tarefa(s)` : null,
+            c.notas > 0 ? `${c.notas} nota(s)` : null,
+            c.chamados > 0 ? `${c.chamados} chamado(s)` : null,
+          ].filter(Boolean);
+          toast.warning("Este ambiente tem conteúdo.", {
+            description: `${partes.join(" · ")}. Excluir apaga isso do portal — o conteúdo fica guardado na lixeira, mas o parceiro perde tudo na tela.`,
+            duration: 30_000,
+            action: {
+              label: "Excluir mesmo assim",
+              onClick: () => excluirAmbiente(true),
+            },
+          });
+          return;
+        }
         toast.error(res.erro);
         return;
       }
@@ -288,12 +309,12 @@ export function GerenciarAcessoPainel({
             </DialogTitle>
             <DialogDescription>
               {tela === "adicionar-socio"
-                ? "Vincule um aluno já cadastrado como sócio deste ambiente."
+                ? "Vincule um parceiro já cadastrado como sócio deste ambiente."
                 : tela === "senha-membro"
                   ? `${membroSenha?.email ?? "Membro sem e-mail"} — ${
                       membroSenha?.papel === "titular" ? "titular" : "sócio"
                     } deste ambiente.`
-                  : `${nomeAluno ?? "Aluno"} — defina a senha na hora, sem depender de e-mail.`}
+                  : `${nomeAluno ?? "Parceiro"} — defina a senha na hora, sem depender de e-mail.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -340,10 +361,10 @@ export function GerenciarAcessoPainel({
               />
 
               <div className="grid gap-2">
-                <Label htmlFor="senha-aluno">Nova senha do titular</Label>
+                <Label htmlFor="senha-parceiro">Nova senha do titular</Label>
                 <div className="flex gap-2">
                   <InputSenha
-                    id="senha-aluno"
+                    id="senha-parceiro"
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
                     className="font-mono"

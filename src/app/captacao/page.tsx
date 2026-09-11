@@ -28,7 +28,7 @@ export default async function CaptacaoPage() {
       <AppHeader
         nome={ctx.perfil?.nome ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
-        papelRotulo={ctx.papel === "admin" ? "Admin" : "Aluno"}
+        papelRotulo={ctx.papel === "admin" ? "Admin" : "Parceiro"}
         homeHref={ctx.papel === "admin" ? "/admin" : "/"}
         navItems={navItems}
       />

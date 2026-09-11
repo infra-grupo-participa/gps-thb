@@ -89,7 +89,7 @@ export function AlunosAtivosLista({
   total: number;
   /**
    * 🔴 A leitura FALHOU (`getAlunosGps` devolve a frase). Lista vazia por
-   * falha e lista vazia por base vazia desenhavam a MESMA tela — "Nenhum aluno
+   * falha e lista vazia por base vazia desenhavam a MESMA tela — "Nenhum parceiro
    * no programa ainda", com convite para criar o primeiro acesso. Com a frase
    * aqui, a tela diz que não conseguiu ler, e não que não há ninguém.
    */
@@ -233,8 +233,8 @@ export function AlunosAtivosLista({
     return (
       <EmptyState
         icone={<Users />}
-        titulo="Nenhum aluno no programa ainda"
-        descricao="Use “Criar acesso”, no topo da página, para colocar o primeiro aluno em implementação assistida."
+        titulo="Nenhum parceiro no programa ainda"
+        descricao="Use “Criar acesso”, no topo da página, para colocar o primeiro parceiro em implementação assistida."
       />
     );
   }
@@ -267,7 +267,7 @@ export function AlunosAtivosLista({
         </h2>
         <span className="corpo-sm text-muted-foreground">
           {contagem[estado.classe]}{" "}
-          {contagem[estado.classe] === 1 ? "aluno" : "alunos"}
+          {contagem[estado.classe] === 1 ? "parceiro" : "parceiros"}
         </span>
       </div>
 
@@ -286,7 +286,7 @@ export function AlunosAtivosLista({
             value={estado.termo}
             onChange={(e) => definirTermo(e.target.value)}
             placeholder="Buscar por nome ou e-mail"
-            aria-label="Buscar aluno por nome ou e-mail"
+            aria-label="Buscar parceiro por nome ou e-mail"
             className="pl-8"
           />
         </div>
@@ -295,7 +295,7 @@ export function AlunosAtivosLista({
           value={estado.ordem}
           onValueChange={(v) => v && definirOrdem(v as OrdemAlunos)}
         >
-          <SelectTrigger aria-label="Ordenar alunos" className="w-[240px]">
+          <SelectTrigger aria-label="Ordenar parceiros" className="w-[240px]">
             <SelectValue>
               {(v: OrdemAlunos) => `Ordenar: ${ROTULO_ORDEM[v]}`}
             </SelectValue>
@@ -430,7 +430,7 @@ function FalhaAoCarregar({ erro }: { erro: string }) {
         </span>
         <div className="grid max-w-[52ch] gap-1.5">
           <p className="font-heading titulo-h2 text-foreground">
-            Não foi possível carregar a lista de alunos
+            Não foi possível carregar a lista de parceiros
           </p>
           <p className="corpo text-muted-foreground">
             {erro} Ninguém foi removido do programa — é a leitura que falhou.

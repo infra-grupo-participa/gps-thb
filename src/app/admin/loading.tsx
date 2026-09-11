@@ -10,7 +10,7 @@ export default function AdminLoading() {
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Painel do administrador"
-          descricao="Gerencie os acessos e acompanhe os alunos em implementação assistida."
+          descricao="Gerencie os acessos e acompanhe os parceiros em implementação assistida."
         />
 
         {/* Os 4 KPIs do topo: mesma grade e mesma altura do conteúdo real. */}

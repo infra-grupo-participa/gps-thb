@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Diálogo "Liberar aluno" — aba Alunos de `/admin/plantao`.
+ * Diálogo "Liberar parceiro" — aba Parceiros de `/admin/plantao`.
  *
  * `gps.plantao_alunos` é um CSV CONGELADO (carga de 01/09): nada nele se
  * atualiza sozinho, o job noturno só REMOVE quem migrou para o Programa,
@@ -110,13 +110,13 @@ export function LiberarAlunoPlantao() {
         render={
           <Button variant="outline">
             <UserPlusIcon className="size-4" />
-            Liberar aluno
+            Liberar parceiro
           </Button>
         }
       />
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Liberar aluno no Plantão</DialogTitle>
+          <DialogTitle>Liberar parceiro no Plantão</DialogTitle>
           <DialogDescription>
             Use isto quando a pessoa comprou o Acelera Holding mas não está na
             lista abaixo — a lista é uma carga fixa de 01/09 e não se atualiza
@@ -188,7 +188,7 @@ export function LiberarAlunoPlantao() {
               Cancelar
             </Button>
             <Button type="submit" disabled={enviando} aria-busy={enviando || undefined}>
-              {enviando ? "Liberando..." : "Liberar aluno"}
+              {enviando ? "Liberando..." : "Liberar parceiro"}
             </Button>
           </DialogFooter>
         </form>

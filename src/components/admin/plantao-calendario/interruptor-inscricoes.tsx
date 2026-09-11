@@ -68,7 +68,7 @@ export function InterruptorInscricoes({
       toast.success(aberta ? "Inscrições reabertas." : "Inscrições pausadas.");
       setAvisoInterruptor(
         aberta
-          ? "Inscrições reabertas. Os alunos voltam a se inscrever e cancelar."
+          ? "Inscrições reabertas. Os parceiros voltam a se inscrever e cancelar."
           : "Inscrições pausadas. Ninguém consegue se inscrever, cancelar ou revelar o link.",
       );
       if (!aberta) fecharConfirmacaoPausa();
@@ -105,7 +105,7 @@ export function InterruptorInscricoes({
         </span>
         <p className="text-xs text-muted-foreground">
           {inscricoesAbertas
-            ? "Os alunos conseguem se inscrever, cancelar e revelar o link da sala."
+            ? "Os parceiros conseguem se inscrever, cancelar e revelar o link da sala."
             : "Ninguém consegue se inscrever, cancelar ou revelar o link. Os plantões continuam visíveis."}
         </p>
       </div>

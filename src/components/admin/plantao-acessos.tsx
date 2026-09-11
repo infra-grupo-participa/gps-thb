@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Plantão de Dúvidas — Acelera Holding. Aba "Alunos" do admin.
+ * Plantão de Dúvidas — Acelera Holding. Aba "Parceiros" do admin.
  *
  * ⚠️ NÃO é o "agendamento de reunião com a equipe", removido em 10/08/2026
  * (commit b457005) e PROIBIDO de reconstruir.
@@ -201,7 +201,7 @@ export function PlantaoAcessos({
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por nome, e-mail, lote ou situação"
             className="pl-8"
-            aria-label="Buscar aluno do plantão"
+            aria-label="Buscar parceiro do plantão"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -233,14 +233,14 @@ export function PlantaoAcessos({
 
       {filtrados.length === 0 ? (
         <EmptyState
-          titulo="Nenhum aluno encontrado."
-          descricao="Ajuste a busca, ou use “Liberar aluno” para um caso pontual que ainda não está na base."
+          titulo="Nenhum parceiro encontrado."
+          descricao="Ajuste a busca, ou use “Liberar parceiro” para um caso pontual que ainda não está na base."
         />
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Aluno</TableHead>
+              <TableHead>Parceiro</TableHead>
               <TableHead>Lote</TableHead>
               <TableHead>Situação</TableHead>
               <TableHead>Bloqueio por programa</TableHead>

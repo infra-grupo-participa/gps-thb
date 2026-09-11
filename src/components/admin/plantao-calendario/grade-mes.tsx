@@ -235,7 +235,7 @@ export function GradeMes({
             />
           }
         >
-          publicado (o aluno vê)
+          publicado (o parceiro vê)
         </ItemLegenda>
         <ItemLegenda
           marca={

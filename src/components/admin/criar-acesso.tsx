@@ -194,7 +194,7 @@ export function CriarAcessoPainel({
         toast.error(res.erro);
         return;
       }
-      toast.success("Ambiente criado. O aluno pode se cadastrar com o CPF.");
+      toast.success("Ambiente criado. O parceiro pode se cadastrar com o CPF.");
       onOpenChange(false);
       reset();
       router.refresh();
@@ -210,12 +210,12 @@ export function CriarAcessoPainel({
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {cadastrando ? "Cadastrar aluno na base" : "Criar acesso do aluno"}
+              {cadastrando ? "Cadastrar parceiro na base" : "Criar acesso do parceiro"}
             </DialogTitle>
             <DialogDescription>
               {cadastrando
-                ? "Preencha os dados do aluno. Ele será criado no cadastro do Time Holding Brasil."
-                : "Busque o aluno pelo nome, e-mail ou CPF/CNPJ (cadastro do Time Holding Brasil)."}
+                ? "Preencha os dados do parceiro. Ele será criado no cadastro do Time Holding Brasil."
+                : "Busque o parceiro pelo nome, e-mail ou CPF/CNPJ (cadastro do Time Holding Brasil)."}
             </DialogDescription>
           </DialogHeader>
 
@@ -245,7 +245,7 @@ export function CriarAcessoPainel({
                 onClick={() => setSel(null)}
                 className="text-left text-xs text-muted-foreground hover:text-foreground"
               >
-                ← escolher outro aluno
+                ← escolher outro parceiro
               </button>
               <div className="rounded-md border p-3 text-sm">
                 <div className="font-medium">{sel.nome}</div>
@@ -264,7 +264,7 @@ export function CriarAcessoPainel({
                 <AvisoInline>
                   Não foi possível conferir este e-mail nos outros portais do
                   grupo ({erroDiag}) — confira antes de criar, ou tente de novo
-                  selecionando o aluno outra vez.
+                  selecionando o parceiro outra vez.
                 </AvisoInline>
               ) : null}
 
@@ -317,7 +317,7 @@ export function CriarAcessoPainel({
               )}
 
               <div className="grid gap-2">
-                <Label htmlFor="ca-email">E-mail do aluno</Label>
+                <Label htmlFor="ca-email">E-mail do parceiro</Label>
                 <Input
                   id="ca-email"
                   type="email"
@@ -359,7 +359,7 @@ export function CriarAcessoPainel({
               </div>
               <p className="text-xs text-muted-foreground">
                 <strong>Criar login agora</strong>: gera e-mail e senha para o
-                aluno entrar. <strong>Só criar ambiente</strong>: o aluno se
+                parceiro entrar. <strong>Só criar ambiente</strong>: o parceiro se
                 cadastra depois com o próprio CPF.
               </p>
             </div>
@@ -381,7 +381,7 @@ export function CriarAcessoPainel({
                   termo.trim().length >= 2 && !buscando ? (
                     <div className="grid gap-3 py-6 text-center">
                       <p className="text-sm text-muted-foreground">
-                        Nenhum aluno encontrado para{" "}
+                        Nenhum parceiro encontrado para{" "}
                         <strong className="text-foreground">
                           {termo.trim()}
                         </strong>
@@ -393,7 +393,7 @@ export function CriarAcessoPainel({
                           onClick={() => setCadastrando(true)}
                         >
                           <UserRoundPlus className="size-4" /> Cadastrar novo
-                          aluno
+                          parceiro
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">
@@ -446,7 +446,7 @@ export function CriarAcessoPainel({
                   onClick={() => setCadastrando(true)}
                   className="text-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 >
-                  Nenhum destes? Cadastrar novo aluno
+                  Nenhum destes? Cadastrar novo parceiro
                 </button>
               ) : null}
             </>
@@ -461,7 +461,7 @@ export function CriarAcessoPainel({
         <DialogoConfirmacao
           aberto
           titulo="Aproveitar o login que já existe?"
-          descricao={`${sel?.nome ?? "Este aluno"} · ${email}`}
+          descricao={`${sel?.nome ?? "Este parceiro"} · ${email}`}
           consequencia={
             adocao.length > 0 ? (
               <>

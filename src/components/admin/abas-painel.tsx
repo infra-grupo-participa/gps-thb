@@ -83,7 +83,7 @@ export function AbasPainel({
       <TabsList variant="line" className="justify-start">
         <TabsTrigger value="visao">Visão geral</TabsTrigger>
         <TabsTrigger value="ativos">
-          Alunos
+          Parceiros
           <Badge variant="secondary" className="ml-1.5 text-[10px]">
             {totalAlunos}
           </Badge>

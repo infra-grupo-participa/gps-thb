@@ -122,7 +122,7 @@ export function ChamadosConfig({
         <CardHeader>
           <CardTitle className="text-base">Entrada do suporte</CardTitle>
           <CardDescription>
-            Fechar impede o aluno de abrir e de responder chamados. A equipe
+            Fechar impede o parceiro de abrir e de responder chamados. A equipe
             continua respondendo e fechando os que existem.
           </CardDescription>
         </CardHeader>
@@ -168,7 +168,7 @@ export function ChamadosConfig({
               className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
               <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
-              Ninguém recebe e-mail quando um aluno abre chamado. Informe os
+              Ninguém recebe e-mail quando um parceiro abre chamado. Informe os
               endereços da equipe abaixo.
             </p>
           ) : null}

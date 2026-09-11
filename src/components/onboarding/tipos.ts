@@ -15,7 +15,7 @@
  */
 
 import type { PatchOnboarding } from "@/app/onboarding/actions";
-import { FASES_CLIENTE1_UI } from "@/lib/etapa1";
+import { FASES_CLIENTE1_OFERECIDAS } from "@/lib/etapa1";
 import {
   ANEXO_TAMANHO_MAXIMO,
   EXTENSAO_POR_MIME,
@@ -104,8 +104,18 @@ export const PERGUNTA_FASE =
  * rótulos aqui criaria um segundo lugar para a copy do João divergir daquele
  * que a conclusão usa para criar o cliente.
  */
+/**
+ * As fases que o parceiro escolhe no onboarding.
+ *
+ * 🔴 Desde 10/09/2026 são só DUAS — croqui apresentado e execução em
+ * andamento. Ter cliente passou a significar croqui já apresentado (decisão
+ * do Marcio); quem está antes disso responde "vem da captação".
+ *
+ * Vem de `FASES_CLIENTE1_OFERECIDAS`, que filtra `FASES_CLIENTE1_UI` — o mapa
+ * completo continua lá para ler o histórico de quem respondeu antes.
+ */
 export const OPCOES_FASE: { id: FaseCliente1; rotulo: string }[] =
-  FASES_CLIENTE1_UI.map((f) => ({ id: f.id, rotulo: f.rotulo }));
+  FASES_CLIENTE1_OFERECIDAS.map((f) => ({ id: f.id, rotulo: f.rotulo }));
 
 /** 🔴 LITERAL do João. */
 export const ROTULO_HONORARIOS = "Valor dos honorários pactuados";

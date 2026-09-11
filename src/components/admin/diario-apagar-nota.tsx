@@ -58,7 +58,7 @@ export function DiarioApagarNota({
             {trecho.length >= 120 ? "…" : ""}”
           </span>
         }
-        consequencia="A nota é apagada de vez — não dá para desfazer. Fica registrado no histórico do aluno que você a apagou, e quando."
+        consequencia="A nota é apagada de vez — não dá para desfazer. Fica registrado no histórico do parceiro que você a apagou, e quando."
         rotuloConfirmar="Apagar a nota"
         rotuloConfirmando="Apagando…"
         confirmando={pendente}

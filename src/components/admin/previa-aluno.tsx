@@ -53,15 +53,15 @@ function inscrever(ouvinte: () => void): () => void {
 const snapshotNoServidor = () => false;
 
 /**
- * "Pré-visualizar como o aluno vê" — dentro do Modo Assistência, esconde os
+ * "Pré-visualizar como o parceiro vê" — dentro do Modo Assistência, esconde os
  * elementos exclusivos do admin (`.previa-oculta`, regra em `globals.css`).
  *
  * É PURAMENTE VISUAL. Nada muda no servidor: a sessão continua sendo a do
  * admin, `ehAdmin()` continua verdadeiro e o que for editado continua salvando
- * na conta do aluno. Por isso a pílula diz isso em texto quando está ligada —
+ * na conta do parceiro. Por isso a pílula diz isso em texto quando está ligada —
  * a prévia não pode induzir o admin a achar que está num sandbox.
  *
- * "Virar o aluno" de verdade não é opção: colidiria com a trava de LGPD do
+ * "Virar o parceiro" de verdade não é opção: colidiria com a trava de LGPD do
  * Diário, que é de servidor (`assistenciaNavItems` + policy só-admin).
  */
 export function PreviaAlunoToggle(): React.JSX.Element {
@@ -99,18 +99,18 @@ export function PreviaAlunoToggle(): React.JSX.Element {
       >
         {ligado ? (
           <>
-            <EyeOff className="size-3.5" /> Pré-visualização do aluno · Sair
+            <EyeOff className="size-3.5" /> Pré-visualização do parceiro · Sair
           </>
         ) : (
           <>
-            <Eye className="size-3.5" /> Pré-visualizar como o aluno vê
+            <Eye className="size-3.5" /> Pré-visualizar como o parceiro vê
           </>
         )}
       </button>
 
       {ligado ? (
         <p className="mt-1.5 rounded-lg border bg-background/95 px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground shadow-sm">
-          Você continua como admin; o que você editar salva na conta do aluno.
+          Você continua como admin; o que você editar salva na conta do parceiro.
         </p>
       ) : null}
     </div>

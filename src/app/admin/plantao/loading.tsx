@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
  * ela é `next/image` sobre o cartão `#180b00` e apareceria de verdade no
  * esqueleto, não como forma — melhor deixar o espaço e não piscar a marca.
  *
- * A forma é: fileira de abas (Calendário / Alunos / Mentoras) e a grade do
+ * A forma é: fileira de abas (Calendário / Parceiros / Mentoras) e a grade do
  * mês, 7 colunas — o padrão do `PlantaoCalendario`. Esqueleto de lista aqui
  * seria a forma errada: o conteúdo chega em calendário.
  */
@@ -24,7 +24,7 @@ export default function AdminPlantaoLoading() {
         <PageHeader
           titulo="Plantão de Dúvidas"
           eyebrow="Produto: Acelera Holding"
-          descricao="Só participa quem comprou o Acelera Holding — agenda das mentoras, inscritos e acesso dos alunos."
+          descricao="Só participa quem comprou o Acelera Holding — agenda das mentoras, inscritos e acesso dos parceiros."
         />
         <div role="status" aria-live="polite" className="grid gap-6">
           <span className="sr-only">Carregando o plantão…</span>

@@ -54,7 +54,7 @@ export default async function FinanceiroPage() {
       <AppHeader
         nome={null}
         email={sessao.user?.email ?? null}
-        papelRotulo="Aluno"
+        papelRotulo="Parceiro"
         navItems={navDoAluno(sessao)}
       />
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-6">

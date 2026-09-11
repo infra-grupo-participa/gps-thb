@@ -58,7 +58,7 @@ export function NotaRapida({
         <DialogHeader>
           <DialogTitle>Nota rápida — {nomeDoAluno}</DialogTitle>
           <DialogDescription>
-            Fica no Diário do aluno. O aluno não vê.
+            Fica no Diário do parceiro. O parceiro não vê.
           </DialogDescription>
         </DialogHeader>
 

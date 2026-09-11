@@ -166,7 +166,7 @@ export function GraficosDoPrograma({
             altura={ALTURA_GRAFICO}
             series={[
               {
-                rotulo: "Alunos",
+                rotulo: "Parceiros",
                 tom: "marca",
                 area: true,
                 valorNoFim: true,
@@ -184,7 +184,7 @@ export function GraficosDoPrograma({
                 })),
               },
             ]}
-            resumo={`Eventos por dia nos últimos 30 dias: ${totalAluno} de alunos e ${totalEquipe} da equipe, média de ${mediaPorDia} por dia.`}
+            resumo={`Eventos por dia nos últimos 30 dias: ${totalAluno} de parceiros e ${totalEquipe} da equipe, média de ${mediaPorDia} por dia.`}
           />
         )}
       </CardDashboard>
@@ -195,7 +195,7 @@ export function GraficosDoPrograma({
         rotulo="Funil de clientes"
         valor={String(clientes.total)}
         variante="grafico"
-        contexto="Clientes cadastrados pelos alunos, por fase."
+        contexto="Clientes cadastrados pelos parceiros, por fase."
         link={{
           href: `${LINK_LISTA}&f=tem_fechamento`,
           rotulo: "Ver quem tem cliente em fechamento",

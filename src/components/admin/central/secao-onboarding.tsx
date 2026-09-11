@@ -337,14 +337,14 @@ export function SecaoOnboarding({
               ? `sim, desde ${formatarData(favorito.confirmadoEm)}`
               : favorito
                 ? "não"
-                : "não — o aluno ainda não escolheu a estrela"
+                : "não — o parceiro ainda não escolheu a estrela"
           }
           detalhe={
             favorito?.confirmadoEm
-              ? `Enquanto estiver confirmado, o aluno não troca a estrela, não apaga ${favorito.nome || "o cliente"} e não volta a fase para Prospecção. Liberar é na ficha.`
+              ? `Enquanto estiver confirmado, o parceiro não troca a estrela, não apaga ${favorito.nome || "o cliente"} e não volta a fase para Prospecção. Liberar é na ficha.`
               : favorito
-                ? `O aluno escolheu ${favorito.nome || "um cliente"}. Confirmar o acompanhamento trava a escolha dele — a porta é a ficha do cliente.`
-                : "Sem estrela não há o que confirmar. Os passos 4 a 8 da Etapa 01 seguem travados para este aluno."
+                ? `O parceiro escolheu ${favorito.nome || "um cliente"}. Confirmar o acompanhamento trava a escolha dele — a porta é a ficha do cliente.`
+                : "Sem estrela não há o que confirmar. Os passos 4 a 8 da Etapa 01 seguem travados para este parceiro."
           }
           acao={
             favorito ? (
@@ -360,7 +360,7 @@ export function SecaoOnboarding({
                 href={`${base}/clientes`}
                 className="foco-visivel inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-accent-foreground underline-offset-4 hover:underline"
               >
-                Ver os clientes deste aluno
+                Ver os clientes deste parceiro
               </Link>
             )
           }

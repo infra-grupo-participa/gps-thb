@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * A VOLTA ao painel — o par de peças que faz "← Voltar aos alunos" devolver a
+ * A VOLTA ao painel — o par de peças que faz "← Voltar aos parceiros" devolver a
  * mesma tela de onde o admin saiu. A regra e o saneamento estão em
  * `painel-url.ts`.
  *
  * `RegistrarUrlDoPainel` fica montado em `/admin` e grava a URL a cada
- * mudança de estado; `VoltarAoPainel` (e a aba "Alunos" do header, via
+ * mudança de estado; `VoltarAoPainel` (e a aba "Parceiros" do header, via
  * `useUrlDoPainel`) lê a chave e navega para lá.
  *
  * 🔑 Por que um observador de URL, e não uma chamada em cada `setEstado`:
@@ -66,14 +66,14 @@ export function useUrlDoPainel(): string {
 }
 
 /**
- * O link "← Voltar aos alunos" das telas do modo assistência.
+ * O link "← Voltar aos parceiros" das telas do modo assistência.
  *
  * `<Link>` de verdade (não um `<button>` com `router.push`): abrir em nova aba,
  * copiar o endereço e o menu de contexto continuam funcionando, e o destino é
  * sempre um caminho interno saneado.
  */
 export function VoltarAoPainel({
-  rotulo = "← Voltar aos alunos",
+  rotulo = "← Voltar aos parceiros",
   className,
 }: {
   rotulo?: string;

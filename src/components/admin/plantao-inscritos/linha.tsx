@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Uma linha da lista de inscritos: coluna Aluno (nome + e-mail, com "no
+ * Uma linha da lista de inscritos: coluna Parceiro (nome + e-mail, com "no
  * cadastro: {nomeCadastro}" quando os dois campos divergem — ver o comentário
  * de `InscritoAdmin` em `plantao-tipos.ts`), Presença (switch + origem) e as
  * duas ações (editar nome / cancelar inscrição).
@@ -106,7 +106,7 @@ export function LinhaInscrito({
             </div>
             <p className="text-xs text-muted-foreground">
               Só muda como aparece nesta lista e nos e-mails deste plantão. O
-              cadastro da pessoa não muda — para isso, aba Alunos.
+              cadastro da pessoa não muda — para isso, aba Parceiros.
             </p>
           </div>
         ) : (

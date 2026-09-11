@@ -49,7 +49,7 @@ export default async function AdminAlunoPastaPage({
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo={`Pasta de ${aluno?.nome ?? ""}`}
-          descricao="Configure e acompanhe a pasta do Drive do aluno."
+          descricao="Configure e acompanhe a pasta do Drive do parceiro."
         />
 
         <div className="grid gap-6">

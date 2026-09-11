@@ -99,12 +99,12 @@ export default async function AdminAlunoResolverPage({
         titulo="Não foi possível conferir este ambiente"
         descricao={
           resultado.erro ??
-          "O diagnóstico não veio agora. Nada foi alterado no ambiente do aluno."
+          "O diagnóstico não veio agora. Nada foi alterado no ambiente do parceiro."
         }
       >
         <BotaoRecarregar />
         <Link href={base} className={buttonVariants({ variant: "outline" })}>
-          Voltar à ficha do aluno
+          Voltar à ficha do parceiro
         </Link>
       </ErroPainel>
     );
@@ -169,14 +169,14 @@ export default async function AdminAlunoResolverPage({
       <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 py-8">
         <PageHeader
           eyebrow="Central de resolução"
-          titulo={`Resolver — ${aluno?.nome ?? diagnostico.nome ?? "aluno"}`}
+          titulo={`Resolver — ${aluno?.nome ?? diagnostico.nome ?? "parceiro"}`}
           descricao="O que está travando este ambiente, na ordem do socorro: sem login, nada mais importa. Cada linha traz o dado que sustenta o diagnóstico."
           voltar={
             <Link
               href={base}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
-              ← Voltar ao início do aluno
+              ← Voltar ao início do parceiro
             </Link>
           }
         />

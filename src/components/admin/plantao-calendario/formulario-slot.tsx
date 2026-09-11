@@ -181,7 +181,7 @@ export function FormularioSlot({
           disabled={pending}
         />
         <p className="text-xs text-muted-foreground">
-          Sem este link, o plantão não aparece para o aluno mesmo que
+          Sem este link, o plantão não aparece para o parceiro mesmo que
           publicado.
         </p>
       </div>

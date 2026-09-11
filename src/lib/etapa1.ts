@@ -166,11 +166,31 @@ export const GRAUS_RELACAO_UI: {
  * perderia fica guardada em `gps.onboarding_respostas.fase_cliente1`, que é o
  * retrato do dia 0; o que a equipe precisa é o derivado `apto_ao_saldo`.
  */
+/**
+ * 🔴 SÓ AS DUAS ÚLTIMAS SÃO OFERECIDAS (decisão do Marcio, 10/09/2026).
+ *
+ * *"Quando selecionamos que temos um cliente, isso significa que já
+ * apresentamos o croqui e ele está no processo da execução. Fora isso não
+ * podemos considerar cliente — se ele está na sessão, ou em processo de
+ * apresentação do croqui, não devemos considerar."*
+ *
+ * Ter cliente passou a significar **croqui já apresentado**. Quem está na
+ * sessão de viabilidade ou ainda vai apresentar não conta — essa pessoa
+ * responde "vem da captação" e monta a lista dos 30 como todo mundo.
+ *
+ * ⚠️ AS 4 FASES CONTINUAM NESTA LISTA, e é de propósito: 7 pessoas já
+ *    responderam `agendado` ou `viabilidade_feita` antes da mudança, e o
+ *    mapa `id -> faseCliente` precisa continuar resolvendo o histórico
+ *    delas. Quem filtra o que aparece na tela é `FASES_CLIENTE1_OFERECIDAS`,
+ *    logo abaixo. Remover daqui quebraria a leitura do passado.
+ */
 export const FASES_CLIENTE1_UI: {
   id: FaseCliente1;
   /** Copy LITERAL do João — não reescrever. */
   rotulo: string;
   faseCliente: FaseCliente;
+  /** `false` = fica só para ler o histórico; não aparece como opção. */
+  oferecida?: boolean;
 }[] = [
   {
     // Sessão/reunião marcada, ainda não realizada. Vira `prospeccao`: não
@@ -179,11 +199,15 @@ export const FASES_CLIENTE1_UI: {
     rotulo:
       "Sessão de viabilidade já agendada ou Reunião preliminar já agendada, aguardando realização",
     faseCliente: "prospeccao",
+    // Saiu das opções em 10/09/2026: reunião marcada não é cliente.
+    oferecida: false,
   },
   {
     id: "viabilidade_feita",
     rotulo: "Sessão de viabilidade já realizada e Croqui estrutural a apresentar",
     faseCliente: "fechamento",
+    // Saiu das opções em 10/09/2026: croqui ainda não apresentado não é cliente.
+    oferecida: false,
   },
   {
     id: "croqui_apresentado",
@@ -196,6 +220,17 @@ export const FASES_CLIENTE1_UI: {
     faseCliente: "contratado",
   },
 ];
+
+/**
+ * O que o onboarding realmente OFERECE — as duas fases em que já existe
+ * cliente de verdade (croqui apresentado em diante).
+ *
+ * 🔑 Derivada de `FASES_CLIENTE1_UI`, nunca uma segunda lista escrita à mão:
+ * duas listas divergem no primeiro dia em que alguém mexe só numa delas.
+ */
+export const FASES_CLIENTE1_OFERECIDAS = FASES_CLIENTE1_UI.filter(
+  (f) => f.oferecida !== false,
+);
 
 export const PERFIS_DISC: { id: PerfilDisc; rotulo: string }[] = [
   { id: "D", rotulo: "D — Dominância" },

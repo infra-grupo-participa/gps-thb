@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Os 5 cards da aba Alunos — a jornada do aluno no programa.
+ * Os 5 cards da aba Parceiros — a jornada do aluno no programa.
  *
  * Desenho do Marcio (10/09/2026): cinco blocos EMPILHADOS, um por linha, com
  * o nome à esquerda e o número à direita. Clicar num card abre a lista
@@ -62,7 +62,7 @@ export function CardsDeClasse({
                 ? "cursor-default border-dashed border-borda-fina bg-superficie-afundada/40"
                 : "border-borda-fina bg-card hover:border-marca-acao hover:bg-primary/[0.04] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring")
             }
-            aria-label={`${ROTULO_CLASSE[c]}: ${n} ${n === 1 ? "aluno" : "alunos"}`}
+            aria-label={`${ROTULO_CLASSE[c]}: ${n} ${n === 1 ? "parceiro" : "parceiros"}`}
           >
             <span className="min-w-0">
               <span
@@ -120,7 +120,7 @@ export function CardsDeClasse({
       })}
 
       <p className="mt-1 corpo-sm text-muted-foreground">
-        {total} {total === 1 ? "aluno" : "alunos"} no programa. A fase é
+        {total} {total === 1 ? "parceiro" : "parceiros"} no programa. A fase é
         calculada pelo que cada um já registrou — ninguém marca à mão.
       </p>
     </div>

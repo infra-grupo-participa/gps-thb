@@ -31,7 +31,7 @@ export default function ResolverError({
   return (
     <ErroPainel
       titulo="Não foi possível conferir este ambiente"
-      descricao="O diagnóstico não carregou. Nada foi alterado no ambiente do aluno — tente de novo ou volte à ficha dele."
+      descricao="O diagnóstico não carregou. Nada foi alterado no ambiente do parceiro — tente de novo ou volte à ficha dele."
       digest={error.digest}
     >
       <Button onClick={() => reset()}>Tentar de novo</Button>
@@ -39,7 +39,7 @@ export default function ResolverError({
         href={voltarPara}
         className={buttonVariants({ variant: "outline" })}
       >
-        {alunoId ? "Voltar à ficha do aluno" : "Ir para o painel"}
+        {alunoId ? "Voltar à ficha do parceiro" : "Ir para o painel"}
       </Link>
     </ErroPainel>
   );

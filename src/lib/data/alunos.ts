@@ -192,6 +192,18 @@ export interface AlunoGps {
    */
   listaIncompleta: boolean;
   /**
+   * Bateu a meta de R$ 150 mil e a equipe AINDA não finalizou.
+   *
+   * 🔑 O sinal que a equipe olha para decidir. Finalizar deixou de ser
+   * automático em 10/09/2026 (decisão do Marcio: *"somente a equipe considera
+   * o aluno como finalizado, depende da aprovação prévia da equipe"*) — antes
+   * bastava somar os honorários e a fase virava sozinha, passando por cima
+   * até da trava dos 30.
+   */
+  prontoParaFinalizar: boolean;
+  /** Quando a equipe finalizou. `null` = não finalizado. */
+  finalizadoEm: string | null;
+  /**
    * `num` das tarefas da Etapa 01 já concluídas.
    *
    * A RPC sempre trouxe (`tarefas_concluidas`), mas o valor virava só o
@@ -252,6 +264,8 @@ interface LinhaPainelAlunos {
   apto_ao_saldo?: boolean | null;
   classe?: string | null;
   lista_incompleta?: boolean | null;
+  pronto_para_finalizar?: boolean | null;
+  finalizado_em?: string | null;
   /**
    * As duas colunas da migração ...234. Opcionais no tipo pelo mesmo motivo
    * das três acima: banco ainda sem a migração devolve `undefined`, e o
@@ -456,6 +470,8 @@ export async function getAlunosGps(opts?: {
         : "inicial",
       tarefasConcluidas: l.tarefas_concluidas ?? [],
       listaIncompleta: l.lista_incompleta ?? false,
+      prontoParaFinalizar: l.pronto_para_finalizar ?? false,
+      finalizadoEm: l.finalizado_em ?? null,
       favorito: mapearFavorito(l.favorito_nome, l.favorito_fase),
     };
   });

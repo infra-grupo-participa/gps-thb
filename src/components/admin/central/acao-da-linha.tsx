@@ -87,7 +87,7 @@ export function AcaoDaLinha({
           href="/admin"
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
-          <ExternalLink className="size-4" /> Ver a fila em Alunos
+          <ExternalLink className="size-4" /> Ver a fila em Parceiros
         </Link>
       ) : null;
 

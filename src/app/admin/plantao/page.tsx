@@ -6,7 +6,7 @@
  *
  * Server Component: abre o mês (por `?m=YYYY-MM` ou o mês corrente), busca
  * com `getSlotsDoMesAdmin()` e `getAlunosPlantao()`, renderiza o calendário
- * editável e a aba "Alunos" (ex-"Acessos" — a rota pública deixou de ter
+ * editável e a aba "Parceiros" (ex-"Acessos" — a rota pública deixou de ter
  * login, então a aba não gerencia mais senha/sessão, só o cadastro do
  * aluno e o bloqueio por migração de programa).
  */
@@ -91,7 +91,7 @@ export default async function AdminPlantaoPage({
         <PageHeader
           titulo="Plantão de Dúvidas"
           eyebrow="Produto: Acelera Holding"
-          descricao="Só participa quem comprou o Acelera Holding — agenda das mentoras, inscritos e acesso dos alunos."
+          descricao="Só participa quem comprou o Acelera Holding — agenda das mentoras, inscritos e acesso dos parceiros."
           acao={
             // A logo do Acelera (public/logo-acelera.svg) foi desenhada para
             // fundo escuro: sobre branco a palavra "ACELERA" some (degradê

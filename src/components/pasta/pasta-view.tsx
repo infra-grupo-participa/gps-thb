@@ -35,12 +35,12 @@ export function PastaView({
         icone={<FolderOpen />}
         titulo={
           isAdmin
-            ? "Nenhuma pasta configurada para este aluno"
+            ? "Nenhuma pasta configurada para este parceiro"
             : "Sua pasta ainda não foi configurada"
         }
         descricao={
           isAdmin
-            ? "Cole o link da pasta do Drive no campo acima para disponibilizá-la ao aluno."
+            ? "Cole o link da pasta do Drive no campo acima para disponibilizá-la ao parceiro."
             : "A equipe cria e compartilha a pasta durante a implementação. Assim que ela existir, aparece aqui — não é preciso fazer nada."
         }
       />
@@ -53,7 +53,7 @@ export function PastaView({
         <div className="flex items-center gap-2">
           <FolderOpen className="size-5 text-primary" />
           <div>
-            <CardTitle className="text-base">Pasta do aluno</CardTitle>
+            <CardTitle className="text-base">Pasta do parceiro</CardTitle>
             <p className="text-sm text-muted-foreground">
               Seus documentos, vídeos e minutas — sempre à mão.
             </p>
@@ -77,7 +77,7 @@ export function PastaView({
         {embedUrl ? (
           <iframe
             src={embedUrl}
-            title="Pasta do aluno no Google Drive"
+            title="Pasta do parceiro no Google Drive"
             className="h-[520px] w-full rounded-lg border bg-muted/20"
             loading="lazy"
           />

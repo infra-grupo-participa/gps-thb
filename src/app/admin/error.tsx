@@ -27,7 +27,7 @@ export default function AdminError({
   return (
     <ErroPainel
       titulo="Não foi possível carregar o painel"
-      descricao="Nenhum dado de aluno foi alterado. Foi a tela que não montou — tente de novo."
+      descricao="Nenhum dado de parceiro foi alterado. Foi a tela que não montou — tente de novo."
       digest={error.digest}
     >
       <Button onClick={() => reset()}>Tentar de novo</Button>

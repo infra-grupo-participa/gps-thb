@@ -24,10 +24,10 @@ import { rotuloEtapa } from "./tipos";
 /** O que a origem do estado da etapa quer dizer, em português. */
 function fraseDeOrigem(e: EtapaDiagnostico): string {
   if (e.origem === "liberada_para_este_aluno") {
-    return "Liberada só para este aluno pela equipe";
+    return "Liberada só para este parceiro pela equipe";
   }
   if (e.origem === "travada_para_este_aluno") {
-    return "Travada só para este aluno pela equipe";
+    return "Travada só para este parceiro pela equipe";
   }
   return e.global
     ? "Segue a regra geral: liberada para todos"
@@ -62,8 +62,8 @@ export function SecaoTrilha({
   return (
     <BlocoDeCorrecao
       aberto={aberto}
-      titulo="Ajustar as etapas deste aluno"
-      ajuda="A liberação individual vale só para este ambiente; a regra geral continua valendo para os demais. Toda mudança pede motivo e entra na trilha do aluno."
+      titulo="Ajustar as etapas deste parceiro"
+      ajuda="A liberação individual vale só para este ambiente; a regra geral continua valendo para os demais. Toda mudança pede motivo e entra na trilha do parceiro."
     >
       <ul className="grid gap-2.5">
         {etapas.map((e) => {
@@ -122,7 +122,7 @@ export function SecaoTrilha({
                     disabled={pendente}
                     onClick={() => onTravar(e)}
                   >
-                    Travar só para este aluno
+                    Travar só para este parceiro
                   </Button>
                 ) : (
                   <Button
@@ -131,7 +131,7 @@ export function SecaoTrilha({
                     disabled={pendente}
                     onClick={() => onLiberar(e)}
                   >
-                    <LockOpen className="size-4" /> Liberar só para este aluno
+                    <LockOpen className="size-4" /> Liberar só para este parceiro
                   </Button>
                 )}
 

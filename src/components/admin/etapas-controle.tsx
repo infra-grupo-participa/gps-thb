@@ -36,7 +36,7 @@ export function EtapasControle({
   etapasIniciais: Etapa[];
   /**
    * Quantos ambientes esta decisão alcança. Opcional de propósito: sem o
-   * número vindo do servidor, a frase fala em "todos os alunos do programa" —
+   * número vindo do servidor, a frase fala em "todos os parceiros do programa" —
    * número inventado na consequência de uma ação destrutiva é pior do que
    * número nenhum.
    */
@@ -67,20 +67,20 @@ export function EtapasControle({
       );
       setConfirmando(null);
       toast.success(
-        nova ? "Etapa liberada para os alunos." : "Etapa bloqueada.",
+        nova ? "Etapa liberada para os parceiros." : "Etapa bloqueada.",
       );
     });
   }
 
   const alcance = totalAmbientes
     ? `os ${totalAmbientes} ambientes do programa`
-    : "todos os alunos do programa";
+    : "todos os parceiros do programa";
 
   return (
     <div className="grid gap-3">
       <p className="text-sm text-muted-foreground">
         Controle quais etapas ficam disponíveis para <strong>todos</strong> os
-        alunos.
+        parceiros.
       </p>
       {etapas.map((etapa) => (
         <Card key={etapa.id}>

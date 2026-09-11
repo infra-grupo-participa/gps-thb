@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { ToasterLazy } from "@/components/ui/toaster-lazy";
 import { OnboardingGate } from "@/components/onboarding/onboarding-gate";
+import { BotaoSecretaria } from "@/components/botao-secretaria";
 
 // Fonte padrão dos sistemas do Grupo Participa: Inter (corpo) + Space Grotesk (títulos).
 const inter = Inter({
@@ -62,6 +63,12 @@ export default function RootLayout({
             cookie de sessão, para admin e para quem já concluiu; a razão
             completa está no cabeçalho dele. */}
         <OnboardingGate />
+        {/* "Falar com a secretaria" (11/09/2026). Mora aqui pelo mesmo motivo
+            do gate acima: o parceiro pode precisar em qualquer tela, e nove
+            cópias garantiriam esquecer a décima. O componente decide sozinho
+            se aparece — devolve `null` sem tocar no banco para quem não tem
+            cookie de sessão, para admin e quando não há número configurado. */}
+        <BotaoSecretaria />
         <ToasterLazy />
       </body>
     </html>

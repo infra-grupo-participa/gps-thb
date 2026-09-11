@@ -61,17 +61,19 @@ export async function updateSession(request: NextRequest) {
     // Plantão de Dúvidas: rota pública embedada em iframe na Hotmart, com
     // rota PÚBLICA de verdade desde 08/09/2026: sem login, sem cookie, sem
     // sessão. A identidade é o e-mail, conferido dentro das RPCs.
-    pathname.startsWith("/p/") ||
-    // Job diário do plantão, chamado por pg_cron via HTTP — sem sessão
-    // Supabase, por definição. Sem esta linha o proxy devolvia 307 para
-    // /login ANTES do handler rodar, e o pg_net não segue redirect nem
-    // acusa erro: o job falharia em silêncio para sempre (NPS nunca
-    // enviado, sessões e eventos nunca expurgados).
-    //
-    // ⚠️ Rota EXATA, nunca o prefixo `/api/`: a rota se protege sozinha
-    // pelo header `x-plantao-segredo` mais o segredo conferido dentro das
-    // RPCs. Liberar `/api/` inteiro abriria o que vier depois.
-    pathname === "/api/plantao/manutencao";
+    pathname.startsWith("/p/");
+  // 🔴 `/api/plantao/manutencao` SAIU da allowlist em 11/09/2026 — a rota
+  // deixou de existir. Medido antes de remover: NENHUM cron a chamava (os
+  // dois jobs do plantão chamam funções do banco direto, `select
+  // gps.plantao_disparar_emails_sala()` e `gps.plantao_reconciliar_pelo_cron()`).
+  // Ela era código morto desde que o disparo migrou para o banco, em 09/09.
+  //
+  // O expurgo de eventos (90 dias), que só ela chamava, foi trazido para
+  // dentro de `gps.plantao_reconciliar_pelo_cron()` — antes disso nunca tinha
+  // rodado, porque `gps.plantao_expurgar` exige um segredo que o Supabase
+  // recusa configurar (42501 em `alter role ... set app.*`).
+  //
+  // Allowlist é superfície: entrada para rota inexistente é risco sem uso.
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🔑 ROTA PÚBLICA NÃO PAGA A IDA AO GoTrue (10/09/2026)

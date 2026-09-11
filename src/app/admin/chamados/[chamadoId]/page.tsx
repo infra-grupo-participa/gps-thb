@@ -129,6 +129,7 @@ export default async function AdminChamadoPage({
               <AcoesSolicitacao
                 chamadoId={chamado.id}
                 alunoId={chamado.aluno_id}
+                assuntoChamado={chamado.assunto}
                 solicitacao={solicitacao}
               />
             </div>

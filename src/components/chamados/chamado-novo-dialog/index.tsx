@@ -76,9 +76,9 @@ export function ChamadoNovoDialog({
   clienteAtualId: string | null;
   clienteAtualNome: string | null;
   /**
-   * `socioAtualId` NÃO entra aqui: a RPC de troca de sócio ainda não tem um
-   * "alvo novo" com ID (ver divergência documentada em
-   * `campo-troca-socio.tsx`) — este diálogo só precisa do NOME para exibir.
+   * `socioAtualId` NÃO entra aqui: `chamado_abrir` não recebe alvo novo para
+   * `troca_socio` (confirmado com o banco — ver `campo-troca-socio.tsx`) —
+   * este diálogo só precisa do NOME para exibir.
    */
   socioAtualNome: string | null;
   temSocio: boolean;

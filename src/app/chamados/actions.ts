@@ -91,26 +91,25 @@ const FRASES: Record<string, string> = {
   "anexo maior que 5 MB": "Arquivo maior que 5 MB.",
 
   // ─────────────────────────────────────────────────────────────────────
-  // Categoria + solicitação de troca (feature de 11/09/2026). Frases
-  // ESPERADAS de `gps.chamado_abrir`/`gps.chamado_aprovar_solicitacao`/
-  // `gps.chamado_declinar_solicitacao` — a confirmar contra o texto exato
-  // que o banco levanta (ver relatório: "frases que espero do banco").
-  // Chave em minúsculas e sem acento, no MESMO estilo das guardas acima.
+  // Categoria + solicitação de troca (feature de 11/09/2026). Frases REAIS
+  // de `gps.chamado_abrir`, conferidas em produção pelo coordenador (não são
+  // mais palpite) — minúsculas e sem acento, o padrão antigo desta função.
+  // Match por igualdade EXATA.
   "categoria invalida": "Categoria inválida. Recarregue a página e tente de novo.",
-  "informe o cliente para quem voce quer trocar":
-    "Escolha o cliente para quem você quer trocar.",
-  "informe o novo socio":
-    "Informe o novo sócio antes de enviar.",
-  "cliente novo nao encontrado neste ambiente":
+  "o cliente escolhido nao pertence ao seu ambiente":
     "Não encontramos este cliente no seu ambiente. Atualize a página e tente de novo.",
-  "voce ja tem uma solicitacao de troca pendente":
-    "Você já tem uma solicitação de troca em análise. Aguarde a equipe decidir antes de abrir outra.",
-  "solicitacao nao encontrada": "Solicitação não encontrada.",
-  "esta solicitacao ja foi decidida":
-    "Esta solicitação já foi decidida.",
-  "escreva o motivo do declinio":
-    "Escreva o motivo — o parceiro vai ver por que o pedido não foi aceito.",
-  "o motivo passa de 300 caracteres": "O motivo passa de 300 caracteres.",
+  "seu ambiente ainda nao tem cliente acompanhado -- a primeira escolha e livre, nao precisa de chamado":
+    "Você ainda não tem um cliente acompanhado pela equipe — a primeira escolha é livre, direto na aba Clientes. Não precisa de chamado.",
+  "este ja e o cliente acompanhado pela equipe":
+    "Este já é o cliente que a equipe acompanha. Escolha outro para pedir a troca.",
+  "voce ja tem uma solicitacao de troca de cliente pendente":
+    "Você já tem uma solicitação de troca de cliente em análise. Aguarde a equipe decidir antes de abrir outra.",
+  "so o titular do ambiente pode pedir troca de socio":
+    "Só o titular do ambiente pode pedir troca de sócio.",
+  "seu ambiente nao tem socio para trocar":
+    "Este ambiente ainda não tem sócio. Para adicionar o primeiro, use a aba Equipe.",
+  "voce ja tem uma solicitacao de troca de socio pendente":
+    "Você já tem uma solicitação de troca de sócio em análise. Aguarde a equipe decidir antes de abrir outra.",
 };
 
 function traduzirErro(escopo: string, error: ErroDeBanco): string {
@@ -201,10 +200,15 @@ export async function criarUploadAssinadoDeAnexo(input: {
 }
 
 /**
- * `categoria`/`alvoNovoId` são opcionais na assinatura porque o formulário
- * simples (interruptor desligado, ou categoria sistema/outros) não os manda —
- * a RPC aceita `p_categoria`/`p_alvo_novo_id` nulos e se comporta como o
- * `chamado_abrir` de sempre.
+ * `categoria` é opcional na assinatura porque o formulário simples
+ * (interruptor desligado) não a manda — cai no default do banco, `'outros'`.
+ * Quando vem, é sempre mandada EXPLÍCITA para a RPC (nunca `null`): o
+ * parâmetro é `text default 'outros'`, não anulável por contrato.
+ *
+ * 🔑 `p_alvo_novo_id` só existe para `troca_cliente`. Em `troca_socio` a RPC
+ * NÃO recebe alvo nenhum — ela aprova a SAÍDA do sócio atual; quem entra no
+ * lugar é convidado depois, pela aba Equipe (confirmado pelo coordenador:
+ * `alvo_novo_id`/`alvo_novo_rotulo` de `troca_socio` nascem sempre `NULL`).
  */
 function categoriaValida(v: unknown): v is CategoriaChamado {
   return (CATEGORIAS_CHAMADO as readonly unknown[]).includes(v);
@@ -215,16 +219,16 @@ export async function abrirChamado(input: {
   assunto: string;
   texto: string;
   categoria?: CategoriaChamado;
-  /** Cliente/sócio NOVO — obrigatório só quando a categoria é uma troca. */
+  /** Cliente NOVO — obrigatório só quando a categoria é `troca_cliente`. */
   alvoNovoId?: string;
   anexo?: AnexoInput;
 }): Promise<ResultadoAbrir> {
   const assunto = (input.assunto ?? "").trim();
   const texto = (input.texto ?? "").trim();
-  const categoria =
+  const categoria: CategoriaChamado =
     input.categoria && categoriaValida(input.categoria)
       ? input.categoria
-      : null;
+      : "outros";
 
   if (
     assunto.length < CHAMADO_ASSUNTO_MINIMO ||
@@ -239,16 +243,10 @@ export async function abrirChamado(input: {
       erro: "A mensagem passa de 4.000 caracteres. Encurte e envie de novo.",
     };
   }
-  if (
-    (categoria === "troca_cliente" || categoria === "troca_socio") &&
-    !input.alvoNovoId
-  ) {
+  if (categoria === "troca_cliente" && !input.alvoNovoId) {
     return {
       ok: false,
-      erro:
-        categoria === "troca_cliente"
-          ? "Escolha o cliente para quem você quer trocar."
-          : "Informe o novo sócio antes de enviar.",
+      erro: "Escolha o cliente para quem você quer trocar.",
     };
   }
   const erroAnexo = validarAnexo(input.anexo);
@@ -263,10 +261,7 @@ export async function abrirChamado(input: {
     p_anexo_mime: input.anexo?.mime ?? null,
     p_anexo_tamanho: input.anexo?.tamanho ?? null,
     p_categoria: categoria,
-    p_alvo_novo_id:
-      categoria === "troca_cliente" || categoria === "troca_socio"
-        ? (input.alvoNovoId ?? null)
-        : null,
+    p_alvo_novo_id: categoria === "troca_cliente" ? (input.alvoNovoId ?? null) : null,
   });
 
   if (error) return { ok: false, erro: traduzirErro("abrirChamado", error) };

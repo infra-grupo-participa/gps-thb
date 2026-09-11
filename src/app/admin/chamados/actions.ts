@@ -21,6 +21,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin, getContextoSessao } from "@/lib/auth";
 import { traduzirErroBanco, type ErroDeBanco } from "@/lib/erros";
+import { enviarChamadoRespondidoParaAluno } from "@/lib/email-chamados";
 import { logErro } from "@/lib/log";
 import { emailValido } from "@/lib/texto";
 import {
@@ -187,62 +188,112 @@ export async function expurgarAnexo(item: {
 }
 
 /**
- * Frases das RPCs `gps.chamado_aprovar_solicitacao`/`_declinar_solicitacao`.
+ * Frases das RPCs `gps.chamado_aprovar_solicitacao`/`_declinar_solicitacao` —
+ * REAIS, conferidas em produção (não são mais palpite). Note que estas têm
+ * ACENTO e TRAVESSÃO (ao contrário das de `chamado_abrir`, que são o padrão
+ * antigo sem acento): o match é por igualdade EXATA nos dois casos.
  *
  * Mesma DUPLICAÇÃO deliberada de `src/app/chamados/actions.ts` (comentário lá:
  * "mora em FRASES, e não em erros.ts, porque é copy de UM domínio"): as duas
  * actions de chamado não importam uma da outra para não acoplar dois módulos
- * `"use server"` distintos por um mapa de 6 linhas.
- *
- * ⚠️ A confirmar contra o texto EXATO que o banco levanta (ver relatório: "as
- * frases de erro que espera do banco"). Match por igualdade exata.
+ * `"use server"` distintos por um mapa pequeno.
  */
 const FRASES_SOLICITACAO: Record<string, string> = {
-  "sem permissao": "Sem permissão para esta ação.",
-  "solicitacao nao encontrada": "Solicitação não encontrada.",
-  "esta solicitacao ja foi decidida": "Esta solicitação já foi decidida.",
-  "escreva o motivo do declinio":
-    "Escreva o motivo — o parceiro vai ver por que o pedido não foi aceito.",
-  "o motivo passa de 300 caracteres": "O motivo passa de 300 caracteres.",
-  "cliente novo nao encontrado neste ambiente":
-    "O cliente novo não existe mais neste ambiente. Decline e peça para o parceiro abrir de novo.",
+  "Sem permissão.": "Sem permissão para esta ação.",
+  "Escreva o motivo — a trilha deste aluno vai registrar.":
+    "Escreva o motivo — ele fica no histórico deste parceiro.",
+  "Escreva o motivo — o aluno vai ver esta frase.":
+    "Escreva o motivo — o parceiro vai ver esta frase.",
+  "O motivo passa de 300 caracteres.": "O motivo passa de 300 caracteres.",
+  "Este chamado não tem uma solicitação estruturada.":
+    "Este chamado não tem uma solicitação estruturada.",
+  "Esta solicitação já foi decidida.": "Esta solicitação já foi decidida.",
+  "Chamado não encontrado.": "Chamado não encontrado.",
+  "O cliente escolhido não existe mais neste ambiente.":
+    "O cliente escolhido não existe mais neste ambiente. Decline e peça para o parceiro abrir de novo.",
+  "Este ambiente não tem mais cliente acompanhado — não há o que trocar.":
+    "Este ambiente não tem mais cliente acompanhado — não há o que trocar. Decline o pedido.",
+  "O cliente escolhido já é o cliente acompanhado.":
+    "O cliente escolhido já é o cliente acompanhado.",
+  "O sócio indicado já não está mais neste ambiente.":
+    "O sócio indicado já não está mais neste ambiente.",
 };
 
 function traduzirErroSolicitacao(escopo: string, error: ErroDeBanco): string {
   return traduzirErroBanco(escopo, error, undefined, FRASES_SOLICITACAO);
 }
 
+/** Retorno real de `chamado_aprovar_solicitacao`/`_declinar_solicitacao`. */
+interface RetornoDecisaoSolicitacao {
+  chamado_id: string;
+  tipo: string;
+  /** `null` = ninguém a avisar (aluno sem e-mail, ou a RPC não achou). */
+  avisar_email: string | null;
+}
+
+/**
+ * O aviso por e-mail é DEPOIS do commit, e falha de e-mail nunca desfaz a
+ * decisão — mesmo padrão de `avisarEquipe`/`enviarChamadoRespondidoParaAluno`
+ * em `src/app/chamados/actions.ts`. O parceiro sempre vê a decisão no
+ * portal; o e-mail é só o aviso.
+ */
+async function avisarAlunoDaDecisao(
+  avisarEmail: string | null,
+  chamadoId: string,
+  assunto: string,
+  escopo: string,
+): Promise<void> {
+  if (!avisarEmail) return;
+  const r = await enviarChamadoRespondidoParaAluno({
+    para: avisarEmail,
+    assunto,
+    chamadoId,
+  });
+  if (!r.ok) {
+    logErro(escopo, r.erro ?? "falha sem detalhe", { chamadoId });
+  }
+}
+
 /**
  * Aprovar EXECUTA a troca (decisão do Marcio, briefing 11/09): a RPC muda o
- * cliente/sócio acompanhado e fecha a solicitação num só passo — não há
- * segunda confirmação depois desta. O diálogo que chama esta action
- * (`DialogoConfirmacao`) é quem tem de deixar isso claro, nomeando os dois
- * lados da troca.
+ * cliente acompanhado (ou remove o sócio, em `troca_socio`) e fecha a
+ * solicitação num só passo — não há segunda confirmação depois desta. O
+ * diálogo que chama esta action (`DialogoConfirmacao`) é quem tem de deixar
+ * isso claro, nomeando os dois lados da troca (ou "sai fulano", na remoção
+ * de sócio).
  *
- * `alunoId` só serve para revalidar as rotas certas — quem autoriza é
- * `gp_is_admin()` dentro da RPC.
+ * Motivo é OBRIGATÓRIO (3..300) nas duas ações — contrato confirmado: a RPC
+ * recusa aprovar sem motivo com a mesma frase de "a trilha vai registrar".
+ *
+ * `alunoId`/`assuntoChamado` só servem para revalidar as rotas certas e
+ * compor o e-mail de aviso — quem autoriza é `gp_is_admin()` dentro da RPC.
  */
 export async function aprovarSolicitacaoChamado(
   chamadoId: string,
   alunoId: string,
   motivo: string,
+  assuntoChamado: string,
 ): Promise<ResultadoAcao> {
   if (!(await ehAdmin())) return { ok: false, erro: "Ação restrita à equipe." };
   if (!chamadoId) return { ok: false, erro: "Chamado não encontrado." };
 
   const texto = (motivo ?? "").trim();
-  // O motivo é OPCIONAL em aprovar (a decisão já está no clique do botão
-  // nomeado); quando vier, respeita o mesmo teto de 300 do declínio.
+  if (texto.length < SOLICITACAO_MOTIVO_MINIMO) {
+    return {
+      ok: false,
+      erro: `Escreva o motivo — ele fica no histórico deste parceiro (mínimo de ${SOLICITACAO_MOTIVO_MINIMO} caracteres).`,
+    };
+  }
   if (texto.length > SOLICITACAO_MOTIVO_MAXIMO) {
     return { ok: false, erro: `O motivo passa de ${SOLICITACAO_MOTIVO_MAXIMO} caracteres.` };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .schema("gps")
     .rpc("chamado_aprovar_solicitacao", {
       p_chamado_id: chamadoId,
-      p_motivo: texto || null,
+      p_motivo: texto,
     });
 
   if (error) {
@@ -251,6 +302,14 @@ export async function aprovarSolicitacaoChamado(
       erro: traduzirErroSolicitacao("aprovarSolicitacaoChamado", error),
     };
   }
+
+  const retorno = data as RetornoDecisaoSolicitacao | null;
+  await avisarAlunoDaDecisao(
+    retorno?.avisar_email ?? null,
+    chamadoId,
+    assuntoChamado,
+    "aprovarSolicitacaoChamado.avisoAluno",
+  );
 
   revalidatePath("/admin/chamados");
   revalidatePath(`/admin/chamados/${chamadoId}`);
@@ -272,6 +331,7 @@ export async function declinarSolicitacaoChamado(
   chamadoId: string,
   alunoId: string,
   motivo: string,
+  assuntoChamado: string,
 ): Promise<ResultadoAcao> {
   if (!(await ehAdmin())) return { ok: false, erro: "Ação restrita à equipe." };
   if (!chamadoId) return { ok: false, erro: "Chamado não encontrado." };
@@ -288,7 +348,7 @@ export async function declinarSolicitacaoChamado(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .schema("gps")
     .rpc("chamado_declinar_solicitacao", {
       p_chamado_id: chamadoId,
@@ -301,6 +361,19 @@ export async function declinarSolicitacaoChamado(
       erro: traduzirErroSolicitacao("declinarSolicitacaoChamado", error),
     };
   }
+
+  const retorno = data as RetornoDecisaoSolicitacao | null;
+  await avisarAlunoDaDecisao(
+    retorno?.avisar_email ?? null,
+    chamadoId,
+    assuntoChamado,
+    "declinarSolicitacaoChamado.avisoAluno",
+  );
+
+  // `alunoId` não muda nada de negócio no declínio, mas mantém a assinatura
+  // simétrica à de aprovar — o componente que chama as duas não precisa
+  // ramificar por causa disso.
+  void alunoId;
 
   revalidatePath("/admin/chamados");
   revalidatePath(`/admin/chamados/${chamadoId}`);

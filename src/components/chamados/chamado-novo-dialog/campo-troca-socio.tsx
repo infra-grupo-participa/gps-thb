@@ -8,15 +8,11 @@
  *   > A conta do sócio removido? Apagar o login, como `admin_excluir_membro`
  *   > já faz. O que ele cadastrou FICA (é do ambiente).
  *
- * ⚠️ DIVERGÊNCIA DE CONTRATO (reportada): o contrato do banco descreve
- * `troca_socio` com o MESMO shape de `troca_cliente` (`alvo_atual_id` +
- * `alvo_novo_id`). Mas não existe, hoje, uma LISTA de "sócios candidatos" do
- * ambiente para escolher o novo com busca — o novo sócio é convidado depois,
- * pela aba Equipe (`ConviteSocioForm`), com o e-mail dele. Por isso este
- * campo pede só o MOTIVO da saída: o "novo" da solicitação, quando a RPC
- * exigir, teria de ser o e-mail digitado (texto), não um ID de `thb_alunos`
- * — e aí o "nada de texto livre" da decisão #1 não se aplica a sócio, só a
- * cliente (que TEM lista para buscar). Ver o relatório da entrega.
+ * ✅ CONFIRMADO com o banco (11/09/2026): em `troca_socio`, `alvo_novo_id` e
+ * `alvo_novo_rotulo` nascem sempre `NULL`. `chamado_abrir` não recebe alvo
+ * nenhum para esta categoria — só o motivo da saída. A aprovação REMOVE o
+ * sócio atual; quem entra no lugar é convidado depois, pela aba Equipe
+ * (`ConviteSocioForm`), com o e-mail dele.
  */
 
 import { Label } from "@/components/ui/label";

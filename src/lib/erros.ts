@@ -223,47 +223,15 @@ const FRASES_DO_BANCO: Record<string, string> = {
     "A equipe já assumiu este cliente. Para trocar, abra um chamado no Suporte.",
 
   // ═══ Chamados: categoria + aprovação de troca (…250) ═══
-  // 🔴 Copiadas de `pg_get_functiondef` do BANCO, não do arquivo da migração.
-  // Repare na mistura: as de `chamado_abrir` são SEM ACENTO e em minúscula
-  // (o padrão antigo daquela função, preservado ao recriá-la); as de
-  // aprovar/declinar têm acento e travessão. O match é por igualdade exata —
-  // "corrigir" a grafia aqui quebra o mapa.
-  "categoria invalida":
-    "Escolha uma categoria para o chamado.",
-  "o cliente escolhido nao pertence ao seu ambiente":
-    "Escolha um cliente da sua própria lista.",
-  "seu ambiente ainda nao tem cliente acompanhado -- a primeira escolha e livre, nao precisa de chamado":
-    "Você ainda não tem cliente acompanhado pela equipe — a primeira escolha é livre, é só marcar a estrela na aba Clientes.",
-  "este ja e o cliente acompanhado pela equipe":
-    "Este já é o cliente que a equipe acompanha.",
-  "voce ja tem uma solicitacao de troca de cliente pendente":
-    "Você já tem um pedido de troca de cliente em análise. Aguarde a resposta da equipe.",
-  "so o titular do ambiente pode pedir troca de socio":
-    "Só o titular do ambiente pode pedir a troca do sócio.",
-  "seu ambiente nao tem socio para trocar":
-    "Não há sócio neste ambiente para trocar.",
-  "voce ja tem uma solicitacao de troca de socio pendente":
-    "Você já tem um pedido de troca de sócio em análise. Aguarde a resposta da equipe.",
-
-  // "Escreva o motivo — a trilha deste aluno vai registrar." e
-  // "O motivo passa de 300 caracteres." JÁ ESTÃO no mapa (~linha 130, vêm das
-  // RPCs de acompanhamento com texto idêntico). Chave repetida é erro de
-  // compilação, não último-ganha — o `tsc` pegou na hora.
-  "Escreva o motivo — o aluno vai ver esta frase.":
-    "Escreva o motivo da recusa — o parceiro vai ler esta frase no chamado.",
-  "Este chamado não tem uma solicitação estruturada.":
-    "Este chamado não tem um pedido de troca para decidir.",
-  "Esta solicitação já foi decidida.":
-    "Este pedido já foi decidido por alguém da equipe.",
-  "Chamado não encontrado.": "Chamado não encontrado.",
-  "O cliente escolhido não existe mais neste ambiente.":
-    "O cliente escolhido não existe mais neste ambiente — o pedido não pode ser aprovado.",
-  "Este ambiente não tem mais cliente acompanhado — não há o que trocar.":
-    "Este ambiente não tem mais cliente acompanhado — não há o que trocar.",
-  "O cliente escolhido já é o cliente acompanhado.":
-    "O cliente escolhido já é o que a equipe acompanha — nada a trocar.",
-  "O sócio indicado já não está mais neste ambiente.":
-    "O sócio indicado já não está mais neste ambiente.",
+  // As frases destas RPCs NÃO moram aqui, de propósito: ficam em `FRASES`
+  // (`src/app/chamados/actions.ts`) e `FRASES_SOLICITACAO`
+  // (`src/app/admin/chamados/actions.ts`), passadas por `frasesExtras`.
+  //
+  // É o padrão que o próprio `frasesExtras` documenta logo abaixo — copy de
+  // UM domínio fica com o domínio. Eu havia duplicado as 18 frases aqui;
+  // funcionava (o `frasesExtras` tem prioridade), mas criava dois lugares
+  // para manter: mudar o texto de um `raise exception` e atualizar só um dos
+  // mapas deixaria a divergência silenciosa, sem erro de compilação.
 
   // ═══ Feature Equipe — convite de sócio (…244/…246) ═══
   // 🔴 As 15 frases vieram de `pg_get_functiondef` do BANCO, não do arquivo

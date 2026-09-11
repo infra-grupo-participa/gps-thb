@@ -4,6 +4,8 @@ import {
   getAlunoById,
   getEtapas,
   getEtapasLiberadasPara,
+  getVideosAtivo,
+  getVideosDoAluno,
 } from "@/lib/data";
 import { etapasComLiberacaoDoAluno } from "@/lib/etapas";
 import { listarMateriais } from "@/lib/materiais";
@@ -11,6 +13,7 @@ import { navDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { MateriaisView } from "@/components/materiais/materiais-view";
+import { GravacoesSecao } from "@/components/materiais/gravacoes-secao";
 
 export const metadata = { title: "Materiais" };
 
@@ -22,10 +25,11 @@ export default async function MateriaisPage() {
 
   // O acervo respeita a liberação POR ALUNO: sem isto, o material de uma etapa
   // liberada só para ele continuaria sem link (o corte é no servidor).
-  const [aluno, etapasGlobais, overrides] = await Promise.all([
+  const [aluno, etapasGlobais, overrides, videosAtivo] = await Promise.all([
     getAlunoById(ctx.alunoId),
     getEtapas(),
     getEtapasLiberadasPara(ctx.alunoId),
+    getVideosAtivo(),
   ]);
   const etapas = etapasComLiberacaoDoAluno(etapasGlobais, overrides);
   const nomes: Record<number, string> = {};
@@ -34,6 +38,11 @@ export default async function MateriaisPage() {
     nomes[e.id] = e.nome;
     liberadas[e.id] = e.liberada;
   }
+
+  // A biblioteca de vídeos tem interruptor próprio (`gps.videos_ativo`) — só
+  // busca a lista se estiver ligada, para não gastar uma RPC à toa quando a
+  // seção nem vai aparecer.
+  const videos = videosAtivo ? await getVideosDoAluno() : [];
 
   return (
     <>
@@ -49,13 +58,19 @@ export default async function MateriaisPage() {
           descricao="Seu acervo de aulas e modelos — reunidos de todas as etapas, num só lugar."
         />
 
-        <MateriaisView
-          materiais={listarMateriais({ etapasLiberadas: liberadas })}
-          etapaNomes={nomes}
-          etapasLiberadas={liberadas}
-          basePath=""
-          podeAbrirBloqueadas={false}
-        />
+        <div className="grid gap-8">
+          {videosAtivo ? (
+            <GravacoesSecao videos={videos} etapaNomes={nomes} />
+          ) : null}
+
+          <MateriaisView
+            materiais={listarMateriais({ etapasLiberadas: liberadas })}
+            etapaNomes={nomes}
+            etapasLiberadas={liberadas}
+            basePath=""
+            podeAbrirBloqueadas={false}
+          />
+        </div>
       </main>
     </>
   );

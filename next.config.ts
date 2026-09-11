@@ -142,11 +142,32 @@ const nextConfig: NextConfig = {
         ],
       },
       // Todo o resto — nunca deve ser embedado (login, área do aluno, admin).
+      //
+      // `frame-src` (demanda 5, 11/09/2026): biblioteca de vídeos do
+      // `/materiais` embeda YouTube não listado
+      // (`https://www.youtube-nocookie.com` — sem cookie de rastreio, ver
+      // `src/lib/youtube.ts`; `https://www.youtube.com` cobre variação de
+      // domínio do próprio player). Até aqui não existia NENHUM `frame-src`:
+      // sem `default-src`, isso deixava o portal livre para embedar qualquer
+      // origem — frouxo para um campo de URL que o admin digita. Em
+      // allowlist, não `*`.
+      //
+      // ⚠️ `https://drive.google.com` é OBRIGATÓRIO aqui: a aba "Pasta" já
+      // embeda o Drive (`embeddedfolderview`, `src/lib/pasta.ts`) fora de
+      // `/p/*` — sem esta entrada, este `frame-src` novo QUEBRARIA uma
+      // feature no ar. Confirmado antes de escrever esta política.
+      //
+      // Este é o inverso de `frame-ancestors` (que continua intocado): aqui é
+      // o GPS embedando terceiro; lá é terceiro embedando o GPS.
       {
         source: "/((?!p/).*)",
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          {
+            key: "Content-Security-Policy",
+            value:
+              "frame-ancestors 'none'; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://drive.google.com",
+          },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
       },

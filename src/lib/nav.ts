@@ -238,6 +238,11 @@ export function adminNavItems(
       icon: "suporte",
       badge: opts.chamadosAbertos,
     },
+    // Biblioteca de vídeos (demanda 5, 11/09/2026): mesmo ícone "materiais"
+    // (BookOpen) do Plantão acima — não é o mesmo assunto, mas é o ícone mais
+    // próximo do catálogo existente, e a regra do projeto é não inventar
+    // chave nova.
+    { href: "/admin/videos", label: "Vídeos", icon: "materiais" },
   ];
 }
 

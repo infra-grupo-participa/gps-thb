@@ -13,6 +13,7 @@
 //   src/lib/data/diario.ts        notas, eventos, trilha e atendimento (só-admin)
 //   src/lib/data/solicitacoes.ts  fila de acesso
 //   src/lib/data/central.ts       diagnostico do ambiente e override de etapa
+//   src/lib/data/videos.ts        biblioteca de vídeos (`gps.videos`)
 //
 // 🔑 Ao escrever consulta NOVA, escreva no arquivo do assunto e acrescente o
 // reexporte aqui — não volte a engordar este. E a regra do P6 continua de pé:
@@ -57,6 +58,12 @@ export {
   getDiagnosticoAmbiente,
   getEtapasLiberadasPara,
 } from "@/lib/data/central";
+
+export {
+  getVideosAtivo,
+  getVideosDoAluno,
+  getVideosAdmin,
+} from "@/lib/data/videos";
 // `mapearStatusAcesso` NÃO passa por aqui: `src/app/admin/senha-actions.ts`
 // importa direto de `@/lib/data/central` (e precisa, porque um módulo
 // `"use server"` não pode reexportar função síncrona).

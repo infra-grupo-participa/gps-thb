@@ -74,6 +74,40 @@ export interface Etapa {
   liberada: boolean;
 }
 
+/**
+ * Um vídeo da biblioteca de gravações (`gps.videos`, demanda 5, 11/09/2026).
+ * O banco guarda o `youtube_id` (11 caracteres), não a URL — o embed é
+ * montado na leitura por `embedYoutube()` (`src/lib/youtube.ts`).
+ *
+ * `etapa: null` = vídeo GERAL, sem amarra a nenhuma etapa — aparece para
+ * qualquer aluno independente de liberação (`gps.videos.etapa`, FK
+ * `on delete set null`).
+ */
+export interface VideoGps {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  youtubeId: string;
+  etapa: number | null;
+  ordem: number;
+  publicado: boolean;
+  criadoEm: string;
+}
+
+/**
+ * O que `gps.videos_do_aluno` devolve — sem `publicado` (é sempre `true`
+ * nesse recorte) e sem `criado_em` (a leitura do aluno não precisa da data
+ * de cadastro). Shape mais estreito que `VideoGps`, de propósito.
+ */
+export interface VideoDoAluno {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  youtubeId: string;
+  etapa: number | null;
+  ordem: number;
+}
+
 export interface PerfilAluno {
   telefone?: string;
   profissao?: string;

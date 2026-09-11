@@ -41,10 +41,19 @@ export function DialogoEscolherFavorito({
       descricao={cliente.nome || "Cliente sem nome"}
       consequencia={
         <>
-          Uma vez escolhido, este é o cliente que a equipe vai acompanhar em
-          todo o progresso da sua primeira holding. Para trocar depois,{" "}
-          <strong>abra um chamado no Suporte</strong> — a equipe faz a troca com
-          você.
+          {/* 🔴 A COPY DIZIA QUE A ESCOLHA ERA DEFINITIVA, e não é mais
+              (corrigido em 10/09/2026). A trava só vale DEPOIS que a equipe
+              confirma que assumiu o cliente.
+
+              O texto antigo custou caro: dos 5 chamados abertos no primeiro
+              dia de uso, os 5 eram sobre isso. Um parceiro escreveu "achei
+              que favoritar era apenas para sinalizar por onde queria
+              começar" — ele leu "definitivo" e marcou assim mesmo, porque
+              não havia como entender o peso da escolha. */}
+          Este é o cliente que a equipe vai acompanhar em todo o progresso da
+          sua primeira holding. Você pode trocar enquanto a equipe ainda não
+          assumiu; <strong>depois que ela assumir</strong>, a troca passa a ser
+          pelo Suporte.
         </>
       }
       rotuloConfirmar="Escolher este cliente"

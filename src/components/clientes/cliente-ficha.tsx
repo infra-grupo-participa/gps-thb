@@ -166,11 +166,21 @@ export function ClienteFicha({
   /** Outro cliente do ambiente já é a estrela (confirmado ou só escolhido). */
   const outroNome = outroConfirmadoNome ?? outroFavoritoNome;
   /**
-   * A estrela só aparece quando ela pode funcionar: sem estrela no ambiente, e
-   * sem a trava da escolha já feita. Nos demais casos o botão só teria um
-   * destino — falhar com 42501.
+   * A estrela só aparece quando ela pode funcionar. O que a trava de verdade
+   * é a CONFIRMAÇÃO da equipe (`acompanhamento_confirmado_em`), não a escolha
+   * do parceiro.
+   *
+   * 🔴 Era `!confirmado && !escolhidoPeloAluno && ...` (corrigido em
+   * 10/09/2026): o parceiro marcava a estrela e no mesmo instante perdia o
+   * botão de desmarcar, mesmo sem a equipe ter olhado o cliente. A trigger
+   * bloqueava junto, então o único caminho era abrir chamado — e foi o que
+   * 5 pessoas fizeram no primeiro dia de uso.
+   *
+   * Agora: quem escolheu e ainda não foi confirmado VÊ o botão e desmarca
+   * sozinho. `outroConfirmadoNome` continua escondendo (aí o 42501 seria
+   * real: já existe um cliente assumido pela equipe neste ambiente).
    */
-  const mostraEstrela = !confirmado && !escolhidoPeloAluno && outroNome == null;
+  const mostraEstrela = !confirmado && outroConfirmadoNome == null;
 
   /**
    * Há edição pendente na tela?

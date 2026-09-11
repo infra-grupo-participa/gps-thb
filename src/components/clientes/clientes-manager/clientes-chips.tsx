@@ -11,7 +11,7 @@ import { MessageCircle, Star } from "lucide-react";
 import type { ClienteEtapa1 } from "@/lib/types";
 import { GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { formatarData } from "@/lib/datas";
-import { TEXTO_TROCA_POR_CHAMADO } from "@/components/clientes/acompanhamento-equipe";
+import { TEXTO_TROCA_LIVRE } from "@/components/clientes/acompanhamento-equipe";
 import type { ModoEstrela } from "./ordenacao";
 
 /**
@@ -84,7 +84,10 @@ export function EstrelaTravada({
  * tabela; ele fica no banner do topo da lista e na ficha, na mesma tela.
  */
 export function EstrelaEscolhida({ className = "" }: { className?: string }) {
-  const texto = `Este é o cliente que a equipe acompanha. ${TEXTO_TROCA_POR_CHAMADO}.`;
+  // A estrela "escolhida" é a do parceiro, ANTES de a equipe assumir — a
+  // troca ainda é dele. Dizer "abra um chamado" aqui mandava gente ao
+  // Suporte para algo que ela resolvia num clique.
+  const texto = `Este é o cliente que a equipe vai acompanhar. ${TEXTO_TROCA_LIVRE}.`;
   return (
     <span
       title={texto}

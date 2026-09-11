@@ -101,12 +101,18 @@ export function FichaCabecalho({
               ? "Cliente acompanhado pela equipe"
               : "Marcar como cliente da equipe"}
           </Button>
-        ) : confirmado || escolhidoPeloAluno ? (
-          // Somente leitura: a estrela vira SINAL, não botão. A explicação e o
-          // caminho de saída ficam no aviso logo abaixo.
+        ) : confirmado ? (
+          // 🔴 SÓ QUANDO A EQUIPE CONFIRMA a estrela vira somente leitura
+          // (corrigido em 10/09/2026). Era `confirmado || escolhidoPeloAluno`:
+          // o parceiro marcava e no mesmo instante perdia o botão, mesmo sem
+          // a equipe ter olhado o cliente. Os 5 chamados do primeiro dia de
+          // uso eram todos sobre isso.
+          //
+          // `escolhidoPeloAluno` sem confirmação volta a cair no ramo do
+          // botão acima — a escolha é dele e ele a desfaz sozinho.
           <span
             className="inline-flex h-8 items-center gap-1.5 rounded-md border border-sucesso-foreground/25 bg-sucesso px-3 text-xs font-semibold text-sucesso-foreground"
-            title={`Só a equipe troca o cliente acompanhado. ${TEXTO_TROCA_POR_CHAMADO}.`}
+            title={`${TEXTO_TROCA_POR_CHAMADO}.`}
           >
             <Star className="size-4 fill-current" aria-hidden />
             Cliente acompanhado pela equipe

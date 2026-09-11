@@ -59,9 +59,21 @@ export function hrefChamadoTroca(basePath = ""): string {
   return `${basePath}/chamados?assunto=Trocar%20cliente%20acompanhado`;
 }
 
-/** A frase que explica a estrela travada. Repetida em 4 telas, escrita aqui. */
+/**
+ * A frase da estrela travada. Repetida em 4 telas, escrita aqui.
+ *
+ * 🔴 SÓ VALE DEPOIS QUE A EQUIPE CONFIRMA (corrigido em 10/09/2026). Antes
+ * ela aparecia desde o instante em que o parceiro marcava a estrela — e a
+ * trigger de fato bloqueava, mesmo sem a equipe ter olhado o cliente.
+ *
+ * Dos 5 chamados abertos no primeiro dia de uso, os 5 eram sobre isso.
+ */
 export const TEXTO_TROCA_POR_CHAMADO =
-  "Para trocar o cliente acompanhado, abra um chamado";
+  "A equipe assumiu este cliente. Para trocar, abra um chamado";
+
+/** A frase de quando a equipe AINDA NÃO assumiu: o parceiro troca sozinho. */
+export const TEXTO_TROCA_LIVRE =
+  "Você pode trocar enquanto a equipe não assumir este cliente";
 
 /** O link "abra um chamado", já com o assunto preenchido. */
 export function LinkTrocaPorChamado({
@@ -325,7 +337,7 @@ export function AcoesAcompanhamento({
       <p className="corpo-sm text-muted-foreground">
         {confirmado
           ? "A equipe assumiu o acompanhamento deste cliente. Liberar solta a fase e a exclusão; a troca do cliente continua sendo da equipe."
-          : "Confirmar o acompanhamento registra que a equipe assumiu este cliente. A escolha do parceiro já é definitiva desde que ele marcou a estrela."}
+          : "Confirmar registra que a equipe ASSUMIU este cliente — e é isso que trava a troca. Até confirmar, o parceiro ainda pode escolher outro sozinho."}
       </p>
       <div className="flex flex-wrap gap-2">
         {confirmado ? (

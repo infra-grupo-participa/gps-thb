@@ -89,7 +89,16 @@ export function FaixaKpis({
         valor={String(jaEntraram)}
         pct={pctDe(jaEntraram, acesso.total)}
         pctBom="alto"
-        contexto={`de ${acesso.total} · ${acesso.semLogin} sem login`}
+        // "de 140" repetia o que o 99% ao lado já diz. A submétrica passa a
+        // carregar o que SOBRA — que é onde está a ação — e some quando não
+        // sobra ninguém.
+        contexto={
+          acesso.semLogin === 0
+            ? "todos com login criado"
+            : acesso.semLogin === 1
+              ? "falta 1 sem login"
+              : `faltam ${acesso.semLogin} sem login`
+        }
         link={{ href: `${LINK_LISTA}&f=sem_login`, rotulo: "Ver sem login" }}
       />
 
@@ -98,7 +107,15 @@ export function FaixaKpis({
         valor={String(acesso.ativos30d)}
         pct={pctDe(acesso.ativos30d, acesso.total)}
         pctBom="alto"
-        contexto={`${acesso.semAcesso30d} sem acessar há 30+ dias`}
+        // O número solto não dizia que era o OPOSTO do 120 logo acima. "Os
+        // outros N" amarra os dois: 120 ativos, os outros 19 parados.
+        contexto={
+          acesso.semAcesso30d === 0
+            ? "todos acessaram no período"
+            : acesso.semAcesso30d === 1
+              ? "o outro está parado"
+              : `os outros ${acesso.semAcesso30d} estão parados`
+        }
         link={{ href: `${LINK_LISTA}&f=inativos`, rotulo: "Ver os parados" }}
       />
 
@@ -118,7 +135,16 @@ export function FaixaKpis({
             substantivo="clientes novos"
           />
         }
-        contexto={`${clientes.noMes} em ${mesAtual}`}
+        // 🔴 `${clientes.noMes} em ${mesAtual}` DUPLICAVA a variação logo
+        // acima ("+243 vs. ago"), que já é sobre o mês. Duas linhas seguidas
+        // sobre o mesmo recorte gastam altura e não somam leitura. A
+        // submétrica passa a dizer a MÉDIA por ambiente, que é a pergunta
+        // seguinte de quem vê 1.182: "isso é muito ou pouco por pessoa?"
+        contexto={
+          programa.total > 0
+            ? `média de ${Math.round(clientes.total / programa.total)} por ambiente`
+            : undefined
+        }
         link={{ href: `${LINK_LISTA}&ordem=clientes`, rotulo: "Ver por clientes" }}
       />
 
@@ -126,7 +152,17 @@ export function FaixaKpis({
         rotulo="Clientes em fechamento"
         valor={String(clientes.fechamento)}
         pct={pctDe(clientes.fechamento, clientes.total)}
-        contexto={`${honorarios.clientesContratados} contratados`}
+        // 🔴 "12 contratados" parecia submétrica dos 38 em fechamento — como
+        // se 12 dos 38 já tivessem fechado. NÃO É: `clientesContratados` é a
+        // fase SEGUINTE, um conjunto à parte. A palavra "já" e o verbo
+        // desfazem a leitura de subconjunto.
+        contexto={
+          honorarios.clientesContratados > 0
+            ? honorarios.clientesContratados === 1
+              ? "1 já fechou contrato"
+              : `${honorarios.clientesContratados} já fecharam contrato`
+            : "nenhum contrato fechado ainda"
+        }
         link={{
           href: `${LINK_LISTA}&f=tem_fechamento`,
           rotulo: "Ver em fechamento",
@@ -138,7 +174,16 @@ export function FaixaKpis({
         valor={String(faixaCem)}
         pct={pctDe(faixaCem, ambientesNaTrilha)}
         pctBom="alto"
-        contexto={`${naoComecaram} não começaram`}
+        // "115 não começaram" não dizia de quantos, e o macro (0) já é o
+        // outro extremo. Com o denominador, a linha vira a régua do esforço
+        // que falta.
+        contexto={
+          naoComecaram === 0
+            ? `${ambientesNaTrilha} já começaram`
+            : naoComecaram === ambientesNaTrilha
+              ? "nenhum começou ainda"
+              : `${naoComecaram} de ${ambientesNaTrilha} não começaram`
+        }
         link={{ href: ORDEM_POR_PROGRESSO, rotulo: "Ver por progresso" }}
       />
     </div>

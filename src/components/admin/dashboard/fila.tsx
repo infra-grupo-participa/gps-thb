@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { BarraEmpilhada, Barras, pctDe } from "@/components/ui/graficos";
 import { brlOuTraco } from "@/lib/moeda";
+import { cn } from "@/lib/utils";
 import type { Dashboard, ResumoAtendimento } from "@/lib/data/dashboard";
 import { CardDashboard } from "./card-dashboard";
 import { LINK_LISTA, ROTULO_GRAU_RELACAO } from "./tipos";
@@ -129,7 +130,25 @@ export function FilaEBase({
                 <span className="min-w-0 corpo text-muted-foreground">
                   {l.rotulo}
                 </span>
-                <span className="numero shrink-0 text-2xl font-semibold">
+                {/* 🔑 O ZERO É UMA BOA NOTÍCIA (14/09/2026). Todas as quatro
+                    linhas são TRABALHO PENDENTE, então o número não é neutro:
+                    0 significa "nada esperando" e merece ler como resolvido;
+                    qualquer valor acima disso é fila. Antes os dois tinham o
+                    mesmo peso, e "0 chamados abertos" parecia tão urgente
+                    quanto "20".
+
+                    Discreto de propósito: verde apagado para o zero (é
+                    ausência de trabalho, não conquista) e cor de texto cheia
+                    para o resto — quem salta é o número alto, pela tipografia
+                    que já existe, não por vermelho em cima de tudo. */}
+                <span
+                  className={cn(
+                    "numero shrink-0 text-2xl font-semibold tabular-nums",
+                    l.valor === 0
+                      ? "text-sucesso-foreground/55"
+                      : "text-foreground",
+                  )}
+                >
                   {l.valor}
                 </span>
               </Link>

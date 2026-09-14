@@ -38,6 +38,7 @@ import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import type { StatusOnboarding } from "@/lib/types";
 import { ROTULO_TIPO } from "@/components/admin/diario-labels";
 import { FASES_CLIENTE } from "@/lib/etapa1";
+import { ROTULO_CLASSE } from "./estado-na-url";
 import { formatarDataHora, formatarData } from "@/lib/datas";
 import { NotaRapida } from "@/components/admin/nota-rapida";
 import { CopiarContato } from "@/components/admin/copiar-contato";
@@ -122,6 +123,7 @@ export function AlunoCard({
   socioNome,
   atendimentoDe,
   selecao,
+  mostrarFase = false,
 }: AlunoGps & {
   /** Nunca `undefined`: o card sempre tem o que ler, sem `?.` espalhado. */
   atendimentoDe: (alunoId: string) => AtendimentoDoAluno;
@@ -131,6 +133,13 @@ export function AlunoCard({
    * login, e uma caixa que não leva a lugar nenhum é ruído em 158 cards.
    */
   selecao?: { marcado: boolean; onChange: (v: boolean) => void };
+  /**
+   * Mostrar em que FASE este parceiro está (14/09/2026). Só quando a lista
+   * está varrendo TODAS as fases — buscando por nome dentro de um card de
+   * fase, o resultado pode vir de qualquer uma, e sem o chip o operador não
+   * sabe de onde veio. Fora da busca é ruído: ali todo mundo é da mesma fase.
+   */
+  mostrarFase?: boolean;
 }) {
   const atendimento = atendimentoDe(alunoId);
   const honorarios = honorariosDoCard(
@@ -250,6 +259,11 @@ export function AlunoCard({
               <Badge variant="warning" icone={LifeBuoy} className="text-[10px]">
                 {chamados}{" "}
                 {chamados === 1 ? "chamado aberto" : "chamados abertos"}
+              </Badge>
+            ) : null}
+            {mostrarFase ? (
+              <Badge variant="neutral" className="text-[10px]">
+                {ROTULO_CLASSE[classe]}
               </Badge>
             ) : null}
             {chipOnboarding ? (

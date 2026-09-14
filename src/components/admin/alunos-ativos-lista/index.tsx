@@ -169,13 +169,32 @@ export function AlunosAtivosLista({
     return acc;
   }, [alunos]);
 
+  // Declarado antes do `useMemo` que o consome (o `buscando` de baixo é o
+  // mesmo valor, usado pela UI; este existe para a dependência ficar explícita).
+  const buscandoAgora = estado.termo.trim().length > 0;
+
   const visiveis = useMemo(
     () =>
       ordenarAlunos(
         filtrarAlunos(
-          // A fase escolhida corta ANTES da busca e dos filtros: dentro de
-          // um card, tudo o mais opera só sobre aquela fase.
-          estado.classe
+          // 🔑 BUSCAR POR NOME IGNORA A FASE (14/09/2026, pedido do Marcio:
+          // *"facilitar o operador pesquisar sem precisar passar de fase em
+          // fase — apenas pesquisando pelo nome exibe o aluno"*).
+          //
+          // Antes, a fase cortava SEMPRE, antes da busca: o operador dentro
+          // de "Captação" digitava um nome de quem estava em "Execução" e
+          // não achava nada. Precisava sair da fase, ou visitar as cinco uma
+          // a uma — e são 5 fases × 152 pessoas.
+          //
+          // Agora a fase só corta quando NÃO há termo. Buscar é um ato de
+          // "quero achar ESTA pessoa", e quem busca por nome já sabe quem
+          // quer: a fase vira estorvo, não recorte. Sem termo, o card de
+          // fase continua funcionando exatamente como antes.
+          //
+          // ⚠️ Os FILTROS (chips) continuam valendo junto com a busca — eles
+          // são recorte deliberado do operador naquele momento, não um
+          // estado herdado de onde ele clicou.
+          estado.classe && !buscandoAgora
             ? alunos.filter((a) => a.classe === estado.classe)
             : alunos,
           { filtros: estado.filtros, termo: estado.termo },
@@ -188,6 +207,7 @@ export function AlunosAtivosLista({
       alunos,
       atendimentoPorAluno,
       ctx,
+      buscandoAgora,
       estado.classe,
       estado.filtros,
       estado.termo,
@@ -266,9 +286,24 @@ export function AlunosAtivosLista({
         <h2 className="font-heading titulo-h2">
           {ROTULO_CLASSE[estado.classe]}
         </h2>
+        {/* 🔑 Buscando, o título continua sendo o da fase (o operador não
+            saiu dela), mas a contagem passa a falar do RESULTADO — senão a
+            tela diria "12 parceiros" mostrando 3, e quem busca acharia que
+            sumiram nove. A frase diz de onde os resultados vieram: é o que
+            impede a busca de parecer defeito. */}
         <span className="corpo-sm text-muted-foreground">
-          {contagem[estado.classe]}{" "}
-          {contagem[estado.classe] === 1 ? "parceiro" : "parceiros"}
+          {buscandoAgora ? (
+            <>
+              {visiveis.length}{" "}
+              {visiveis.length === 1 ? "resultado" : "resultados"} em todas as
+              fases
+            </>
+          ) : (
+            <>
+              {contagem[estado.classe]}{" "}
+              {contagem[estado.classe] === 1 ? "parceiro" : "parceiros"}
+            </>
+          )}
         </span>
       </div>
 
@@ -376,6 +411,9 @@ export function AlunosAtivosLista({
       ) : (
         visiveis.map((a) => (
           <AlunoCard
+            // Buscando, a lista varre todas as fases: o chip diz de onde cada
+            // resultado veio.
+            mostrarFase={buscandoAgora}
             key={a.alunoId}
             {...a}
             atendimentoDe={atendimentoDe}

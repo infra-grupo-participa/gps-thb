@@ -40,6 +40,7 @@ import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LoteDeAcesso } from "./lote-acesso";
+import { ExportarCsv } from "./exportar-csv";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import {
@@ -333,8 +334,13 @@ export function AlunosAtivosLista({
         />
       ) : null}
 
-      <p aria-live="polite" className="text-xs text-muted-foreground">
-        Mostrando {visiveis.length} de {alunos.length}
+      {/* 🔑 O botão fica JUNTO do rodapé "Mostrando X de Y" (14/09/2026): é
+          ali que o admin lê quantos a tela tem, e é exatamente esse conjunto
+          que o arquivo leva. Exportar a base inteira quando a tela mostra 19
+          seria surpresa ruim. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p aria-live="polite" className="text-xs text-muted-foreground">
+          Mostrando {visiveis.length} de {alunos.length}
         {parcial ? (
           <>
             {" "}
@@ -349,7 +355,13 @@ export function AlunosAtivosLista({
             ) : null}
           </>
         ) : null}
-      </p>
+        </p>
+
+        <ExportarCsv
+          alunos={visiveis}
+          contextoDoFiltro={filtrosAtivos.length > 0 ? "filtrados" : undefined}
+        />
+      </div>
 
       {visiveis.length === 0 ? (
         <ListaVazia

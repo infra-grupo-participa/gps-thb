@@ -33,13 +33,15 @@
  */
 
 import Link from "next/link";
-import { KeyRound, LifeBuoy } from "lucide-react";
+import { KeyRound, LifeBuoy, Star, UserRoundPlus } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import type { StatusOnboarding } from "@/lib/types";
 import { ROTULO_TIPO } from "@/components/admin/diario-labels";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import { formatarDataHora, formatarData } from "@/lib/datas";
 import { NotaRapida } from "@/components/admin/nota-rapida";
+import { CopiarContato } from "@/components/admin/copiar-contato";
+import { mascaraTelefone } from "@/lib/masks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -270,9 +272,22 @@ export function AlunoCard({
               11/09/2026) — "+ Fulano". Só aparece quando a RPC já traz
               `socioNome` (pendente de migração, ver `AlunoGps.socioNome`);
               sem consulta própria, nunca N+1. */}
+          {/* 🔑 SÓCIO × FAVORITO SE DISTINGUEM BATENDO O OLHO (14/09/2026,
+              pedido do Marcio). Antes eram "+ Fulano" e "↳ Fulano", os dois
+              em cinza — símbolos discretos que viravam a mesma coisa na
+              varredura da lista. Agora cada um tem ÍCONE e COR próprios:
+
+                sócio     → pessoa, cor de marca (é gente do ambiente)
+                favorito  → estrela, cor da fase (é cliente acompanhado)
+
+              Ícone + cor + posição: três canais, então continua legível em
+              preto e branco e para quem não distingue as cores. */}
           {socioNome ? (
-            <div className="truncate text-xs text-muted-foreground">
-              + {socioNome}
+            <div className="flex min-w-0 items-center gap-1.5 text-xs text-accent-foreground">
+              <UserRoundPlus aria-hidden className="size-3 shrink-0" />
+              <span className="truncate" title={`Sócio: ${socioNome}`}>
+                {socioNome}
+              </span>
             </div>
           ) : null}
 
@@ -296,8 +311,26 @@ export function AlunoCard({
                 .join(" · ") || undefined
             }
           >
-            {aluno?.email}
+            <CopiarContato
+              valor={aluno?.email}
+              rotuloAcessivel={`Copiar e-mail de ${aluno?.nome ?? "parceiro"}`}
+            />
           </div>
+
+          {/* 🔑 TELEFONE (14/09/2026, pedido do Marcio). O dado SEMPRE veio no
+              payload (`thb_alunos.telefone`, no mesmo `select` do e-mail) — o
+              card é que não o exibia, e a equipe ia buscar na ficha. Copiável
+              como o e-mail: o rótulo é o próprio número, não a palavra
+              "Copiar". */}
+          {aluno?.telefone ? (
+            <div className="truncate text-xs text-muted-foreground">
+              <CopiarContato
+                valor={aluno.telefone}
+                rotuloAcessivel={`Copiar telefone de ${aluno?.nome ?? "parceiro"}`}
+                formatar={mascaraTelefone}
+              />
+            </div>
+          ) : null}
 
           {/* O SUBNOME do favorito (pedido do Marcio, WAR-ROOM 10/09):
               "bater o olho na lista" e ver quem é o cliente que a equipe
@@ -308,8 +341,13 @@ export function AlunoCard({
               nunca `text-primary` (2,98:1, reprova AA). */}
           {favorito ? (
             <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-              <span aria-hidden>↳</span>
-              <span className="truncate">{favorito.nome}</span>
+              <Star
+                aria-hidden
+                className="size-3 shrink-0 fill-primary text-primary"
+              />
+              <span className="truncate" title={`Cliente acompanhado: ${favorito.nome}`}>
+                {favorito.nome}
+              </span>
               {(() => {
                 const fase = FASES_CLIENTE.find((f) => f.id === favorito.fase);
                 return fase ? (

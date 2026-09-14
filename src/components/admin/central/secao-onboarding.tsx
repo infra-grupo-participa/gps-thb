@@ -300,6 +300,15 @@ export function SecaoOnboarding({
   const concluidos = pessoas.filter((p) => p.status === "concluido").length;
 
   return (
+    // 🔑 `id="onboarding"` é o alvo do botão "Respostas" do card do painel
+    // (14/09/2026): a seção existia e era completa, mas só quem já sabia do
+    // caminho a encontrava. `scroll-mt-24` porque o header do Modo
+    // Assistência é fixo — sem isso a âncora para embaixo dele.
+    //
+    // O `<div>` em vez de `id` no próprio `Secao`: o componente é
+    // compartilhado por dezenas de telas e não aceita `id`; acrescentar a
+    // prop ali para um caso só seria API nova sem necessidade.
+    <div id="onboarding" className="scroll-mt-24">
     <Secao
       icone={<ClipboardList />}
       titulo="Questionário inicial"
@@ -367,5 +376,6 @@ export function SecaoOnboarding({
         />
       </ul>
     </Secao>
+    </div>
   );
 }

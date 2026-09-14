@@ -86,9 +86,13 @@ export function FaixaKpis({
           { rotulo: "Titulares", valor: String(equipe.titulares) },
           { rotulo: "Sócios", valor: String(equipe.socios) },
         ]}
+        // O card inteiro é clicável (14/09/2026) e leva à LISTA — é o que
+        // quem clica em "152" espera. A ordenação por entrada recente fica,
+        // mas o rótulo não promete um filtro que não existe (não há
+        // "só sócios" em `FILTROS`).
         link={{
           href: `${LINK_LISTA}&ordem=recentes`,
-          rotulo: "Ver os recentes",
+          rotulo: "Ver a lista",
         }}
       />
 

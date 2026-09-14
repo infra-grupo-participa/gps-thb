@@ -89,7 +89,18 @@ export function CardDashboard({
   children?: React.ReactNode;
 }) {
   return (
-    <Card elevacao="raised" className={cn("h-full", className)}>
+    /* 🔑 Card com link de rodapé vira alvo INTEIRO de clique (14/09/2026):
+       o Marcio clicou no número e nada aconteceu. `relative` dá o retângulo
+       ao `after:inset-0` do link lá embaixo.
+
+       ⚠️ Só quando HÁ `link`: os cards de `link={null}` (fila "Esperando a
+       equipe", grau de relação) têm âncoras PRÓPRIAS nas linhas do corpo, e
+       esticar um link de rodapé por cima cobriria todas elas. */
+    <Card
+      elevacao="raised"
+      interativo={Boolean(link)}
+      className={cn("h-full", link && "relative", className)}
+    >
       <CardContent className="flex h-full flex-col gap-2.5">
         <div className="flex items-start justify-between gap-2">
           <span className="rotulo text-muted-foreground">{rotulo}</span>
@@ -159,10 +170,13 @@ export function CardDashboard({
             <Link
               href={link.href}
               prefetch={false}
-              className="foco-visivel inline-flex items-center gap-1 corpo-sm font-medium text-accent-foreground hover:underline"
+              className="foco-visivel group inline-flex items-center gap-1 corpo-sm font-medium text-accent-foreground after:absolute after:inset-0 after:content-[''] hover:underline"
             >
               {link.rotulo}
-              <ArrowRight aria-hidden className="size-3.5" />
+              <ArrowRight
+                aria-hidden
+                className="size-3.5 transition-transform group-hover:translate-x-0.5"
+              />
             </Link>
           ) : semLink ? (
             <p className="corpo-sm text-muted-foreground">{semLink}</p>

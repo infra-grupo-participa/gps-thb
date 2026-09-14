@@ -89,7 +89,21 @@ export function KpiTile({
         })();
 
   return (
-    <Card elevacao="raised" className="h-full">
+    /* 🔑 O CARD INTEIRO É CLICÁVEL (14/09/2026). O Marcio clicou no "152" e
+       nada aconteceu — o alvo era só o link do rodapé, e ninguém mira num
+       link de 11 px quando o número de 30 px está ali em cima.
+
+       `group` + `after` no link: a âncora do rodapé cresce até cobrir o card
+       (`after:absolute after:inset-0`), então o card inteiro vira alvo SEM
+       aninhar âncoras — âncora dentro de âncora é HTML inválido e some do
+       Tab. É o mesmo padrão do `CardDashboard`, que já resolveu isto.
+
+       `relative` no Card é o que dá o retângulo de referência ao `after`. */
+    <Card
+      elevacao="raised"
+      interativo
+      className="relative h-full transition-colors hover:border-borda-forte"
+    >
       <CardContent className="flex h-full flex-col gap-1.5">
         {/* `min-h-8` = duas linhas de rótulo reservadas: sem isso, o tile
             cujo nome quebra ("Ativos nos últimos 30 dias") empurra o número
@@ -153,7 +167,11 @@ export function KpiTile({
           <Link
             href={link.href}
             prefetch={false}
-            className="foco-visivel group inline-flex items-center gap-1 rounded-sm corpo-sm font-medium text-accent-foreground hover:underline"
+            className={cn(
+              "foco-visivel group inline-flex items-center gap-1 rounded-sm corpo-sm font-medium text-accent-foreground hover:underline",
+              // Estica o alvo de clique sobre o card inteiro.
+              "after:absolute after:inset-0 after:content-['']",
+            )}
           >
             {link.rotulo}
             <ArrowRight

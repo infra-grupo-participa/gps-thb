@@ -389,6 +389,15 @@ export function OnboardingPortal({
                   </p>
                 </div>
               ) : null}
+              {/* 🔴 `favoritado` é SEMPRE `false` desde 14/09/2026: o
+                  onboarding parou de marcar a estrela sozinho (decisão do
+                  Marcio, depois de 4 chamados numa noite pedindo para
+                  desmarcar). O ramo `=== true` fica para o histórico — quem
+                  concluiu antes da mudança pode ter o valor gravado no evento.
+
+                  A frase antiga do ramo `false` dizia "A equipe já acompanha
+                  outro cliente neste ambiente", o que virou mentira para todo
+                  mundo: agora ninguém sai do onboarding com estrela. */}
               {favoritado === true ? (
                 <p className="corpo text-muted-foreground">
                   O seu cliente 1 já está cadastrado e marcado como o cliente
@@ -396,8 +405,10 @@ export function OnboardingPortal({
                 </p>
               ) : favoritado === false ? (
                 <p className="corpo text-muted-foreground">
-                  O seu cliente entrou na sua lista de clientes. A equipe já
-                  acompanha outro cliente neste ambiente.
+                  O seu cliente 1 entrou na sua lista de clientes. Quando
+                  quiser, escolha na aba <strong>Clientes</strong> qual deles a
+                  equipe vai acompanhar de perto — é a estrela, e ela destrava
+                  os próximos passos da Etapa 01.
                 </p>
               ) : null}
               {proximoPasso ? (

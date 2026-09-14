@@ -101,6 +101,43 @@ export const DEFINICAO_DOS_FILTROS: Record<FiltroId, DefinicaoDeFiltro> = {
     predicado: (a) => a.temLogin && a.ultimoAcesso === null,
     disponivel: sempre,
   },
+  /**
+   * 🔴 OS COMPLEMENTOS DE `sem_login` E `inativos` (14/09/2026).
+   *
+   * O KPI "Já entraram no portal" mostrava 139 e o clique levava a
+   * `f=sem_login` — a lista de 1 pessoa, o conjunto OPOSTO. O mesmo em
+   * "Ativos nos últimos 30 dias" (120), que levava a `f=inativos` (19).
+   *
+   * Funcionava como "atalho para a exceção" enquanto só o link de 11 px do
+   * rodapé era clicável e dizia "Ver sem login". Virou BUG quando o card
+   * inteiro passou a ser alvo (mesma data): clicar num número de 30 px e
+   * cair no complemento dele é erro silencioso — a lista abre, cheia, com
+   * outras pessoas.
+   *
+   * `ja_entrou` é `ultimoAcesso !== null`, não `temLogin`: ter conta criada
+   * não é ter entrado. É a mesma distinção que `nunca_entrou` já faz do
+   * outro lado.
+   */
+  ja_entrou: {
+    rotulo: "Já entrou no portal",
+    frase: "que já entraram no portal",
+    predicado: (a) => a.ultimoAcesso !== null,
+    disponivel: sempre,
+  },
+  ativos30: {
+    rotulo: `Ativo nos últimos ${DIAS_INATIVO} dias`,
+    frase: `ativos nos últimos ${DIAS_INATIVO} dias`,
+    // 🔑 NEGAÇÃO EXATA de `inativos`, com a MESMA função e a MESMA constante.
+    // Reimplementar a conta aqui (`Date.now() - ...`) criaria duas verdades
+    // sobre "ativo": mudar `DIAS_INATIVO` corrigiria um lado e deixaria o
+    // outro mentindo, sem erro nenhum. `ultimoAcesso === null` é "nunca
+    // entrou", que não é ativo — e `diasSemAcesso` já devolve Infinity nesse
+    // caso, então a negação sozinha bastaria; o teste explícito é para quem
+    // ler não precisar conferir isso.
+    predicado: (a, c) =>
+      a.ultimoAcesso !== null && diasSemAcesso(a.ultimoAcesso, c.agora) < DIAS_INATIVO,
+    disponivel: sempre,
+  },
   tem_fechamento: {
     rotulo: "Com cliente em fechamento",
     frase: "com cliente em fechamento",

@@ -43,6 +43,12 @@ export const FILTROS = [
   "chamado",
   "sem_login",
   "nunca_entrou",
+  // 🔴 Os complementos (14/09/2026). Sem eles, o KPI "Já entraram 139" só
+  // tinha para onde apontar o conjunto OPOSTO (`sem_login`, 1 pessoa) — e o
+  // card virou alvo de clique hoje, então o erro passou a ser um clique, não
+  // uma leitura de rodapé.
+  "ja_entrou",
+  "ativos30",
   "tem_fechamento",
   "onb_nao",
   "onb_andamento",

@@ -107,7 +107,12 @@ export function FaixaKpis({
         // Só "Sem login": "Nunca entraram" ao lado de "Já entraram" soa
         // contraditório, e o percentual do topo já diz a cobertura.
         pares={[{ rotulo: "Sem login", valor: String(acesso.semLogin) }]}
-        link={{ href: `${LINK_LISTA}&f=sem_login`, rotulo: "Ver sem login" }}
+        // 🔴 ERA `f=sem_login` (14/09/2026): o card mostra 139 QUE ENTRARAM e
+        // o clique abria a lista de 1 SEM LOGIN — o conjunto oposto. Passava
+        // por "atalho para a exceção" enquanto só o link de 11 px do rodapé
+        // era clicável e dizia "Ver sem login"; virou bug quando o card
+        // inteiro virou alvo, no mesmo dia. Agora o destino é o número.
+        link={{ href: `${LINK_LISTA}&f=ja_entrou`, rotulo: "Ver quem entrou" }}
       />
 
       <KpiTile
@@ -120,7 +125,9 @@ export function FaixaKpis({
         pares={[
           { rotulo: "Parados há 30+ dias", valor: String(acesso.semAcesso30d) },
         ]}
-        link={{ href: `${LINK_LISTA}&f=inativos`, rotulo: "Ver os parados" }}
+        // 🔴 Mesmo defeito do card anterior: mostrava 120 ativos e levava aos
+        // 19 parados.
+        link={{ href: `${LINK_LISTA}&f=ativos30`, rotulo: "Ver os ativos" }}
       />
 
       <KpiTile

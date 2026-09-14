@@ -53,14 +53,19 @@ export function VariacaoDoMes({
       className={`inline-flex items-center gap-1 corpo-sm font-medium ${tom}`}
       title={`${variacao.atual} ${substantivo} em ${mesAtual} até o dia ${variacao.ateODia}, contra ${variacao.anterior} no mesmo intervalo de ${mesAnterior}.`}
     >
-      <Icone aria-hidden className="size-3.5" />
+      <Icone aria-hidden className="size-3.5 shrink-0" />
       <span className="numero">
         {sinal}
         {Math.abs(delta)}
       </span>
       {/* A nota que impede a comparação de mentir, em texto pequeno: o
-          número manda, mas "até o dia N" não pode sumir. */}
-      <span className="text-[11px] font-normal text-muted-foreground">
+          número manda, mas "até o dia N" não pode sumir.
+
+          🔑 `whitespace-nowrap` (14/09/2026): sem ele a frase quebrava no
+          meio — "vs. ago, até dia / 14" — e o "14" órfão na linha de baixo
+          parecia outro número do card. Cabe em ~130 px; se faltar espaço, a
+          linha inteira desce junto, que é o comportamento certo. */}
+      <span className="whitespace-nowrap text-[11px] font-normal text-muted-foreground">
         vs. {mesAnteriorCurto ?? mesAnterior}, até dia {variacao.ateODia}
       </span>
     </span>

@@ -88,6 +88,7 @@ export function FaixaKpis({
         rotulo="Já entraram no portal"
         valor={String(jaEntraram)}
         pct={pctDe(jaEntraram, acesso.total)}
+        pctBom="alto"
         contexto={`de ${acesso.total} · ${acesso.semLogin} sem login`}
         link={{ href: `${LINK_LISTA}&f=sem_login`, rotulo: "Ver sem login" }}
       />
@@ -96,6 +97,7 @@ export function FaixaKpis({
         rotulo="Ativos nos últimos 30 dias"
         valor={String(acesso.ativos30d)}
         pct={pctDe(acesso.ativos30d, acesso.total)}
+        pctBom="alto"
         contexto={`${acesso.semAcesso30d} sem acessar há 30+ dias`}
         link={{ href: `${LINK_LISTA}&f=inativos`, rotulo: "Ver os parados" }}
       />
@@ -135,6 +137,7 @@ export function FaixaKpis({
         rotulo="Etapa 01 concluída"
         valor={String(faixaCem)}
         pct={pctDe(faixaCem, ambientesNaTrilha)}
+        pctBom="alto"
         contexto={`${naoComecaram} não começaram`}
         link={{ href: ORDEM_POR_PROGRESSO, rotulo: "Ver por progresso" }}
       />

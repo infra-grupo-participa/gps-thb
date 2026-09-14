@@ -45,29 +45,43 @@ export function FilaEBase({
   // "quantos desses entraram". "Nunca entrou" só aparece quando existe — e é
   // o mesmo corte do filtro `nunca_entrou` da lista, para os dois números
   // nunca divergirem.
+  // 🔑 Formato de PAR (14/09/2026, pedido do Marcio): rótulo à esquerda,
+  // número à direita, sem frase. O `detalhe` em prosa ("139 já entraram · 120
+  // nos últimos 30 dias") obrigava a ler para achar os números; agora cada um
+  // é uma linha própria, indentada sob o grupo a que pertence.
   const linhasEquipe = [
     {
       rotulo: "Titulares",
       valor: equipe.titulares,
-      detalhe:
+      detalhe: null as string | null,
+      sub:
         equipe.titulares > 0
-          ? `${equipe.titularesJaEntraram} já entraram · ${equipe.titularesAtivos30d} nos últimos 30 dias`
-          : null,
+          ? [
+              { rotulo: "já entraram", valor: equipe.titularesJaEntraram },
+              { rotulo: "ativos 30 dias", valor: equipe.titularesAtivos30d },
+            ]
+          : [],
     },
     {
       rotulo: "Sócios",
       valor: equipe.socios,
-      detalhe:
+      detalhe: equipe.socios === 0 ? "nenhum sócio no sistema ainda" : null,
+      sub:
         equipe.socios > 0
-          ? `${equipe.sociosJaEntraram} já entraram · ${equipe.sociosAtivos30d} nos últimos 30 dias`
-          : "nenhum sócio no sistema ainda",
+          ? [
+              { rotulo: "já entraram", valor: equipe.sociosJaEntraram },
+              { rotulo: "ativos 30 dias", valor: equipe.sociosAtivos30d },
+            ]
+          : [],
     },
     ...(equipe.nuncaEntraram > 0
       ? [
           {
             rotulo: "Nunca entraram",
             valor: equipe.nuncaEntraram,
+            // Explicação, não dado: não vira par (não há número a alinhar).
             detalhe: "têm conta criada e ainda não abriram o portal",
+            sub: [],
           },
         ]
       : []),
@@ -77,6 +91,7 @@ export function FilaEBase({
             rotulo: "Convites em aberto",
             valor: equipe.convitesPendentes,
             detalhe: "aguardando o sócio aceitar",
+            sub: [],
           },
         ]
       : []),
@@ -167,7 +182,11 @@ export function FilaEBase({
         rotulo="Titulares e sócios"
         valor={String(equipe.titulares + equipe.socios)}
         variante="grafico"
-        contexto={`Pessoas com acesso, em ${equipe.titulares} ambientes.`}
+        // O card "Parceiros" do TOPO já dá o total e a divisão titular/sócio
+        // (14/09/2026). Aqui o que justifica o card é o DETALHE — quantos de
+        // cada grupo entraram e estão ativos —, então o contexto sai e o
+        // espaço fica para os números.
+        contexto={undefined}
         link={null}
         semLink={
           equipe.socios === 0
@@ -179,10 +198,8 @@ export function FilaEBase({
       >
         <ul className="grid gap-0.5">
           {linhasEquipe.map((l) => (
-            <li
-              key={l.rotulo}
-              className="-mx-2 flex items-baseline justify-between gap-3 rounded-md px-2 py-1.5"
-            >
+            <li key={l.rotulo} className="-mx-2 rounded-md px-2 py-1.5">
+              <div className="flex items-baseline justify-between gap-3">
               <span className="min-w-0">
                 <span className="block corpo text-muted-foreground">
                   {l.rotulo}
@@ -193,7 +210,23 @@ export function FilaEBase({
                   </span>
                 ) : null}
               </span>
-              <span className="shrink-0 numero tabular-nums">{l.valor}</span>
+                <span className="shrink-0 numero tabular-nums">{l.valor}</span>
+              </div>
+              {l.sub.length > 0 ? (
+                <dl className="mt-0.5 grid gap-0.5 pl-3 text-xs">
+                  {l.sub.map((x) => (
+                    <div
+                      key={x.rotulo}
+                      className="flex items-baseline justify-between gap-2"
+                    >
+                      <dt className="text-muted-foreground/80">{x.rotulo}</dt>
+                      <dd className="numero shrink-0 tabular-nums text-muted-foreground">
+                        {x.valor}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : null}
             </li>
           ))}
         </ul>

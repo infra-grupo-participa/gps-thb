@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   GraduationCap,
   IdCard,
@@ -13,6 +14,7 @@ import type { Dashboard, FaixaDeTrilha } from "@/lib/data/dashboard";
 import { CardDashboard } from "./card-dashboard";
 import { VariacaoDoMes } from "./variacao";
 import {
+  LINK_CLIENTES,
   LINK_LISTA,
   ORDEM_POR_PROGRESSO,
   TOM_DA_FAIXA,
@@ -189,19 +191,50 @@ export function GraficosDoPrograma({
         )}
       </CardDashboard>
 
-      {/* 3 — funil de clientes, com a taxa de passagem entre as etapas */}
+      {/* 3 — funil de clientes, com a taxa de passagem entre as etapas.
+          🔴 14/09/2026: CADA FATIA leva à sua própria fase em
+          `/admin/clientes?fase=…` (lista CONSOLIDADA de clientes, não mais a
+          de parceiros com `f=tem_fechamento`) — pedido do plano. `Funil` é
+          componente de DESENHO puro, compartilhado por outras telas, e não
+          carrega link nenhum (nem por fatia, nem só um): dar-lhe um link por
+          etapa duplicaria a responsabilidade de navegação num componente que
+          hoje só sabe desenhar. Como o `CardDashboard` também só aceita UM
+          link de rodapé (`after:inset-0` cobre o card inteiro — um segundo
+          link ficaria coberto e inacessível, a mesma armadilha do `KpiTile`),
+          a saída aqui é `link={null}` no card e uma lista de 3 links PRÓPRIA,
+          abaixo do funil, no vocabulário de `Funil` mas com âncora de
+          verdade em cada linha. */}
       <CardDashboard
         icone={<UserRound />}
         rotulo="Funil de clientes"
         valor={String(clientes.total)}
         variante="grafico"
         contexto="Clientes cadastrados pelos parceiros, por fase."
-        link={{
-          href: `${LINK_LISTA}&f=tem_fechamento`,
-          rotulo: "Ver quem tem cliente em fechamento",
-        }}
+        link={null}
+        semLink="Cada fase abaixo abre a lista de clientes daquela fase."
       >
-        <Funil etapas={porFase} />
+        <div className="grid gap-3">
+          <Funil etapas={porFase} />
+          <ul className="grid gap-0.5 border-t border-borda-fina pt-2">
+            {(
+              [
+                { fase: "prospeccao" as const, rotulo: "Prospecção" },
+                { fase: "fechamento" as const, rotulo: "Fechamento" },
+                { fase: "contratado" as const, rotulo: "Contratado" },
+              ]
+            ).map((f) => (
+              <li key={f.fase}>
+                <Link
+                  href={`${LINK_CLIENTES}?fase=${f.fase}`}
+                  prefetch={false}
+                  className="foco-visivel -mx-2 flex items-center justify-between gap-2 rounded-md px-2 py-1 corpo-sm font-medium text-accent-foreground hover:bg-superficie-afundada hover:underline"
+                >
+                  Ver {f.rotulo.toLowerCase()}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </CardDashboard>
 
       {/* 4 — progresso na Etapa 01, por faixa */}

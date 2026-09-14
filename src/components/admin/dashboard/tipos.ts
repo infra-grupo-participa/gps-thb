@@ -143,6 +143,15 @@ export const TOM_DA_FAIXA: Record<FaixaTrilha, TomGrafico> = {
 export const LINK_LISTA = "/admin?aba=ativos";
 
 /**
+ * O prefixo de todo link de card que leva à lista CONSOLIDADA de clientes
+ * (`/admin/clientes`, item 3 dos 9, 14/09/2026) — não confundir com
+ * `LINK_LISTA`, que leva à lista de PARCEIROS. Os dois são allowlists
+ * diferentes: `estado-na-url.ts` de `clientes-programa` só aceita `fase`,
+ * `grau`, `q` e `pag`.
+ */
+export const LINK_CLIENTES = "/admin/clientes";
+
+/**
  * O que o card 6 abre.
  *
  * ⚠️ Só existem `ordem=progresso` e os filtros da allowlist de

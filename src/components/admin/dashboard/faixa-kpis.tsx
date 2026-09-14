@@ -3,6 +3,7 @@ import type { Dashboard, FaixaDeTrilha } from "@/lib/data/dashboard";
 import { KpiTile } from "./kpi-tile";
 import { VariacaoDoMes } from "./variacao";
 import {
+  LINK_CLIENTES,
   LINK_LISTA,
   ORDEM_POR_PROGRESSO,
   nomeDoMes,
@@ -161,7 +162,15 @@ export function FaixaKpis({
                 : "—",
           },
         ]}
-        link={{ href: `${LINK_LISTA}&ordem=clientes`, rotulo: "Ver por clientes" }}
+        // 🔴 14/09/2026: passou a levar à lista CONSOLIDADA de clientes
+        // (`/admin/clientes`, item 3 dos 9), não mais à lista de parceiros
+        // ordenada por quantidade. É a pergunta que "Clientes cadastrados"
+        // faz — "quem são" —, e antes o clique respondia "quais parceiros têm
+        // mais". `KpiTile` só aceita UM link (o `after:inset-0` do rodapé
+        // cobre o card inteiro): o card aponta inteiro para o destino novo,
+        // em vez de tentar um segundo link que ficaria coberto e silenciosamente
+        // inacessível.
+        link={{ href: LINK_CLIENTES, rotulo: "Ver os clientes" }}
       />
 
       <KpiTile
@@ -178,8 +187,12 @@ export function FaixaKpis({
             valor: String(honorarios.clientesContratados),
           },
         ]}
+        // 🔴 14/09/2026: mesmo motivo do card acima — leva à lista
+        // CONSOLIDADA de clientes, já filtrada pela fase (`?fase=fechamento`,
+        // allowlist de `clientes-programa/estado-na-url.ts`), não mais à
+        // lista de parceiros com `f=tem_fechamento`.
         link={{
-          href: `${LINK_LISTA}&f=tem_fechamento`,
+          href: `${LINK_CLIENTES}?fase=fechamento`,
           rotulo: "Ver em fechamento",
         }}
       />

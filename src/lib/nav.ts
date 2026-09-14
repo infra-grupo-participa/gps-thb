@@ -243,6 +243,15 @@ export function adminNavItems(
     // próximo do catálogo existente, e a regra do projeto é não inventar
     // chave nova.
     { href: "/admin/videos", label: "Vídeos", icon: "materiais" },
+    // Lista consolidada de clientes do programa (item 3 dos 9, 14/09/2026) —
+    // ícone "clientes", o MESMO que `alunoNavItems` usa para a aba Clientes
+    // do parceiro (mesmo assunto, vocabulário de ícone já existente).
+    //
+    // 🔴 SÓ AQUI, NUNCA em `alunoNavItems`: aquela função também é chamada
+    // pelo ALUNO (basePath=""), e qualquer item nela vaza para o menu dele —
+    // esta lista é de TODOS os ambientes, dado de terceiro que o parceiro não
+    // pode ver fora da própria ficha.
+    { href: "/admin/clientes", label: "Clientes", icon: "clientes" },
   ];
 }
 

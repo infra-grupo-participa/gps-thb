@@ -6,7 +6,7 @@ import { brlOuTraco } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import type { Dashboard, ResumoAtendimento } from "@/lib/data/dashboard";
 import { CardDashboard } from "./card-dashboard";
-import { LINK_LISTA, ROTULO_GRAU_RELACAO } from "./tipos";
+import { LINK_CLIENTES, LINK_LISTA, ROTULO_GRAU_RELACAO } from "./tipos";
 
 /**
  * **Seção C — a fila e a base.** O que a equipe deve fazer, e o estado do
@@ -306,6 +306,34 @@ export function FilaEBase({
               ]}
               resumo={`Clientes por grau de relação: ${dados.grauRelacao.itens.map((g) => `${ROTULO_GRAU_RELACAO[g.grau] ?? g.grau} ${g.qtd}`).join(", ")}, não informado ${dados.grauRelacao.naoInformado}.`}
             />
+
+            {/* 🔴 14/09/2026: `Barras` é DESENHO puro (compartilhado por
+                outros cards) e não carrega link — cada grau ganha uma linha
+                própria com âncora de verdade abaixo do gráfico, para
+                `/admin/clientes?grau=…`. "Não informado" leva a `_nulo`, a
+                mesma convenção de `gps.admin_clientes_lista`. */}
+            <ul className="grid gap-0.5 border-t border-borda-fina pt-2">
+              {dados.grauRelacao.itens.map((g) => (
+                <li key={g.grau}>
+                  <Link
+                    href={`${LINK_CLIENTES}?grau=${g.grau}`}
+                    prefetch={false}
+                    className="foco-visivel -mx-2 flex items-center justify-between gap-2 rounded-md px-2 py-1 corpo-sm font-medium text-accent-foreground hover:bg-superficie-afundada hover:underline"
+                  >
+                    Ver {(ROTULO_GRAU_RELACAO[g.grau] ?? g.grau).toLowerCase()}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Link
+                  href={`${LINK_CLIENTES}?grau=_nulo`}
+                  prefetch={false}
+                  className="foco-visivel -mx-2 flex items-center justify-between gap-2 rounded-md px-2 py-1 corpo-sm font-medium text-accent-foreground hover:bg-superficie-afundada hover:underline"
+                >
+                  Ver sem grau informado
+                </Link>
+              </li>
+            </ul>
           </div>
         )}
       </CardDashboard>

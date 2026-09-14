@@ -36,6 +36,7 @@ export function KpiTile({
   destaque = false,
   variacao,
   contexto,
+  pares,
   link,
 }: {
   rotulo: string;
@@ -57,6 +58,16 @@ export function KpiTile({
   variacao?: React.ReactNode;
   /** UMA linha curta, numérica. Ex.: "de 136 · 19 sem login". */
   contexto?: string;
+  /**
+   * Submétricas como PAR rótulo → valor, no molde do `CardDashboard`
+   * (14/09/2026, pedido do Marcio: *"queria ser direto, tipo: Parceiros 152,
+   * Titulares 140, Sócios 12"*).
+   *
+   * Prefira `pares` a `contexto` sempre que a submétrica for um número com
+   * nome. Frase corrida ("os outros 19 estão parados") obriga a ler para
+   * achar o número; o par põe os dois em colunas e o olho varre.
+   */
+  pares?: { rotulo: string; valor: string }[];
   link: { href: string; rotulo: string };
 }) {
   /**
@@ -108,6 +119,26 @@ export function KpiTile({
         </div>
 
         {variacao}
+        {pares && pares.length > 0 ? (
+          // `<dl>`: cada item é termo → valor, e é assim que o leitor de tela
+          // emparelha os dois. Mesmo desenho do `CardDashboard`, para a Visão
+          // geral ter uma linguagem só.
+          <dl className="grid gap-0.5 corpo-sm">
+            {pares.map((p) => (
+              <div
+                key={p.rotulo}
+                className="flex items-baseline justify-between gap-2"
+              >
+                <dt className="min-w-0 truncate text-muted-foreground">
+                  {p.rotulo}
+                </dt>
+                <dd className="numero shrink-0 font-semibold tabular-nums">
+                  {p.valor}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
         {contexto ? (
           <p className="corpo-sm text-muted-foreground">{contexto}</p>
         ) : null}

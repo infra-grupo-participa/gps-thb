@@ -42,12 +42,21 @@ export function FaixaKpis({
   const ambientesNaTrilha = trilha.reduce((s, f) => s + f.qtd, 0);
   const faixaCem = trilha.find((f) => f.faixa === "100")?.qtd ?? 0;
   const naoComecaram = trilha.find((f) => f.faixa === "0")?.qtd ?? 0;
+  const emAndamento = Math.max(
+    0,
+    ambientesNaTrilha - faixaCem - naoComecaram,
+  );
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+      {/* 🔑 "Parceiros 152 · Titulares 140 · Sócios 12" — o formato que o
+          Marcio pediu em 14/09: rótulo e número, sem frase. O macro passa a
+          ser PESSOAS (152), não ambientes (140), porque é isso que o par
+          embaixo soma; com "No programa 140" o leitor tentava fechar a conta
+          e achava que faltavam 12. */}
       <KpiTile
-        rotulo="No programa"
-        valor={String(programa.total)}
+        rotulo="Parceiros"
+        valor={String(equipe.titulares + equipe.socios)}
         destaque
         variacao={
           <VariacaoDoMes
@@ -73,11 +82,10 @@ export function FaixaKpis({
         // sumido da conta. A frase diz os sócios como QUEM SE SOMA, não como
         // parte do 140. `socios = 0` na maior parte dos dias, então ela some
         // em vez de exibir "+ 0 sócios".
-        contexto={
-          equipe.socios > 0
-            ? `${equipe.titulares} ${equipe.titulares === 1 ? "titular" : "titulares"} + ${equipe.socios} ${equipe.socios === 1 ? "sócio" : "sócios"} = ${equipe.titulares + equipe.socios} pessoas`
-            : `${equipe.titulares} ${equipe.titulares === 1 ? "titular" : "titulares"}, nenhum sócio`
-        }
+        pares={[
+          { rotulo: "Titulares", valor: String(equipe.titulares) },
+          { rotulo: "Sócios", valor: String(equipe.socios) },
+        ]}
         link={{
           href: `${LINK_LISTA}&ordem=recentes`,
           rotulo: "Ver os recentes",
@@ -92,13 +100,9 @@ export function FaixaKpis({
         // "de 140" repetia o que o 99% ao lado já diz. A submétrica passa a
         // carregar o que SOBRA — que é onde está a ação — e some quando não
         // sobra ninguém.
-        contexto={
-          acesso.semLogin === 0
-            ? "todos com login criado"
-            : acesso.semLogin === 1
-              ? "falta 1 sem login"
-              : `faltam ${acesso.semLogin} sem login`
-        }
+        // Só "Sem login": "Nunca entraram" ao lado de "Já entraram" soa
+        // contraditório, e o percentual do topo já diz a cobertura.
+        pares={[{ rotulo: "Sem login", valor: String(acesso.semLogin) }]}
         link={{ href: `${LINK_LISTA}&f=sem_login`, rotulo: "Ver sem login" }}
       />
 
@@ -109,13 +113,9 @@ export function FaixaKpis({
         pctBom="alto"
         // O número solto não dizia que era o OPOSTO do 120 logo acima. "Os
         // outros N" amarra os dois: 120 ativos, os outros 19 parados.
-        contexto={
-          acesso.semAcesso30d === 0
-            ? "todos acessaram no período"
-            : acesso.semAcesso30d === 1
-              ? "o outro está parado"
-              : `os outros ${acesso.semAcesso30d} estão parados`
-        }
+        pares={[
+          { rotulo: "Parados há 30+ dias", valor: String(acesso.semAcesso30d) },
+        ]}
         link={{ href: `${LINK_LISTA}&f=inativos`, rotulo: "Ver os parados" }}
       />
 
@@ -140,11 +140,16 @@ export function FaixaKpis({
         // sobre o mesmo recorte gastam altura e não somam leitura. A
         // submétrica passa a dizer a MÉDIA por ambiente, que é a pergunta
         // seguinte de quem vê 1.182: "isso é muito ou pouco por pessoa?"
-        contexto={
-          programa.total > 0
-            ? `média de ${Math.round(clientes.total / programa.total)} por ambiente`
-            : undefined
-        }
+        pares={[
+          { rotulo: `Em ${mesAtual}`, valor: String(clientes.noMes) },
+          {
+            rotulo: "Média por parceiro",
+            valor:
+              programa.total > 0
+                ? String(Math.round(clientes.total / programa.total))
+                : "—",
+          },
+        ]}
         link={{ href: `${LINK_LISTA}&ordem=clientes`, rotulo: "Ver por clientes" }}
       />
 
@@ -156,13 +161,12 @@ export function FaixaKpis({
         // se 12 dos 38 já tivessem fechado. NÃO É: `clientesContratados` é a
         // fase SEGUINTE, um conjunto à parte. A palavra "já" e o verbo
         // desfazem a leitura de subconjunto.
-        contexto={
-          honorarios.clientesContratados > 0
-            ? honorarios.clientesContratados === 1
-              ? "1 já fechou contrato"
-              : `${honorarios.clientesContratados} já fecharam contrato`
-            : "nenhum contrato fechado ainda"
-        }
+        pares={[
+          {
+            rotulo: "Contratados",
+            valor: String(honorarios.clientesContratados),
+          },
+        ]}
         link={{
           href: `${LINK_LISTA}&f=tem_fechamento`,
           rotulo: "Ver em fechamento",
@@ -177,13 +181,14 @@ export function FaixaKpis({
         // "115 não começaram" não dizia de quantos, e o macro (0) já é o
         // outro extremo. Com o denominador, a linha vira a régua do esforço
         // que falta.
-        contexto={
-          naoComecaram === 0
-            ? `${ambientesNaTrilha} já começaram`
-            : naoComecaram === ambientesNaTrilha
-              ? "nenhum começou ainda"
-              : `${naoComecaram} de ${ambientesNaTrilha} não começaram`
-        }
+        // "Em andamento" some quando é 0: com 115 não começaram e 0
+        // concluídos, a linha zerada não acrescenta nada.
+        pares={[
+          { rotulo: "Não começaram", valor: String(naoComecaram) },
+          ...(emAndamento > 0
+            ? [{ rotulo: "Em andamento", valor: String(emAndamento) }]
+            : []),
+        ]}
         link={{ href: ORDEM_POR_PROGRESSO, rotulo: "Ver por progresso" }}
       />
     </div>

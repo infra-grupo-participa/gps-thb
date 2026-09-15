@@ -378,6 +378,21 @@ const FRASES_DO_BANCO: Record<string, string> = {
     "O contrato é anexado pelo próprio portal, no botão de anexar da ficha do cliente.",
 
   // ══════════════════════════════════════════════════════════════════════
+  // Minutas da ficha do cliente (migração ...259)
+  // ══════════════════════════════════════════════════════════════════════
+  //
+  // As frases de anexo (caminho inválido, objeto inexistente, MIME, tamanho)
+  // já estão mapeadas acima — mesmo bucket-molde, mesma conferência. Só as
+  // que são EXCLUSIVAS de `gps.cliente_minuta_anexar`/`_remover` entram aqui.
+  // "minuta nao informada"/"Minuta não encontrada." não cai em
+  // FALTA_PARAMETRO/"Cliente não encontrado.": são frases próprias porque o
+  // parâmetro identifica a VERSÃO, não a ficha.
+  "minuta nao informada":
+    "Não foi possível identificar a minuta. Recarregue a página e tente de novo.",
+  "Minuta não encontrada.": "Minuta não encontrada.",
+  "Notas da minuta muito longas.": "As notas da minuta estão muito longas.",
+
+  // ══════════════════════════════════════════════════════════════════════
   // PLANTÃO DE DÚVIDAS (migrações ...180 a ...183)
   // ══════════════════════════════════════════════════════════════════════
   //

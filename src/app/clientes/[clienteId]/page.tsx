@@ -6,6 +6,7 @@ import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
+import { getMinutasDoCliente } from "@/lib/data/minutas";
 
 export default async function ClienteFichaPage({
   params,
@@ -28,9 +29,12 @@ export default async function ClienteFichaPage({
   // ⚠️ A guarda de propriedade continua ANTES de qualquer render: o
   // `notFound()` roda com as duas respostas em mãos, no mesmo ponto lógico
   // de antes.
-  const [cliente, aluno] = await Promise.all([
+  const [cliente, aluno, minutas] = await Promise.all([
     getClienteById(clienteId),
     getAlunoById(alunoId),
+    // 🔑 No MESMO Promise.all: a lista de minutas não depende do cliente nem
+    // do aluno, então pedir em cascata custaria uma viagem a mais por ficha.
+    getMinutasDoCliente(clienteId),
   ]);
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
@@ -77,6 +81,7 @@ export default async function ClienteFichaPage({
 
         <ClienteFicha
           cliente={cliente}
+          minutas={minutas}
           alunoId={alunoId}
           outroConfirmadoNome={outroConfirmadoNome}
           outroFavoritoNome={outroFavoritoNome}

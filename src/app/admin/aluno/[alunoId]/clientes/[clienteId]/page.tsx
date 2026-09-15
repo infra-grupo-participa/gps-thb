@@ -14,6 +14,7 @@ import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
+import { getMinutasDoCliente } from "@/lib/data/minutas";
 
 export default async function AdminAlunoClienteFichaPage({
   params,
@@ -32,15 +33,19 @@ export default async function AdminAlunoClienteFichaPage({
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, qtdMembros, outroConfirmado, tutoriaisAtivo] = await Promise.all([
-    getAlunoById(alunoId),
-    contarMembrosDoAmbiente(alunoId),
-    // Mesma regra da ficha do aluno: só quando este cliente não é a estrela.
-    cliente.acompanhado_equipe
-      ? Promise.resolve(null)
-      : getClienteEquipe(alunoId),
-    getTutoriaisAtivo(),
-  ]);
+  const [aluno, qtdMembros, outroConfirmado, tutoriaisAtivo, minutas] =
+    await Promise.all([
+      getAlunoById(alunoId),
+      contarMembrosDoAmbiente(alunoId),
+      // Mesma regra da ficha do aluno: só quando este cliente não é a estrela.
+      cliente.acompanhado_equipe
+        ? Promise.resolve(null)
+        : getClienteEquipe(alunoId),
+      getTutoriaisAtivo(),
+      // 🔑 No MESMO Promise.all (o `cliente` já foi resolvido acima): pedir em
+      // cascata custaria uma viagem a mais por abertura de ficha.
+      getMinutasDoCliente(clienteId),
+    ]);
   const outroConfirmadoNome = outroConfirmado?.acompanhamento_confirmado_em
     ? (outroConfirmado.nome ?? null)
     : null;
@@ -77,6 +82,7 @@ export default async function AdminAlunoClienteFichaPage({
             `gp_is_admin()` das RPCs; esta prop decide o que a tela oferece. */}
         <ClienteFicha
           cliente={cliente}
+          minutas={minutas}
           alunoId={alunoId}
           admin
           outroConfirmadoNome={outroConfirmadoNome}

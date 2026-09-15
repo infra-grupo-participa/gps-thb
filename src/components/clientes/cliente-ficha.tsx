@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
+import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import {
   PROBLEMAS_7,
   FASES_CLIENTE,
@@ -23,6 +24,7 @@ import {
   IdCard,
   ListChecks,
   NotebookPen,
+  FileText,
 } from "lucide-react";
 import { atualizarCliente, definirClienteEquipe } from "@/app/clientes/actions";
 import { brlInteiro } from "@/lib/moeda";
@@ -37,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DialogoDesfavoritar } from "@/components/clientes/dialogo-desfavoritar";
 import { FichaContrato } from "@/components/clientes/ficha-contrato";
+import { MinutasAnexo } from "@/components/clientes/minutas-anexo";
 import { FichaCabecalho } from "@/components/clientes/ficha-cabecalho";
 import { DialogoEscolherFavorito } from "@/components/clientes/dialogo-escolher-favorito";
 import {
@@ -60,6 +63,7 @@ export function ClienteFicha({
   admin = false,
   outroConfirmadoNome = null,
   outroFavoritoNome = null,
+  minutas = [],
 }: {
   cliente: ClienteEtapa1;
   alunoId: string;
@@ -82,6 +86,13 @@ export function ClienteFicha({
    * razão escrita. `null` = não há outro escolhido.
    */
   outroFavoritoNome?: string | null;
+  /**
+   * Histórico de minutas do cliente (mais recente primeiro), vindo do
+   * SERVIDOR — mesma regra do anexo de contrato: a escrita é por RPC e não
+   * passa pelo "Salvar ficha", então não vira estado local. `[]` = ainda sem
+   * `getMinutasDoCliente` na page (backend em paralelo) ou nenhuma enviada.
+   */
+  minutas?: ClienteMinuta[];
 }) {
   const router = useRouter();
   const [nome, setNome] = useState(cliente.nome ?? "");
@@ -676,6 +687,23 @@ export function ClienteFicha({
           anexoDesabilitado={pending}
           aoMudarAnexo={() => router.refresh()}
         />
+
+        {/* Minutas — perto do contrato assinado, decisão do Marcio (15/09).
+            Mesma regra do anexo acima: dado do SERVIDOR, sem espelho local. */}
+        <Secao
+          icone={<FileText />}
+          titulo="Minutas"
+          nivel="h3"
+          classeConteudo="grid gap-5"
+        >
+          <MinutasAnexo
+            clienteId={cliente.id}
+            minutas={minutas}
+            podeAnexar={!admin}
+            desabilitado={pending}
+            aoMudar={() => router.refresh()}
+          />
+        </Secao>
 
         <Secao icone={<NotebookPen />} titulo="Registro e perfil" nivel="h3" classeConteudo="grid gap-5">
 

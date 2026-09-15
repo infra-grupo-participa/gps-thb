@@ -100,25 +100,49 @@ export function FilaEBase({
   const grauInformado = dados.grauRelacao.itens.reduce((s, g) => s + g.qtd, 0);
   const totalGrau = grauInformado + dados.grauRelacao.naoInformado;
 
+  /**
+   * 🔴 15/09/2026 (decisão do Marcio): o número GRANDE de cada linha passa a
+   * ser o que o CLIQUE entrega — quantos AMBIENTES a lista vai mostrar
+   * (`ambientesComPendencia`/`ambientesComChamado`) — e a quantidade de itens
+   * (pendência, chamado) vira texto secundário: *"6 pendências em 3
+   * parceiros"*. Antes o número grande era a contagem de itens
+   * (`pendenciasAbertas`/`chamadosAbertos`), que podia ser maior do que a
+   * lista teria linhas — um ambiente com 3 pendências abertas mostrava "3" e
+   * a lista filtrada trazia 1 card.
+   *
+   * `ambientesComPendencia`/`ambientesComChamado` já são calculados em
+   * `resumoAtendimento` (`src/lib/data/dashboard.ts:386,388`) e não eram
+   * usados em lugar nenhum — código morto que passa a viver.
+   */
   const fila = [
     {
       rotulo: "Pendências do Diário",
-      valor: atendimento.pendenciasAbertas,
+      valor: atendimento.ambientesComPendencia,
+      detalhe:
+        atendimento.pendenciasAbertas > 0
+          ? `${atendimento.pendenciasAbertas} ${atendimento.pendenciasAbertas === 1 ? "pendência" : "pendências"} em ${atendimento.ambientesComPendencia} ${atendimento.ambientesComPendencia === 1 ? "parceiro" : "parceiros"}`
+          : null,
       href: `${LINK_LISTA}&f=pendencia`,
     },
     {
       rotulo: "Chamados abertos",
-      valor: atendimento.chamadosAbertos,
+      valor: atendimento.ambientesComChamado,
+      detalhe:
+        atendimento.chamadosAbertos > 0
+          ? `${atendimento.chamadosAbertos} ${atendimento.chamadosAbertos === 1 ? "chamado" : "chamados"} em ${atendimento.ambientesComChamado} ${atendimento.ambientesComChamado === 1 ? "parceiro" : "parceiros"}`
+          : null,
       href: `${LINK_LISTA}&f=chamado`,
     },
     {
       rotulo: "Sem nota no Diário",
       valor: atendimento.semNenhumaNota,
+      detalhe: null as string | null,
       href: `${LINK_LISTA}&f=sem_nota`,
     },
     {
       rotulo: "Sem acessar há 30+ dias",
       valor: atendimento.semAcesso30d,
+      detalhe: null as string | null,
       href: `${LINK_LISTA}&f=inativos`,
     },
   ];
@@ -140,10 +164,24 @@ export function FilaEBase({
               <Link
                 href={l.href}
                 prefetch={false}
+                aria-label={
+                  l.detalhe ? `${l.rotulo}: ${l.detalhe}` : `${l.rotulo}: ${l.valor}`
+                }
                 className="foco-visivel -mx-2 flex items-baseline justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-superficie-afundada"
               >
-                <span className="min-w-0 corpo text-muted-foreground">
-                  {l.rotulo}
+                <span className="min-w-0">
+                  <span className="block corpo text-muted-foreground">
+                    {l.rotulo}
+                  </span>
+                  {/* 🔴 15/09/2026: a contagem de ITENS (não mais o número
+                      grande) vira texto secundário — "6 pendências em 3
+                      parceiros". O número grande agora É a contagem de
+                      parceiros, que é o que a lista filtrada vai mostrar. */}
+                  {l.detalhe ? (
+                    <span className="block text-xs text-muted-foreground/80">
+                      {l.detalhe}
+                    </span>
+                  ) : null}
                 </span>
                 {/* 🔑 O ZERO É UMA BOA NOTÍCIA (14/09/2026). Todas as quatro
                     linhas são TRABALHO PENDENTE, então o número não é neutro:

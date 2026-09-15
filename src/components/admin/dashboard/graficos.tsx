@@ -16,7 +16,6 @@ import { VariacaoDoMes } from "./variacao";
 import {
   LINK_CLIENTES,
   LINK_LISTA,
-  ORDEM_POR_PROGRESSO,
   TOM_DA_FAIXA,
   TOM_DA_FASE,
   diaCurto,
@@ -134,6 +133,7 @@ export function GraficosDoPrograma({
         link={{
           href: `${LINK_LISTA}&ordem=recentes`,
           rotulo: "Ver os mais recentes",
+          ariaLabel: "Ver os parceiros mais recentes",
         }}
       >
         <Barras
@@ -244,7 +244,11 @@ export function GraficosDoPrograma({
         valor={String(faixaCem)}
         variante="grafico"
         contexto={`Ambientes com a etapa concluída, de ${ambientesNaTrilha}.`}
-        link={{ href: ORDEM_POR_PROGRESSO, rotulo: "Ver por progresso" }}
+        link={{
+          href: `${LINK_LISTA}&f=etapa1_ok`,
+          rotulo: "Ver quem concluiu",
+          ariaLabel: `Ver os ${faixaCem} parceiros com a Etapa 01 concluída`,
+        }}
       >
         {/* Barra DEITADA, não em colunas: os quatro rótulos ("Passou da
             metade", "Etapa 01 concluída") têm 16–20 caracteres e não cabem sob
@@ -261,17 +265,25 @@ export function GraficosDoPrograma({
         />
       </CardDashboard>
 
-      {/* 5 — acesso ao portal: a rosca que o João pediu */}
+      {/* 5 — acesso ao portal: a rosca que o João pediu.
+          🔴 15/09/2026: DOIS ALVOS DISTINTOS, cada um honesto. O macro
+          ("117 de 136") linka para o conjunto DELE — quem já entrou
+          (`f=ja_entrou`) — e o link de rodapé continua indo ao complemento,
+          com o rótulo dele ("Ver quem está sem login"). Antes só existia o
+          link de rodapé, e clicar no número grande caía no complemento. */}
       <CardDashboard
         icone={<IdCard />}
         rotulo="Acesso ao portal"
         valor={`${jaEntraram} de ${acesso.total}`}
+        valorHref={`${LINK_LISTA}&f=ja_entrou`}
+        valorAriaLabel={`Ver os ${jaEntraram} parceiros que já entraram no portal`}
         variante="grafico"
         // Sem `contexto`: o rótulo, o "117 de 136" e o miolo da rosca ("86% já
         // entraram") já dizem a mesma frase três vezes. O espaço vai para o anel.
         link={{
           href: `${LINK_LISTA}&f=sem_login`,
           rotulo: "Ver quem está sem login",
+          ariaLabel: `Ver os ${acesso.semLogin} parceiros sem login`,
         }}
       >
         <Rosca
@@ -293,11 +305,21 @@ export function GraficosDoPrograma({
 
       {/* 6 — onboarding. Sem "vs. mês anterior": a RPC devolve as conclusões
           do mês corrente e NÃO o mesmo intervalo do anterior. Fabricar a
-          comparação a partir de zero anunciaria "+N" para sempre. */}
+          comparação a partir de zero anunciaria "+N" para sempre.
+          🔴 15/09/2026: mesmo padrão do card "Acesso ao portal" — o macro
+          linka para quem CONCLUIU (`f=onb_ok`) e o rodapé continua indo a
+          quem NÃO respondeu (`f=onb_nao`). Só quando há resposta: com a base
+          inteira em "não iniciado" o filtro `onb_ok` não separaria ninguém
+          (`disponivel` em `filtros.ts` já esconde o chip nesse caso; aqui o
+          link do macro simplesmente não aparece). */}
       <CardDashboard
         icone={<ListChecks />}
         rotulo="Onboarding"
         valor={String(onboarding.concluidos)}
+        valorHref={
+          ninguemRespondeu ? undefined : `${LINK_LISTA}&f=onb_ok`
+        }
+        valorAriaLabel={`Ver os ${onboarding.concluidos} parceiros com o onboarding concluído`}
         variante="grafico"
         // Ver `fila.tsx`: `h-full` venceria o `items-start` da grade. Só no
         // estado vazio — com resposta, as duas roscas têm a mesma altura.
@@ -325,6 +347,7 @@ export function GraficosDoPrograma({
         link={{
           href: `${LINK_LISTA}&f=onb_nao`,
           rotulo: "Ver quem não respondeu",
+          ariaLabel: `Ver os ${onboarding.naoIniciados} parceiros que não responderam o onboarding`,
         }}
       >
         {ninguemRespondeu ? (

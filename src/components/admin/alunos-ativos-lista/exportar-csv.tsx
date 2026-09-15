@@ -29,6 +29,15 @@ import type { AlunoGps } from "@/lib/data";
  * programa, não público: quem exporta assume a guarda. Não acrescentar
  * documento (CPF) aqui sem decisão explícita — o card não o mostra, e
  * planilha circula.
+ *
+ * 🔴 RÓTULO HONESTO QUANDO O LOTE É PARCIAL (15/09/2026). `alunos` é sempre
+ * "o que está na tela" — mas a TELA pode ser só um pedaço da base (paginação,
+ * `alunos-ativos-lista/index.tsx:105`). Sem nada tocar no banco: quando
+ * `parcial` é `true`, o botão diz "Exportar N dos carregados", o nome do
+ * arquivo carrega a ressalva (`-parcial-de-Y`) e um aviso VISÍVEL (não
+ * `title=`, que ninguém lê) aparece ao lado do rodapé "Mostrando X de Y".
+ * Hoje 142 cabem no lote de 200 e isso não dispara — mas a regra fica
+ * escrita para quando a base crescer.
  */
 
 const COLUNAS: ColunaCsv<AlunoGps>[] = [
@@ -73,11 +82,22 @@ const COLUNAS: ColunaCsv<AlunoGps>[] = [
 export function ExportarCsv({
   alunos,
   contextoDoFiltro,
+  parcial = false,
+  totalDaBase,
 }: {
   /** A lista JÁ filtrada e ordenada — o que a tela mostra. */
   alunos: AlunoGps[];
   /** Vira parte do nome do arquivo. Ex.: "parados". */
   contextoDoFiltro?: string;
+  /**
+   * `true` quando o lote carregado (`alunos-ativos-lista/index.tsx`) é menor
+   * que a base do programa — a paginação, não o filtro. O filtro já é
+   * honesto por natureza (é o que o admin pediu para ver); a ressalva aqui é
+   * só sobre o que NUNCA chegou a carregar.
+   */
+  parcial?: boolean;
+  /** O total da base (`total`, de `getAlunosGps`). Só lido quando `parcial`. */
+  totalDaBase?: number;
 }) {
   const [baixando, setBaixando] = useState(false);
 
@@ -94,7 +114,10 @@ export function ExportarCsv({
       const a = document.createElement("a");
       a.href = url;
       a.download = nomeDoArquivo(
-        `parceiros${contextoDoFiltro ? `-${contextoDoFiltro}` : ""}-${alunos.length}`,
+        `parceiros${contextoDoFiltro ? `-${contextoDoFiltro}` : ""}-${alunos.length}` +
+          // 🔴 O NOME DO ARQUIVO carrega a ressalva: quem recebe o CSV por
+          // fora (WhatsApp, e-mail) não vê o aviso da tela — só o nome.
+          (parcial && totalDaBase ? `-parcial-de-${totalDaBase}` : ""),
       );
       document.body.appendChild(a);
       a.click();
@@ -110,15 +133,27 @@ export function ExportarCsv({
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={exportar}
-      disabled={baixando}
-      title={`Baixar ${alunos.length} ${alunos.length === 1 ? "parceiro" : "parceiros"} em planilha (abre no Excel)`}
-    >
-      <Download aria-hidden className="size-4" />
-      Exportar {alunos.length}
-    </Button>
+    <div className="grid gap-1 justify-items-end">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={exportar}
+        disabled={baixando}
+        title={`Baixar ${alunos.length} ${alunos.length === 1 ? "parceiro" : "parceiros"} em planilha (abre no Excel)`}
+      >
+        <Download aria-hidden className="size-4" />
+        {parcial && totalDaBase
+          ? `Exportar ${alunos.length} dos carregados`
+          : `Exportar ${alunos.length}`}
+      </Button>
+      {/* 🔴 Aviso VISÍVEL, não `title=` — ninguém lê `title`. Fica ao lado do
+          rodapé "Mostrando X de Y" (`index.tsx`), que já explica o lote. */}
+      {parcial && totalDaBase ? (
+        <p className="text-xs text-muted-foreground">
+          A planilha leva só os {alunos.length} carregados, não os{" "}
+          {totalDaBase} do programa.
+        </p>
+      ) : null}
+    </div>
   );
 }

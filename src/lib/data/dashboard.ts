@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { logErro } from "@/lib/log";
-import { META_HONORARIOS } from "@/lib/etapa1";
+import { META_CLIENTES, META_HONORARIOS } from "@/lib/etapa1";
 import type { GrauRelacao } from "@/lib/types";
 import type { AlunoGps } from "@/lib/data/alunos";
 import type { AtendimentoDoAluno } from "@/lib/data/diario";
@@ -402,5 +402,110 @@ export function resumoAtendimento(
     ambientesComChamado,
     semNenhumaNota,
     semAcesso30d,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Painel de estado do topo (15/09/2026, pedido do Marcio) — terceira função
+// PURA sobre o lote, mesmo molde de `faixasDeTrilha`/`resumoAtendimento`.
+// ZERO consulta nova: os 12 números saem do que `AlunoGps` já traz
+// (`temLogin`, `ultimoAcesso`, `clientesPreenchidos`, `clientesComDados`,
+// `onboardingStatus`). Nenhum é calculado duas vezes com predicado
+// divergente — ver o comentário de cada campo abaixo para a fonte exata.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface PainelDeEstado {
+  ambientes: number;
+  jaLogaram: number;
+  semLogin: number;
+  nuncaEntraram: number;
+  ativos30d: number;
+  parados30d: number;
+  semNenhumCliente: number;
+  noMeioDos30: number;
+  fecharamOs30: number;
+  onboardingNaoComecou: number;
+  onboardingEmAndamento: number;
+  onboardingConcluido: number;
+}
+
+const TRINTA_DIAS_MS_PAINEL = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Os 12 números do painel de estado, sobre o LOTE carregado (mesma Leitura A
+ * da busca, dos filtros e da trilha — vale sobre o que `/admin` já trouxe).
+ *
+ * Predicados, um a um (conferidos contra a medição do Marcio em produção,
+ * 15/09/2026 — se um destes divergir do medido, o predicado é que está
+ * errado, não o número):
+ * - **ambientes**: `alunos.length`.
+ * - **jaLogaram**: tem login E `ultimoAcesso != null`.
+ * - **semLogin**: `!temLogin`.
+ * - **nuncaEntraram**: tem login E `ultimoAcesso == null` (mesmo corte do
+ *   filtro `nunca_entrou` em `filtros.ts`).
+ * - **ativos30d** / **parados30d**: mesmo corte de `diasSemAcesso` — parado
+ *   é quem não tem acesso ou está há 30 dias ou mais sem acessar.
+ * - **semNenhumCliente**: `clientesPreenchidos === 0`.
+ * - **noMeioDos30**: `0 < clientesComDados < META_CLIENTES` — o MESMO
+ *   `comDados` de `src/lib/etapa1.ts:457` (nome + telefone; `grau_relacao`
+ *   NÃO entra), o mesmo predicado do filtro `clientes_incompleto`.
+ * - **fecharamOs30**: `clientesComDados >= META_CLIENTES`.
+ * - **onboarding***: dos 3 valores de `StatusOnboarding` — o questionário é
+ *   do TITULAR do ambiente (mesma ressalva de `AlunoGps.onboardingStatus`).
+ */
+export function painelDeEstado(alunos: AlunoGps[]): PainelDeEstado {
+  const agora = Date.now();
+
+  let jaLogaram = 0;
+  let semLogin = 0;
+  let nuncaEntraram = 0;
+  let ativos30d = 0;
+  let parados30d = 0;
+  let semNenhumCliente = 0;
+  let noMeioDos30 = 0;
+  let fecharamOs30 = 0;
+  let onboardingNaoComecou = 0;
+  let onboardingEmAndamento = 0;
+  let onboardingConcluido = 0;
+
+  for (const a of alunos) {
+    if (!a.temLogin) {
+      semLogin += 1;
+    } else if (a.ultimoAcesso === null) {
+      nuncaEntraram += 1;
+    } else {
+      jaLogaram += 1;
+    }
+
+    const semAcesso =
+      !a.ultimoAcesso ||
+      agora - new Date(a.ultimoAcesso).getTime() >= TRINTA_DIAS_MS_PAINEL;
+    if (semAcesso) parados30d += 1;
+    else ativos30d += 1;
+
+    if (a.clientesPreenchidos === 0) semNenhumCliente += 1;
+    if (a.clientesComDados > 0 && a.clientesComDados < META_CLIENTES) {
+      noMeioDos30 += 1;
+    }
+    if (a.clientesComDados >= META_CLIENTES) fecharamOs30 += 1;
+
+    if (a.onboardingStatus === "nao_iniciado") onboardingNaoComecou += 1;
+    else if (a.onboardingStatus === "em_andamento") onboardingEmAndamento += 1;
+    else onboardingConcluido += 1;
+  }
+
+  return {
+    ambientes: alunos.length,
+    jaLogaram,
+    semLogin,
+    nuncaEntraram,
+    ativos30d,
+    parados30d,
+    semNenhumCliente,
+    noMeioDos30,
+    fecharamOs30,
+    onboardingNaoComecou,
+    onboardingEmAndamento,
+    onboardingConcluido,
   };
 }

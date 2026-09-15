@@ -9,6 +9,7 @@ import {
   getDashboard,
   faixasDeTrilha,
   resumoAtendimento,
+  painelDeEstado,
   LIMITE_PAINEL_ALUNOS,
   LIMITE_PAINEL_ALUNOS_MAX,
 } from "@/lib/data";
@@ -144,6 +145,7 @@ export default async function AdminPage({
                 dados={dashboard}
                 trilha={faixasDeTrilha(alunos)}
                 atendimento={resumoAtendimento(alunos, atendimentoDiario)}
+                painel={painelDeEstado(alunos)}
                 ambientesCarregados={alunos.length}
               />
             ) : (

@@ -2,13 +2,7 @@ import { pctDe } from "@/components/ui/graficos";
 import type { Dashboard, FaixaDeTrilha } from "@/lib/data/dashboard";
 import { KpiTile } from "./kpi-tile";
 import { VariacaoDoMes } from "./variacao";
-import {
-  LINK_CLIENTES,
-  LINK_LISTA,
-  ORDEM_POR_PROGRESSO,
-  nomeDoMes,
-  rotuloDoMes,
-} from "./tipos";
+import { LINK_CLIENTES, LINK_LISTA, nomeDoMes, rotuloDoMes } from "./tipos";
 
 /**
  * **Seção A — a faixa de KPIs.** Seis números, nenhum gráfico, uma leitura.
@@ -83,10 +77,20 @@ export function FaixaKpis({
         // sumido da conta. A frase diz os sócios como QUEM SE SOMA, não como
         // parte do 140. `socios = 0` na maior parte dos dias, então ela some
         // em vez de exibir "+ 0 sócios".
+        // 🔴 Titulares/sócios NÃO viram link próprio: não há filtro "só
+        // sócio"/"só titular" em `FILTROS` (a lista é por AMBIENTE, e sócio
+        // não tem linha própria — ver o `contexto` abaixo). Inventar um
+        // `?f=` que o parse descarta daria um link que não faz nada.
         pares={[
           { rotulo: "Titulares", valor: String(equipe.titulares) },
           { rotulo: "Sócios", valor: String(equipe.socios) },
         ]}
+        // 🔴 15/09/2026: o número deste tile é PESSOAS (titular + sócio); a
+        // lista para a qual ele leva é por AMBIENTE — sócios dividem o
+        // ambiente do titular, então a lista mostra menos linhas do que este
+        // número. Decisão do Marcio (mantida): o macro fica em pessoas, e a
+        // assimetria se explica em vez de se esconder.
+        contexto="A lista abaixo é por ambiente — sócio soma aqui, mas não vira linha própria."
         // O card inteiro é clicável (14/09/2026) e leva à LISTA — é o que
         // quem clica em "152" espera. A ordenação por entrada recente fica,
         // mas o rótulo não promete um filtro que não existe (não há
@@ -94,6 +98,7 @@ export function FaixaKpis({
         link={{
           href: `${LINK_LISTA}&ordem=recentes`,
           rotulo: "Ver a lista",
+          ariaLabel: `Ver a lista dos ${equipe.titulares + equipe.socios} parceiros`,
         }}
       />
 
@@ -107,13 +112,24 @@ export function FaixaKpis({
         // sobra ninguém.
         // Só "Sem login": "Nunca entraram" ao lado de "Já entraram" soa
         // contraditório, e o percentual do topo já diz a cobertura.
-        pares={[{ rotulo: "Sem login", valor: String(acesso.semLogin) }]}
+        pares={[
+          {
+            rotulo: "Sem login",
+            valor: String(acesso.semLogin),
+            href: `${LINK_LISTA}&f=sem_login`,
+            ariaLabel: `Ver os ${acesso.semLogin} parceiros sem login`,
+          },
+        ]}
         // 🔴 ERA `f=sem_login` (14/09/2026): o card mostra 139 QUE ENTRARAM e
         // o clique abria a lista de 1 SEM LOGIN — o conjunto oposto. Passava
         // por "atalho para a exceção" enquanto só o link de 11 px do rodapé
         // era clicável e dizia "Ver sem login"; virou bug quando o card
         // inteiro virou alvo, no mesmo dia. Agora o destino é o número.
-        link={{ href: `${LINK_LISTA}&f=ja_entrou`, rotulo: "Ver quem entrou" }}
+        link={{
+          href: `${LINK_LISTA}&f=ja_entrou`,
+          rotulo: "Ver quem entrou",
+          ariaLabel: `Ver os ${jaEntraram} parceiros que já entraram no portal`,
+        }}
       />
 
       <KpiTile
@@ -124,11 +140,20 @@ export function FaixaKpis({
         // O número solto não dizia que era o OPOSTO do 120 logo acima. "Os
         // outros N" amarra os dois: 120 ativos, os outros 19 parados.
         pares={[
-          { rotulo: "Parados há 30+ dias", valor: String(acesso.semAcesso30d) },
+          {
+            rotulo: "Parados há 30+ dias",
+            valor: String(acesso.semAcesso30d),
+            href: `${LINK_LISTA}&f=inativos`,
+            ariaLabel: `Ver os ${acesso.semAcesso30d} parceiros parados há 30 dias ou mais`,
+          },
         ]}
         // 🔴 Mesmo defeito do card anterior: mostrava 120 ativos e levava aos
         // 19 parados.
-        link={{ href: `${LINK_LISTA}&f=ativos30`, rotulo: "Ver os ativos" }}
+        link={{
+          href: `${LINK_LISTA}&f=ativos30`,
+          rotulo: "Ver os ativos",
+          ariaLabel: `Ver os ${acesso.ativos30d} parceiros ativos nos últimos 30 dias`,
+        }}
       />
 
       <KpiTile
@@ -170,7 +195,11 @@ export function FaixaKpis({
         // cobre o card inteiro): o card aponta inteiro para o destino novo,
         // em vez de tentar um segundo link que ficaria coberto e silenciosamente
         // inacessível.
-        link={{ href: LINK_CLIENTES, rotulo: "Ver os clientes" }}
+        link={{
+          href: LINK_CLIENTES,
+          rotulo: "Ver os clientes",
+          ariaLabel: `Ver os ${clientes.total} clientes cadastrados`,
+        }}
       />
 
       <KpiTile
@@ -185,6 +214,8 @@ export function FaixaKpis({
           {
             rotulo: "Contratados",
             valor: String(honorarios.clientesContratados),
+            href: `${LINK_CLIENTES}?fase=contratado`,
+            ariaLabel: `Ver os ${honorarios.clientesContratados} clientes contratados`,
           },
         ]}
         // 🔴 14/09/2026: mesmo motivo do card acima — leva à lista
@@ -194,6 +225,7 @@ export function FaixaKpis({
         link={{
           href: `${LINK_CLIENTES}?fase=fechamento`,
           rotulo: "Ver em fechamento",
+          ariaLabel: `Ver os ${clientes.fechamento} clientes em fechamento`,
         }}
       />
 
@@ -208,12 +240,32 @@ export function FaixaKpis({
         // "Em andamento" some quando é 0: com 115 não começaram e 0
         // concluídos, a linha zerada não acrescenta nada.
         pares={[
-          { rotulo: "Não começaram", valor: String(naoComecaram) },
+          {
+            rotulo: "Não começaram",
+            valor: String(naoComecaram),
+            href: `${LINK_LISTA}&f=etapa1_zero`,
+            ariaLabel: `Ver os ${naoComecaram} parceiros que não começaram a Etapa 01`,
+          },
           ...(emAndamento > 0
-            ? [{ rotulo: "Em andamento", valor: String(emAndamento) }]
+            ? [
+                {
+                  rotulo: "Em andamento",
+                  valor: String(emAndamento),
+                  href: `${LINK_LISTA}&f=etapa1_andamento`,
+                  ariaLabel: `Ver os ${emAndamento} parceiros com a Etapa 01 em andamento`,
+                },
+              ]
             : []),
         ]}
-        link={{ href: ORDEM_POR_PROGRESSO, rotulo: "Ver por progresso" }}
+        // 🔴 15/09/2026: `ORDEM_POR_PROGRESSO` (ordenar por progresso) morreu
+        // — era a muleta enquanto não existia filtro de faixa. Com
+        // `f=etapa1_ok` a lista já mostra EXATAMENTE quem concluiu, em vez de
+        // só empurrar esse grupo para o topo de uma lista com todo mundo.
+        link={{
+          href: `${LINK_LISTA}&f=etapa1_ok`,
+          rotulo: "Ver quem concluiu",
+          ariaLabel: `Ver os ${faixaCem} parceiros com a Etapa 01 concluída`,
+        }}
       />
     </div>
   );

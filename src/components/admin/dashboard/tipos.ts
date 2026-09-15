@@ -139,8 +139,17 @@ export const TOM_DA_FAIXA: Record<FaixaTrilha, TomGrafico> = {
  * um `/admin?f=sem_login` sem aba devolveria o admin a este mesmo dashboard
  * com um filtro marcado que ele não veria. Escrito num lugar só para não
  * depender de nove `href` lembrarem da regra.
+ *
+ * 🔴 CONSERTO DE 15/09/2026 — o comentário anterior dizia que `aba=ativos`
+ * bastava. **Estava errado desde 10/09.** A aba Parceiros só monta a LISTA
+ * depois de uma classe escolhida (`AlunosAtivosLista`, `index.tsx:266`):
+ * sem `classe` na URL, `/admin?aba=ativos&f=sem_login` caía nos 5 cards de
+ * fase, com o filtro marcado e invisível — os ~15 links do dashboard não
+ * funcionavam, nenhum deles. `classe=todas` é a sentinela (`CLASSE_TODAS`,
+ * `alunos-ativos-lista/estado-na-url.ts`) que faz a lista se montar SEM
+ * cortar por classe, deixando o filtro (`f=…`) fazer o recorte de verdade.
  */
-export const LINK_LISTA = "/admin?aba=ativos";
+export const LINK_LISTA = "/admin?aba=ativos&classe=todas";
 
 /**
  * O prefixo de todo link de card que leva à lista CONSOLIDADA de clientes
@@ -150,14 +159,3 @@ export const LINK_LISTA = "/admin?aba=ativos";
  * `grau`, `q` e `pag`.
  */
 export const LINK_CLIENTES = "/admin/clientes";
-
-/**
- * O que o card 6 abre.
- *
- * ⚠️ Só existem `ordem=progresso` e os filtros da allowlist de
- * `estado-na-url.ts` — não há filtro por faixa de progresso, e inventar um
- * `?f=faixa_0` que o parse descarta daria um link que não faz nada. Ordenar
- * por progresso põe exatamente essa gente no topo (ou no fim) da lista, que é
- * o que o card promete.
- */
-export const ORDEM_POR_PROGRESSO = `${LINK_LISTA}&ordem=progresso`;

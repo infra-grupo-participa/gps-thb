@@ -4,6 +4,16 @@ import { ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+/** Um par rótulo → valor da lista de submétricas. `href` vira link PRÓPRIO. */
+export interface ParDoTile {
+  rotulo: string;
+  valor: string;
+  /** Quando presente, a LINHA inteira vira `<Link>` — não só o rodapé. */
+  href?: string;
+  /** Obrigatório com `href`: o que o conjunto É, para quem usa leitor de tela. */
+  ariaLabel?: string;
+}
+
 /**
  * Um tile da **faixa de KPIs** do topo da Visão geral — o macro do programa
  * em seis números, sem gráfico nenhum.
@@ -27,6 +37,15 @@ import { cn } from "@/lib/utils";
  *
  * Sem `IconeChip`: seis chips em fila competiriam com os seis números, e o
  * chip é o vocabulário dos cards de gráfico, onde ele separa assuntos.
+ *
+ * 🔴 CADA NÚMERO É UM LINK PRÓPRIO — grandes E pequenos (15/09/2026, decisão
+ * do Marcio, ciente de que desfaz o "card inteiro clicável" de 14/09: as
+ * duas coisas são exclusivas, porque o `after:absolute after:inset-0` do
+ * card cobriria qualquer link de linha). Molde: `dashboard/fila.tsx` (card
+ * "Grau de relação"), que já resolvia isso com `link={null}` no card + uma
+ * âncora por linha. Aqui é o mesmo padrão: o card NUNCA usa `after:inset-0`
+ * — o número macro é `<Link>` de verdade (não span esticado por CSS) e cada
+ * `par` com `href` vira `<Link>` de linha.
  */
 export function KpiTile({
   rotulo,
@@ -67,8 +86,13 @@ export function KpiTile({
    * nome. Frase corrida ("os outros 19 estão parados") obriga a ler para
    * achar o número; o par põe os dois em colunas e o olho varre.
    */
-  pares?: { rotulo: string; valor: string }[];
-  link: { href: string; rotulo: string };
+  pares?: ParDoTile[];
+  /**
+   * O link do número MACRO — sempre uma âncora de verdade, com
+   * `aria-label` nomeando o conjunto. Continua obrigatório: todo tile leva a
+   * algum lugar.
+   */
+  link: { href: string; rotulo: string; ariaLabel?: string };
 }) {
   /**
    * A cor do percentual (14/09/2026). Antes TODOS eram cinza, então "86%
@@ -89,21 +113,11 @@ export function KpiTile({
         })();
 
   return (
-    /* 🔑 O CARD INTEIRO É CLICÁVEL (14/09/2026). O Marcio clicou no "152" e
-       nada aconteceu — o alvo era só o link do rodapé, e ninguém mira num
-       link de 11 px quando o número de 30 px está ali em cima.
-
-       `group` + `after` no link: a âncora do rodapé cresce até cobrir o card
-       (`after:absolute after:inset-0`), então o card inteiro vira alvo SEM
-       aninhar âncoras — âncora dentro de âncora é HTML inválido e some do
-       Tab. É o mesmo padrão do `CardDashboard`, que já resolveu isto.
-
-       `relative` no Card é o que dá o retângulo de referência ao `after`. */
-    <Card
-      elevacao="raised"
-      interativo
-      className="relative h-full transition-colors hover:border-borda-forte"
-    >
+    /* 🔴 15/09/2026: o card DEIXOU de ser alvo inteiro de clique (era assim
+       desde 14/09) — decisão do Marcio, para cada submétrica poder ser o seu
+       próprio alvo. Sem `relative`/`after:inset-0` aqui: cada link é uma
+       âncora de verdade, do tamanho do texto que ela é. */
+    <Card elevacao="raised" className="h-full transition-colors hover:border-borda-forte">
       <CardContent className="flex h-full flex-col gap-1.5">
         {/* `min-h-8` = duas linhas de rótulo reservadas: sem isso, o tile
             cujo nome quebra ("Ativos nos últimos 30 dias") empurra o número
@@ -113,13 +127,19 @@ export function KpiTile({
           {rotulo}
         </span>
 
-        {/* 🔑 `gap-x-1.5` + `leading-none` no número: o percentual colado
-            (`139` `99%`) disputava com o macro. Agora ele respira e, com cor,
-            vira leitura secundária de verdade. */}
-        <div className="flex flex-wrap items-baseline gap-x-1.5">
+        {/* 🔴 O NÚMERO MACRO É LINK (15/09/2026) — `<Link>` de verdade, não
+            `<span>` esticado por `after`. `foco-visivel` para o Tab mostrar o
+            alvo, `aria-label` nomeando o conjunto (o número sozinho, "142",
+            não diz nada a quem usa leitor de tela). */}
+        <Link
+          href={link.href}
+          prefetch={false}
+          aria-label={link.ariaLabel ?? `${link.rotulo}: ${rotulo}, ${valor}`}
+          className="foco-visivel group flex w-fit flex-wrap items-baseline gap-x-1.5 rounded-sm"
+        >
           <span
             className={cn(
-              "numero-lg leading-none",
+              "numero-lg leading-none group-hover:underline",
               destaque && "text-accent-foreground",
             )}
           >
@@ -130,27 +150,49 @@ export function KpiTile({
               {pct === null ? "—" : `${pct}%`}
             </span>
           ) : null}
-        </div>
+        </Link>
 
         {variacao}
         {pares && pares.length > 0 ? (
           // `<dl>`: cada item é termo → valor, e é assim que o leitor de tela
           // emparelha os dois. Mesmo desenho do `CardDashboard`, para a Visão
-          // geral ter uma linguagem só.
+          // geral ter uma linguagem só. Item com `href` vira `<Link>` — a
+          // LINHA inteira é o alvo, não só o número.
           <dl className="grid gap-0.5 corpo-sm">
-            {pares.map((p) => (
-              <div
-                key={p.rotulo}
-                className="flex items-baseline justify-between gap-2"
-              >
-                <dt className="min-w-0 truncate text-muted-foreground">
-                  {p.rotulo}
-                </dt>
-                <dd className="numero shrink-0 font-semibold tabular-nums">
-                  {p.valor}
-                </dd>
-              </div>
-            ))}
+            {pares.map((p) =>
+              p.href ? (
+                <Link
+                  key={p.rotulo}
+                  href={p.href}
+                  prefetch={false}
+                  aria-label={p.ariaLabel ?? `Ver ${p.rotulo.toLowerCase()}: ${p.valor}`}
+                  className="foco-visivel group -mx-1.5 flex items-baseline justify-between gap-2 rounded-sm px-1.5 py-0.5 hover:bg-superficie-afundada"
+                >
+                  {/* `dt`/`dd` dentro do `<Link>`: a linha inteira é o alvo,
+                      e a semântica de termo→valor do `<dl>` não se perde —
+                      `<a>` pode envolver `dt`+`dd` sem invalidar a lista de
+                      definição. */}
+                  <dt className="min-w-0 truncate text-accent-foreground underline-offset-4 group-hover:underline">
+                    {p.rotulo}
+                  </dt>
+                  <dd className="numero shrink-0 font-semibold tabular-nums">
+                    {p.valor}
+                  </dd>
+                </Link>
+              ) : (
+                <div
+                  key={p.rotulo}
+                  className="flex items-baseline justify-between gap-2"
+                >
+                  <dt className="min-w-0 truncate text-muted-foreground">
+                    {p.rotulo}
+                  </dt>
+                  <dd className="numero shrink-0 font-semibold tabular-nums">
+                    {p.valor}
+                  </dd>
+                </div>
+              ),
+            )}
           </dl>
         ) : null}
         {contexto ? (
@@ -167,11 +209,7 @@ export function KpiTile({
           <Link
             href={link.href}
             prefetch={false}
-            className={cn(
-              "foco-visivel group inline-flex items-center gap-1 rounded-sm corpo-sm font-medium text-accent-foreground hover:underline",
-              // Estica o alvo de clique sobre o card inteiro.
-              "after:absolute after:inset-0 after:content-['']",
-            )}
+            className="foco-visivel group inline-flex items-center gap-1 rounded-sm corpo-sm font-medium text-accent-foreground hover:underline"
           >
             {link.rotulo}
             <ArrowRight

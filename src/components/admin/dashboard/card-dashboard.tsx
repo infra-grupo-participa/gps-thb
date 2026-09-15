@@ -41,6 +41,8 @@ export function CardDashboard({
   rotulo,
   valor,
   valorDescricao,
+  valorHref,
+  valorAriaLabel,
   destaque = false,
   variante = "kpi",
   variacao,
@@ -65,6 +67,18 @@ export function CardDashboard({
   valor?: React.ReactNode;
   /** Texto para leitor de tela quando `valor` é abreviado ("R$ 42 mil"). */
   valorDescricao?: string;
+  /**
+   * 🔴 15/09/2026: quando presente, o NÚMERO MACRO vira link PRÓPRIO — o
+   * conjunto que ele representa, não o complemento do rodapé. Existe para os
+   * cards que mostram "117 de 136 já entraram"/"82 concluíram o onboarding"
+   * mas cujo `link` de rodapé leva ao OPOSTO ("Ver quem está sem login"/"Ver
+   * quem não respondeu"): dois alvos distintos, cada um honesto sobre para
+   * onde leva. Com `valorHref`, o card NÃO usa mais `after:inset-0` no
+   * rodapé — os dois links têm de coexistir sem um cobrir o outro.
+   */
+  valorHref?: string;
+  /** Obrigatório com `valorHref`: nomeia o conjunto para leitor de tela. */
+  valorAriaLabel?: string;
   destaque?: boolean;
   /**
    * `"grafico"` derruba o número macro de 30 px para 24 e deixa o desenho ser
@@ -82,7 +96,7 @@ export function CardDashboard({
   contexto?: string;
   /** A repartição do macro em pares compactos. É a linha de micro-números. */
   pares?: ParDoCard[];
-  link?: { href: string; rotulo: string } | null;
+  link?: { href: string; rotulo: string; ariaLabel?: string } | null;
   /** Por que este card não leva a lugar nenhum. Exigido quando `link` é nulo. */
   semLink?: string;
   className?: string;
@@ -98,8 +112,8 @@ export function CardDashboard({
        esticar um link de rodapé por cima cobriria todas elas. */
     <Card
       elevacao="raised"
-      interativo={Boolean(link)}
-      className={cn("h-full", link && "relative", className)}
+      interativo={Boolean(link) && !valorHref}
+      className={cn("h-full", link && !valorHref && "relative", className)}
     >
       <CardContent className="flex h-full flex-col gap-2.5">
         <div className="flex items-start justify-between gap-2">
@@ -109,22 +123,48 @@ export function CardDashboard({
 
         {valor !== undefined ? (
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span
-            className={cn(
-              "numero-lg",
-              variante === "grafico" && "text-2xl",
-              destaque && "text-accent-foreground",
-            )}
-          >
-            {valorDescricao ? (
-              <>
-                <span aria-hidden>{valor}</span>
-                <span className="sr-only">{valorDescricao}</span>
-              </>
-            ) : (
-              valor
-            )}
-          </span>
+          {valorHref ? (
+            <Link
+              href={valorHref}
+              prefetch={false}
+              aria-label={valorAriaLabel}
+              className="foco-visivel group rounded-sm"
+            >
+              <span
+                className={cn(
+                  "numero-lg group-hover:underline",
+                  variante === "grafico" && "text-2xl",
+                  destaque && "text-accent-foreground",
+                )}
+              >
+                {valorDescricao ? (
+                  <>
+                    <span aria-hidden>{valor}</span>
+                    <span className="sr-only">{valorDescricao}</span>
+                  </>
+                ) : (
+                  valor
+                )}
+              </span>
+            </Link>
+          ) : (
+            <span
+              className={cn(
+                "numero-lg",
+                variante === "grafico" && "text-2xl",
+                destaque && "text-accent-foreground",
+              )}
+            >
+              {valorDescricao ? (
+                <>
+                  <span aria-hidden>{valor}</span>
+                  <span className="sr-only">{valorDescricao}</span>
+                </>
+              ) : (
+                valor
+              )}
+            </span>
+          )}
           {variacao}
         </div>
         ) : null}
@@ -170,7 +210,14 @@ export function CardDashboard({
             <Link
               href={link.href}
               prefetch={false}
-              className="foco-visivel group inline-flex items-center gap-1 corpo-sm font-medium text-accent-foreground after:absolute after:inset-0 after:content-[''] hover:underline"
+              aria-label={link.ariaLabel}
+              className={cn(
+                "foco-visivel group inline-flex items-center gap-1 corpo-sm font-medium text-accent-foreground hover:underline",
+                // Só estica sobre o card inteiro quando ele é o ÚNICO alvo:
+                // com `valorHref`, o macro já é um link próprio, e um
+                // `after:inset-0` aqui o cobriria por cima.
+                !valorHref && "after:absolute after:inset-0 after:content-['']",
+              )}
             >
               {link.rotulo}
               <ArrowRight

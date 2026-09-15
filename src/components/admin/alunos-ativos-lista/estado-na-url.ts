@@ -54,6 +54,15 @@ export const FILTROS = [
   "onb_andamento",
   "onb_ok",
   "contrato_enviado",
+  // 🔴 Os 4 filtros do painel de estado do topo (15/09/2026). `etapa1_ok` é a
+  // NEGAÇÃO EXATA de `a.pct === 100` — o MESMO `pct` que `faixasDeTrilha` lê
+  // (`src/lib/data/dashboard.ts`), então o card do dashboard e o chip da
+  // lista nunca podem divergir na definição de "concluiu a Etapa 01".
+  "etapa1_ok",
+  "etapa1_zero",
+  "etapa1_andamento",
+  "sem_cliente",
+  "clientes_incompleto",
 ] as const;
 
 export type FiltroId = (typeof FILTROS)[number];
@@ -88,6 +97,22 @@ import { CLASSES, type ClasseAluno } from "@/lib/types";
 
 const CLASSES_SET = new Set<string>(CLASSES);
 
+/**
+ * O sentinela que faz os 15 links do dashboard funcionarem de fato
+ * (15/09/2026). **Antes deste sentinela, `LINK_LISTA = "/admin?aba=ativos"`
+ * não passava `classe` nenhuma** — a aba Parceiros só monta a lista DEPOIS de
+ * uma classe escolhida (`AlunosAtivosLista`, `index.tsx`), então todo link do
+ * dashboard caía nos 5 cards de fase, com o filtro (`f=…`) marcado na URL e
+ * invisível: o admin clicava em "Ativos 30 dias" e via os 5 cards, sem saber
+ * por quê.
+ *
+ * `"todas"` é aceito por `lerEstado` e significa "mostre a lista, sem cortar
+ * por classe" — o filtro (`f=`) faz o recorte de verdade. Não é uma 6ª classe
+ * real: não entra em `CLASSES`, não tem card em `CardsDeClasse`.
+ */
+export const CLASSE_TODAS = "todas" as const;
+export type ClasseNaUrl = ClasseAluno | typeof CLASSE_TODAS;
+
 /** O rótulo de cada card. Copy do desenho. */
 export const ROTULO_CLASSE: Record<ClasseAluno, string> = {
   inicial: "Inicial",
@@ -119,8 +144,12 @@ export const ABA_PADRAO: AbaPainel = "visao";
 
 export interface EstadoDoPainel {
   aba: AbaPainel;
-  /** O card escolhido. `null` = nenhum, então a tela mostra os 5 cards. */
-  classe: ClasseAluno | null;
+  /**
+   * O card escolhido. `null` = nenhum, tela mostra os 5 cards.
+   * `"todas"` (`CLASSE_TODAS`) = lista SEM corte de classe — é o destino dos
+   * links do dashboard, que recortam por `filtros`, não por fase.
+   */
+  classe: ClasseNaUrl | null;
   termo: string;
   ordem: OrdemAlunos;
   filtros: Set<FiltroId>;
@@ -142,7 +171,12 @@ function lerEstado(sp: URLSearchParams): EstadoDoPainel {
     aba: (ABAS as readonly string[]).includes(aba ?? "")
       ? (aba as AbaPainel)
       : ABA_PADRAO,
-    classe: CLASSES_SET.has(classe ?? "") ? (classe as ClasseAluno) : null,
+    classe:
+      classe === CLASSE_TODAS
+        ? CLASSE_TODAS
+        : CLASSES_SET.has(classe ?? "")
+          ? (classe as ClasseAluno)
+          : null,
     termo: (sp.get("q") ?? "").slice(0, MAX_TERMO),
     ordem: ORDENS_SET.has(ordem ?? "") ? (ordem as OrdemAlunos) : "recentes",
     filtros: new Set(f),
@@ -249,15 +283,21 @@ export function useEstadoDoPainel() {
   );
 
   /**
-   * Entra numa fase (o card) ou volta para os 5 cards (`null`).
+   * Entra numa fase (o card), abre a lista sem corte de classe (`"todas"`,
+   * `CLASSE_TODAS`) ou volta para os 5 cards (`null`).
    *
-   * 🔑 Voltar LIMPA busca e filtros. Eles foram escolhidos dentro de uma
-   * fase; carregá-los para a próxima faria o admin abrir "Execução" e ver
-   * uma lista vazia por causa de um filtro que ele marcou em "Inicial" —
-   * e o card diria 12 enquanto a tela mostra 0.
+   * 🔑 Voltar aos 5 CARDS (`null`) LIMPA busca e filtros. Eles foram
+   * escolhidos dentro de uma fase (ou vieram de um link do dashboard); levá-
+   * los para lá faria o admin abrir "Execução" e ver uma lista vazia por
+   * causa de um filtro que ele marcou antes — e o card diria 12 enquanto a
+   * tela mostra 0.
+   *
+   * 🔴 Voltar a `CLASSE_TODAS` PRESERVA o filtro — são dois botões distintos
+   * na tela ("← Todas as fases" volta ao `"todas"` de onde o link trouxe;
+   * "Ver os 5 cards" é que zera). Antes um botão só fazia as duas coisas.
    */
   const definirClasse = useCallback(
-    (classe: ClasseAluno | null) =>
+    (classe: ClasseNaUrl | null) =>
       setEstado((e) =>
         classe === null
           ? { ...e, classe: null, termo: "", filtros: new Set<FiltroId>() }

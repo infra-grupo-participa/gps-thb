@@ -113,12 +113,14 @@ export {
   getDashboard,
   faixasDeTrilha,
   resumoAtendimento,
+  painelDeEstado,
 } from "@/lib/data/dashboard";
 export type {
   Dashboard,
   DashboardAcesso,
   DashboardAtividadeDia,
   DashboardClientes,
+  PainelDeEstado,
   DashboardGrauRelacao,
   DashboardHonorarios,
   DashboardOnboarding,

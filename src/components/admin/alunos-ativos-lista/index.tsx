@@ -61,6 +61,7 @@ import {
   type ContextoDoFiltro,
 } from "./filtros";
 import {
+  CLASSE_TODAS,
   CLASSES,
   FILTROS,
   ROTULO_CLASSE,
@@ -194,7 +195,11 @@ export function AlunosAtivosLista({
           // ⚠️ Os FILTROS (chips) continuam valendo junto com a busca — eles
           // são recorte deliberado do operador naquele momento, não um
           // estado herdado de onde ele clicou.
-          estado.classe && !buscandoAgora
+          // 🔑 `CLASSE_TODAS` (sentinela dos links do dashboard) nunca corta
+          // por classe — quem filtra é `estado.filtros`. Sem esta condição,
+          // "todas" seria comparado a `a.classe` e a lista viria sempre vazia
+          // (nenhum aluno tem `classe === "todas"`).
+          estado.classe && estado.classe !== CLASSE_TODAS && !buscandoAgora
             ? alunos.filter((a) => a.classe === estado.classe)
             : alunos,
           { filtros: estado.filtros, termo: estado.termo },
@@ -260,10 +265,12 @@ export function AlunosAtivosLista({
     );
   }
 
-  // 🔑 Sem fase escolhida, a aba Alunos É os 5 cards — a lista nem se monta.
-  // É o desenho do Marcio: cinco blocos, clica, vê a lista, clica de novo e
-  // entra no ambiente.
-  if (!estado.classe) {
+  // 🔑 Sem fase escolhida (`null`), a aba Alunos É os 5 cards — a lista nem
+  // se monta. É o desenho do Marcio: cinco blocos, clica, vê a lista, clica
+  // de novo e entra no ambiente. `CLASSE_TODAS` é o terceiro estado (não é
+  // `null`, não é uma classe real): a sentinela dos links do dashboard, que
+  // mostra a lista inteira e deixa o filtro (`f=…`) fazer o recorte.
+  if (estado.classe === null) {
     return <CardsDeClasse
         contagem={contagem}
         alunos={alunos}
@@ -271,20 +278,39 @@ export function AlunosAtivosLista({
       />;
   }
 
+  // A sentinela não tem card nem contagem própria: é "a lista inteira", e o
+  // total é a soma dos 5 (ou o total do lote, o mesmo número).
+  const classeEscolhida = estado.classe !== CLASSE_TODAS ? estado.classe : null;
+
   return (
     <div className="grid gap-3">
-      <button
-        type="button"
-        onClick={() => definirClasse(null)}
-        className="mr-auto flex items-center gap-1.5 rounded-md corpo-sm text-muted-foreground hover:text-accent-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Todas as fases
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => definirClasse(CLASSE_TODAS)}
+          className="flex items-center gap-1.5 rounded-md corpo-sm text-muted-foreground hover:text-accent-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <ArrowLeft aria-hidden className="size-4" />
+          Todas as fases
+        </button>
+        {/* 🔑 Dois destinos distintos (15/09/2026): "← Todas as fases" volta
+            a `CLASSE_TODAS` PRESERVANDO o filtro que trouxe o admin até aqui
+            (é o alvo de todo link do dashboard); "Ver os 5 cards" é quem
+            LIMPA — a jornada por fase, do zero. Antes um botão só fazia as
+            duas coisas, e voltar de um link do dashboard largava o admin nos
+            5 cards sem o filtro que ele veio ver. */}
+        <button
+          type="button"
+          onClick={() => definirClasse(null)}
+          className="corpo-sm text-muted-foreground underline-offset-4 hover:text-accent-foreground hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          Ver os 5 cards
+        </button>
+      </div>
 
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-heading titulo-h2">
-          {ROTULO_CLASSE[estado.classe]}
+          {classeEscolhida ? ROTULO_CLASSE[classeEscolhida] : "Todas as fases"}
         </h2>
         {/* 🔑 Buscando, o título continua sendo o da fase (o operador não
             saiu dela), mas a contagem passa a falar do RESULTADO — senão a
@@ -298,10 +324,23 @@ export function AlunosAtivosLista({
               {visiveis.length === 1 ? "resultado" : "resultados"} em todas as
               fases
             </>
+          ) : classeEscolhida ? (
+            <>
+              {contagem[classeEscolhida]}{" "}
+              {contagem[classeEscolhida] === 1 ? "parceiro" : "parceiros"}
+            </>
+          ) : estado.filtros.size > 0 ? (
+            // 🔴 Em `CLASSE_TODAS` COM FILTRO marcado (o caso de todo link do
+            // dashboard: `f=inativos`, `f=etapa1_ok`…), o total do lote
+            // ("152 parceiros") mentiria — o filtro já reduziu a lista. Mesma
+            // regra da busca, aplicada ao filtro.
+            <>
+              {visiveis.length}{" "}
+              {visiveis.length === 1 ? "resultado" : "resultados"}
+            </>
           ) : (
             <>
-              {contagem[estado.classe]}{" "}
-              {contagem[estado.classe] === 1 ? "parceiro" : "parceiros"}
+              {alunos.length} {alunos.length === 1 ? "parceiro" : "parceiros"}
             </>
           )}
         </span>
@@ -395,6 +434,8 @@ export function AlunosAtivosLista({
         <ExportarCsv
           alunos={visiveis}
           contextoDoFiltro={filtrosAtivos.length > 0 ? "filtrados" : undefined}
+          parcial={parcial}
+          totalDaBase={total}
         />
       </div>
 
@@ -411,9 +452,9 @@ export function AlunosAtivosLista({
       ) : (
         visiveis.map((a) => (
           <AlunoCard
-            // Buscando, a lista varre todas as fases: o chip diz de onde cada
-            // resultado veio.
-            mostrarFase={buscandoAgora}
+            // Buscando OU na sentinela "todas as fases", a lista varre mais
+            // de uma fase: o chip diz de onde cada resultado veio.
+            mostrarFase={buscandoAgora || !classeEscolhida}
             key={a.alunoId}
             {...a}
             atendimentoDe={atendimentoDe}

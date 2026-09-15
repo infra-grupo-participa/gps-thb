@@ -176,6 +176,49 @@ export const DEFINICAO_DOS_FILTROS: Record<FiltroId, DefinicaoDeFiltro> = {
     predicado: (a) => a.aptoAoSaldo,
     disponivel: (alunos) => alunos.some((a) => a.aptoAoSaldo),
   },
+  /**
+   * 🔴 OS 4 FILTROS DO PAINEL DE ESTADO (15/09/2026). `etapa1_ok` usa o
+   * MESMO `a.pct` que `faixasDeTrilha` lê (`src/lib/data/dashboard.ts:330`)
+   * — reimplementar a conta aqui criaria uma segunda verdade sobre "concluiu
+   * a Etapa 01", que diverge no dia em que uma das duas mudar sozinha.
+   */
+  etapa1_ok: {
+    rotulo: "Etapa 01 concluída",
+    frase: "com a Etapa 01 concluída",
+    predicado: (a) => a.pct === 100,
+    disponivel: sempre,
+  },
+  etapa1_zero: {
+    rotulo: "Não começaram a Etapa 01",
+    frase: "que não começaram a Etapa 01",
+    predicado: (a) => a.pct <= 0,
+    disponivel: sempre,
+  },
+  etapa1_andamento: {
+    rotulo: "Etapa 01 em andamento",
+    frase: "com a Etapa 01 em andamento",
+    predicado: (a) => a.pct > 0 && a.pct < 100,
+    disponivel: sempre,
+  },
+  /** Nenhum cliente cadastrado ainda — nem ficha incompleta. */
+  sem_cliente: {
+    rotulo: "Sem nenhum cliente",
+    frase: "sem nenhum cliente cadastrado",
+    predicado: (a) => a.clientesPreenchidos === 0,
+    disponivel: sempre,
+  },
+  /**
+   * "No meio dos 30": já começou (`comDados > 0`) mas não fechou a meta
+   * (`comDados < META_CLIENTES`). Ficha completa é nome + telefone — o MESMO
+   * corte de `comDados` em `src/lib/etapa1.ts:457`. `grau_relacao` NÃO entra
+   * (não é parte da conta que decide a trava da fase Inicial).
+   */
+  clientes_incompleto: {
+    rotulo: "Com fichas incompletas",
+    frase: "com fichas de cliente incompletas",
+    predicado: (a) => a.clientesComDados > 0 && a.clientesComDados < META_CLIENTES,
+    disponivel: sempre,
+  },
 };
 
 /** Frase de um filtro para o estado vazio ("Nenhum aluno …"). */

@@ -296,8 +296,12 @@ export function SecaoOnboarding({
 }) {
   const base = `/admin/aluno/${alunoId}`;
 
-  /** Contagem de cabeçalho: "3 pessoas · 1 respondeu" é o que se lê de longe. */
-  const concluidos = pessoas.filter((p) => p.status === "concluido").length;
+  // O SÓCIO não responde o questionário (decisão do Marcio, 15/09/2026) —
+  // compartilha o ambiente do titular. O denominador de "N responderam" é só
+  // quem se espera resposta (titulares); senão todo ambiente com sócio
+  // mostraria "1 de 2 responderam" para sempre, mesmo com o titular 100% ok.
+  const titulares = pessoas.filter((p) => p.papel === "titular");
+  const concluidos = titulares.filter((p) => p.status === "concluido").length;
 
   return (
     // 🔑 `id="onboarding"` é o alvo do botão "Respostas" do card do painel
@@ -313,14 +317,31 @@ export function SecaoOnboarding({
       icone={<ClipboardList />}
       titulo="Questionário inicial"
       descricao={
-        pessoas.length === 0
+        titulares.length === 0
           ? "Nenhuma pessoa identificada neste ambiente."
-          : `${pessoas.length} ${pessoas.length === 1 ? "pessoa" : "pessoas"} · ${concluidos} ${concluidos === 1 ? "respondeu" : "responderam"}. O questionário é por PESSOA: titular e sócio respondem cada um o seu.`
+          : `${titulares.length} ${titulares.length === 1 ? "titular" : "titulares"} · ${concluidos} ${concluidos === 1 ? "respondeu" : "responderam"}. O questionário é do TITULAR — o sócio compartilha o ambiente dele e não responde.`
       }
     >
       <ul className="border-t border-borda-fina">
         {pessoas.map((p) => {
-          const { estado, valor, detalhe } = estadoDaPessoa(p);
+          // O sócio nunca responde (15/09/2026): a linha dele nunca é
+          // pendência, é "não se aplica" — tanto para quem nunca começou
+          // quanto para quem começou e parou no meio (o questionário não
+          // reabre mais para o papel sócio, então "em andamento" viraria
+          // uma promessa que a RPC recusa). Só quem já CONCLUIU antes da
+          // mudança continua mostrado normalmente, com as respostas dele.
+          const socioSemRespostaConcluida =
+            p.papel === "socio" && p.status !== "concluido";
+          const { estado, valor, detalhe } = socioSemRespostaConcluida
+            ? {
+                estado: "informacao" as const,
+                valor: "não se aplica",
+                detalhe:
+                  p.status === "em_andamento"
+                    ? "Começou a responder antes de 15/09/2026; o questionário não se aplica mais ao sócio e não reabre. As respostas parciais ficam guardadas."
+                    : "O sócio compartilha o ambiente do titular e não responde ao questionário inicial.",
+              }
+            : estadoDaPessoa(p);
           const nome = p.nome ?? "Cadastro não identificado";
           return (
             <LinhaVerificacao

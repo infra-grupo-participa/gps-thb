@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import {
   Dialog,
@@ -18,12 +18,14 @@ import {
   mascaraCep,
   mascaraCpfCnpj,
   mascaraTelefone,
+  soDigitos,
 } from "@/lib/masks";
 import type { SocioPrecisaCadastro } from "@/lib/data/socio-cadastro";
 import type {
   SocioCadastroResultado,
 } from "@/lib/socio-cadastro-tipos";
 import { UFS_BRASIL } from "@/lib/socio-cadastro-tipos";
+import { buscarCep } from "@/lib/viacep";
 import { razaoParaTravar } from "./travas";
 
 /**
@@ -34,9 +36,18 @@ import { razaoParaTravar } from "./travas";
  * montado pelo gate. Aqui não há passos: é um formulário único — 10 campos
  * editáveis, não um questionário longo.
  *
- * 🔑 **CEP: só máscara, sem busca automática.** Decidido — não criar fetch ao
- * ViaCEP aqui. É a única tela pela qual o sócio entra no produto; dependência
- * externa nova que pode falhar não pode travar a entrada dele.
+ * 🔑 **CEP: busca automática pelo ViaCEP (decisão do Marcio, 15/09/2026,
+ * revertendo a decisão anterior registrada aqui).** A objeção original —
+ * "é a única tela pela qual o sócio entra no produto; dependência externa
+ * nova que pode falhar não pode travar a entrada dele" — segue válida e
+ * segue respondida pelo desenho: a busca (`src/lib/viacep.ts`) **nunca
+ * lança**, tem timeout de 3 s, roda em paralelo sem bloquear nenhum campo
+ * (nenhum `disabled`) e falha em silêncio absoluto (sem toast, sem
+ * `role="alert"`, sem vermelho) — o pior caso é a pessoa preencher
+ * cidade/UF/bairro/logradouro à mão, exatamente como antes. Dispara sozinha
+ * ao completar os 8 dígitos do CEP, só escreve em campo ainda VAZIO (nunca
+ * sobrescreve o que a pessoa já digitou) e cancela a busca anterior com
+ * `AbortController` se o CEP mudar no meio do caminho.
  *
  * 🔴 **E-mail é `readOnly`**, preenchido com o e-mail do login — evita
  * divergência entre e-mail de contato e de acesso (decisão do Marcio).
@@ -84,6 +95,52 @@ export function SocioCadastro({
   const [logradouro, setLogradouro] = useState("");
   const [numero, setNumero] = useState("");
   const [pais, setPais] = useState("Brasil");
+
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  // Guarda de repetição: os dígitos do CEP da última busca BEM-SUCEDIDA (não
+  // da última tentativa) — se a busca falhou, os mesmos 8 dígitos digitados
+  // de novo (ex.: corrigiu um erro de digitação e voltou ao original) têm de
+  // poder tentar outra vez.
+  const ultimoCepBuscadoRef = useRef<string>("");
+
+  // Disparo AUTOMÁTICO assim que os 8 dígitos do CEP são completados — não
+  // no onBlur (decisão do Marcio, 15/09/2026). Roda a cada digitação; só age
+  // quando `soDigitos(cep).length === 8` e os dígitos mudaram desde a última
+  // busca que teve sucesso.
+  useEffect(() => {
+    const digitos = soDigitos(cep);
+    if (digitos.length !== 8) return;
+    if (digitos === ultimoCepBuscadoRef.current) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setBuscandoCep(true);
+    buscarCep(cep, controller.signal)
+      .then((endereco) => {
+        if (controller.signal.aborted) return;
+        setBuscandoCep(false);
+        if (!endereco) return; // falha em silêncio — nunca avisa o usuário
+
+        ultimoCepBuscadoRef.current = digitos;
+        // Só preenche campo VAZIO: nunca sobrescreve o que a pessoa digitou.
+        setLogradouro((v) => (v.trim() === "" ? endereco.logradouro : v));
+        setBairro((v) => (v.trim() === "" ? endereco.bairro : v));
+        setCidade((v) => (v.trim() === "" ? endereco.cidade : v));
+        setEstado((v) =>
+          v.trim() === "" && UFS_BRASIL.includes(endereco.estado as (typeof UFS_BRASIL)[number])
+            ? endereco.estado
+            : v,
+        );
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setBuscandoCep(false);
+      });
+
+    return () => controller.abort();
+  }, [cep]);
 
   const razaoTravado = razaoParaTravar({
     nome,
@@ -181,6 +238,16 @@ export function SocioCadastro({
                   placeholder="00000-000"
                   inputMode="numeric"
                 />
+                {/* Discreto de propósito: falha na busca é silenciosa, então
+                    o único feedback visível é "procurando" — nunca "não
+                    achei" ou erro. `aria-live="polite"` não interrompe quem
+                    usa leitor de tela no meio da digitação. */}
+                <p
+                  aria-live="polite"
+                  className="corpo-sm text-muted-foreground"
+                >
+                  {buscandoCep ? "Buscando endereço…" : ""}
+                </p>
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="sc-cidade">Cidade *</Label>

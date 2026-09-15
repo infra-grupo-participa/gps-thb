@@ -77,8 +77,13 @@ export default async function PerfilPage() {
               vivo é o cliente, na aba Clientes — deixar editar aqui criaria
               duas verdades sobre o mesmo caso, e a antiga venceria por ser a
               mais visível. Junto vem "Rever a apresentação", a contrapartida
-              de o tour ser pulável (B-T2). */}
-          <RespostasDoInicio dados={onboarding} />
+              de o tour ser pulável (B-T2).
+              Sócio nunca responde o questionário (15/09/2026): `ehSocio`
+              evita a seção aparecer com o fallback "—" da 1ª pergunta. */}
+          <RespostasDoInicio
+            dados={onboarding}
+            ehSocio={ctx.papelMembro === "socio"}
+          />
         </div>
       </main>
     </>

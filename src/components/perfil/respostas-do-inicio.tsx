@@ -30,13 +30,23 @@ import { AnexoDoInicio } from "./anexo-do-inicio";
  * 🔑 **Some quando não há resposta.** Quem ainda não respondeu não precisa de
  * uma seção vazia dizendo isso — ele vai ver o pop-up no próximo acesso. Quem
  * chama passa `null` e a seção não existe.
+ *
+ * 🔴 **Some para o SÓCIO** (decisão do Marcio, 15/09/2026): ele nunca responde
+ * o questionário, mas `getMeuOnboarding` devolve `status: "concluido"` para
+ * ele (é o que destrava o passo 0 de troca de senha). Sem a guarda `ehSocio`,
+ * a lista de respostas cairia no fallback `"—"` da primeira pergunta e a
+ * seção apareceria como se ele tivesse respondido algo — mentira visível,
+ * não estado vazio genérico.
  */
 export function RespostasDoInicio({
   dados,
+  ehSocio,
 }: {
   dados: MeuOnboarding | null;
-  /** As abas reais da pessoa — o "Rever a apresentação" itera exatamente elas. */
+  /** Sócios não respondem o questionário (decisão do Marcio, 15/09/2026). */
+  ehSocio: boolean;
 }) {
+  if (ehSocio) return null;
   if (!dados || dados.status !== "concluido") return null;
 
   const r = dados.respostas;

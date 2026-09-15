@@ -139,6 +139,16 @@ async function getMeuOnboardingSemCache(): Promise<MeuOnboarding | null> {
     return { ...MEU_ONBOARDING_VAZIO, precisaTrocarSenha };
   }
 
+  // O SÓCIO não responde o questionário (decisão do Marcio, 15/09/2026).
+  // Devolve o estado CONCLUÍDO — mesmo shape do caminho de falha da RPC
+  // abaixo — e NÃO devolve `null`: `precisaTrocarSenha` tem de continuar
+  // chegando ao portal, que é o único caminho do passo 0 para quem recebeu
+  // "Reenviar acesso". Elimina uma ida à RPC `onboarding_meu` por requisição
+  // de sócio.
+  if (ctx.papelMembro === "socio") {
+    return { ...MEU_ONBOARDING_VAZIO, status: "concluido", precisaTrocarSenha };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.schema("gps").rpc("onboarding_meu");
 

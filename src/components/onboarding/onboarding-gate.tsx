@@ -86,6 +86,12 @@ import { SocioCadastroPortalLazy } from "@/components/socio-cadastro/portal-lazy
  *   exatamente esse caso que a feature resolve (2 sócios hoje sem
  *   `pessoa_aluno_id`, medido em produção). O cadastro do sócio não depende
  *   de `pessoa_aluno_id` para existir; ele CRIA o vínculo.
+ * - **Com pessoa vinculada, o SÓCIO não responde o questionário** (decisão do
+ *   Marcio, 15/09/2026). A regra mora em `getMeuOnboarding`
+ *   (`src/lib/data/onboarding.ts`), que devolve `status: "concluido"` direto
+ *   para `papelMembro === "socio"` — não duplicar esta checagem aqui. Este
+ *   gate só decide SE monta o portal; o "para quem" do questionário é da
+ *   função de dados.
  * - **Não busca o próximo passo.** A tela final oferece "Ir para o meu próximo
  *   passo" quando recebe `proximoPasso`, e calcular isso exige `getEtapas`,
  *   `getClientesEtapa1` e `getProgressoAluno` — três consultas que rodariam em

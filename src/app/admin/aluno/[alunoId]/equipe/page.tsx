@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { UsersRound } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getMembrosDoAmbiente } from "@/lib/data";
+import { getAlunoById, getMembrosDoAmbiente, getTutoriaisAtivo } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
-import { assistenciaNavItems } from "@/lib/nav";
+import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -42,9 +42,10 @@ export default async function AdminEquipePage({
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const [membros, aluno] = await Promise.all([
+  const [membros, aluno, tutoriaisAtivo] = await Promise.all([
     getMembrosDoAmbiente(alunoId),
     getAlunoById(alunoId),
+    getTutoriaisAtivo(),
   ]);
   if (membros.length === 0) notFound();
 
@@ -62,6 +63,7 @@ export default async function AdminEquipePage({
         navItems={assistenciaNavItems(alunoId, {
           ambienteCompartilhado: membros.length > 1,
         })}
+        navFixo={navFixoDoAluno(base, { tutoriais: tutoriaisAtivo })}
       />
       <AssistBanner aluno={aluno} />
 

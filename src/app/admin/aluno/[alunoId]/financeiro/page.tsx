@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getMembrosDoAmbiente } from "@/lib/data";
+import { getAlunoById, getMembrosDoAmbiente, getTutoriaisAtivo } from "@/lib/data";
 import {
   getExtratoDoAluno,
   getFinanceiroDoAluno,
   getProgressoFaturamento,
 } from "@/lib/financeiro";
-import { assistenciaNavItems } from "@/lib/nav";
+import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { FinanceiroView } from "@/components/financeiro/financeiro-view";
@@ -40,11 +40,12 @@ export default async function AdminAlunoFinanceiroPage({
   const membros = await getMembrosDoAmbiente(alunoId);
   if (membros.length === 0) notFound();
 
-  const [aluno, resultado, extrato, progresso] = await Promise.all([
+  const [aluno, resultado, extrato, progresso, tutoriaisAtivo] = await Promise.all([
     getAlunoById(alunoId),
     getFinanceiroDoAluno(alunoId),
     getExtratoDoAluno(alunoId),
     getProgressoFaturamento(alunoId),
+    getTutoriaisAtivo(),
   ]);
   const linhasExtrato = extrato.estado === "ok" ? extrato.linhas : [];
   const extratoTruncado = extrato.estado === "ok" && extrato.truncado;
@@ -59,6 +60,7 @@ export default async function AdminAlunoFinanceiroPage({
         navItems={assistenciaNavItems(alunoId, {
           ambienteCompartilhado: membros.length > 1,
         })}
+        navFixo={navFixoDoAluno(`/admin/aluno/${alunoId}`, { tutoriais: tutoriaisAtivo })}
       />
       <AssistBanner aluno={aluno} />
 

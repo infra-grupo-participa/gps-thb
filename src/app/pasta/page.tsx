@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getAmbiente } from "@/lib/data";
-import { navDoAluno } from "@/lib/nav";
+import { getAlunoById, getAmbiente, getTutoriaisAtivo } from "@/lib/data";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { PastaView } from "@/components/pasta/pasta-view";
@@ -14,9 +14,10 @@ export default async function PastaPage() {
   if (ctx.papel === "admin") redirect("/admin");
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
-  const [aluno, ambiente] = await Promise.all([
+  const [aluno, ambiente, tutoriaisAtivo] = await Promise.all([
     getAlunoById(ctx.alunoId),
     getAmbiente(ctx.alunoId),
+    getTutoriaisAtivo(),
   ]);
 
   return (
@@ -26,6 +27,7 @@ export default async function PastaPage() {
         email={ctx.user.email ?? null}
         papelRotulo="Parceiro"
         navItems={navDoAluno(ctx)}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         {/* UX6 — o cabeçalho afirmava "todos os documentos… organizados no

@@ -4,8 +4,9 @@ import {
   getAlunoById,
   getAmbiente,
   contarMembrosDoAmbiente,
+  getTutoriaisAtivo,
 } from "@/lib/data";
-import { assistenciaNavItems } from "@/lib/nav";
+import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
@@ -28,9 +29,10 @@ export default async function AdminAlunoPastaPage({
   const ambiente = await getAmbiente(alunoId);
   if (!ambiente) notFound();
 
-  const [aluno, qtdMembros] = await Promise.all([
+  const [aluno, qtdMembros, tutoriaisAtivo] = await Promise.all([
     getAlunoById(alunoId),
     contarMembrosDoAmbiente(alunoId),
+    getTutoriaisAtivo(),
   ]);
 
   return (
@@ -43,6 +45,7 @@ export default async function AdminAlunoPastaPage({
         navItems={assistenciaNavItems(alunoId, {
           ambienteCompartilhado: qtdMembros > 1,
         })}
+        navFixo={navFixoDoAluno(`/admin/aluno/${alunoId}`, { tutoriais: tutoriaisAtivo })}
       />
       <AssistBanner aluno={aluno} />
 

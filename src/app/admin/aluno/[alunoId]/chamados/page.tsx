@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { LifeBuoy } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getMembrosDoAmbiente } from "@/lib/data";
+import { getAlunoById, getMembrosDoAmbiente, getTutoriaisAtivo } from "@/lib/data";
 import { getChamadosDoAmbiente } from "@/lib/chamados-data";
-import { assistenciaNavItems } from "@/lib/nav";
+import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { PageHeader } from "@/components/ui/page-header";
@@ -40,9 +40,10 @@ export default async function AdminAlunoChamadosPage({
   const membros = await getMembrosDoAmbiente(alunoId);
   if (membros.length === 0) notFound();
 
-  const [aluno, chamados] = await Promise.all([
+  const [aluno, chamados, tutoriaisAtivo] = await Promise.all([
     getAlunoById(alunoId),
     getChamadosDoAmbiente(alunoId),
+    getTutoriaisAtivo(),
   ]);
 
   return (
@@ -55,6 +56,7 @@ export default async function AdminAlunoChamadosPage({
         navItems={assistenciaNavItems(alunoId, {
           ambienteCompartilhado: membros.length > 1,
         })}
+        navFixo={navFixoDoAluno(`/admin/aluno/${alunoId}`, { tutoriais: tutoriaisAtivo })}
       />
       <AssistBanner aluno={aluno} />
 

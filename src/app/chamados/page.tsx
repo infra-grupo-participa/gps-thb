@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { LifeBuoy, Lock } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getAlunoById, getMembrosDoAmbiente } from "@/lib/data";
+import { getAlunoById, getMembrosDoAmbiente, getTutoriaisAtivo } from "@/lib/data";
 import { getClientesEtapa1, getClienteEquipe } from "@/lib/data/clientes";
 import {
   getChamadosCategoriasAtivo,
@@ -14,7 +14,7 @@ import {
   CHAMADOS_MAX_ABERTOS,
   type CategoriaChamado,
 } from "@/lib/chamados-tipos";
-import { navDoAluno } from "@/lib/nav";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -101,6 +101,8 @@ export default async function ChamadosPage({
     />
   ) : null;
 
+  const tutoriaisAtivo = await getTutoriaisAtivo();
+
   return (
     <>
       <AppHeader
@@ -108,6 +110,7 @@ export default async function ChamadosPage({
         email={ctx.user.email ?? null}
         papelRotulo="Parceiro"
         navItems={navDoAluno(ctx)}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader

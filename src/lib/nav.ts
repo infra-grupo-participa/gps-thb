@@ -252,6 +252,15 @@ export function adminNavItems(
     // esta lista é de TODOS os ambientes, dado de terceiro que o parceiro não
     // pode ver fora da própria ficha.
     { href: "/admin/clientes", label: "Clientes", icon: "clientes" },
+    // Cadastro dos tutoriais (15/09/2026). Ícone "tutoriais" (GraduationCap),
+    // o MESMO da aba fixa do parceiro — é a tela que alimenta aquela aba, e
+    // repetir o vocabulário é o que deixa a equipe achar o caminho.
+    //
+    // 🔴 Esta linha é a PORTA DE ENTRADA da tela. Sem ela, `/admin/tutoriais`
+    // existiria completa e só seria alcançável digitando a URL — que é
+    // exatamente o defeito já pago aqui: a tela de respostas do onboarding
+    // ficou escondida com 77 questionários preenchidos dentro dela.
+    { href: "/admin/tutoriais", label: "Tutoriais", icon: "tutoriais" },
   ];
 }
 
@@ -301,4 +310,27 @@ export function destinoInterno(v: string | null | undefined): string {
   if (/^\/[^?#]*:\/\//.test(normalizado)) return PADRAO;
 
   return limpo;
+}
+
+/**
+ * A aba FIXA "Tutoriais" (feature 15/09/2026) — vive fora do trilho que rola
+ * (ver `app-header.tsx`/`nav-tabs.tsx`), então é uma prop SEPARADA de
+ * `alunoNavItems`/`navDoAluno`/`assistenciaNavItems`/`adminNavItems`, não um
+ * item a mais nessas listas.
+ *
+ * `opts` é OBRIGATÓRIO e SEM valor padrão — mesmo motivo do comentário no
+ * topo deste arquivo (`alunoNavItems`): um `{ tutoriais = true }` faria a aba
+ * nascer visível em toda página nova por esquecimento, mesmo antes de a
+ * página ter conferido o interruptor.
+ *
+ * 🔴 Interruptor desligado ⇒ a aba SOME (decisão do Marcio; não é "em
+ * breve") — devolve `undefined`, e quem chama (`app-header.tsx`) não
+ * renderiza o bloco fixo nem o `border-l` dele.
+ */
+export function navFixoDoAluno(
+  basePath: string,
+  opts: { tutoriais: boolean },
+): NavItem | undefined {
+  if (!opts.tutoriais) return undefined;
+  return { href: `${basePath}/tutoriais`, label: "Tutoriais", icon: "tutoriais" };
 }

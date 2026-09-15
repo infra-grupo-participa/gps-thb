@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById } from "@/lib/data";
+import { getAlunoById, getTutoriaisAtivo } from "@/lib/data";
 import {
   getChamado,
   getSolicitacaoDoChamado,
   getSuporteAberto,
 } from "@/lib/chamados-data";
 import { rotuloStatus } from "@/lib/chamados-tipos";
-import { navDoAluno } from "@/lib/nav";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,7 @@ export default async function ChamadoPage({
     "aluno",
     suporteAberto,
   );
+  const tutoriaisAtivo = await getTutoriaisAtivo();
 
   return (
     <>
@@ -63,6 +64,7 @@ export default async function ChamadoPage({
         email={ctx.user.email ?? null}
         papelRotulo="Parceiro"
         navItems={navDoAluno(ctx)}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader

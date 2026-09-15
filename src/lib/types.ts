@@ -1,5 +1,7 @@
 // Tipos de domínio do GPS.
 
+import type { SecaoTutorial } from "@/lib/tutoriais-tipos";
+
 export type Papel = "admin" | "aluno" | "sem_acesso";
 
 export interface Perfil {
@@ -725,3 +727,43 @@ export const CLASSES = [
   "inicial",
 ] as const;
 export type ClasseAluno = (typeof CLASSES)[number];
+
+// ─────────────────────────────────────────────────────────────────────────
+// Aba de Tutoriais (`gps.tutoriais` + `gps.tutorial_reacoes`, 15/09/2026).
+//
+// `SecaoTutorial`/`SECOES_TUTORIAL` moram em `src/lib/tutoriais-tipos.ts`
+// (não aqui) — são consumidos por client components e por Server Actions
+// juntos, e um módulo puro de constante evita qualquer risco do módulo
+// `"use server"` reexportar valor.
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * O que `gps.tutoriais_do_aluno()` devolve — só publicados, já com os
+ * passos e com a reação da PESSOA logada (`minhaReacao`). Titular e sócio
+ * veem a mesma lista; o voto é individual (`gps.tutorial_reacoes`, chave
+ * `pessoa_aluno_id`, não `aluno_id` do ambiente).
+ */
+export interface TutorialDoAluno {
+  id: string;
+  titulo: string;
+  resumo: string | null;
+  secao: SecaoTutorial;
+  youtubeId: string | null;
+  passos: string[];
+  ordem: number;
+  /** `null` = a pessoa não votou. `true`/`false` = útil / não útil. */
+  minhaReacao: boolean | null;
+}
+
+/**
+ * O que a tela de administração lista/edita — publicado ou rascunho, com o
+ * placar AGREGADO de reações (`uteis`/`naoUteis`). 🔴 NUNCA o nome de quem
+ * reagiu: `gps.admin_tutoriais_resumo()` não devolve nenhuma coluna de
+ * pessoa, por decisão do Marcio (LGPD) — este tipo reflete esse contrato.
+ */
+export interface TutorialGps extends Omit<TutorialDoAluno, "minhaReacao"> {
+  publicado: boolean;
+  uteis: number;
+  naoUteis: number;
+  criadoEm: string;
+}

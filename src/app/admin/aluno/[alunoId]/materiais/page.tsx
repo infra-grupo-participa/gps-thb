@@ -8,10 +8,11 @@ import {
   contarMembrosDoAmbiente,
   getVideosAtivo,
   getVideosDoAlunoAdmin,
+  getTutoriaisAtivo,
 } from "@/lib/data";
 import { etapasComLiberacaoDoAluno } from "@/lib/etapas";
 import { listarMateriais } from "@/lib/materiais";
-import { assistenciaNavItems } from "@/lib/nav";
+import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
@@ -35,7 +36,7 @@ export default async function AdminAlunoMateriaisPage({
   if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapasGlobais, overrides, qtdMembros, videosAtivo] =
+  const [aluno, etapasGlobais, overrides, qtdMembros, videosAtivo, tutoriaisAtivo] =
     await Promise.all([
       getAlunoById(alunoId),
       getEtapas(),
@@ -44,6 +45,7 @@ export default async function AdminAlunoMateriaisPage({
       getEtapasLiberadasPara(alunoId),
       contarMembrosDoAmbiente(alunoId),
       getVideosAtivo(),
+      getTutoriaisAtivo(),
     ]);
   const etapas = etapasComLiberacaoDoAluno(etapasGlobais, overrides);
   const nomes: Record<number, string> = {};
@@ -63,6 +65,7 @@ export default async function AdminAlunoMateriaisPage({
         navItems={assistenciaNavItems(alunoId, {
           ambienteCompartilhado: qtdMembros > 1,
         })}
+        navFixo={navFixoDoAluno(base, { tutoriais: tutoriaisAtivo })}
       />
       <AssistBanner aluno={aluno} />
 

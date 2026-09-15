@@ -6,9 +6,10 @@ import {
   getAlunoById,
   getEtapas,
   getEtapasLiberadasPara,
+  getTutoriaisAtivo,
 } from "@/lib/data";
 import { conteudoEtapa, etapasComLiberacaoDoAluno } from "@/lib/etapas";
-import { navDoAluno } from "@/lib/nav";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { EtapaConteudo } from "@/components/etapa/etapa-conteudo";
@@ -60,6 +61,8 @@ export default async function EtapaAlunoPage({
   // escrito, e a home já diz "Em breve · Libera conforme sua turma avança".
   if (!etapaInfo.liberada && !travadaPelaEquipe) redirect("/");
 
+  const tutoriaisAtivo = await getTutoriaisAtivo();
+
   return (
     <>
       <AppHeader
@@ -67,6 +70,7 @@ export default async function EtapaAlunoPage({
         email={ctx.user.email ?? null}
         papelRotulo="Parceiro"
         navItems={navDoAluno(ctx)}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
         <PageHeader

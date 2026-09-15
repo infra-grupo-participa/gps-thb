@@ -11,12 +11,16 @@ export async function AppHeader({
   papelRotulo,
   homeHref = "/",
   navItems,
+  navFixo,
 }: {
   nome: string | null;
   email: string | null;
   papelRotulo: string;
   homeHref?: string;
   navItems?: NavItem[];
+  /** Aba que NÃO rola com o trilho — hoje só "Tutoriais". `undefined`/ausente
+   *  = sem aba fixa (a maioria das páginas, e todo header sem `navItems`). */
+  navFixo?: NavItem;
 }) {
   // 🔑 O header busca as contas SOZINHO. Passar por prop obrigaria as 20
   // páginas que o renderizam a saber da feature — e a primeira que
@@ -68,14 +72,76 @@ export async function AppHeader({
         </div>
 
         {navItems && navItems.length > 0 ? (
-          // Um `NavTabs` só (A11Y4): antes existiam dois — `hidden md:block` e
-          // `md:hidden` — o que duplicava o DOM e punha cada link duas vezes
-          // na ordem de tabulação. Aqui o mesmo nó rola na horizontal quando
-          // não cabe (pior caso: 8 abas em 360 px), com máscara de fade nas
-          // bordas para sinalizar que há mais aba fora da tela.
+          // Um `NavTabs` só por REGIÃO (A11Y4): antes existiam dois nós para
+          // as MESMAS abas — `hidden md:block` e `md:hidden` — o que duplicava
+          // o DOM e punha cada link duas vezes na ordem de tabulação. Aqui
+          // continua valendo: o trilho rola na horizontal quando não cabe
+          // (pior caso: 8 abas em 360 px, com fade nas bordas), e a aba FIXA
+          // (`navFixo`) mora num `NavTabs` SEPARADO, fora do scroller — cada
+          // link do menu aparece exatamente uma vez no DOM, fixo ou não.
+          //
+          // 🔑 Por que a fixa não pode viver dentro do scroller: o contêiner é
+          // `overflow-x-auto` e o `<nav>` interno é `w-max` — ele mede a
+          // largura do PRÓPRIO CONTEÚDO, não a do contêiner. Um `ml-auto` no
+          // último item não tem folga nenhuma para consumir ali dentro, então
+          // não empurra nada: foi tentado e não funcionou. A saída é a aba
+          // fixa morar num IRMÃO do scroller, dentro de um `flex` que os dois
+          // compartilham — só assim ela fica de fato fora da rolagem.
+          //
+          // Nenhuma media query: `flex` + `min-w-0` (o scroller cede largura)
+          // + `shrink-0` (o fixo nunca cede) são o mecanismo para qualquer
+          // largura, inclusive 360 px — MEDIDO, ver o comentário abaixo.
           <div className="border-t">
-            <div className="scrollbar-none fade-lateral mx-auto w-full max-w-6xl overflow-x-auto px-4">
-              <NavTabs items={navItems} />
+            <div className="mx-auto flex w-full max-w-6xl items-stretch">
+              <div className="scrollbar-none fade-lateral min-w-0 flex-1 overflow-x-auto pl-4">
+                <NavTabs items={navItems} />
+              </div>
+              {navFixo ? (
+                // 🔑 `bg-background` sólido é obrigatório, não decorativo: o
+                // `<header>` é `bg-background/95 backdrop-blur` (translúcido).
+                // Sem um fundo OPACO próprio aqui, o momentum scroll do
+                // Safari/iOS deixa o conteúdo do trilho (que continua rolando
+                // por baixo, fora da viewport visível) aparecer por
+                // transparência atrás da aba fixa por uma fração de segundo.
+                //
+                // ✅ MEDIDO em 15/09/2026, no Chrome, com o CSS compilado de
+                // produção e as 9 abas reais do parceiro, em SEIS larguras
+                // (320/360/390/414/768/1366), sempre com o trilho **rolado
+                // até o fim** — o pior caso:
+                //
+                //   largura  aba fixa   % da tela   trilho rola   sobrepõe?
+                //     320     116,9 px    38,3%         sim          NÃO
+                //     360     116,9 px    33,9%         sim          NÃO
+                //     390     116,9 px    31,2%         sim          NÃO
+                //     414     116,9 px    29,3%         sim          NÃO
+                //     768     116,9 px    15,5%         sim          NÃO
+                //    1366     116,9 px     8,7%         NÃO          NÃO
+                //
+                // Em todas: aba fixa inteira dentro da viewport, ZERO overflow
+                // horizontal na página, rótulo "Tutoriais" visível (nunca só
+                // ícone) e header estável em 98,2 px. Em 1366 o trilho para de
+                // rolar e a aba fica colada à direita com o divisor — que é o
+                // desenho pedido. Em 360 sobram 227,9 px de trilho rolável.
+                //
+                // 🔑 `bg-background` sólido é obrigatório, não decorativo: o
+                // `<header>` é `bg-background/95 backdrop-blur` (translúcido).
+                // Sem um fundo OPACO próprio aqui, o momentum scroll do
+                // Safari/iOS deixa o conteúdo do trilho (que continua rolando
+                // por baixo) aparecer por transparência atrás da aba fixa por
+                // uma fração de segundo.
+                //
+                // ⚠️ O que a medição NÃO cobre: o momentum scroll do iOS
+                // Safari (medido no Chrome desktop, que não o reproduz). O
+                // `bg-background` é a defesa, mas só um aparelho iOS fecha
+                // essa ponta.
+                //
+                // `border-l` some junto quando `navFixo` é `undefined`
+                // (interruptor desligado): não há divisor órfão — garantia de
+                // JSX (renderização condicional), não depende de medição.
+                <div className="flex shrink-0 items-stretch border-l bg-background pr-4 pl-1">
+                  <NavTabs items={[]} fixo={navFixo} />
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}

@@ -7,9 +7,10 @@ import {
   getEtapasLiberadasPara,
   getAmbiente,
   contarMembrosDoAmbiente,
+  getTutoriaisAtivo,
 } from "@/lib/data";
 import { conteudoEtapa, etapasComLiberacaoDoAluno } from "@/lib/etapas";
-import { assistenciaNavItems } from "@/lib/nav";
+import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
@@ -34,13 +35,14 @@ export default async function AdminAlunoEtapaPage({
   if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, etapasGlobais, overrides, qtdMembros] = await Promise.all([
+  const [aluno, etapasGlobais, overrides, qtdMembros, tutoriaisAtivo] = await Promise.all([
     getAlunoById(alunoId),
     getEtapas(),
     // O espelho do admin tem de dizer o que o ALUNO vê: com a liberação
     // individual, "Bloqueada para o parceiro" só é verdade depois do override.
     getEtapasLiberadasPara(alunoId),
     contarMembrosDoAmbiente(alunoId),
+    getTutoriaisAtivo(),
   ]);
   const etapas = etapasComLiberacaoDoAluno(etapasGlobais, overrides);
   const etapaInfo = etapas.find((e) => e.id === n);
@@ -55,6 +57,7 @@ export default async function AdminAlunoEtapaPage({
         navItems={assistenciaNavItems(alunoId, {
           ambienteCompartilhado: qtdMembros > 1,
         })}
+        navFixo={navFixoDoAluno(base, { tutoriais: tutoriaisAtivo })}
       />
       <AssistBanner aluno={aluno} />
 

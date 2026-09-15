@@ -5,8 +5,9 @@ import {
   getClientesEtapa1,
   getAmbiente,
   contarMembrosDoAmbiente,
+  getTutoriaisAtivo,
 } from "@/lib/data";
-import { assistenciaNavItems } from "@/lib/nav";
+import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
@@ -26,10 +27,11 @@ export default async function AdminAlunoClientesPage({
   if (!ambiente) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, clientes, qtdMembros] = await Promise.all([
+  const [aluno, clientes, qtdMembros, tutoriaisAtivo] = await Promise.all([
     getAlunoById(alunoId),
     getClientesEtapa1(alunoId),
     contarMembrosDoAmbiente(alunoId),
+    getTutoriaisAtivo(),
   ]);
 
   return (
@@ -42,6 +44,7 @@ export default async function AdminAlunoClientesPage({
         navItems={assistenciaNavItems(alunoId, {
           ambienteCompartilhado: qtdMembros > 1,
         })}
+        navFixo={navFixoDoAluno(base, { tutoriais: tutoriaisAtivo })}
       />
       <AssistBanner aluno={aluno} />
 

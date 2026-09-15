@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { UsersRound, Lock } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getMembrosDoAmbiente } from "@/lib/data";
+import { getAlunoById, getMembrosDoAmbiente, getTutoriaisAtivo } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { getConvitePendente, getConviteSocioAtivo } from "@/lib/data/equipe";
-import { navDoAluno } from "@/lib/nav";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -52,9 +52,10 @@ export default async function EquipePage() {
   // Convite pendente só existe quando ainda não há sócio — poupar a leitura
   // quando o ambiente já tem 2 membros evita uma RPC à toa em toda visita de
   // quem já tem sócio ativo.
-  const [convitePendente, pessoas] = await Promise.all([
+  const [convitePendente, pessoas, tutoriaisAtivo] = await Promise.all([
     temSocioAtivo ? Promise.resolve(null) : getConvitePendente(),
     pessoasDosMembros(membros),
+    getTutoriaisAtivo(),
   ]);
 
   return (
@@ -64,6 +65,7 @@ export default async function EquipePage() {
         email={ctx.user.email ?? null}
         papelRotulo="Parceiro"
         navItems={navDoAluno(ctx)}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader

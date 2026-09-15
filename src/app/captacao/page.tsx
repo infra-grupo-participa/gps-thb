@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { adminNavItems, navDoAluno } from "@/lib/nav";
+import { getTutoriaisAtivo } from "@/lib/data";
+import { adminNavItems, navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +23,10 @@ export default async function CaptacaoPage() {
       : ctx.papel === "aluno"
         ? navDoAluno(ctx)
         : undefined;
+  // Aba fixa só para ALUNO — o admin de topo já tem "Tutoriais" no trilho de
+  // `adminNavItems` (src/lib/nav.ts:263); duas portas no mesmo header seria
+  // ruído.
+  const ativo = ctx.papel === "aluno" ? await getTutoriaisAtivo() : false;
 
   return (
     <>
@@ -31,6 +36,7 @@ export default async function CaptacaoPage() {
         papelRotulo={ctx.papel === "admin" ? "Admin" : "Parceiro"}
         homeHref={ctx.papel === "admin" ? "/admin" : "/"}
         navItems={navItems}
+        navFixo={ctx.papel === "aluno" ? navFixoDoAluno("", { tutoriais: ativo }) : undefined}
       />
       {/* O cabeçalho é o mesmo `PageHeader` das outras 17 páginas — o card
           continua sendo o corpo, agora só com o texto. Antes o `h1` morava

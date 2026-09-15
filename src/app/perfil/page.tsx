@@ -6,8 +6,9 @@ import {
   getMembroDoUsuario,
   getMeuOnboarding,
   getTurmaCodigo,
+  getTutoriaisAtivo,
 } from "@/lib/data";
-import { navDoAluno } from "@/lib/nav";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { PerfilEditor } from "@/components/perfil/perfil-editor";
@@ -37,6 +38,7 @@ export default async function PerfilPage() {
   ]);
   const turma = await getTurmaCodigo(aluno?.turma_id);
   const abas = navDoAluno(ctx);
+  const tutoriaisAtivo = await getTutoriaisAtivo();
 
   return (
     <>
@@ -45,6 +47,7 @@ export default async function PerfilPage() {
         email={ctx.user.email ?? null}
         papelRotulo="Parceiro"
         navItems={abas}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader

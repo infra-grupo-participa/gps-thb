@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getClienteById, getClienteEquipe } from "@/lib/data";
-import { navDoAluno } from "@/lib/nav";
+import { getAlunoById, getClienteById, getClienteEquipe, getTutoriaisAtivo } from "@/lib/data";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
@@ -51,6 +51,7 @@ export default async function ClienteFichaPage({
   const outroConfirmadoNome = outroFavorito?.acompanhamento_confirmado_em
     ? (outroFavorito.nome ?? null)
     : null;
+  const tutoriaisAtivo = await getTutoriaisAtivo();
 
   return (
     <>
@@ -59,6 +60,7 @@ export default async function ClienteFichaPage({
         email={ctx.user.email ?? null}
         papelRotulo="Parceiro"
         navItems={navDoAluno(ctx)}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader

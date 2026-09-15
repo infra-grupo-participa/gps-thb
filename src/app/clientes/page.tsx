@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getClientesEtapa1 } from "@/lib/data";
-import { navDoAluno } from "@/lib/nav";
+import { getAlunoById, getClientesEtapa1, getTutoriaisAtivo } from "@/lib/data";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { ClientesManager } from "@/components/clientes/clientes-manager";
@@ -15,9 +15,10 @@ export default async function ClientesPage() {
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
   const alunoId = ctx.alunoId;
-  const [aluno, clientes] = await Promise.all([
+  const [aluno, clientes, tutoriaisAtivo] = await Promise.all([
     getAlunoById(alunoId),
     getClientesEtapa1(alunoId),
+    getTutoriaisAtivo(),
   ]);
 
   return (
@@ -27,6 +28,7 @@ export default async function ClientesPage() {
         email={ctx.user.email ?? null}
         papelRotulo="Parceiro"
         navItems={navDoAluno(ctx)}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         {/* A aba deixou de se apresentar como "os 30 da Etapa 01": ela é a

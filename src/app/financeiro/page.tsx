@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { Clock } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
-import { navDoAluno } from "@/lib/nav";
+import { getTutoriaisAtivo } from "@/lib/data";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -49,6 +50,8 @@ export default async function FinanceiroPage() {
   // src/app/financeiro/page.tsx` devolve a página que funcionava. As RPCs
   // (`gps.financeiro_do_aluno`, `financeiro_extrato_do_aluno`) seguem VIVAS
   // e guardadas no banco; nada foi apagado do lado do dado.
+  const tutoriaisAtivo = await getTutoriaisAtivo();
+
   return (
     <>
       <AppHeader
@@ -56,6 +59,7 @@ export default async function FinanceiroPage() {
         email={sessao.user?.email ?? null}
         papelRotulo="Parceiro"
         navItems={navDoAluno(sessao)}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 py-6">
         <PageHeader

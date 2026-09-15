@@ -6,10 +6,11 @@ import {
   getEtapasLiberadasPara,
   getVideosAtivo,
   getVideosDoAluno,
+  getTutoriaisAtivo,
 } from "@/lib/data";
 import { etapasComLiberacaoDoAluno } from "@/lib/etapas";
 import { listarMateriais } from "@/lib/materiais";
-import { navDoAluno } from "@/lib/nav";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { MateriaisView } from "@/components/materiais/materiais-view";
@@ -43,6 +44,7 @@ export default async function MateriaisPage() {
   // busca a lista se estiver ligada, para não gastar uma RPC à toa quando a
   // seção nem vai aparecer.
   const videos = videosAtivo ? await getVideosDoAluno() : [];
+  const tutoriaisAtivo = await getTutoriaisAtivo();
 
   return (
     <>
@@ -51,6 +53,7 @@ export default async function MateriaisPage() {
         email={ctx.user.email ?? null}
         papelRotulo="Parceiro"
         navItems={navDoAluno(ctx)}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
         <PageHeader

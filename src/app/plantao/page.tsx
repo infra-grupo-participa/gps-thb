@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById } from "@/lib/data";
-import { navDoAluno } from "@/lib/nav";
+import { getAlunoById, getTutoriaisAtivo } from "@/lib/data";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { mesAtualSaoPaulo } from "@/lib/plantao";
 import {
   buscarCalendarioLogado,
@@ -59,10 +59,11 @@ export default async function PlantaoLogadoPage({
   const { ano, mes } = parseMes(m);
 
   const pessoaAlunoId = ctx.membroAlunoId ?? ctx.alunoId;
-  const [aluno, calendario, minhaInscricao] = await Promise.all([
+  const [aluno, calendario, minhaInscricao, tutoriaisAtivo] = await Promise.all([
     getAlunoById(pessoaAlunoId),
     buscarCalendarioLogado(ano, mes),
     buscarMinhaInscricaoLogado(),
+    getTutoriaisAtivo(),
   ]);
 
   const abas = navDoAluno(ctx);
@@ -74,6 +75,7 @@ export default async function PlantaoLogadoPage({
         email={ctx.user.email ?? null}
         papelRotulo="Parceiro"
         navItems={abas}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader

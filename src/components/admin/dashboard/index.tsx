@@ -2,22 +2,18 @@ import { formatarDataHora } from "@/lib/datas";
 import type {
   Dashboard,
   FaixaDeTrilha,
-  PainelDeEstado as PainelDeEstadoDados,
   ResumoAtendimento,
+  ResumoClientes30,
 } from "@/lib/data/dashboard";
 import { FaixaKpis } from "./faixa-kpis";
 import { GraficosDoPrograma } from "./graficos";
 import { FilaEBase } from "./fila";
-import { PainelDeEstado } from "./painel-de-estado";
 
 /**
- * A aba **"Visão geral"** do painel — estado → macro → forma → fila.
+ * A aba **"Visão geral"** do painel — macro → forma → fila.
  *
- * Cinco seções, e a ordem é a leitura:
+ * Quatro seções, e a ordem é a leitura:
  *
- *   0. **painel de estado** (`painel-de-estado.tsx`, 15/09/2026) — quem já
- *      logou, quem tá pendente e o que tá pendente de cada, em 12 números
- *      NUS (sem gráfico, sem card decorativo — UI densa e chapada).
  *   A. **faixa de KPIs** (`faixa-kpis.tsx`) — seis números, sem desenho.
  *   B. **gráficos, grandes** (`graficos.tsx`) — a forma dos mesmos dados.
  *   C. **fila e base** (`fila.tsx`) — o que a equipe deve atacar.
@@ -58,7 +54,7 @@ export function DashboardExecutivo({
   dados,
   trilha,
   atendimento,
-  painel,
+  clientes30,
   ambientesCarregados,
 }: {
   dados: Dashboard;
@@ -67,11 +63,12 @@ export function DashboardExecutivo({
   /** `resumoAtendimento(alunos, atendimento)`, pura, sobre o lote. */
   atendimento: ResumoAtendimento;
   /**
-   * `painelDeEstado(alunos)`, pura, sobre o lote (15/09/2026) — os 12
-   * números "quem já logou · quem tá pendente · o que tá pendente de cada",
-   * pedido do Marcio. Mesma Leitura A do resto da Visão geral.
+   * `resumoClientes30(alunos)`, pura, sobre o lote (15/09/2026) — os 3
+   * números que só existiam no painel removido ("sem nenhum cliente" · "no
+   * meio dos 30" · "fecharam os 30"), agora submétricas do card "Clientes
+   * cadastrados". Mesma Leitura A do resto da Visão geral.
    */
-  painel: PainelDeEstadoDados;
+  clientes30: ResumoClientes30;
   /**
    * Quantos ambientes o lote trouxe. O progresso e a fila valem **sobre o
    * lote** (mesma Leitura A da busca e dos filtros); quando ele não cobre a
@@ -90,8 +87,7 @@ export function DashboardExecutivo({
         Visão do programa
       </h2>
 
-      <PainelDeEstado dados={painel} />
-      <FaixaKpis dados={dados} trilha={trilha} />
+      <FaixaKpis dados={dados} clientes30={clientes30} />
       <GraficosDoPrograma dados={dados} trilha={trilha} />
       <FilaEBase
         dados={dados}

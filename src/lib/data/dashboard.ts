@@ -295,7 +295,9 @@ export function mapearDashboard(d: Record<string, unknown>): Dashboard {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Os dois cards que NÃO custam consulta nova (funções puras)
+// Os cards que NÃO custam consulta nova (funções puras sobre o lote que
+// `/admin` já carregou: `faixasDeTrilha`, `resumoClientes30` logo abaixo, e
+// `resumoAtendimento` mais adiante).
 // ─────────────────────────────────────────────────────────────────────────
 
 export type FaixaTrilha = "0" | "1-49" | "50-99" | "100";
@@ -335,11 +337,45 @@ export function faixasDeTrilha(alunos: AlunoGps[]): FaixaDeTrilha[] {
     else contagem["100"] += 1;
   }
   return [
-    { faixa: "0", rotulo: "Não começou", qtd: contagem["0"] },
+    { faixa: "0", rotulo: "Etapa 01: não começou", qtd: contagem["0"] },
     { faixa: "1-49", rotulo: "Até a metade", qtd: contagem["1-49"] },
     { faixa: "50-99", rotulo: "Passou da metade", qtd: contagem["50-99"] },
-    { faixa: "100", rotulo: "Etapa 01 concluída", qtd: contagem["100"] },
+    { faixa: "100", rotulo: "Etapa 01 concluída (declarado)", qtd: contagem["100"] },
   ];
+}
+
+export interface ResumoClientes30 {
+  /** `clientesComDados === 0` — nem começou a ficha. */
+  semNenhumCliente: number;
+  /** `0 < clientesComDados < META_CLIENTES` — começou, não fechou. */
+  noMeioDos30: number;
+  /** `clientesComDados >= META_CLIENTES` — fato observável, não depende de
+   * o parceiro marcar tarefa nenhuma. */
+  fecharamOs30: number;
+}
+
+/**
+ * O card 6 da Visão geral (consertado em 15/09/2026): substitui "Etapa 01
+ * concluída" (`pct === 100`, que depende do parceiro MARCAR a tarefa manual
+ * — quase ninguém marca, então o card sempre mostrava 0) por "Fecharam os 30
+ * clientes", um FATO que `gps.etapa1_clientes` já observa.
+ *
+ * 🔑 MESMO predicado de `clientesComDados`/`comDados` que decide a trava da
+ * fase Inicial (`src/lib/etapa1.ts`) e o filtro `listou30` da lista — os
+ * três não podem divergir na definição de "fechou os 30".
+ *
+ * ⚠️ Vale sobre o LOTE carregado, mesma Leitura A de `faixasDeTrilha`.
+ */
+export function resumoClientes30(alunos: AlunoGps[]): ResumoClientes30 {
+  let semNenhumCliente = 0;
+  let noMeioDos30 = 0;
+  let fecharamOs30 = 0;
+  for (const a of alunos) {
+    if (a.clientesComDados === 0) semNenhumCliente += 1;
+    else if (a.clientesComDados < META_CLIENTES) noMeioDos30 += 1;
+    else fecharamOs30 += 1;
+  }
+  return { semNenhumCliente, noMeioDos30, fecharamOs30 };
 }
 
 export interface ResumoAtendimento {
@@ -402,110 +438,5 @@ export function resumoAtendimento(
     ambientesComChamado,
     semNenhumaNota,
     semAcesso30d,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Painel de estado do topo (15/09/2026, pedido do Marcio) — terceira função
-// PURA sobre o lote, mesmo molde de `faixasDeTrilha`/`resumoAtendimento`.
-// ZERO consulta nova: os 12 números saem do que `AlunoGps` já traz
-// (`temLogin`, `ultimoAcesso`, `clientesPreenchidos`, `clientesComDados`,
-// `onboardingStatus`). Nenhum é calculado duas vezes com predicado
-// divergente — ver o comentário de cada campo abaixo para a fonte exata.
-// ─────────────────────────────────────────────────────────────────────────
-
-export interface PainelDeEstado {
-  ambientes: number;
-  jaLogaram: number;
-  semLogin: number;
-  nuncaEntraram: number;
-  ativos30d: number;
-  parados30d: number;
-  semNenhumCliente: number;
-  noMeioDos30: number;
-  fecharamOs30: number;
-  onboardingNaoComecou: number;
-  onboardingEmAndamento: number;
-  onboardingConcluido: number;
-}
-
-const TRINTA_DIAS_MS_PAINEL = 30 * 24 * 60 * 60 * 1000;
-
-/**
- * Os 12 números do painel de estado, sobre o LOTE carregado (mesma Leitura A
- * da busca, dos filtros e da trilha — vale sobre o que `/admin` já trouxe).
- *
- * Predicados, um a um (conferidos contra a medição do Marcio em produção,
- * 15/09/2026 — se um destes divergir do medido, o predicado é que está
- * errado, não o número):
- * - **ambientes**: `alunos.length`.
- * - **jaLogaram**: tem login E `ultimoAcesso != null`.
- * - **semLogin**: `!temLogin`.
- * - **nuncaEntraram**: tem login E `ultimoAcesso == null` (mesmo corte do
- *   filtro `nunca_entrou` em `filtros.ts`).
- * - **ativos30d** / **parados30d**: mesmo corte de `diasSemAcesso` — parado
- *   é quem não tem acesso ou está há 30 dias ou mais sem acessar.
- * - **semNenhumCliente**: `clientesPreenchidos === 0`.
- * - **noMeioDos30**: `0 < clientesComDados < META_CLIENTES` — o MESMO
- *   `comDados` de `src/lib/etapa1.ts:457` (nome + telefone; `grau_relacao`
- *   NÃO entra), o mesmo predicado do filtro `clientes_incompleto`.
- * - **fecharamOs30**: `clientesComDados >= META_CLIENTES`.
- * - **onboarding***: dos 3 valores de `StatusOnboarding` — o questionário é
- *   do TITULAR do ambiente (mesma ressalva de `AlunoGps.onboardingStatus`).
- */
-export function painelDeEstado(alunos: AlunoGps[]): PainelDeEstado {
-  const agora = Date.now();
-
-  let jaLogaram = 0;
-  let semLogin = 0;
-  let nuncaEntraram = 0;
-  let ativos30d = 0;
-  let parados30d = 0;
-  let semNenhumCliente = 0;
-  let noMeioDos30 = 0;
-  let fecharamOs30 = 0;
-  let onboardingNaoComecou = 0;
-  let onboardingEmAndamento = 0;
-  let onboardingConcluido = 0;
-
-  for (const a of alunos) {
-    if (!a.temLogin) {
-      semLogin += 1;
-    } else if (a.ultimoAcesso === null) {
-      nuncaEntraram += 1;
-    } else {
-      jaLogaram += 1;
-    }
-
-    const semAcesso =
-      !a.ultimoAcesso ||
-      agora - new Date(a.ultimoAcesso).getTime() >= TRINTA_DIAS_MS_PAINEL;
-    if (semAcesso) parados30d += 1;
-    else ativos30d += 1;
-
-    if (a.clientesPreenchidos === 0) semNenhumCliente += 1;
-    if (a.clientesComDados > 0 && a.clientesComDados < META_CLIENTES) {
-      noMeioDos30 += 1;
-    }
-    if (a.clientesComDados >= META_CLIENTES) fecharamOs30 += 1;
-
-    if (a.onboardingStatus === "nao_iniciado") onboardingNaoComecou += 1;
-    else if (a.onboardingStatus === "em_andamento") onboardingEmAndamento += 1;
-    else onboardingConcluido += 1;
-  }
-
-  return {
-    ambientes: alunos.length,
-    jaLogaram,
-    semLogin,
-    nuncaEntraram,
-    ativos30d,
-    parados30d,
-    semNenhumCliente,
-    noMeioDos30,
-    fecharamOs30,
-    onboardingNaoComecou,
-    onboardingEmAndamento,
-    onboardingConcluido,
   };
 }

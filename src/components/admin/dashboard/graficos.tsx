@@ -237,17 +237,23 @@ export function GraficosDoPrograma({
         </div>
       </CardDashboard>
 
-      {/* 4 — progresso na Etapa 01, por faixa */}
+      {/* 4 — progresso na Etapa 01, por faixa.
+          🔑 DECLARADO, não fato: a faixa "concluída" é `pct === 100`, que
+          exige o parceiro MARCAR as 7 tarefas manuais no checklist (só o
+          passo 1, os 30 clientes, é automático). O rótulo e o contexto
+          dizem isso — sem alarde, sem ícone, só a palavra (Problema 3 da
+          rodada de 15/09). O card 6 da faixa de KPIs ("Fecharam os 30
+          clientes") é o mesmo dado em versão FATO. */}
       <CardDashboard
         icone={<GraduationCap />}
-        rotulo="Progresso na Etapa 01"
+        rotulo="Progresso na Etapa 01 (declarado)"
         valor={String(faixaCem)}
         variante="grafico"
-        contexto={`Ambientes com a etapa concluída, de ${ambientesNaTrilha}.`}
+        contexto={`Ambientes com as 8 tarefas marcadas, de ${ambientesNaTrilha}. Depende do parceiro marcar.`}
         link={{
           href: `${LINK_LISTA}&f=etapa1_ok`,
           rotulo: "Ver quem concluiu",
-          ariaLabel: `Ver os ${faixaCem} parceiros com a Etapa 01 concluída`,
+          ariaLabel: `Ver os ${faixaCem} parceiros com a Etapa 01 concluída (declarado)`,
         }}
       >
         {/* Barra DEITADA, não em colunas: os quatro rótulos ("Passou da

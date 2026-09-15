@@ -54,10 +54,12 @@ export const FILTROS = [
   "onb_andamento",
   "onb_ok",
   "contrato_enviado",
-  // 🔴 Os 4 filtros do painel de estado do topo (15/09/2026). `etapa1_ok` é a
-  // NEGAÇÃO EXATA de `a.pct === 100` — o MESMO `pct` que `faixasDeTrilha` lê
-  // (`src/lib/data/dashboard.ts`), então o card do dashboard e o chip da
-  // lista nunca podem divergir na definição de "concluiu a Etapa 01".
+  // 🔴 `etapa1_ok` é `a.pct === 100` — o MESMO `pct` que `faixasDeTrilha` lê
+  // (`src/lib/data/dashboard.ts`), então o card "Progresso na Etapa 01
+  // (declarado)" e o chip da lista nunca podem divergir na definição de
+  // "concluiu a Etapa 01". É DECLARADO (depende de marcar as 7 tarefas
+  // manuais) — o card "Fecharam os 30 clientes" é o mesmo assunto em FATO,
+  // e usa `listou30`/`clientes_incompleto`/`sem_cliente`, não este grupo.
   "etapa1_ok",
   "etapa1_zero",
   "etapa1_andamento",

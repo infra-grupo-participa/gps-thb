@@ -45,10 +45,19 @@ export const DEFINICAO_DOS_FILTROS: Record<FiltroId, DefinicaoDeFiltro> = {
     predicado: (a, c) => c.atendimento(a.alunoId).pendenciasAbertas > 0,
     disponivel: sempre,
   },
+  /**
+   * "Fecharam os 30" = ficha COMPLETA (nome + telefone), não só nome
+   * preenchido. 🔴 CONSERTO DE 15/09/2026: usava `clientesPreenchidos`
+   * (só nome), que é um conjunto MAIOR e mais fraco do que a regra oficial
+   * da Etapa 01 ("ficha completa = nome + telefone", migração `…239`). O
+   * MESMO predicado de `comDados`/`clientes_com_dados` que decide a trava
+   * da fase Inicial — reimplementar com outra conta aqui criaria uma
+   * segunda verdade sobre "fechou os 30".
+   */
   listou30: {
-    rotulo: `Já listou os ${META_CLIENTES}`,
-    frase: `já listou os ${META_CLIENTES}`,
-    predicado: (a) => a.clientesPreenchidos >= META_CLIENTES,
+    rotulo: `Fecharam os ${META_CLIENTES} clientes`,
+    frase: `que fecharam os ${META_CLIENTES} clientes`,
+    predicado: (a) => a.clientesComDados >= META_CLIENTES,
     disponivel: sempre,
   },
   inativos: {

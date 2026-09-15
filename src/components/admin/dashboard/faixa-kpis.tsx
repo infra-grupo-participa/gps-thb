@@ -1,5 +1,6 @@
+import { META_CLIENTES } from "@/lib/etapa1";
 import { pctDe } from "@/components/ui/graficos";
-import type { Dashboard, FaixaDeTrilha } from "@/lib/data/dashboard";
+import type { Dashboard, ResumoClientes30 } from "@/lib/data/dashboard";
 import { KpiTile } from "./kpi-tile";
 import { VariacaoDoMes } from "./variacao";
 import { LINK_CLIENTES, LINK_LISTA, nomeDoMes, rotuloDoMes } from "./tipos";
@@ -19,10 +20,11 @@ import { LINK_CLIENTES, LINK_LISTA, nomeDoMes, rotuloDoMes } from "./tipos";
  */
 export function FaixaKpis({
   dados,
-  trilha,
+  clientes30,
 }: {
   dados: Dashboard;
-  trilha: FaixaDeTrilha[];
+  /** `resumoClientes30(alunos)`, pura, sobre o lote carregado. */
+  clientes30: ResumoClientes30;
 }) {
   const { referencia, programa, acesso, clientes, honorarios, equipe } = dados;
 
@@ -31,16 +33,10 @@ export function FaixaKpis({
   const mesAnteriorCurto = rotuloDoMes(referencia.mesAnterior, false);
 
   const jaEntraram = Math.max(0, acesso.comLogin - acesso.nuncaEntraram);
-  // O denominador da trilha é o LOTE carregado, não a base: as faixas vêm de
-  // uma função pura sobre o que `/admin` já trouxe. O rodapé da aba diz isso
-  // quando o lote não cobre tudo.
-  const ambientesNaTrilha = trilha.reduce((s, f) => s + f.qtd, 0);
-  const faixaCem = trilha.find((f) => f.faixa === "100")?.qtd ?? 0;
-  const naoComecaram = trilha.find((f) => f.faixa === "0")?.qtd ?? 0;
-  const emAndamento = Math.max(
-    0,
-    ambientesNaTrilha - faixaCem - naoComecaram,
-  );
+  // O denominador é o LOTE carregado (mesma Leitura A do resto da aba); o
+  // rodapé diz isso quando o lote não cobre a base inteira.
+  const ambientesNaTrilha =
+    clientes30.semNenhumCliente + clientes30.noMeioDos30 + clientes30.fecharamOs30;
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
@@ -89,8 +85,9 @@ export function FaixaKpis({
         // lista para a qual ele leva é por AMBIENTE — sócios dividem o
         // ambiente do titular, então a lista mostra menos linhas do que este
         // número. Decisão do Marcio (mantida): o macro fica em pessoas, e a
-        // assimetria se explica em vez de se esconder.
-        contexto="A lista abaixo é por ambiente — sócio soma aqui, mas não vira linha própria."
+        // assimetria se explica — mas em MARCAÇÃO curta, não em parágrafo
+        // (queixa do Marcio de 15/09: "texto explicativo ocupando espaço").
+        contexto={`${equipe.titulares + equipe.socios} pessoas · ${programa.total} ambientes`}
         // O card inteiro é clicável (14/09/2026) e leva à LISTA — é o que
         // quem clica em "152" espera. A ordenação por entrada recente fica,
         // mas o rótulo não promete um filtro que não existe (não há
@@ -172,19 +169,25 @@ export function FaixaKpis({
             substantivo="clientes novos"
           />
         }
-        // 🔴 `${clientes.noMes} em ${mesAtual}` DUPLICAVA a variação logo
-        // acima ("+243 vs. ago"), que já é sobre o mês. Duas linhas seguidas
-        // sobre o mesmo recorte gastam altura e não somam leitura. A
-        // submétrica passa a dizer a MÉDIA por ambiente, que é a pergunta
-        // seguinte de quem vê 1.182: "isso é muito ou pouco por pessoa?"
+        // 🔴 15/09/2026: a "Média por parceiro" saiu — era a pergunta mais
+        // fraca de quem vê 1.182 clientes. Entraram 2 dos 3 números do
+        // painel "Estado do programa" (removido nesta rodada por duplicar
+        // cards já existentes) — sem card próprio até aqui. O terceiro
+        // ("Fecharam os 30") NÃO entra aqui: é o macro do card ao lado
+        // ("Fecharam os 30 clientes"), e repeti-lo duplicaria o mesmo
+        // número em dois cards, o Problema 1 desta mesma rodada.
         pares={[
-          { rotulo: `Em ${mesAtual}`, valor: String(clientes.noMes) },
           {
-            rotulo: "Média por parceiro",
-            valor:
-              programa.total > 0
-                ? String(Math.round(clientes.total / programa.total))
-                : "—",
+            rotulo: "Sem nenhum cliente",
+            valor: String(clientes30.semNenhumCliente),
+            href: `${LINK_LISTA}&f=sem_cliente`,
+            ariaLabel: `Ver os ${clientes30.semNenhumCliente} parceiros sem nenhum cliente`,
+          },
+          {
+            rotulo: "No meio dos 30",
+            valor: String(clientes30.noMeioDos30),
+            href: `${LINK_LISTA}&f=clientes_incompleto`,
+            ariaLabel: `Ver os ${clientes30.noMeioDos30} parceiros no meio dos 30 clientes`,
           },
         ]}
         // 🔴 14/09/2026: passou a levar à lista CONSOLIDADA de clientes
@@ -229,42 +232,27 @@ export function FaixaKpis({
         }}
       />
 
+      {/* 🔴 CONSERTO DE 15/09/2026 — este card era "Etapa 01 concluída"
+          (`pct === 100`), que depende do parceiro MARCAR a tarefa manual no
+          checklist. Medido em produção: 27 parceiros JÁ FECHARAM os 30
+          clientes, mas só 2 tinham marcado a tarefa — o card mostrava
+          sempre "0" e mentia por omissão. Trocado pelo FATO observável:
+          `clientesComDados >= META_CLIENTES` (ficha completa = nome +
+          telefone), o MESMO predicado do filtro `listou30` e da trava da
+          fase Inicial (`src/lib/etapa1.ts`). */}
       <KpiTile
-        rotulo="Etapa 01 concluída"
-        valor={String(faixaCem)}
-        pct={pctDe(faixaCem, ambientesNaTrilha)}
+        rotulo={`Fecharam os ${META_CLIENTES} clientes`}
+        valor={String(clientes30.fecharamOs30)}
+        pct={pctDe(clientes30.fecharamOs30, ambientesNaTrilha)}
         pctBom="alto"
-        // "115 não começaram" não dizia de quantos, e o macro (0) já é o
-        // outro extremo. Com o denominador, a linha vira a régua do esforço
-        // que falta.
-        // "Em andamento" some quando é 0: com 115 não começaram e 0
-        // concluídos, a linha zerada não acrescenta nada.
-        pares={[
-          {
-            rotulo: "Não começaram",
-            valor: String(naoComecaram),
-            href: `${LINK_LISTA}&f=etapa1_zero`,
-            ariaLabel: `Ver os ${naoComecaram} parceiros que não começaram a Etapa 01`,
-          },
-          ...(emAndamento > 0
-            ? [
-                {
-                  rotulo: "Em andamento",
-                  valor: String(emAndamento),
-                  href: `${LINK_LISTA}&f=etapa1_andamento`,
-                  ariaLabel: `Ver os ${emAndamento} parceiros com a Etapa 01 em andamento`,
-                },
-              ]
-            : []),
-        ]}
-        // 🔴 15/09/2026: `ORDEM_POR_PROGRESSO` (ordenar por progresso) morreu
-        // — era a muleta enquanto não existia filtro de faixa. Com
-        // `f=etapa1_ok` a lista já mostra EXATAMENTE quem concluiu, em vez de
-        // só empurrar esse grupo para o topo de uma lista com todo mundo.
+        // Sem `pares`: "sem nenhum cliente" e "no meio dos 30" já são
+        // submétrica do card "Clientes cadastrados" — repeti-los aqui volta
+        // a duplicar números entre cards, o Problema 1 desta mesma rodada.
+        contexto={`Ficha completa (nome + telefone), de ${ambientesNaTrilha}.`}
         link={{
-          href: `${LINK_LISTA}&f=etapa1_ok`,
-          rotulo: "Ver quem concluiu",
-          ariaLabel: `Ver os ${faixaCem} parceiros com a Etapa 01 concluída`,
+          href: `${LINK_LISTA}&f=listou30`,
+          rotulo: "Ver quem fechou",
+          ariaLabel: `Ver os ${clientes30.fecharamOs30} parceiros que fecharam os ${META_CLIENTES} clientes`,
         }}
       />
     </div>

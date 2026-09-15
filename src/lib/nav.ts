@@ -261,6 +261,16 @@ export function adminNavItems(
     // exatamente o defeito já pago aqui: a tela de respostas do onboarding
     // ficou escondida com 77 questionários preenchidos dentro dela.
     { href: "/admin/tutoriais", label: "Tutoriais", icon: "tutoriais" },
+    // Interruptores de `gps.config` (15/09/2026) — os botões de pânico que só
+    // se ligavam por SQL direto no banco. Ícone "resolver" (Stethoscope)
+    // reaproveitado: não há chave dedicada a "painel de controle" em
+    // `NavItem["icon"]` (nav-tabs.tsx) e a regra do projeto é não inventar
+    // chave nova; é o ícone mais próximo (destravar/consertar o sistema), já
+    // em uso na Central de resolução do admin no mesmo espírito.
+    //
+    // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela, `/admin/configuracoes`
+    // existiria completa e só seria alcançável digitando a URL.
+    { href: "/admin/configuracoes", label: "Interruptores", icon: "resolver" },
   ];
 }
 

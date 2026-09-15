@@ -315,6 +315,19 @@ export interface ClienteEtapa1 {
    */
   acompanhamento_confirmado_em: string | null;
   acompanhamento_confirmado_por: string | null;
+  /**
+   * Um dos até 5 clientes selecionados para a entrevista prévia (migração
+   * 20260915000261, decisão Marcio 14/09/2026). O FAVORITO
+   * (`acompanhado_equipe`) é sempre um dos 5 — garantido pelo CHECK
+   * `chk_etapa1_clientes_favorito_e_selecionado` no banco.
+   *
+   * Teto de 5 NÃO é regra de tipo nem de coluna: é a RPC
+   * `gps.selecao_entrevista_definir`, que recebe o conjunto inteiro de uma
+   * vez (não um toggle por cliente — evitaria o 6º entrar entre dois
+   * requests). `PatchCliente` (src/app/clientes/actions.ts) não tem este
+   * campo: a escrita é só pela RPC.
+   */
+  selecionado_entrevista: boolean;
 }
 
 export type StatusSolicitacao = "pendente" | "aprovada" | "recusada";
@@ -495,6 +508,18 @@ export const TIPOS_EVENTO = [
   // Zero linhas hoje (`select distinct tipo` → 0) — era bomba armada, não
   // incêndio. Acrescentar aqui é o que obriga o rótulo a existir.
   "nota_apagada",
+  // Minutas (migração ...259, 15/09/2026). Estavam no CHECK do banco e fora
+  // deste catálogo — o evento apareceria cru no Diário. Fechado em 15/09
+  // junto com os rótulos em `ROTULO_TIPO_EVENTO`: os dois lados na mesma
+  // mudança, porque entrar aqui sem o rótulo quebra o build (TS2739) e pôr o
+  // rótulo sem entrar aqui não obriga ninguém a nada.
+  "cliente_minuta_anexada",
+  "cliente_minuta_removida",
+  //
+  // Seleção dos 5 da entrevista prévia (migração 20260915000261). Gravados só
+  // por `gps.selecao_entrevista_definir`, um por cliente que muda de lado.
+  "cliente_selecionado_entrevista",
+  "cliente_removido_entrevista",
 ] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 

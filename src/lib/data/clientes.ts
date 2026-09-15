@@ -19,7 +19,7 @@ import type { ClienteHonorarios } from "@/lib/etapa1";
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * `gps.etapa1_clientes` → `ClienteEtapa1`. As 28 colunas do tipo.
+ * `gps.etapa1_clientes` → `ClienteEtapa1`. As 29 colunas do tipo.
  *
  * 🔑 `status` entra de propósito, mesmo CONGELADO desde a migração ...060:
  * o marcador "Recusou" da UI ainda o lê (1 linha na base). Sai daqui quando
@@ -33,12 +33,15 @@ import type { ClienteHonorarios } from "@/lib/etapa1";
  * antes do clique; a URL assinada só nasce no clique). `contrato_path` NÃO é
  * segredo por si só — o que autoriza é a policy do bucket, com a sessão de
  * quem pede.
+ * 🔑 `selecionado_entrevista` (migração ...261, 15/09/2026): um dos 5 da
+ * entrevista prévia. Sem entrar aqui, a UI leria sempre `undefined` — a
+ * mesma armadilha descrita acima para `fase`/`valor_honorarios`.
  * `criado_em`/`atualizado_em` NÃO entram: ninguém os lê. `criado_em` continua
  * servindo de critério de `.order()`, e o PostgREST ordena por coluna que não
  * está no `select`.
  */
 const COLUNAS_CLIENTE =
-  "id, aluno_id, nome, telefone, problemas, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, acompanhado_equipe, ordem, valor_honorarios, contrato_url, grau_relacao, acompanhamento_confirmado_em, acompanhamento_confirmado_por, contrato_path, contrato_nome, contrato_mime, contrato_tamanho, contrato_anexado_em";
+  "id, aluno_id, nome, telefone, problemas, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, acompanhado_equipe, ordem, valor_honorarios, contrato_url, grau_relacao, acompanhamento_confirmado_em, acompanhamento_confirmado_por, contrato_path, contrato_nome, contrato_mime, contrato_tamanho, contrato_anexado_em, selecionado_entrevista";
 /** `gps.etapa3_agendamentos` → `Etapa3Agendamento`. */
 const COLUNAS_ETAPA3_AGENDAMENTO =
   "id, aluno_id, cliente_id, descricao, data, horario, equipe_participa, criado_em";

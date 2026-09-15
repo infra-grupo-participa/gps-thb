@@ -214,6 +214,18 @@ const FRASES_DO_BANCO: Record<string, string> = {
   "Só a equipe confirma ou libera o acompanhamento deste cliente.":
     "Só a equipe confirma ou libera o acompanhamento deste cliente.",
 
+  // gps.selecao_entrevista_definir (migração 20260915000261) — os 5 clientes
+  // da entrevista prévia. As duas primeiras são regra de negócio (teto e
+  // pertencimento ao ambiente); a terceira é a invariante "o favorito é um
+  // dos 5", com a mesma copy de "abra um chamado" usada acima para trocar o
+  // favorito — para o aluno é o mesmo caminho.
+  "Selecione no máximo 5 clientes para a entrevista.":
+    "Selecione no máximo 5 clientes para a entrevista.",
+  "Um dos clientes selecionados não pertence a este ambiente.":
+    "Um dos clientes selecionados não pertence a este ambiente. Recarregue a lista e tente de novo.",
+  "O cliente favorito da equipe precisa continuar entre os 5 selecionados. Para trocar o favorito, abra um chamado no Suporte.":
+    "O cliente favorito da equipe precisa continuar entre os 5 selecionados. Para trocar o favorito, abra um chamado no Suporte.",
+
   // 🔴 A frase que a trigger levanta HOJE (a de cima tem travessão e é a
   // versão antiga). O match é por igualdade exata, então sem esta linha a
   // recusa caía em "Sem permissão para esta ação." — genérica, sem caminho.
@@ -512,6 +524,16 @@ const FRASES_DO_BANCO: Record<string, string> = {
   "Informe o endereço.": "Informe o endereço.",
   "Informe o número.": "Informe o número.",
   "Informe o país.": "Informe o país.",
+
+  // ═══ gps.config_definir — tela de interruptores em /admin (…260,
+  // 15/09/2026) ═══
+  // Frases NOSSAS (`raise exception`), copiadas caractere por caractere do
+  // `raise` da função — o match é por igualdade EXATA. A allowlist já é
+  // conferida em `alternarInterruptor` (`src/app/admin/config-actions.ts`)
+  // antes de chamar a RPC, mas a RPC é a fronteira real (Server Action é
+  // endpoint HTTP) — sem esta entrada, uma chamada direta ao PostgREST com
+  // uma chave fora da allowlist cairia no genérico de 22023.
+  "Este interruptor não existe.": "Este interruptor não existe.",
 };
 
 /**

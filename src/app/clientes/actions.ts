@@ -407,6 +407,50 @@ export async function definirClienteEquipe(
 }
 
 /**
+ * Define o CONJUNTO INTEIRO dos até 5 clientes selecionados para a
+ * entrevista prévia (migração 20260915000261, decisão do Marcio 14/09/2026).
+ *
+ * 🔴 RECEBE TODOS OS IDS DE UMA VEZ, não um toggle por cliente. Um toggle
+ * (marcar/desmarcar um id por chamada) deixaria o 6º cliente entrar numa
+ * corrida entre dois requests — dois cliques quase simultâneos, cada um
+ * vendo 5 antes de escrever, e o banco fica com 6. A RPC
+ * `gps.selecao_entrevista_definir` é atômica e conta o array inteiro antes
+ * de gravar qualquer linha.
+ *
+ * O FAVORITO (`acompanhado_equipe`) tem que continuar entre os 5 — é a
+ * invariante `chk_etapa1_clientes_favorito_e_selecionado` no banco. Tirar o
+ * favorito da lista de `clienteIds` é recusado pela RPC com frase própria
+ * (não é o CHECK que aparece, é uma regra de negócio explicada).
+ *
+ * Piso é 0: o parceiro pode selecionar ao longo do tempo, não precisa
+ * mandar os 5 de uma vez. Teto é 5 — a RPC recusa acima disso.
+ *
+ * Autorização é do banco (`gps.aluno_atual()`), não daqui: titular OU sócio
+ * do mesmo ambiente selecionam (decisão do Marcio, 15/09/2026) — os dois
+ * cadastram cliente no mesmo lugar.
+ */
+export async function selecionarParaEntrevista(
+  alunoId: string,
+  clienteIds: string[],
+): Promise<{ erro?: string; total?: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("selecao_entrevista_definir", {
+      p_aluno_id: alunoId,
+      p_cliente_ids: clienteIds,
+    });
+
+  if (error) {
+    return { erro: traduzirErroBanco("selecionarParaEntrevista", error, { alunoId }) };
+  }
+
+  revalidar(alunoId);
+  const total = (data as { total?: number } | null)?.total;
+  return { total: typeof total === "number" ? total : clienteIds.length };
+}
+
+/**
  * 🔴 O cliente MARCADO como acompanhado não é excluído pelo aluno (migração
  * ...215): apagar a linha marcada é trocar de cliente por outro caminho. A
  * trigger `trg_etapa1_clientes_acompanhamento_travado` recusa o DELETE com

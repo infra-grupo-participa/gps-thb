@@ -73,8 +73,20 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   // "anexo": o que a equipe procura na trilha é a PROVA, não o arquivo.
   cliente_contrato_anexado: "Anexou o contrato assinado do cliente",
   cliente_contrato_removido: "Removeu o contrato assinado do cliente",
+  // Minutas (migração …259, 15/09/2026): o CHECK do banco já aceitava os dois
+  // tipos desde a aplicação daquela migração, mas o catálogo do TS ficou para
+  // trás — evento de minuta apareceria cru no Diário. `Record<TipoEvento,string>`
+  // não exige a chave ausente da união; só o valor na união é a trava.
+  cliente_minuta_anexada: "Anexou uma minuta do cliente",
+  cliente_minuta_removida: "Removeu uma minuta do cliente",
   // `gps.admin_apagar_nota`: a nota some, o FATO de ter sido apagada fica.
   nota_apagada: "Nota do diário apagada pela equipe",
+  // Seleção dos 5 da entrevista prévia (migração 20260915000261, backend).
+  // 🔴 Só as 2 linhas abaixo: `Record<TipoEvento, string>` é obrigatório e
+  // quebra o build (TS2739, medido) se um tipo novo ficar sem rótulo. Texto
+  // provisório — ajuste de copy é do frontend-engineer.
+  cliente_selecionado_entrevista: "Selecionou cliente para a entrevista",
+  cliente_removido_entrevista: "Removeu cliente da seleção da entrevista",
 };
 
 export const ROTULO_ATOR: Record<AtorEvento, string> = {

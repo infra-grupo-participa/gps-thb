@@ -128,6 +128,7 @@ export function SocioCadastro({
                 <Input
                   id="sc-nome"
                   name="nome"
+                  maxLength={120}
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   autoComplete="name"
@@ -186,6 +187,7 @@ export function SocioCadastro({
                 <Input
                   id="sc-cidade"
                   name="cidade"
+                  maxLength={120}
                   value={cidade}
                   onChange={(e) => setCidade(e.target.value)}
                 />
@@ -216,6 +218,7 @@ export function SocioCadastro({
                 <Input
                   id="sc-logradouro"
                   name="logradouro"
+                  maxLength={200}
                   value={logradouro}
                   onChange={(e) => setLogradouro(e.target.value)}
                   placeholder="Rua ..."
@@ -226,6 +229,7 @@ export function SocioCadastro({
                 <Input
                   id="sc-numero"
                   name="numero"
+                  maxLength={20}
                   value={numero}
                   onChange={(e) => setNumero(e.target.value)}
                 />
@@ -237,6 +241,7 @@ export function SocioCadastro({
                 <Input
                   id="sc-bairro"
                   name="bairro"
+                  maxLength={120}
                   value={bairro}
                   onChange={(e) => setBairro(e.target.value)}
                 />
@@ -246,6 +251,7 @@ export function SocioCadastro({
                 <Input
                   id="sc-pais"
                   name="pais"
+                  maxLength={60}
                   value={pais}
                   onChange={(e) => setPais(e.target.value)}
                 />

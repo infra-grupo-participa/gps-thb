@@ -128,6 +128,11 @@ export function Kanban({
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-1">
                         <GrauChip grau={c.grau_relacao} />
+                        {c.selecionado_entrevista ? (
+                          <span className="shrink-0 rounded-full border border-borda-forte px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            Entrevista
+                          </span>
+                        ) : null}
                         <MarcaSemDados cliente={c} className="" />
                         <MarcaRecusou cliente={c} className="" />
                       </div>

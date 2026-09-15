@@ -118,6 +118,11 @@ export function ClientesTabela({
                 {c.acompanhado_equipe ? (
                   <Badge className="ml-2 text-[10px]">Equipe</Badge>
                 ) : null}
+                {c.selecionado_entrevista ? (
+                  <Badge variant="outline" className="ml-2 text-[10px]">
+                    Entrevista
+                  </Badge>
+                ) : null}
                 <MarcaSemDados cliente={c} />
         <MarcaRecusou cliente={c} />
               </TableCell>

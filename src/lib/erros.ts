@@ -234,6 +234,25 @@ const FRASES_DO_BANCO: Record<string, string> = {
   "A equipe está acompanhando este cliente. Para trocar, abra um chamado no Suporte.":
     "A equipe já assumiu este cliente. Para trocar, abra um chamado no Suporte.",
 
+  // gps.entrevista_gravar (migração 20260915000262) — entrevista prévia +
+  // decisores. "cliente nao informado" JÁ mapeia para FALTA_PARAMETRO (bloco
+  // acima); as entradas abaixo são regra de negócio própria desta RPC — a
+  // última é a guarda da decisão (E) do plano: só grava quem está na fila
+  // dos 5 selecionados pelo parceiro.
+  "Escolha um resultado válido para a ligação.":
+    "Escolha um resultado válido para a ligação.",
+  "Perfil DISC inválido.": "Perfil DISC inválido.",
+  "As observações passam de 2000 caracteres.":
+    "As observações passam de 2000 caracteres.",
+  "Este cliente não está entre os selecionados para a entrevista prévia.":
+    "Este cliente não está entre os selecionados para a entrevista prévia.",
+  "Lista de decisores inválida.": "Lista de decisores inválida.",
+  "Todo decisor precisa de nome.": "Todo decisor precisa de nome.",
+  "O nome do decisor passa de 200 caracteres.":
+    "O nome do decisor passa de 200 caracteres.",
+  "O papel do decisor no negócio passa de 200 caracteres.":
+    "O papel do decisor no negócio passa de 200 caracteres.",
+
   // ═══ Chamados: categoria + aprovação de troca (…250) ═══
   // As frases destas RPCs NÃO moram aqui, de propósito: ficam em `FRASES`
   // (`src/app/chamados/actions.ts`) e `FRASES_SOLICITACAO`
@@ -462,6 +481,7 @@ const FRASES_DO_BANCO: Record<string, string> = {
   "membro nao informado": FALTA_PARAMETRO,
   "membro ou ambiente de destino nao informado": FALTA_PARAMETRO,
   "nota nao informada": FALTA_PARAMETRO,
+  "proposta nao informada": FALTA_PARAMETRO,
 
   // Guardas de PAPEL (mesmas RPCs). A frase é a de `42501`, escrita aqui para
   // não depender do SQLSTATE que a RPC escolheu.
@@ -534,6 +554,35 @@ const FRASES_DO_BANCO: Record<string, string> = {
   // endpoint HTTP) — sem esta entrada, uma chamada direta ao PostgREST com
   // uma chave fora da allowlist cairia no genérico de 22023.
   "Este interruptor não existe.": "Este interruptor não existe.",
+
+  // ═══ Reunião preliminar — proposta, aceite e contestação (…263,
+  // 15/09/2026, decisões do Marcio) ═══
+  // Frases NOSSAS (`raise exception`), copiadas caractere por caractere das
+  // 3 RPCs (`gps.reuniao_propor_data`/`gps.reuniao_responder`/
+  // `gps.reuniao_cancelar_proposta`) — match por igualdade EXATA. "Sem
+  // permissão.", "Cliente não encontrado." e "O motivo passa de 300
+  // caracteres." já estão mapeadas acima (mesmo texto de outras RPCs);
+  // "cliente nao informado"/"proposta nao informada" caem em
+  // FALTA_PARAMETRO, no bloco das guardas internas mais abaixo.
+  "Informe a data proposta.": "Informe a data proposta.",
+  "A reunião preliminar só pode ser proposta para o cliente que a equipe acompanha.":
+    "A reunião preliminar só pode ser proposta para o cliente que a equipe acompanha.",
+  "Já existe uma proposta de data aguardando resposta para este cliente.":
+    "Já existe uma proposta de data aguardando resposta para este cliente.",
+  "Escolha uma resposta válida.": "Escolha uma resposta válida.",
+  "Proposta não encontrada.": "Proposta não encontrada.",
+  "Esta proposta já foi respondida ou cancelada.":
+    "Esta proposta já foi respondida ou cancelada.",
+  "Escreva o motivo da contestação (ao menos 3 caracteres).":
+    "Escreva o motivo da contestação (ao menos 3 caracteres).",
+  // 🔴 Contestação 1 vez só (decisão do Marcio): sem teto vira loop de
+  // reagendamento — foi "reunião que não acontece" que matou o agendamento
+  // antigo em 08/2026. Sem esta linha, a recusa cairia no genérico de 22023
+  // e o parceiro não saberia que o caminho certo é abrir um chamado.
+  "Você já contestou uma proposta para este cliente. Para reagendar de novo, abra um chamado no Suporte.":
+    "Você já contestou uma proposta para este cliente. Para reagendar de novo, abra um chamado no Suporte.",
+  "Só é possível cancelar uma proposta ainda aguardando resposta.":
+    "Só é possível cancelar uma proposta ainda aguardando resposta.",
 };
 
 /**

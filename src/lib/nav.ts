@@ -238,6 +238,16 @@ export function adminNavItems(
       icon: "suporte",
       badge: opts.chamadosAbertos,
     },
+    // Fila de ligações da entrevista prévia (Fatia 3 da esteira, 15/09/2026):
+    // a equipe liga para os 5 clientes que cada parceiro selecionou e
+    // registra resultado + DISC + decisores. Ícone "suporte" (LifeBuoy)
+    // reaproveitado — é a mesma família de "fila de atendimento" de
+    // Chamados, e a regra do projeto é não inventar chave nova de ícone.
+    //
+    // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela, `/admin/fila`
+    // existiria completa e só seria alcançável digitando a URL (o mesmo
+    // defeito já pago com a tela de respostas do onboarding).
+    { href: "/admin/fila", label: "Fila de ligações", icon: "suporte" },
     // Biblioteca de vídeos (demanda 5, 11/09/2026): mesmo ícone "materiais"
     // (BookOpen) do Plantão acima — não é o mesmo assunto, mas é o ícone mais
     // próximo do catálogo existente, e a regra do projeto é não inventar

@@ -328,6 +328,25 @@ export interface ClienteEtapa1 {
    * campo: a escrita é só pela RPC.
    */
   selecionado_entrevista: boolean;
+  /**
+   * Resultado da ligação da entrevista prévia (migração 20260915000262,
+   * decisão Marcio 15/09/2026). Catálogo fechado — ver `ResultadoEntrevista`
+   * em `src/lib/entrevista-tipos.ts`. `null` = ligação ainda pendente (é o
+   * que faz o cliente aparecer em `gps.fila_de_ligacoes`).
+   *
+   * Escrita só por `gps.entrevista_gravar`: `PatchCliente`
+   * (`src/app/clientes/actions.ts`) não tem este campo nem os 3 abaixo.
+   */
+  entrevista_resultado: string | null;
+  /**
+   * Anotação do OPERADOR sobre a ligação — NÃO é `registro_contato` (aquele é
+   * do parceiro sobre o cliente dele). Herda a regra de LGPD dele: fica fora
+   * de `gps.admin_clientes_lista`, do CSV e de `gps.fila_de_ligacoes`. Só a
+   * ficha individual lê este campo.
+   */
+  entrevista_observacoes: string | null;
+  entrevista_em: string | null;
+  entrevista_por: string | null;
 }
 
 export type StatusSolicitacao = "pendente" | "aprovada" | "recusada";
@@ -520,6 +539,19 @@ export const TIPOS_EVENTO = [
   // por `gps.selecao_entrevista_definir`, um por cliente que muda de lado.
   "cliente_selecionado_entrevista",
   "cliente_removido_entrevista",
+  // Entrevista prévia (migração 20260915000262). Gravado só por
+  // `gps.entrevista_gravar`, com o RESULTADO no detalhe. O evento de LIGAÇÃO
+  // em si continua sendo `cliente_ligacao` (trigger existente, dispara
+  // sozinha) — este é o que ela disse, não que ela ligou.
+  "cliente_entrevista_registrada",
+  // Reunião preliminar — proposta de data, aceite e contestação (migração
+  // 20260915000263, decisões do Marcio). Gravados pelas RPCs
+  // `gps.reuniao_propor_data`/`gps.reuniao_responder` (a de cancelar vai
+  // para `gps.acessos_log`, não aqui — é a equipe desfazendo o próprio
+  // trabalho, não um fato do ambiente).
+  "reuniao_preliminar_proposta",
+  "reuniao_preliminar_aceita",
+  "reuniao_preliminar_contestada",
 ] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 

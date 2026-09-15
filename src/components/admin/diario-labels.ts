@@ -87,6 +87,18 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   // provisório — ajuste de copy é do frontend-engineer.
   cliente_selecionado_entrevista: "Selecionou cliente para a entrevista",
   cliente_removido_entrevista: "Removeu cliente da seleção da entrevista",
+  // Entrevista prévia (migração 20260915000262, backend). Texto provisório —
+  // ajuste de copy é do frontend-engineer. `detalhe.resultado` traz o
+  // catálogo fechado (interessado/sem_interesse/nao_atendeu/remarcar); este
+  // rótulo é só o "o que aconteceu", sem repetir o valor.
+  cliente_entrevista_registrada: "Registrou o resultado da entrevista prévia",
+  // Reunião preliminar — proposta de data, aceite e contestação (migração
+  // 20260915000263, decisões do Marcio). O cancelamento pela equipe NÃO
+  // entra aqui: é ação administrativa, gravada em `gps.acessos_log`
+  // (`ROTULO_ACAO_ADMIN`, acima), não neste catálogo.
+  reuniao_preliminar_proposta: "Propôs data para a reunião preliminar",
+  reuniao_preliminar_aceita: "Aceitou a data da reunião preliminar",
+  reuniao_preliminar_contestada: "Contestou a data da reunião preliminar",
 };
 
 export const ROTULO_ATOR: Record<AtorEvento, string> = {
@@ -134,6 +146,10 @@ const ROTULO_ACAO_ADMIN: Record<string, string> = {
   clientes_exportados: "Lista de clientes exportada em CSV",
   // Onboarding obrigatório do sócio convidado (migração ...256, 15/09/2026)
   socio_cadastro_preenchido: "Sócio preencheu o próprio cadastro",
+  // Reunião preliminar (migração ...263, 15/09/2026) — a equipe desfazendo a
+  // própria proposta. Propor e responder ficam só no Diário (aluno_eventos):
+  // são a trilha do AMBIENTE, não ação administrativa sobre login/acesso.
+  reuniao_preliminar_cancelada: "Proposta de reunião preliminar cancelada pela equipe",
 };
 
 /** Rótulo legível de uma ação administrativa, com fallback para o código cru. */

@@ -84,6 +84,11 @@ export function ClienteCardLista({
           {c.nome || "Sem nome"}
         </Link>
         <GrauChip grau={c.grau_relacao} className="mt-0.5" />
+        {c.selecionado_entrevista ? (
+          <span className="mt-0.5 shrink-0 rounded-full border border-borda-forte px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            Entrevista
+          </span>
+        ) : null}
         <MarcaSemDados cliente={c} />
         <MarcaRecusou cliente={c} />
       </div>

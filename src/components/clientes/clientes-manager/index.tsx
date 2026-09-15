@@ -28,7 +28,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
-import { LayoutGrid, List as ListIcon, Plus, Users } from "lucide-react";
+import { LayoutGrid, List as ListIcon, PhoneCall, Plus, Users } from "lucide-react";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
 import {
   META_CLIENTES,
@@ -62,6 +62,7 @@ import { DialogoExcluirCliente } from "./dialogos";
 import { DialogoNovoCliente } from "./dialogo-novo-cliente";
 import { DialogoDesfavoritar } from "../dialogo-desfavoritar";
 import { DialogoEscolherFavorito } from "../dialogo-escolher-favorito";
+import { DialogoSelecaoEntrevista } from "../selecao-entrevista";
 import {
   contarPorFase,
   contarPorGrau,
@@ -105,6 +106,8 @@ export function ClientesManager({
   const [escolhendo, setEscolhendo] = useState<ClienteEtapa1 | null>(null);
   /** Diálogo "Novo cliente" aberto? Fase e grau nascem no padrão. */
   const [novoAberto, setNovoAberto] = useState(false);
+  /** Diálogo "Escolher os 5 da entrevista" aberto? */
+  const [selecionandoEntrevista, setSelecionandoEntrevista] = useState(false);
   const [novoNome, setNovoNome] = useState("");
   const [novaFase, setNovaFase] = useState<FaseCliente>("prospeccao");
   const [novoGrau, setNovoGrau] = useState<string>("");
@@ -359,6 +362,13 @@ export function ClientesManager({
                   <LayoutGrid className="size-4" /> Quadro
                 </ViewButton>
               </div>
+              <Button
+                variant="outline"
+                onClick={() => setSelecionandoEntrevista(true)}
+                disabled={pending || clientes.length === 0}
+              >
+                <PhoneCall aria-hidden /> Escolher os 5 da entrevista
+              </Button>
               <Button onClick={abrirNovo} disabled={pending}>
                 Adicionar
               </Button>
@@ -594,6 +604,35 @@ export function ClientesManager({
           onCancelar={() => {
             setEscolhendo(null);
             setErroDialogo(null);
+          }}
+        />
+      ) : null}
+
+      {/* Seletor dos 5 da entrevista prévia (migração ...261). Conjunto
+          inteiro por action — ver o comentário de `selecao-entrevista.tsx`. */}
+      {selecionandoEntrevista ? (
+        <DialogoSelecaoEntrevista
+          aberto={selecionandoEntrevista}
+          clientes={clientes}
+          alunoId={alunoId}
+          onFechar={() => setSelecionandoEntrevista(false)}
+          onSalvo={(ids) => {
+            const idsSelecionados = new Set(ids);
+            setClientes((prev) =>
+              prev.map((c) => ({
+                ...c,
+                selecionado_entrevista: idsSelecionados.has(c.id),
+              })),
+            );
+            setSelecionandoEntrevista(false);
+            toast.success(
+              `Seleção salva: ${ids.length} de 5 clientes para a entrevista.`,
+            );
+            // 🔴 Lição registrada: em Client Component com estado por prop,
+            // sem refresh o próximo clique nesta lista partiria de um
+            // `clientesIniciais` desatualizado e desfaria o que acabou de
+            // ser salvo.
+            router.refresh();
           }}
         />
       ) : null}

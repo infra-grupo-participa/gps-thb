@@ -468,6 +468,35 @@ const FRASES_DO_BANCO: Record<string, string> = {
   // vê isto é a equipe, e a frase precisa dizer que ninguém recebeu o e-mail.
   "gps.config.resend_api_key nao configurada":
     "O envio de e-mail não está configurado no banco — a mensagem não foi enviada. Avise a equipe técnica.",
+
+  // ═══ gps.socio_cadastro_gravar — onboarding obrigatório do sócio (…256,
+  // 15/09/2026) ═══
+  // `gravarCadastroSocio` já valida os 10 campos ANTES de chamar a RPC (para
+  // o erro comum não gastar ida ao banco), mas a RPC é a fronteira real — sem
+  // estas entradas, uma chamada que driblasse a validação do servidor (RPC
+  // direta ao PostgREST) cairia no genérico de 22023/42501/P0002.
+  "Faça login para preencher o seu cadastro.":
+    "Faça login para preencher o seu cadastro.",
+  "Não encontramos o seu vínculo com o programa.":
+    "Não encontramos o seu vínculo com o programa. Fale com a equipe pelo Suporte.",
+  "Este cadastro é só para o sócio convidado.":
+    "Este cadastro é só para o sócio convidado.",
+  "Este cadastro já foi preenchido.": "Este cadastro já foi preenchido.",
+  "Não encontramos o e-mail do seu login.":
+    "Não encontramos o e-mail do seu login. Fale com a equipe pelo Suporte.",
+  "Escreva o nome completo.": "Escreva o nome completo.",
+  "O nome passa de 120 caracteres.": "O nome passa de 120 caracteres.",
+  "O nome não pode ter quebra de linha.":
+    "O nome não pode ter quebra de linha.",
+  "Informe o CPF.": "Informe o CPF.",
+  "CPF inválido.": "CPF inválido.",
+  "CEP inválido.": "CEP inválido.",
+  "Informe a cidade.": "Informe a cidade.",
+  "Escolha o estado na lista.": "Escolha o estado na lista.",
+  "Informe o bairro.": "Informe o bairro.",
+  "Informe o endereço.": "Informe o endereço.",
+  "Informe o número.": "Informe o número.",
+  "Informe o país.": "Informe o país.",
 };
 
 /**

@@ -120,6 +120,8 @@ const ROTULO_ACAO_ADMIN: Record<string, string> = {
   chamado_solicitacao_declinada: "Troca de cliente recusada pela equipe",
   // Lista consolidada de clientes: export CSV (migração ...255, 14/09/2026)
   clientes_exportados: "Lista de clientes exportada em CSV",
+  // Onboarding obrigatório do sócio convidado (migração ...256, 15/09/2026)
+  socio_cadastro_preenchido: "Sócio preencheu o próprio cadastro",
 };
 
 /** Rótulo legível de uma ação administrativa, com fallback para o código cru. */

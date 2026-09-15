@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 
 import { getContextoSessao } from "@/lib/auth";
 import { getMeuOnboarding } from "@/lib/data/onboarding";
+import { getSocioPrecisaCadastro } from "@/lib/data/socio-cadastro";
 import {
   concluirOnboarding,
   criarUploadAssinadoOnboarding,
@@ -10,7 +11,9 @@ import {
   salvarPassoOnboarding,
   trocarSenhaObrigatoria,
 } from "@/app/onboarding/actions";
+import { gravarCadastroSocio } from "@/app/onboarding/socio-actions";
 import { OnboardingPortalLazy } from "./portal-lazy";
+import { SocioCadastroPortalLazy } from "@/components/socio-cadastro/portal-lazy";
 
 /**
  * O portão do questionário inicial — **um lugar só, no `layout.tsx` da raiz**.
@@ -73,11 +76,16 @@ import { OnboardingPortalLazy } from "./portal-lazy";
  *   senha — para essa pessoa o portal abre **só no passo 0**, e a checagem da
  *   flag vem ANTES da saída por "concluído" de propósito (a ordem inversa
  *   engolia o passo 0 dela).
- * - **Não abre para quem não tem pessoa vinculada.** Sem `pessoaAlunoId` toda
- *   Server Action do questionário recusa com *"Seu cadastro ainda não está
- *   vinculado ao programa"* — montar o pop-up ali seria prender a pessoa num
- *   diálogo em que nenhum botão funciona, e do qual o passo 0 nem deixa sair.
- *   Quem resolve é a equipe, em "Vincular pessoa" na Central.
+ * - **Sem pessoa vinculada, o TITULAR sai com `null`.** Sem `pessoaAlunoId`
+ *   toda Server Action do questionário recusa com *"Seu cadastro ainda não
+ *   está vinculado ao programa"* — montar o pop-up ali seria prender a
+ *   pessoa num diálogo em que nenhum botão funciona. Quem resolve é a
+ *   equipe, em "Vincular pessoa" na Central.
+ *   ⚠️ **Exceção desde 10/09/2026: o SÓCIO sem pessoa vinculada** cai no
+ *   cadastro obrigatório (`SocioCadastroPortalLazy`) em vez de `null` — é
+ *   exatamente esse caso que a feature resolve (2 sócios hoje sem
+ *   `pessoa_aluno_id`, medido em produção). O cadastro do sócio não depende
+ *   de `pessoa_aluno_id` para existir; ele CRIA o vínculo.
  * - **Não busca o próximo passo.** A tela final oferece "Ir para o meu próximo
  *   passo" quando recebe `proximoPasso`, e calcular isso exige `getEtapas`,
  *   `getClientesEtapa1` e `getProgressoAluno` — três consultas que rodariam em
@@ -102,11 +110,28 @@ export async function OnboardingGate() {
   const ctx = await getContextoSessao();
   if (!ctx || ctx.papel !== "aluno") return null;
 
-  // Guarda 3 — sem pessoa vinculada não há questionário. `exigirAluno()` das
-  // actions recusa TUDO nesse estado, então o pop-up montaria só para devolver
-  // "Seu cadastro ainda não está vinculado…" a cada clique, sem saída (o passo
-  // 0 não tem "Continuar depois"). A Central resolve o vínculo.
-  if (!ctx.pessoaAlunoId) return null;
+  // Guarda 3 — sem pessoa vinculada não há questionário do onboarding.
+  // `exigirAluno()` das actions recusa TUDO nesse estado, então o pop-up
+  // montaria só para devolver "Seu cadastro ainda não está vinculado…" a
+  // cada clique, sem saída (o passo 0 não tem "Continuar depois").
+  //
+  // 🔴 Exceção: o SÓCIO cai no cadastro obrigatório em vez de sair. Ele é
+  // exatamente quem chega sem `pessoa_aluno_id` (entrou pelo convite,
+  // `/convite?t=`, sem preencher dado nenhum) — e é o cadastro que CRIA o
+  // vínculo, não a Central. O titular sem pessoa continua saindo com `null`:
+  // pra ele a Central resolve.
+  if (!ctx.pessoaAlunoId) {
+    if (ctx.papelMembro !== "socio") return null;
+    const c = await getSocioPrecisaCadastro();
+    if (!c.precisa) return null; // interruptor desligado = ninguém trancado
+    return (
+      <SocioCadastroPortalLazy
+        dados={c}
+        emailLogin={ctx.user.email ?? ""}
+        acao={gravarCadastroSocio}
+      />
+    );
+  }
 
   const dados = await getMeuOnboarding();
   if (!dados) return null;

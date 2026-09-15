@@ -207,7 +207,21 @@ export function AlunoCard({
 
           <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="truncate font-medium">{nome}</span>
+            {/* 🔑 NOME COPIÁVEL (15/09/2026, pedido do Marcio: "copiar nome,
+                e-mail e telefone"). Mesmo `CopiarContato` do e-mail e do
+                telefone — ícone só no hover, clique copia sem navegar (o card
+                inteiro é um `<Link>`). O que vai para a área de transferência
+                é `aluno?.nome` CRU: "Parceiro sem nome" é rótulo de tela, não
+                se copia. Sem nome no payload, cai no `<span>` de antes. */}
+            {aluno?.nome?.trim() ? (
+              <CopiarContato
+                valor={aluno.nome}
+                rotuloAcessivel={`Copiar nome de ${aluno.nome}`}
+                className="truncate font-medium text-foreground"
+              />
+            ) : (
+              <span className="truncate font-medium">{nome}</span>
+            )}
             {/* "com login" saiu (limpeza "clean", 11/09/2026): estava em
                 100% dos cards e não separava ninguém. "sem login" FICA — é
                 o único dos dois estados que pede uma ação da equipe. */}

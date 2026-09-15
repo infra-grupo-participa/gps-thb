@@ -72,6 +72,24 @@ function saneParaFiltro(v: string): string {
  * casa cada uma em nome/e-mail/CPF/telefone (ordem não importa). Traz um
  * conjunto amplo do banco e ranqueia por quantas palavras casaram — assim
  * uma busca curta ("joao", parte do sobrenome ou do e-mail) já encontra.
+ *
+ * 🔴 CONSERTO DE 15/09/2026 (achado do Marcio: buscou por e-mail, só achou
+ * por nome). Dois bugs medidos em produção que o `.or()` do PostgREST não
+ * tinha como resolver sozinho:
+ *   1. Acento — 20,2% da base (375/1.858) tem acento no nome e só casava
+ *      com o acento digitado exatamente igual (`ilike` não normaliza).
+ *   2. Telefone mascarado — 285 linhas de `telefone` têm espaço/hífen
+ *      (`(51) 99366-2779`); dígitos-só nunca é substring disso.
+ * A busca passou a chamar `gps.buscar_alunos_admin` (migração `…258`), que
+ * usa `unaccent()` (já instalada em produção) e compara telefone por
+ * dígitos-só no SQL — o PostgREST não deixa `unaccent(coluna)` do lado
+ * esquerdo de um filtro `.or()`, então isso só se resolve em SQL.
+ * Documento continua com `ilike` frouxo dentro da RPC (fallback), e ganha
+ * um caminho de IGUALDADE EXATA aqui em TS quando o termo é um CPF/CNPJ
+ * válido, via `gps.aluno_por_documento` já existente (mesma normalização do
+ * gatilho de vínculo). E-mail quebrado no `@`: a parte local também entra
+ * como palavra, para `joao@gmail.com` achar mesmo se o domínio não bater
+ * caractere a caractere.
  */
 export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
   // Server Action é endpoint HTTP: sem esta guarda, qualquer autenticado
@@ -83,41 +101,70 @@ export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
 
   const supabase = await createClient();
 
-  // Palavras do texto + o bloco de dígitos (CPF/CNPJ/telefone).
-  // ⚠️ `saneParaFiltro` roda ANTES de qualquer interpolação no `.or()`; o
-  // ranqueamento abaixo usa as MESMAS palavras saneadas, para a ordem da lista
-  // refletir o que o banco realmente casou.
-  const palavras = q
-    .split(/\s+/)
+  // Palavras do texto + o bloco de dígitos (CPF/CNPJ/telefone). E-mail com
+  // `@`: a parte local (antes do `@`) entra como palavra extra — sem isso
+  // `joao@gmail.com` exigia o e-mail INTEIRO como substring.
+  // ⚠️ `saneParaFiltro` roda ANTES de qualquer interpolação em SQL; o
+  // ranqueamento abaixo usa as MESMAS palavras saneadas, para a ordem da
+  // lista refletir o que o banco realmente casou.
+  const partesEmail = q.includes("@") ? [q.split("@")[0]] : [];
+  const palavras = [...q.split(/\s+/), ...partesEmail]
     .map(saneParaFiltro)
     .filter((t) => t.length >= 2);
   // `soDigitos` já devolve só `[0-9]`: nada a sanear.
   const digitos = soDigitos(q);
 
-  // OR amplo: qualquer palavra em qualquer campo (redundante de propósito).
-  const filtros: string[] = [];
-  for (const p of palavras) {
-    filtros.push(`nome.ilike.%${p}%`, `email.ilike.%${p}%`);
-  }
-  if (digitos.length >= 3) {
-    filtros.push(`documento.ilike.%${digitos}%`, `telefone.ilike.%${digitos}%`);
-  }
   // Termo que sobrou vazio depois do saneamento (só metacaractere, p. ex.
-  // `,,,`) não vira consulta: devolver [] é mais honesto do que varrer a base.
-  if (filtros.length === 0) return [];
+  // `,,,`) e sem dígito nenhum não vira consulta: devolver [] é mais
+  // honesto do que varrer a base.
+  if (palavras.length === 0 && digitos.length < 3) return [];
 
-  const { data } = await supabase
-    .from("thb_alunos")
-    .select(
-      "id, nome, email, telefone, turma_id, plano, status_acesso, eh_socio, documento",
-    )
-    .or(filtros.join(","))
-    .limit(80);
+  const [{ data }, { data: porDocumento }] = await Promise.all([
+    supabase.schema("gps").rpc("buscar_alunos_admin", {
+      p_palavras: palavras.length > 0 ? palavras : null,
+      p_digitos: digitos.length >= 3 ? digitos : null,
+    }),
+    // Igualdade EXATA quando o termo TODO é um CPF/CNPJ válido — o `ilike`
+    // frouxo da RPC casa qualquer documento que CONTENHA a sequência
+    // digitada; isto aqui garante que um CPF completo sempre encontra a
+    // pessoa certa, mesmo que outro documento a "esconda" no ranqueamento.
+    documentoValido(digitos)
+      ? (supabase
+          .schema("gps")
+          .rpc("aluno_por_documento", { p_doc: digitos }) as unknown as Promise<{
+          data: Omit<AlunoDuplicado, "motivo">[] | null;
+        }>)
+      : Promise.resolve({ data: null as Omit<AlunoDuplicado, "motivo">[] | null }),
+  ]);
+
+  // Une os dois conjuntos por id (a igualdade exata pode achar alguém que a
+  // RPC ampla também achou, ou alguém que ela perdeu no teto de 80).
+  type LinhaBusca = Aluno & { documento: string | null };
+  const porId = new Map<string, LinhaBusca>();
+  for (const a of (data ?? []) as LinhaBusca[]) porId.set(a.id, a);
+  for (const d of porDocumento ?? []) {
+    if (!porId.has(d.id)) {
+      porId.set(d.id, {
+        id: d.id,
+        nome: d.nome,
+        email: d.email,
+        telefone: null,
+        turma_id: null,
+        plano: null,
+        status_acesso: null,
+        eh_socio: null,
+        documento: d.documento,
+      });
+    }
+  }
+  const bruto = [...porId.values()];
 
   // Ranqueia por associação: nº de palavras que casam (nome vale mais), com
-  // bônus para começo do nome e casamento de dígitos.
+  // bônus para começo do nome e casamento de dígitos. Igualdade exata de
+  // documento (achado só por `aluno_por_documento`) recebe o bônus máximo.
+  const idsPorDocumento = new Set((porDocumento ?? []).map((d) => d.id));
   const alvos = palavras.map(norm);
-  const ranqueado = (data ?? [])
+  const ranqueado = bruto
     .map((a) => {
       const nome = norm(a.nome);
       const email = norm(a.email);
@@ -132,6 +179,7 @@ export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
         if (soDigitos(doc).includes(digitos)) score += 3;
         if (soDigitos(tel).includes(digitos)) score += 2;
       }
+      if (idsPorDocumento.has(a.id)) score += 5;
       return { a, score };
     })
     .sort(
@@ -148,8 +196,7 @@ export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
   const idsNoGps = new Set((membros ?? []).map((m) => m.aluno_id));
 
   return ranqueado.map((a) => ({
-    ...(a as Aluno),
-    documento: (a as { documento: string | null }).documento,
+    ...a,
     jaNoGps: idsNoGps.has(a.id),
   }));
 }

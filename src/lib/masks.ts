@@ -82,14 +82,37 @@ export function mascaraCep(v: string): string {
 
 /** Telefone brasileiro (10 ou 11 dígitos) em E.164: +5511999999999. */
 export function telefoneE164(v: string): string | null {
-  const d = soDigitos(v);
+  // `semDdi55` primeiro: sem ele, um número já em formato internacional
+  // (13 dígitos, como 988 linhas da base) caía no `return null` e virava
+  // "Telefone inválido" — mesmo sendo um número perfeitamente válido.
+  const d = semDdi55(v);
   if (d.length !== 10 && d.length !== 11) return null;
   return `+55${d}`;
 }
 
+/**
+ * Tira o DDI 55 de um telefone brasileiro, quando ele existe.
+ *
+ * 🔴 Existe por causa de um defeito de EXIBIÇÃO achado em 15/09/2026: a base
+ * guarda 988 telefones com 13 dígitos (`5544998893282` = 55 + DDD 44 + 9
+ * dígitos), e `mascaraTelefone` cortava os 11 PRIMEIROS. Resultado na tela:
+ * `(55) 44998-8932` — o DDI virava DDD e os 2 últimos dígitos sumiam. O dado
+ * no banco sempre esteve certo; quem mentia era a máscara.
+ *
+ * Só remove o 55 quando o resto sobra com tamanho de telefone nacional
+ * (12 díg. = 55 + fixo de 10; 13 díg. = 55 + celular de 11). Um celular de
+ * 11 dígitos com DDD 55 (Rio Grande do Sul, ex.: `55987654321`) NÃO é tocado
+ * — é a razão de a regra olhar o comprimento e não só o prefixo.
+ */
+export function semDdi55(v: string): string {
+  const d = soDigitos(v);
+  if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return d.slice(2);
+  return d;
+}
+
 /** Telefone (00) 0000-0000 ou (00) 00000-0000, progressivo. */
 export function mascaraTelefone(v: string): string {
-  const d = soDigitos(v).slice(0, 11);
+  const d = semDdi55(v).slice(0, 11);
   if (!d) return "";
   const ddd = d.slice(0, 2);
   const resto = d.slice(2);

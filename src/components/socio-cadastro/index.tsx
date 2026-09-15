@@ -142,7 +142,7 @@ export function SocioCadastro({
     return () => controller.abort();
   }, [cep]);
 
-  const razaoTravado = razaoParaTravar({
+  const payloadAtual = {
     nome,
     documento,
     telefone,
@@ -153,7 +153,61 @@ export function SocioCadastro({
     logradouro,
     numero,
     pais,
-  });
+  };
+  const razaoTravado = razaoParaTravar(payloadAtual);
+
+  // Erro POR CAMPO, mostrado só depois do primeiro `onBlur` daquele campo
+  // (nunca marcar vermelho quem a pessoa ainda não visitou).
+  //
+  // 🔑 Reusa `razaoParaTravar` em vez de duplicar a regra: para isolar a
+  // mensagem de UM campo, chamamos ela de novo com um payload em que
+  // TODOS os campos recebem um valor-âncora sabidamente válido, EXCETO
+  // o campo de interesse, que recebe o valor real. Como só ele pode
+  // falhar nesse payload, qualquer mensagem devolvida só pode ser dele —
+  // isolado dos dois lados (nunca um campo POSTERIOR na ordem de checagem
+  // rouba a mensagem, como acontecia numa versão anterior que só isolava
+  // os campos ANTERIORES). Isso não reescreve nenhuma regra de
+  // `travas.ts`; só troca QUAL payload é testado.
+  const [visitados, setVisitados] = useState<
+    Partial<Record<keyof typeof payloadAtual, true>>
+  >({});
+  const marcarVisitado = (campo: keyof typeof payloadAtual) =>
+    setVisitados((v) => ({ ...v, [campo]: true }));
+
+  const ANCORA_VALIDA: typeof payloadAtual = {
+    nome: "Nome Âncora",
+    documento: "111.444.777-35", // CPF com dígitos verificadores válidos
+    telefone: "(11) 99999-9999",
+    cep: "00000-000",
+    cidade: "Âncora",
+    estado: "SP",
+    bairro: "Âncora",
+    logradouro: "Âncora",
+    numero: "1",
+    pais: "Brasil",
+  };
+  const ORDEM_CAMPOS: (keyof typeof payloadAtual)[] = [
+    "nome",
+    "documento",
+    "telefone",
+    "cep",
+    "cidade",
+    "estado",
+    "bairro",
+    "logradouro",
+    "numero",
+    "pais",
+  ];
+  function razaoDoCampo(campo: keyof typeof payloadAtual): string {
+    const payloadIsolado = { ...ANCORA_VALIDA, [campo]: payloadAtual[campo] };
+    return razaoParaTravar(payloadIsolado);
+  }
+  const erroDeCampo: Partial<Record<keyof typeof payloadAtual, string>> = {};
+  for (const campo of ORDEM_CAMPOS) {
+    if (!visitados[campo]) continue;
+    const razao = razaoDoCampo(campo);
+    if (razao) erroDeCampo[campo] = razao;
+  }
 
   return (
     <Dialog
@@ -173,34 +227,55 @@ export function SocioCadastro({
             Complete o seu cadastro
           </DialogTitle>
           <DialogDescription>
-            Você foi convidado por {dados.titularNome} · {dados.titularEmail}
+            Você foi convidado por {dados.titularNome} · {dados.titularEmail}.
+            São os dados do seu próprio cadastro no programa — é só uma vez.
           </DialogDescription>
         </DialogHeader>
 
         <form action={formAction} className="grid gap-5">
+          <p className="corpo-sm text-muted-foreground">
+            Todos os campos abaixo são obrigatórios.
+          </p>
+
           <Secao nivel="h3" titulo="Identificação" classeConteudo="grid gap-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-nome">Nome completo *</Label>
+                <Label htmlFor="sc-nome">Nome completo</Label>
                 <Input
                   id="sc-nome"
                   name="nome"
                   maxLength={120}
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
+                  onBlur={() => marcarVisitado("nome")}
                   autoComplete="name"
+                  aria-invalid={erroDeCampo.nome ? true : undefined}
+                  aria-describedby={erroDeCampo.nome ? "sc-nome-erro" : undefined}
                 />
+                {erroDeCampo.nome ? (
+                  <p id="sc-nome-erro" className="corpo-sm text-destructive">
+                    {erroDeCampo.nome}
+                  </p>
+                ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-doc">CPF *</Label>
+                <Label htmlFor="sc-doc">CPF</Label>
                 <Input
                   id="sc-doc"
                   name="documento"
                   value={documento}
                   onChange={(e) => setDocumento(mascaraCpfCnpj(e.target.value))}
+                  onBlur={() => marcarVisitado("documento")}
                   placeholder="000.000.000-00"
                   inputMode="numeric"
+                  aria-invalid={erroDeCampo.documento ? true : undefined}
+                  aria-describedby={erroDeCampo.documento ? "sc-doc-erro" : undefined}
                 />
+                {erroDeCampo.documento ? (
+                  <p id="sc-doc-erro" className="corpo-sm text-destructive">
+                    {erroDeCampo.documento}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="grid gap-1.5">
@@ -214,29 +289,42 @@ export function SocioCadastro({
 
           <Secao nivel="h3" titulo="Contato" classeConteudo="grid gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="sc-tel">Telefone / WhatsApp *</Label>
+              <Label htmlFor="sc-tel">Telefone / WhatsApp</Label>
               <Input
                 id="sc-tel"
                 name="telefone"
                 value={telefone}
                 onChange={(e) => setTelefone(mascaraTelefone(e.target.value))}
+                onBlur={() => marcarVisitado("telefone")}
                 placeholder="(11) 99999-9999"
                 inputMode="tel"
+                aria-invalid={erroDeCampo.telefone ? true : undefined}
+                aria-describedby={erroDeCampo.telefone ? "sc-tel-erro" : undefined}
               />
+              {erroDeCampo.telefone ? (
+                <p id="sc-tel-erro" className="corpo-sm text-destructive">
+                  {erroDeCampo.telefone}
+                </p>
+              ) : null}
             </div>
           </Secao>
 
           <Secao nivel="h3" titulo="Endereço" classeConteudo="grid gap-3">
             <div className="grid gap-3 sm:grid-cols-[1fr_2fr_auto]">
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-cep">CEP *</Label>
+                <Label htmlFor="sc-cep">CEP</Label>
                 <Input
                   id="sc-cep"
                   name="cep"
                   value={cep}
                   onChange={(e) => setCep(mascaraCep(e.target.value))}
+                  onBlur={() => marcarVisitado("cep")}
                   placeholder="00000-000"
                   inputMode="numeric"
+                  aria-invalid={erroDeCampo.cep ? true : undefined}
+                  aria-describedby={
+                    erroDeCampo.cep ? "sc-cep-erro" : undefined
+                  }
                 />
                 {/* Discreto de propósito: falha na busca é silenciosa, então
                     o único feedback visível é "procurando" — nunca "não
@@ -248,25 +336,45 @@ export function SocioCadastro({
                 >
                   {buscandoCep ? "Buscando endereço…" : ""}
                 </p>
+                {erroDeCampo.cep ? (
+                  <p id="sc-cep-erro" className="corpo-sm text-destructive">
+                    {erroDeCampo.cep}
+                  </p>
+                ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-cidade">Cidade *</Label>
+                <Label htmlFor="sc-cidade">Cidade</Label>
                 <Input
                   id="sc-cidade"
                   name="cidade"
                   maxLength={120}
                   value={cidade}
                   onChange={(e) => setCidade(e.target.value)}
+                  onBlur={() => marcarVisitado("cidade")}
+                  aria-invalid={erroDeCampo.cidade ? true : undefined}
+                  aria-describedby={
+                    erroDeCampo.cidade ? "sc-cidade-erro" : undefined
+                  }
                 />
+                {erroDeCampo.cidade ? (
+                  <p id="sc-cidade-erro" className="corpo-sm text-destructive">
+                    {erroDeCampo.cidade}
+                  </p>
+                ) : null}
               </div>
               <div className="grid w-20 gap-1.5">
-                <Label htmlFor="sc-uf">UF *</Label>
+                <Label htmlFor="sc-uf">UF</Label>
                 <select
                   id="sc-uf"
                   name="estado"
                   value={estado}
                   onChange={(e) => setEstado(e.target.value)}
-                  className="foco-visivel h-9 rounded-md border border-input bg-card px-2 corpo-sm"
+                  onBlur={() => marcarVisitado("estado")}
+                  className="foco-visivel h-9 rounded-md border border-input bg-card px-2 corpo-sm aria-invalid:border-destructive"
+                  aria-invalid={erroDeCampo.estado ? true : undefined}
+                  aria-describedby={
+                    erroDeCampo.estado ? "sc-uf-erro" : undefined
+                  }
                 >
                   <option value="" disabled>
                     —
@@ -277,51 +385,96 @@ export function SocioCadastro({
                     </option>
                   ))}
                 </select>
+                {erroDeCampo.estado ? (
+                  <p id="sc-uf-erro" className="corpo-sm text-destructive">
+                    {erroDeCampo.estado}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-logradouro">Endereço *</Label>
+                <Label htmlFor="sc-logradouro">Endereço</Label>
                 <Input
                   id="sc-logradouro"
                   name="logradouro"
                   maxLength={200}
                   value={logradouro}
                   onChange={(e) => setLogradouro(e.target.value)}
+                  onBlur={() => marcarVisitado("logradouro")}
                   placeholder="Rua ..."
+                  aria-invalid={erroDeCampo.logradouro ? true : undefined}
+                  aria-describedby={
+                    erroDeCampo.logradouro ? "sc-logradouro-erro" : undefined
+                  }
                 />
+                {erroDeCampo.logradouro ? (
+                  <p id="sc-logradouro-erro" className="corpo-sm text-destructive">
+                    {erroDeCampo.logradouro}
+                  </p>
+                ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-numero">Número *</Label>
+                <Label htmlFor="sc-numero">Número</Label>
                 <Input
                   id="sc-numero"
                   name="numero"
                   maxLength={20}
                   value={numero}
                   onChange={(e) => setNumero(e.target.value)}
+                  onBlur={() => marcarVisitado("numero")}
+                  aria-invalid={erroDeCampo.numero ? true : undefined}
+                  aria-describedby={
+                    erroDeCampo.numero ? "sc-numero-erro" : undefined
+                  }
                 />
+                {erroDeCampo.numero ? (
+                  <p id="sc-numero-erro" className="corpo-sm text-destructive">
+                    {erroDeCampo.numero}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-bairro">Bairro *</Label>
+                <Label htmlFor="sc-bairro">Bairro</Label>
                 <Input
                   id="sc-bairro"
                   name="bairro"
                   maxLength={120}
                   value={bairro}
                   onChange={(e) => setBairro(e.target.value)}
+                  onBlur={() => marcarVisitado("bairro")}
+                  aria-invalid={erroDeCampo.bairro ? true : undefined}
+                  aria-describedby={
+                    erroDeCampo.bairro ? "sc-bairro-erro" : undefined
+                  }
                 />
+                {erroDeCampo.bairro ? (
+                  <p id="sc-bairro-erro" className="corpo-sm text-destructive">
+                    {erroDeCampo.bairro}
+                  </p>
+                ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-pais">País *</Label>
+                <Label htmlFor="sc-pais">País</Label>
                 <Input
                   id="sc-pais"
                   name="pais"
                   maxLength={60}
                   value={pais}
                   onChange={(e) => setPais(e.target.value)}
+                  onBlur={() => marcarVisitado("pais")}
+                  aria-invalid={erroDeCampo.pais ? true : undefined}
+                  aria-describedby={
+                    erroDeCampo.pais ? "sc-pais-erro" : undefined
+                  }
                 />
+                {erroDeCampo.pais ? (
+                  <p id="sc-pais-erro" className="corpo-sm text-destructive">
+                    {erroDeCampo.pais}
+                  </p>
+                ) : null}
               </div>
             </div>
           </Secao>
@@ -357,7 +510,12 @@ export function SocioCadastro({
           ) : null}
 
           <div className="grid gap-2">
-            {razaoTravado ? (
+            {/* A frase única só aparece quando NENHUM campo já mostra o
+                próprio erro embaixo dele — evita repetir a mesma mensagem
+                duas vezes na tela. Antes do primeiro `onBlur`, ou depois de
+                corrigir todos os campos visitados mas ainda faltar algo à
+                frente (não visitado), ela é o único aviso disponível. */}
+            {razaoTravado && Object.keys(erroDeCampo).length === 0 ? (
               <p aria-live="polite" className="corpo-sm text-atencao-foreground">
                 {razaoTravado}
               </p>

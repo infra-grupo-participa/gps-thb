@@ -212,10 +212,36 @@ export function assistenciaNavItems(
  * pílula: `contarChamadosAbertosPorAluno()` e `getAtendimentoPorAluno()` batem
  * na MESMA RPC (`gps.admin_painel_atendimento`), e chamar as duas na mesma
  * página seria uma ida ao banco pelo mesmo dado (ver `chamados-data.ts`).
+ *
+ * `souAdmin` é OBRIGATÓRIO e SEM valor padrão — mesmo motivo do comentário no
+ * topo do arquivo (`alunoNavItems`): esta função hoje é chamada só por telas
+ * 100% admin, mas a Fatia 5 (15/09/2026, papel "equipe da esteira") abriu
+ * `/admin/fila` também para OPERADOR não-admin (`ehEquipeDaEsteira()`). Um
+ * operador logado nunca pode ver, no header, um item de menu que leva a uma
+ * tela que ele não acessa — link que dá erro é pior que link ausente (ver
+ * `ehEquipeDaEsteira` em `src/lib/auth.ts`). Com `souAdmin: false`, a função
+ * devolve só o subconjunto que a Fatia 5 abriu ao operador puro (hoje: Fila
+ * de ligações); as outras 8 abas do admin exigem `gp_is_admin()`/`ehAdmin()`
+ * em RPC ou guarda de página, e o operador cairia num redirect ao clicar.
  */
 export function adminNavItems(
-  opts: { chamadosAbertos?: number } = {},
+  opts: { chamadosAbertos?: number; souAdmin: boolean },
 ): NavItem[] {
+  // Operador não-admin: só o que a Fatia 5 liberou para ele. Nada de
+  // Chamados, Vídeos, Clientes (lista de todos os ambientes), Tutoriais ou
+  // Interruptores — todas essas guardam por `gp_is_admin()`/`ehAdmin()`, não
+  // por `eh_equipe()`/`ehEquipeDaEsteira()`.
+  if (!opts.souAdmin) {
+    return [
+      {
+        href: "/admin/fila",
+        label: "Fila de ligações",
+        icon: "suporte",
+        exact: true,
+      },
+    ];
+  }
+
   return [
     // `restauraPainel`: o clique leva à ÚLTIMA URL do painel (aba, busca,
     // ordem, filtros, lote), não a `/admin` pelado. Sem isso, a aba do header
@@ -248,6 +274,18 @@ export function adminNavItems(
     // existiria completa e só seria alcançável digitando a URL (o mesmo
     // defeito já pago com a tela de respostas do onboarding).
     { href: "/admin/fila", label: "Fila de ligações", icon: "suporte" },
+    // Gestão do papel "equipe da esteira" (Fatia 5, ÚLTIMA, 15/09/2026):
+    // quem entra aqui vê a fila de ligações E o dossiê do cliente — a tela
+    // ativa/desativa esse papel para um login existente. Guarda `gp_is_admin()`
+    // na RPC (`gps.operador_definir`): operador não promove operador, então
+    // este item SÓ aparece no ramo `souAdmin` acima, nunca no ramo do
+    // operador puro. Ícone "equipe" reaproveitado da aba do aluno — mesmo
+    // assunto (quem faz parte de um grupo de pessoas), regra de não inventar
+    // chave nova de ícone.
+    //
+    // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela, `/admin/operadores`
+    // existiria completa e só seria alcançável digitando a URL.
+    { href: "/admin/operadores", label: "Operadores", icon: "equipe" },
     // Biblioteca de vídeos (demanda 5, 11/09/2026): mesmo ícone "materiais"
     // (BookOpen) do Plantão acima — não é o mesmo assunto, mas é o ícone mais
     // próximo do catálogo existente, e a regra do projeto é não inventar

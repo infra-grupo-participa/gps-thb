@@ -1,6 +1,8 @@
-import { PhoneCall, Star } from "lucide-react";
+import Link from "next/link";
+import { PhoneCall, Star, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { buttonVariants } from "@/components/ui/button";
 import { CopiarContato } from "@/components/admin/copiar-contato";
 import { RegistrarEntrevista } from "@/components/admin/fila/registrar-entrevista";
 import { mascaraTelefone } from "@/lib/masks";
@@ -69,7 +71,18 @@ export function FilaDeLigacoes({ linhas }: { linhas: FilaDeLigacaoLinha[] }) {
                 )}
               </div>
 
-              <div className="shrink-0">
+              <div className="flex shrink-0 items-center gap-2">
+                {/* Fatia 5 (15/09/2026): "feature sem porta de entrada é
+                    feature que não existe" — sem este link, o dossiê existiria
+                    completo e só seria alcançável digitando a URL. */}
+                <Link
+                  href={`/admin/operador/cliente/${linha.clienteId}`}
+                  aria-label={`Abrir dossiê de ${linha.clienteNome}`}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  <FileText aria-hidden />
+                  Dossiê
+                </Link>
                 <RegistrarEntrevista
                   clienteId={linha.clienteId}
                   clienteNome={linha.clienteNome}

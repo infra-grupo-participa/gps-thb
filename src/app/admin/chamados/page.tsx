@@ -65,7 +65,7 @@ export default async function AdminChamadosPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={adminNavItems({ chamadosAbertos: chamadosBadge })}
+        navItems={adminNavItems({ chamadosAbertos: chamadosBadge, souAdmin: true })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader

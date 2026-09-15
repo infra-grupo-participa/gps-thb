@@ -150,6 +150,12 @@ const ROTULO_ACAO_ADMIN: Record<string, string> = {
   // própria proposta. Propor e responder ficam só no Diário (aluno_eventos):
   // são a trilha do AMBIENTE, não ação administrativa sobre login/acesso.
   reuniao_preliminar_cancelada: "Proposta de reunião preliminar cancelada pela equipe",
+  // Papel de operador + dossiê (migração ...264, 15/09/2026). `dossie_acessado`
+  // é a trilha OBRIGATÓRIA de LGPD (cada abertura do dossiê do cliente grava,
+  // mesmo sendo leitura); `operador_definido` é a gestão do papel transversal
+  // "equipe da esteira".
+  dossie_acessado: "Dossiê do cliente acessado",
+  operador_definido: "Papel de operador da esteira alterado",
 };
 
 /** Rótulo legível de uma ação administrativa, com fallback para o código cru. */

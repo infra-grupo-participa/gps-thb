@@ -32,7 +32,7 @@ export default async function AdminConfiguracoesPage() {
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={adminNavItems()}
+        navItems={adminNavItems({ souAdmin: true })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-5xl px-4 pt-8 pb-16">
         <PageHeader

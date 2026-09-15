@@ -148,3 +148,40 @@ export const ehAdmin = cache(async function ehAdmin(): Promise<boolean> {
   const ctx = await getContextoSessao();
   return ctx?.papel === "admin";
 });
+
+/**
+ * `true` se o usuário logado é ADMIN ou OPERADOR ATIVO da esteira
+ * (`gps.operadores`, migração `…264`, decisão do Marcio 15/09/2026: "um
+ * papel só — equipe da esteira"). Usada pelas telas de fila de ligações e
+ * dossiê para decidir se mostram o conteúdo — a fronteira real é
+ * `gps.eh_equipe()` dentro de cada RPC da esteira (não replicada aqui: esta
+ * função lê `gps.operadores` diretamente, que é UMA linha por usuário, não
+ * uma função SQL a mais para chamar do servidor).
+ *
+ * 🔴 NÃO confundir com "papel" em `ContextoSessao` — de propósito não
+ * acrescentamos `"operador"` a `Papel`: 20 páginas têm `ctx.papel !==
+ * "admin"` copiado, e um valor novo na união faria essas 20 continuarem
+ * compilando com outro significado sem ninguém perceber. Um admin que
+ * também é operador continua com `papel: "admin"`; esta função é ADITIVA,
+ * não substitui `ehAdmin()`.
+ *
+ * Memoizada por requisição com `cache()`, mesmo padrão de `ehAdmin()` — evita
+ * uma consulta a mais em `gps.operadores` toda vez que a página checar o
+ * papel dentro do mesmo render.
+ */
+export const ehEquipeDaEsteira = cache(async function ehEquipeDaEsteira(): Promise<boolean> {
+  if (await ehAdmin()) return true;
+
+  const ctx = await getContextoSessao();
+  if (!ctx) return false;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("gps")
+    .from("operadores")
+    .select("ativo")
+    .eq("user_id", ctx.user.id)
+    .maybeSingle();
+
+  return Boolean(data?.ativo);
+});

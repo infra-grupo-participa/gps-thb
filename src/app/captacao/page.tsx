@@ -19,7 +19,7 @@ export default async function CaptacaoPage() {
   // (não há para onde mandá-lo, e a home já explica o estado dele).
   const navItems =
     ctx.papel === "admin"
-      ? adminNavItems()
+      ? adminNavItems({ souAdmin: true })
       : ctx.papel === "aluno"
         ? navDoAluno(ctx)
         : undefined;

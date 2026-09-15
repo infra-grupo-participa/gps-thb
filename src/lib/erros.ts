@@ -583,6 +583,23 @@ const FRASES_DO_BANCO: Record<string, string> = {
     "Você já contestou uma proposta para este cliente. Para reagendar de novo, abra um chamado no Suporte.",
   "Só é possível cancelar uma proposta ainda aguardando resposta.":
     "Só é possível cancelar uma proposta ainda aguardando resposta.",
+
+  // ═══ Papel de operador + dossiê do cliente (…264, 15/09/2026, decisão do
+  // Marcio: "um papel só — equipe da esteira") ═══
+  // Frases NOSSAS (`raise exception`), copiadas caractere por caractere de
+  // `gps.operador_definir` e `gps.dossie_do_cliente` — match por igualdade
+  // EXATA. "Sem permissão." e "cliente nao informado" (este cai em
+  // FALTA_PARAMETRO, bloco das guardas internas mais abaixo) já estão
+  // mapeados; só as frases NOVAS entram aqui.
+  "Login não encontrado.": "Login não encontrado.",
+  "O nome passa de 200 caracteres.": "O nome passa de 200 caracteres.",
+
+  // Guardas internas de parâmetro de gps.operador_definir — mesma família de
+  // "aluno nao informado" etc. (bloco abaixo), minúsculas e sem acento de
+  // propósito: chegar aqui significa chamador errado, nunca erro de digitação
+  // do usuário.
+  "usuario nao informado": FALTA_PARAMETRO,
+  "ativo nao informado": FALTA_PARAMETRO,
 };
 
 /**

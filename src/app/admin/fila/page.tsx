@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getContextoSessao } from "@/lib/auth";
+import { getContextoSessao, ehEquipeDaEsteira } from "@/lib/auth";
 import { getFilaDeLigacoes } from "@/lib/data/entrevistas";
 import { adminNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
@@ -18,11 +18,28 @@ export const metadata = { title: "Admin — Fila de ligações" };
  *
  * 🔴 LGPD: a RPC não devolve `entrevista_observacoes` nem decisores — eles só
  * existem na ficha/dossiê de UM cliente por vez, nunca nesta lista.
+ *
+ * 🔑 Guarda `ehEquipeDaEsteira()` (Fatia 5, 15/09/2026), NÃO `ctx.papel !==
+ * "admin"`: a decisão do Marcio abriu esta página também ao OPERADOR puro
+ * (`gps.operadores`, ativo) — a mesma pessoa que abre o dossiê. `gp_is_admin()`
+ * continua valendo por baixo em toda outra rota `/admin/**`; SÓ esta página
+ * troca de guarda.
+ *
+ * Um operador que não é admin nem aluno chega aqui com `ctx.papel ===
+ * "sem_acesso"` (ele não tem vínculo em `gps.membros` nem em
+ * `public.perfis` — `gps.operadores` referencia `auth.users` direto, ver a
+ * migração `…264`). Por isso o rótulo do header e o destino do logo não usam
+ * `ctx.papel === "admin"` como sinal de identidade — usam o resultado desta
+ * própria guarda.
  */
 export default async function AdminFilaPage() {
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
-  if (ctx.papel !== "admin") redirect("/");
+
+  const souEquipe = await ehEquipeDaEsteira();
+  if (!souEquipe) redirect("/");
+
+  const souAdmin = ctx.papel === "admin";
 
   const { linhas, total, erro } = await getFilaDeLigacoes({ limite: 200 });
 
@@ -31,9 +48,9 @@ export default async function AdminFilaPage() {
       <AppHeader
         nome={ctx.perfil?.nome ?? ctx.user.email ?? null}
         email={ctx.user.email ?? null}
-        papelRotulo="Admin"
-        homeHref="/admin"
-        navItems={adminNavItems()}
+        papelRotulo={souAdmin ? "Admin" : "Equipe da esteira"}
+        homeHref="/admin/fila"
+        navItems={adminNavItems({ souAdmin })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader

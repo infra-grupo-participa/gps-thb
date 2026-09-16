@@ -1,7 +1,8 @@
 import { Map } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getContextoSessao, ehEquipeDaEsteira } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { linkWhatsapp } from "@/lib/whatsapp";
 import { LogoutButton } from "@/components/logout-button";
 import {
   getEtapas,
@@ -75,6 +76,33 @@ export default async function HomePage() {
     // não há o que a equipe aprovar. Ver Tarefa B1.
     const semSolicitacao = solicitacao === null && !recusada;
 
+    // 🔑 SÓ para quem não tem solicitação. Os outros dois estados já dizem a
+    // verdade ("aguardando" tem pedido de verdade na fila; "não aprovada" tem
+    // decisão registrada) e continuam idênticos — inclusive sem a ida ao
+    // banco, que é desperdício em quem já tem a frase certa.
+    //
+    // **Falha fechado**, mesmo contrato do `BotaoSecretaria`: sem número
+    // configurado em `gps.config.whatsapp_secretaria` o link não aparece e a
+    // tela fica só com a frase honesta. Melhor sem saída do que com uma saída
+    // que abre conversa vazia. A equipe troca o número pelo painel, sem deploy.
+    let zapSecretaria: string | null = null;
+    if (semSolicitacao) {
+      const supabase = await createClient();
+      const { data } = await supabase.schema("gps").rpc("whatsapp_secretaria");
+      if (typeof data === "string" && data) {
+        // `ctx.user.email` é `string | undefined` no tipo `User` do Supabase.
+        // Sem o fallback, um e-mail ausente escreveria a palavra "undefined"
+        // dentro da mensagem que a pessoa manda para a secretaria.
+        const email = ctx.user.email ?? "";
+        zapSecretaria = linkWhatsapp(
+          data,
+          email
+            ? `Olá! Entrei no Programa de Implementação Assistida com o e-mail ${email}, mas minha conta não está ligada a nenhum acesso.`
+            : "Olá! Entrei no Programa de Implementação Assistida, mas minha conta não está ligada a nenhum acesso.",
+        );
+      }
+    }
+
     return (
       <main
         id="conteudo"
@@ -85,17 +113,35 @@ export default async function HomePage() {
               somava e o topo do card ficava maior que a base. */}
           <CardContent className="flex flex-col items-center gap-4 text-center">
             <ThbLogo />
-            <Badge variant={recusada ? "destructive" : "secondary"}>
-              {recusada ? "Solicitação não aprovada" : "Aguardando liberação"}
+            <Badge
+              variant={
+                recusada ? "destructive" : semSolicitacao ? "outline" : "secondary"
+              }
+            >
+              {recusada
+                ? "Solicitação não aprovada"
+                : semSolicitacao
+                  ? "Conta sem acesso vinculado"
+                  : "Aguardando liberação"}
             </Badge>
             <div>
               <h1 className="text-lg font-semibold">
                 {recusada
                   ? "Sua solicitação não foi aprovada"
-                  : "Solicitação recebida!"}
+                  : semSolicitacao
+                    ? "Sua conta ainda não está ligada ao Programa"
+                    : "Solicitação recebida!"}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                {recusada ? (
+                {semSolicitacao ? (
+                  <>
+                    Sua conta ({ctx.user.email}) foi autenticada, mas não está
+                    ligada a nenhum acesso do Programa — e não há pedido de
+                    liberação registrado para ela. Isto não é uma fila de
+                    espera: ninguém foi avisado automaticamente. Fale com a
+                    equipe para pedir o vínculo.
+                  </>
+                ) : recusada ? (
                   <>
                     Fale com a equipe do Time Holding Brasil para entender os
                     próximos passos.
@@ -112,6 +158,16 @@ export default async function HomePage() {
                 )}
               </p>
             </div>
+            {zapSecretaria ? (
+              <a
+                href={zapSecretaria}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium underline underline-offset-4"
+              >
+                Falar com a secretaria
+              </a>
+            ) : null}
             <LogoutButton linkStyle />
           </CardContent>
         </Card>

@@ -162,5 +162,21 @@ export interface FilaDeLigacaoLinha {
   ultimoResultado: ResultadoEntrevista | null;
   /** Data/hora do retorno pedido na última tentativa `remarcar`; `null` se não há retorno pendente. */
   retornoEm: string | null;
+  /**
+   * Contador de `remarcar` ACUMULATIVO pela vida do cliente (migração
+   * `…268`, decisão do Marcio 16/09/2026) — ao contrário de
+   * `tentativasSemContato`, NUNCA zera. Teto 3 encerra pelo mesmo destino
+   * (`sem_contato`), motivo diferente — ver `entrevistaMotivoEncerramento`.
+   */
+  entrevistaRemarcacoes: number;
+  /**
+   * Por que `entrevista_encerrada` é `true` (`…268`): `'sem_contato'` (teto
+   * de 3 `nao_atendeu` consecutivas), `'remarcacoes'` (teto de 3 `remarcar`
+   * acumuladas) ou `'desfecho'` (`interessado`/`sem_interesse`). `null`
+   * enquanto não encerrado. Existe para a UI distinguir os dois problemas
+   * dentro da MESMA lista `'sem_contato'` — "3 sem contato" (a pessoa some)
+   * e "3 remarcações" (a pessoa enrola) pedem tratamento diferente.
+   */
+  entrevistaMotivoEncerramento: "sem_contato" | "remarcacoes" | "desfecho" | null;
   totalLinhas: number;
 }

@@ -27,7 +27,8 @@ import type {
 // para `getTentativasDoCliente` — histórico completo de UMA ligação por
 // tentativa, com `observacoes`/`qualidade`, é leitura de UM cliente por vez
 // (ficha/dossiê), NUNCA de lista agregada. `getFilaDeLigacoes` ganhou `modo`
-// e as 5 colunas derivadas, mas continua sem `observacoes`/decisores/qualidade.
+// e as colunas derivadas (5 na …266; +2 na …268, teto de `remarcar`), mas
+// continua sem `observacoes`/decisores/qualidade.
 // ─────────────────────────────────────────────────────────────────────────
 
 export interface FiltrosFilaDeLigacoes {
@@ -88,6 +89,9 @@ function mapearLinhaFila(d: Record<string, unknown>): FilaDeLigacaoLinha {
     ultimaTentativaEm: (d.ultima_tentativa_em as string | null) ?? null,
     ultimoResultado: (d.ultimo_resultado as ResultadoEntrevista | null) ?? null,
     retornoEm: (d.retorno_em as string | null) ?? null,
+    entrevistaRemarcacoes: Number(d.entrevista_remarcacoes ?? 0),
+    entrevistaMotivoEncerramento:
+      (d.entrevista_motivo_encerramento as "sem_contato" | "remarcacoes" | "desfecho" | null) ?? null,
     totalLinhas: Number(d.total_linhas ?? 0),
   };
 }

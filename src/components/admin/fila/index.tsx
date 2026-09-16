@@ -108,6 +108,26 @@ function ordinalTentativa(n: number): string {
 }
 
 /**
+ * Motivo do encerramento na aba `sem_contato` — dois tetos independentes
+ * (migração `…268`, decisão do Marcio 16/09/2026) levam ao MESMO destino
+ * por razões diferentes: quem some (não atende) e quem enrola (remarca).
+ * `desfecho` não deveria aparecer aqui (o predicado da RPC já o exclui da
+ * aba), mas o texto cobre o caso sem quebrar.
+ */
+function motivoEncerramento(linha: FilaDeLigacaoLinha): string {
+  switch (linha.entrevistaMotivoEncerramento) {
+    case "sem_contato":
+      return "Não atendeu 3 vezes";
+    case "remarcacoes":
+      return "Remarcou 3 vezes";
+    case "desfecho":
+      return "Entrevista concluída";
+    default:
+      return "Tentativas esgotadas";
+  }
+}
+
+/**
  * Texto de contexto de tentativas de UMA linha, conforme a aba.
  *
  * 🔴 `ultimaTentativaEm` é PASSADO, `retornoEm` é FUTURO — não existe
@@ -122,15 +142,30 @@ function contextoTentativas(linha: FilaDeLigacaoLinha, modo: ModoFila): string {
     return `Retorno marcado para ${formatarDataHora(linha.retornoEm)}`;
   }
 
+  if (modo === "sem_contato") {
+    const partes = [motivoEncerramento(linha)];
+    // Quem esgotou remarcações pode ter tentativas sem contato no histórico
+    // (e vice-versa) — o outro contador só entra na linha quando > 0, para
+    // não sugerir um segundo problema onde não houve.
+    if (linha.entrevistaMotivoEncerramento === "remarcacoes" && linha.tentativasSemContato > 0) {
+      partes.push(`${linha.tentativasSemContato} não atendeu no histórico`);
+    } else if (
+      linha.entrevistaMotivoEncerramento === "sem_contato" &&
+      linha.entrevistaRemarcacoes > 0
+    ) {
+      partes.push(`${linha.entrevistaRemarcacoes} remarcação no histórico`);
+    }
+    const base = partes.join(" · ");
+    if (!linha.ultimaTentativaEm) return base;
+    return `${base} · última em ${formatarDataHora(linha.ultimaTentativaEm)}`;
+  }
+
   if (linha.tentativasTotal === 0) {
     return "1ª ligação";
   }
 
-  const numero = ordinalTentativa(linha.tentativasTotal + (modo === "sem_contato" ? 0 : 1));
-  const base =
-    modo === "sem_contato"
-      ? `${linha.tentativasTotal} tentativas sem contato`
-      : `${numero} tentativa`;
+  const numero = ordinalTentativa(linha.tentativasTotal + 1);
+  const base = `${numero} tentativa`;
 
   if (!linha.ultimaTentativaEm) return base;
   return `${base} · última em ${formatarDataHora(linha.ultimaTentativaEm)}`;

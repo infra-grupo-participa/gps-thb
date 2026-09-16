@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 🔴 CONTORNO, NÃO CORREÇÃO (16/09/2026).
+ * 🔴 CONTORNO QUE FUNCIONOU — causa raiz ainda não provada (16/09/2026).
  *
  * Esta tela e `/admin/clientes` ficavam presas em "Carregando…" para sempre
  * em produção (Hostinger compartilhada): HTTP 200, o `loading.tsx` aparecia e
@@ -21,6 +21,16 @@
  * a exceção real. O `server.js` deste repo já documenta aquele servidor como
  * instável (`fetch failed` intermitente, TTFB variando 14× na mesma página
  * estática), e streaming de RSC é o que mais sofre com isso.
+ *
+ * ✅ CONFIRMADO EM PRODUÇÃO (16/09/2026, após o deploy de `fe5e7f0`): as duas
+ * telas passaram a carregar. A fila mostra as 35 linhas; `/admin/clientes`
+ * mostra 1.585 clientes com filtros e busca. A hipótese se sustenta —
+ * naquele servidor, o streaming de RSC destas duas telas não completava.
+ *
+ * ⚠️ NÃO REVERTER sem antes reproduzir a falha: a mudança é o que faz a tela
+ * abrir hoje. A causa raiz (por que o streaming trava LÁ e não aqui) segue
+ * sem prova — se algum dia o log do Node na Hostinger explicar, o conserto
+ * certo é lá, e aí sim isto pode voltar a Server Component.
  *
  * ⚠️ Se o log aparecer e apontar outra causa, REVERTER isto e corrigir lá.
  *   Enquanto for `"use client"`, o componente não pode usar API de servidor

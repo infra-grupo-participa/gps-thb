@@ -1,8 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getContextoSessao } from "@/lib/auth";
-import { getAlunoById, getMembrosDoAmbiente, getTurmaCodigo } from "@/lib/data";
-import { assistenciaNavItems } from "@/lib/nav";
+import { getAlunoById, getMembrosDoAmbiente, getTurmaCodigo, getTutoriaisAtivo } from "@/lib/data";
+import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
@@ -35,7 +35,10 @@ export default async function AdminAlunoPerfilPage({
   const titular = membros.find((m) => m.papel === "titular") ?? membros[0];
 
   const base = `/admin/aluno/${alunoId}`;
-  const turma = await getTurmaCodigo(aluno?.turma_id);
+  const [turma, tutoriaisAtivo] = await Promise.all([
+    getTurmaCodigo(aluno?.turma_id),
+    getTutoriaisAtivo(),
+  ]);
 
   return (
     <>
@@ -47,6 +50,7 @@ export default async function AdminAlunoPerfilPage({
         navItems={assistenciaNavItems(alunoId, {
           ambienteCompartilhado: membros.length > 1,
         })}
+        navFixo={navFixoDoAluno(base, { tutoriais: tutoriaisAtivo })}
       />
       <AssistBanner aluno={aluno} />
 

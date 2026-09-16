@@ -12,10 +12,11 @@ import {
   getMarcosDeAcesso,
   getMarcosDeTrilha,
   contarMembrosDoAmbiente,
+  getTutoriaisAtivo,
 } from "@/lib/data";
 import { montarTrilha } from "@/lib/log-agregacao";
 import type { ItemTrilha } from "@/lib/types";
-import { assistenciaNavItems } from "@/lib/nav";
+import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
@@ -168,6 +169,7 @@ export default async function AdminAlunoDiarioPage({
     marcosTrilha,
     qtdMembros,
     podeApagarNota,
+    tutoriaisAtivo,
   ] = await Promise.all([
     carregarAluno(alunoId),
     // A janela vale para as TRÊS fontes da trilha (eventos, notas e ações
@@ -189,7 +191,8 @@ export default async function AdminAlunoDiarioPage({
     contarMembrosDoAmbiente(alunoId),
     // Só 3 pessoas apagam nota (gps.config.notas_podem_apagar). A tela
     // esconde o botão para os outros; a fronteira real é a RPC.
-    consultarPodeApagarNota()
+    consultarPodeApagarNota(),
+    getTutoriaisAtivo(),
   ]);
 
   // `truncado` = o teto de 300 cortou dentro da janela. A tela precisa dizer
@@ -214,6 +217,7 @@ export default async function AdminAlunoDiarioPage({
         navItems={assistenciaNavItems(alunoId, {
           ambienteCompartilhado: qtdMembros > 1,
         })}
+        navFixo={navFixoDoAluno(`/admin/aluno/${alunoId}`, { tutoriais: tutoriaisAtivo })}
       />
       <AssistBanner aluno={aluno} />
 

@@ -1,6 +1,7 @@
 import { Map } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getContextoSessao } from "@/lib/auth";
+import { getContextoSessao, ehEquipeDaEsteira } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
 import {
   getEtapas,
@@ -14,6 +15,7 @@ import {
   getTurmaCodigo,
   getClienteEquipe,
   alunoJaTemCliente,
+  getTutoriaisAtivo,
 } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +25,7 @@ import {
   proximoPasso,
 } from "@/lib/etapas";
 import { calcularMetricasEtapa1, resumoHonorarios } from "@/lib/etapa1";
-import { navDoAluno } from "@/lib/nav";
+import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { Secao } from "@/components/ui/secao";
@@ -51,9 +53,27 @@ export default async function HomePage() {
 
   if (ctx.papel === "admin") redirect("/admin");
 
+  // 🔴 A ORDEM AQUI É A TRAVA — não mover para antes do `redirect("/admin")`
+  // acima. `ehEquipeDaEsteira()` devolve `true` também para admin (é
+  // ADITIVA a `ehAdmin()`, ver o comentário em `auth.ts:172`). Se este bloco
+  // viesse ANTES do redirect de admin, os 14 admins perderiam `/admin` e
+  // cairiam todos em `/admin/fila` — regressão que COMPILA e passa no
+  // build. O guard é `ctx.papel !== "aluno"` (não `=== "sem_acesso"`): assim
+  // os 135 alunos nunca chamam `ehEquipeDaEsteira()` (custo zero para eles),
+  // e o admin já saiu pelo redirect acima antes de chegar aqui.
+  if (ctx.papel !== "aluno") {
+    if (await ehEquipeDaEsteira()) redirect("/admin/fila");
+  }
+
   if (ctx.papel === "sem_acesso") {
     const solicitacao = await getMinhaSolicitacao(ctx.user.id);
     const recusada = solicitacao?.status === "recusada";
+    // `null` = nem pendente nem recusada: o cargo dela não é lido pelo GPS
+    // (gps.membros não tem vínculo, e agora também não é operador ativo).
+    // `gps.solicitacoes_acesso` está VAZIA — ninguém preencheu ela pedindo
+    // aprovação, então "Aguardando liberação" seria mentira: não há fila,
+    // não há o que a equipe aprovar. Ver Tarefa B1.
+    const semSolicitacao = solicitacao === null && !recusada;
 
     return (
       <main
@@ -203,6 +223,8 @@ export default async function HomePage() {
     [...liberadas].sort((a, b) => b.ordem - a.ordem)[0] ??
     null;
 
+  const tutoriaisAtivo = await getTutoriaisAtivo();
+
   return (
     <>
       <AppHeader
@@ -210,6 +232,7 @@ export default async function HomePage() {
         email={ctx.user.email ?? null}
         papelRotulo="Parceiro"
         navItems={navDoAluno(ctx)}
+        navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
       {/* `pb-16`: o conteúdo encostava no fim da viewport (B.3 do plano). */}
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">

@@ -11,13 +11,14 @@ import {
   getResumoDiario,
   contarMembrosDoAmbiente,
   alunoJaTemCliente,
+  getTutoriaisAtivo,
 } from "@/lib/data";
 import {
   etapasComLiberacaoDoAluno,
   pctPorEtapa,
   proximoPasso,
 } from "@/lib/etapas";
-import { assistenciaNavItems } from "@/lib/nav";
+import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { EtapasOverview } from "@/components/etapas-overview";
@@ -57,7 +58,8 @@ export default async function AdminAlunoInicioPage({
     favorito,
     resumoDiario,
     qtdMembros,
-    jaTemCliente
+    jaTemCliente,
+    tutoriaisAtivo,
   ] = await Promise.all([
     getAlunoById(alunoId),
     // Mesma regra do ambiente do aluno: `coalesce(override, global)`. Sem
@@ -76,7 +78,8 @@ export default async function AdminAlunoInicioPage({
     getClienteEquipe(alunoId),
     getResumoDiario(alunoId),
     contarMembrosDoAmbiente(alunoId),
-    alunoJaTemCliente(alunoId)
+    alunoJaTemCliente(alunoId),
+    getTutoriaisAtivo(),
   ]);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
@@ -100,6 +103,7 @@ export default async function AdminAlunoInicioPage({
         navItems={assistenciaNavItems(alunoId, {
           ambienteCompartilhado: qtdMembros > 1,
         })}
+        navFixo={navFixoDoAluno(base, { tutoriais: tutoriaisAtivo })}
       />
       <AssistBanner aluno={aluno} />
 

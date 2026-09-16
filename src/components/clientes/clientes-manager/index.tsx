@@ -28,7 +28,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
-import { LayoutGrid, List as ListIcon, PhoneCall, Plus, Users } from "lucide-react";
+import { LayoutGrid, List as ListIcon, PhoneCall, Plus, Star, Users } from "lucide-react";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
 import {
   META_CLIENTES,
@@ -341,8 +341,26 @@ export function ClientesManager({
                     ficha completa é nome + telefone, e é por isso que o
                     telefone não é opcional. */}{" "}
                 É essa conta — nome <strong>e</strong> telefone — que destrava
-                os passos 4 a 8 da Etapa 01. Clientes em andamento e em
-                execução contam aqui também.
+                o passo 2 da Etapa 01 (as 3 mensagens de prospecção). Os passos
+                4 a 8 abrem quando você escolher a estrela. Clientes em
+                andamento e em execução contam aqui também.
+              </span>
+              {/* 🔴 A ESTRELA É 38% DOS CHAMADOS (5 de 13, medido em 16/09/2026).
+                  Cinco parceiros a leram como "favorito": "achei que favoritar
+                  era apenas para sinalizar por onde queria começar"
+                  (Marineide), "não é favorito pois não é cliente ainda"
+                  (Rodrigo). A copy certa existia só no `title` — tooltip de
+                  HOVER, que não existe no celular nem para leitor de tela — e
+                  no diálogo, que só abre DEPOIS do clique. Aqui ela fica
+                  VISÍVEL e ANTES, uma vez só (não por linha). */}
+              <span className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+                <Star aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  A <strong>estrela</strong> não é favorito nem &quot;por onde
+                  começar&quot;: ela escolhe o único cliente que a equipe vai
+                  acompanhar com você até a execução da holding. Depois que a
+                  equipe assumir, a troca passa a ser pelo Suporte.
+                </span>
               </span>
             </>
           }

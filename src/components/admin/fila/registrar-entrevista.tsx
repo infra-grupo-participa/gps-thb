@@ -11,6 +11,8 @@ import {
   ENTREVISTA_OBSERVACOES_MAXIMO,
   DECISOR_NOME_MAXIMO,
   DECISOR_PAPEL_MAXIMO,
+  QUALIDADE_MINIMA,
+  QUALIDADE_MAXIMA,
   type ResultadoEntrevista,
   type DecisorInput,
 } from "@/lib/entrevista-tipos";
@@ -38,6 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 
 /** Rótulos do catálogo FECHADO de resultado — "não atendeu" ≠ "sem interesse" de propósito. */
 const ROTULO_RESULTADO: Record<ResultadoEntrevista, string> = {
@@ -46,6 +49,59 @@ const ROTULO_RESULTADO: Record<ResultadoEntrevista, string> = {
   nao_atendeu: "Não atendeu",
   remarcar: "Remarcar",
 };
+
+/** O que cada resultado faz com a fila — explicado no próprio Select (D.4). */
+const EFEITO_RESULTADO: Record<ResultadoEntrevista, string> = {
+  interessado: "Encerra a ficha.",
+  sem_interesse: "Encerra a ficha.",
+  nao_atendeu: "Volta para a fila (3 seguidas encerram).",
+  remarcar: "Some da fila até a data do retorno.",
+};
+
+/** Catálogo FECHADO de nota de qualidade, 1-5 (`QUALIDADE_MINIMA`/`QUALIDADE_MAXIMA`). */
+const NOTAS_QUALIDADE = Array.from(
+  { length: QUALIDADE_MAXIMA - QUALIDADE_MINIMA + 1 },
+  (_, i) => QUALIDADE_MINIMA + i,
+);
+const ROTULO_QUALIDADE: Record<number, string> = {
+  1: "1 — muito ruim",
+  2: "2 — ruim",
+  3: "3 — regular",
+  4: "4 — boa",
+  5: "5 — muito boa",
+};
+
+/**
+ * Converte o valor CRU de `<input type="datetime-local">` (hora LOCAL do
+ * navegador, sem fuso — ex. "2026-09-18T14:30") para ISO com offset.
+ *
+ * 🔴 Armadilha de fuso do projeto: mandar a string crua faz o servidor
+ * interpretá-la no PRÓPRIO fuso do processo Node (a Hostinger não define
+ * `TZ`), não no fuso de quem preencheu o campo. `new Date(valorLocal)` já
+ * resolve certo — o motor JS interpreta a string SEM fuso como hora local
+ * de quem está executando, que aqui é o navegador do operador — e
+ * `.toISOString()` devolve UTC absoluto, que o servidor lê igual em
+ * qualquer fuso de processo.
+ */
+function paraIsoComOffset(valorLocal: string): string | null {
+  if (!valorLocal) return null;
+  const data = new Date(valorLocal);
+  if (Number.isNaN(data.getTime())) return null;
+  return data.toISOString();
+}
+
+/**
+ * `min` do `<input type="datetime-local">` — precisa estar no MESMO formato
+ * sem fuso que o input usa (`YYYY-MM-DDTHH:mm`), espelhando a recusa do
+ * banco (retorno tem de ser no futuro). Arredonda pro minuto seguinte para
+ * não recusar o "agora mesmo" por um segundo de diferença entre o render e
+ * o clique.
+ */
+function proximoMinutoLocal(): string {
+  const d = new Date(Date.now() + 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 let seqDecisor = 0;
 function novaChaveDecisor(): string {
@@ -84,14 +140,36 @@ export function RegistrarEntrevista({
   const [disc, setDisc] = useState<PerfilDisc | "">(discAtual ?? "");
   const [observacoes, setObservacoes] = useState("");
   const [decisores, setDecisores] = useState<DecisorForm[]>([]);
+  const [retornoEm, setRetornoEm] = useState("");
+  const [qualidade, setQualidade] = useState<number | "">("");
   const [erro, setErro] = useState<string | null>(null);
+  const [pedirConfirmacaoFechar, setPedirConfirmacaoFechar] = useState(false);
 
   function reiniciar() {
     setResultado("");
     setDisc(discAtual ?? "");
     setObservacoes("");
     setDecisores([]);
+    setRetornoEm("");
+    setQualidade("");
     setErro(null);
+  }
+
+  /** D.3: só há algo a perder se o operador já digitou/escolheu alguma coisa. */
+  const temConteudoParaPerder =
+    resultado !== "" ||
+    observacoes.trim() !== "" ||
+    decisores.length > 0 ||
+    retornoEm !== "" ||
+    qualidade !== "";
+
+  function tentarFechar() {
+    if (temConteudoParaPerder) {
+      setPedirConfirmacaoFechar(true);
+      return;
+    }
+    setAberto(false);
+    reiniciar();
   }
 
   function adicionarDecisor() {
@@ -120,6 +198,16 @@ export function RegistrarEntrevista({
     );
   }
 
+  /**
+   * D.1: campo de retorno some E LIMPA o valor quando o resultado deixa de
+   * ser "remarcar" — campo escondido que guarda valor manda dado que o
+   * operador não vê mais na tela.
+   */
+  function mudarResultado(v: ResultadoEntrevista) {
+    setResultado(v);
+    if (v !== "remarcar") setRetornoEm("");
+  }
+
   const observacoesValidas = observacoes.length <= ENTREVISTA_OBSERVACOES_MAXIMO;
   const decisoresValidos = decisores.every(
     (d) =>
@@ -127,12 +215,34 @@ export function RegistrarEntrevista({
       d.nome.length <= DECISOR_NOME_MAXIMO &&
       (d.papelNoNegocio ?? "").length <= DECISOR_PAPEL_MAXIMO,
   );
+  // Comparação em string, não `Date.now()` (impuro durante o render, reprova
+  // o lint `react-hooks/purity`): o formato do `datetime-local` é ordenável
+  // lexicograficamente, e `proximoMinutoLocal()` já é a mesma régua do `min`.
+  const retornoValido =
+    resultado !== "remarcar" ||
+    (retornoEm !== "" && retornoEm > proximoMinutoLocal());
   const podeSalvar =
-    resultado !== "" && observacoesValidas && decisoresValidos && !pending;
+    resultado !== "" &&
+    observacoesValidas &&
+    decisoresValidos &&
+    retornoValido &&
+    !pending;
 
   function salvar() {
     if (resultado === "") {
       setErro("Escolha o resultado da ligação.");
+      return;
+    }
+    if (resultado === "remarcar" && !retornoEm) {
+      setErro("Informe a data do retorno para remarcar.");
+      return;
+    }
+    if (
+      resultado === "remarcar" &&
+      retornoEm &&
+      new Date(retornoEm).getTime() <= Date.now()
+    ) {
+      setErro("A data do retorno precisa ser no futuro.");
       return;
     }
     if (!observacoesValidas) {
@@ -156,6 +266,8 @@ export function RegistrarEntrevista({
           papelNoNegocio: d.papelNoNegocio?.trim() || null,
           principal: d.principal,
         })),
+        retornoEm: resultado === "remarcar" ? paraIsoComOffset(retornoEm) : null,
+        qualidade: qualidade === "" ? null : qualidade,
       });
 
       if (!res.ok) {
@@ -171,12 +283,16 @@ export function RegistrarEntrevista({
   }
 
   return (
+    <>
     <Dialog
       open={aberto}
       onOpenChange={(v) => {
         if (!v && pending) return;
+        if (!v) {
+          tentarFechar();
+          return;
+        }
         setAberto(v);
-        if (!v) reiniciar();
       }}
     >
       <DialogTrigger
@@ -203,7 +319,7 @@ export function RegistrarEntrevista({
             <Label htmlFor={`${uid}-resultado`}>Resultado da ligação</Label>
             <Select
               value={resultado}
-              onValueChange={(v) => setResultado(v as ResultadoEntrevista)}
+              onValueChange={(v) => mudarResultado(v as ResultadoEntrevista)}
             >
               <SelectTrigger id={`${uid}-resultado`} className="w-full">
                 <SelectValue placeholder="Escolha um resultado">
@@ -218,11 +334,40 @@ export function RegistrarEntrevista({
                 ))}
               </SelectContent>
             </Select>
+            {/* D.4: o que cada resultado faz com a fila. */}
+            <p className="text-xs text-muted-foreground">
+              {resultado === ""
+                ? "Interessado/sem interesse encerram a ficha; não atendeu volta para a fila (3 seguidas encerram); remarcar some até a data do retorno."
+                : EFEITO_RESULTADO[resultado]}
+            </p>
           </div>
+
+          {/* D.1: campo condicional, só com resultado "remarcar". */}
+          {resultado === "remarcar" ? (
+            <div className="grid gap-2">
+              <Label htmlFor={`${uid}-retorno`}>Data do retorno</Label>
+              <Input
+                id={`${uid}-retorno`}
+                type="datetime-local"
+                value={retornoEm}
+                onChange={(e) => setRetornoEm(e.target.value)}
+                min={proximoMinutoLocal()}
+                aria-required="true"
+                aria-invalid={!retornoValido || undefined}
+              />
+              <p className="text-xs text-muted-foreground">
+                Precisa ser uma data futura — o cliente some da fila até lá.
+              </p>
+            </div>
+          ) : null}
 
           <div className="grid gap-2">
             <Label htmlFor={`${uid}-disc`}>
               Perfil DISC <span className="text-muted-foreground">(opcional)</span>
+              {/* D.4: distingue "já existia" de "escolhido agora". */}
+              {discAtual ? (
+                <span className="text-muted-foreground"> — já registrado: {PERFIS_DISC.find((d) => d.id === discAtual)?.rotulo ?? discAtual}</span>
+              ) : null}
             </Label>
             <Select
               value={disc}
@@ -243,6 +388,33 @@ export function RegistrarEntrevista({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor={`${uid}-qualidade`}>
+              Nota de qualidade da ligação{" "}
+              <span className="text-muted-foreground">(opcional)</span>
+            </Label>
+            <Select
+              value={qualidade === "" ? "" : String(qualidade)}
+              onValueChange={(v) => setQualidade(v === "" ? "" : Number(v))}
+            >
+              <SelectTrigger id={`${uid}-qualidade`} className="w-full">
+                <SelectValue placeholder="Não avaliada">
+                  {(v: string) => ROTULO_QUALIDADE[Number(v)] ?? v}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {NOTAS_QUALIDADE.map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {ROTULO_QUALIDADE[n]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Como você avalia a ligação em si — vale para qualquer resultado.
+            </p>
           </div>
 
           <div className="grid gap-2">
@@ -339,7 +511,7 @@ export function RegistrarEntrevista({
         </p>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setAberto(false)} disabled={pending}>
+          <Button variant="outline" onClick={tentarFechar} disabled={pending}>
             Cancelar
           </Button>
           <Button onClick={salvar} disabled={!podeSalvar} aria-busy={pending || undefined}>
@@ -348,5 +520,27 @@ export function RegistrarEntrevista({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/*
+      D.3: Esc/clique-fora com conteúdo digitado NÃO descarta em silêncio.
+      Reuso de `DialogoConfirmacao` (não criar componente novo) — o mesmo
+      padrão do `lote-acesso.tsx`: a guarda só acende quando há algo a
+      perder; diálogo vazio fecha direto (ver `tentarFechar`).
+    */}
+    <DialogoConfirmacao
+      aberto={pedirConfirmacaoFechar}
+      titulo="Descartar o registro desta ligação?"
+      consequencia="O resultado, a data de retorno, a nota e as observações digitadas para este cliente serão perdidos."
+      rotuloConfirmar="Descartar"
+      rotuloCancelar="Voltar ao formulário"
+      destrutivo
+      onConfirmar={() => {
+        setPedirConfirmacaoFechar(false);
+        setAberto(false);
+        reiniciar();
+      }}
+      onCancelar={() => setPedirConfirmacaoFechar(false)}
+    />
+    </>
   );
 }

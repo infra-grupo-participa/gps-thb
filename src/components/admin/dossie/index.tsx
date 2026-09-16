@@ -1,4 +1,4 @@
-import { Star, Phone, Users2, PhoneCall, CalendarClock } from "lucide-react";
+import { Star, Phone, Users2, PhoneCall, CalendarClock, History } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Secao } from "@/components/ui/secao";
 import { CopiarContato } from "@/components/admin/copiar-contato";
@@ -6,8 +6,14 @@ import { mascaraTelefone } from "@/lib/masks";
 import { formatarDataHora } from "@/lib/datas";
 import { FASES_CLIENTE, PERFIS_DISC } from "@/lib/etapa1";
 import type { DossieDoCliente } from "@/lib/operador-tipos";
+import type { ResultadoEntrevista } from "@/lib/entrevista-tipos";
 
-const ROTULO_RESULTADO: Record<string, string> = {
+// Catálogo FECHADO — `Record<ResultadoEntrevista, string>`, não
+// `Record<string, string>`: se `RESULTADOS_ENTREVISTA` (entrevista-tipos.ts)
+// ganhar um valor novo, o TS acusa aqui em vez de a tela mostrar o código cru
+// em silêncio. Lição do repo: "catálogo do TS não acompanha CHECK do banco
+// sozinho — pôr o valor na união É a trava".
+const ROTULO_RESULTADO: Record<ResultadoEntrevista, string> = {
   interessado: "Interessado",
   sem_interesse: "Sem interesse",
   nao_atendeu: "Não atendeu",
@@ -20,6 +26,16 @@ const ROTULO_ESTADO_PROPOSTA: Record<string, string> = {
   contestada: "Contestada",
   cancelada: "Cancelada",
 };
+
+/** `ROTULO_RESULTADO` indexado com segurança — o valor vem do banco (`string`
+ * solto no shape do dossiê), então confere antes de indexar em vez de um
+ * cast cego; fora do catálogo (não deveria acontecer, CHECK garante) cai no
+ * valor cru em vez de quebrar a tela. */
+function rotuloResultado(resultado: string): string {
+  return resultado in ROTULO_RESULTADO
+    ? ROTULO_RESULTADO[resultado as ResultadoEntrevista]
+    : resultado;
+}
 
 /**
  * O dossiê de UM cliente — nome, telefone, grau de relação, fase, DISC,
@@ -109,10 +125,9 @@ export function Dossie({ dossie }: { dossie: DossieDoCliente }) {
         ) : (
           <Card elevacao="flat">
             <CardContent className="grid gap-3">
-              <LinhaDado rotulo="Resultado da ligação">
+              <LinhaDado rotulo="Resultado da última ligação">
                 {dossie.entrevista.resultado ? (
-                  ROTULO_RESULTADO[dossie.entrevista.resultado] ??
-                  dossie.entrevista.resultado
+                  rotuloResultado(dossie.entrevista.resultado)
                 ) : (
                   <span className="text-muted-foreground">
                     Ainda não ligaram para este cliente.
@@ -136,6 +151,44 @@ export function Dossie({ dossie }: { dossie: DossieDoCliente }) {
                   </p>
                 </div>
               ) : null}
+            </CardContent>
+          </Card>
+        )}
+      </Secao>
+
+      <Secao icone={<History aria-hidden />} titulo="Histórico de ligações" nivel="h2">
+        {dossie.tentativas.length === 0 ? (
+          <p className="corpo-sm text-muted-foreground">
+            Nenhuma tentativa de ligação registrada ainda.
+          </p>
+        ) : (
+          <Card elevacao="flat" className="[--card-spacing:--spacing(0)]">
+            <CardContent className="p-0">
+              <ul className="divide-y" aria-label="Histórico de ligações">
+                {dossie.tentativas.map((t) => (
+                  <li key={t.id} className="grid gap-1 px-4 py-2.5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+                      <span className="corpo-sm font-medium text-foreground">
+                        {formatarDataHora(t.tentativaEm)}
+                      </span>
+                      <span className="corpo-sm text-muted-foreground">
+                        {rotuloResultado(t.resultado)}
+                        {t.qualidade ? ` · nota ${t.qualidade}/5` : ""}
+                      </span>
+                    </div>
+                    {t.retornoEm ? (
+                      <span className="corpo-sm text-muted-foreground">
+                        Retorno pedido para {formatarDataHora(t.retornoEm)}
+                      </span>
+                    ) : null}
+                    {t.observacoes ? (
+                      <p className="corpo-sm whitespace-pre-wrap text-muted-foreground">
+                        {t.observacoes}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
             </CardContent>
           </Card>
         )}

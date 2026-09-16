@@ -29,6 +29,8 @@ import {
   ENTREVISTA_OBSERVACOES_MAXIMO,
   DECISOR_NOME_MAXIMO,
   DECISOR_PAPEL_MAXIMO,
+  QUALIDADE_MINIMA,
+  QUALIDADE_MAXIMA,
   type EntrevistaGravarInput,
   type EntrevistaGravarResultado,
 } from "@/lib/entrevista-tipos";
@@ -43,10 +45,12 @@ function revalidar(alunoId?: string) {
 }
 
 /**
- * Grava o resultado de UMA ligação (resultado + DISC + observações +
- * decisores), numa chamada só à RPC `gps.entrevista_gravar` — a transação é
- * do banco, não desta action. Validação aqui é a MESMA do banco, para o erro
- * chegar em português sem precisar de uma ida e volta ao Postgres.
+ * Grava UMA TENTATIVA de ligação (resultado + DISC + observações +
+ * decisores + retorno + qualidade), numa chamada só à RPC
+ * `gps.entrevista_gravar` — a transação é do banco, não desta action.
+ * Validação aqui ESPELHA a do banco (migração `…266`), para o erro comum
+ * chegar em português sem precisar de uma ida e volta ao Postgres — a RPC
+ * continua sendo a fronteira real.
  */
 export async function gravarEntrevista(
   input: EntrevistaGravarInput,
@@ -63,6 +67,33 @@ export async function gravarEntrevista(
   const disc = input.disc ?? null;
   if (disc !== null && !PERFIS_DISC.includes(disc)) {
     return { ok: false, erro: "Perfil DISC inválido." };
+  }
+
+  const qualidade = input.qualidade ?? null;
+  if (
+    qualidade !== null &&
+    (qualidade < QUALIDADE_MINIMA || qualidade > QUALIDADE_MAXIMA)
+  ) {
+    return { ok: false, erro: "A nota de qualidade vai de 1 a 5." };
+  }
+
+  // Decisão 3 da migração `…266`: `remarcar` exige data futura; qualquer
+  // outro resultado ignora `retornoEm` (a RPC também ignora — não é erro
+  // mandar, só não tem efeito).
+  let retornoEm: string | null = null;
+  if (input.resultado === "remarcar") {
+    const bruto = (input.retornoEm ?? "").trim();
+    if (!bruto) {
+      return { ok: false, erro: "Informe a data do retorno para remarcar." };
+    }
+    const data = new Date(bruto);
+    if (Number.isNaN(data.getTime())) {
+      return { ok: false, erro: "Informe a data do retorno para remarcar." };
+    }
+    if (data.getTime() <= Date.now()) {
+      return { ok: false, erro: "A data do retorno precisa ser no futuro." };
+    }
+    retornoEm = data.toISOString();
   }
 
   const observacoes = (input.observacoes ?? "").trim();
@@ -112,6 +143,8 @@ export async function gravarEntrevista(
     p_disc: disc,
     p_observacoes: observacoes || null,
     p_decisores: decisoresPayload,
+    p_retorno_em: retornoEm,
+    p_qualidade: qualidade,
   });
 
   if (error) {

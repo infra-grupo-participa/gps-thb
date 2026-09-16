@@ -6,6 +6,7 @@ import type {
   DossieDoCliente,
   DossieDecisor,
   DossiePropostaReuniao,
+  DossieTentativa,
 } from "@/lib/operador-tipos";
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -112,6 +113,7 @@ function mapearDossie(d: Record<string, unknown>): DossieDoCliente {
   const entrevista = (d.entrevista ?? {}) as Record<string, unknown>;
   const reuniao = (d.reuniao ?? {}) as Record<string, unknown>;
   const decisores = ((d.decisores ?? []) as Record<string, unknown>[]).map(mapearDecisor);
+  const tentativas = ((d.tentativas ?? []) as Record<string, unknown>[]).map(mapearTentativa);
   const propostas = ((reuniao.propostas ?? []) as Record<string, unknown>[]).map(
     mapearPropostaHistorico,
   );
@@ -134,6 +136,7 @@ function mapearDossie(d: Record<string, unknown>): DossieDoCliente {
       por: (entrevista.por as string | null) ?? null,
     },
     decisores,
+    tentativas,
     reuniao: {
       dataAceita: (reuniao.data_aceita as string | null) ?? null,
       aderiu: Boolean(reuniao.aderiu),
@@ -150,6 +153,17 @@ function mapearDecisor(d: Record<string, unknown>): DossieDecisor {
     nome: String(d.nome ?? ""),
     papelNoNegocio: (d.papel_no_negocio as string | null) ?? null,
     principal: Boolean(d.principal),
+  };
+}
+
+function mapearTentativa(d: Record<string, unknown>): DossieTentativa {
+  return {
+    id: String(d.id),
+    tentativaEm: String(d.tentativa_em ?? ""),
+    resultado: String(d.resultado ?? ""),
+    qualidade: (d.qualidade as number | null) ?? null,
+    observacoes: (d.observacoes as string | null) ?? null,
+    retornoEm: (d.retorno_em as string | null) ?? null,
   };
 }
 

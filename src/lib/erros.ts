@@ -253,6 +253,21 @@ const FRASES_DO_BANCO: Record<string, string> = {
   "O papel do decisor no negócio passa de 200 caracteres.":
     "O papel do decisor no negócio passa de 200 caracteres.",
 
+  // ═══ Fila não perde quem não atendeu (…266, 16/09/2026, decisões do
+  // Marcio) — gps.entrevista_gravar (assinatura nova, 7 args) e
+  // gps.fila_de_ligacoes (assinatura nova, 3 args) ═══
+  // Frases NOSSAS (`raise exception`), copiadas caractere por caractere do
+  // corpo da migração `…266` — match por igualdade EXATA. "Cliente não
+  // encontrado." já está mapeada acima (mesmo texto de outra RPC).
+  "Informe a data do retorno para remarcar.":
+    "Informe a data do retorno para remarcar.",
+  "A data do retorno precisa ser no futuro.":
+    "A data do retorno precisa ser no futuro.",
+  "A nota de qualidade vai de 1 a 5.": "A nota de qualidade vai de 1 a 5.",
+  "Este cliente já teve a entrevista encerrada com um desfecho. Para reabrir, ajuste a ficha diretamente.":
+    "Este cliente já teve a entrevista encerrada com um desfecho. Para reabrir, ajuste a ficha diretamente.",
+  "Modo de fila inválido.": "Modo de fila inválido.",
+
   // ═══ Chamados: categoria + aprovação de troca (…250) ═══
   // As frases destas RPCs NÃO moram aqui, de propósito: ficam em `FRASES`
   // (`src/app/chamados/actions.ts`) e `FRASES_SOLICITACAO`

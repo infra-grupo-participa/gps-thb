@@ -18,6 +18,11 @@
  * (`auth.users` compartilhado). NÃO é `gps.membros.papel`: aquele é o papel
  * DENTRO de um ambiente (titular/sócio). Operador é transversal, tabela
  * própria (`gps.operadores`), guarda própria (`gps.eh_equipe()` no banco).
+ *
+ * 🔴 ATUALIZADO EM 16/09/2026 (Fatia E, migração `…267`): `DossieDoCliente`
+ * ganhou `tentativas` (histórico completo da fila B, migração `…266`) — as 4
+ * chaves de `entrevista` NÃO mudaram (o componente `Dossie` as lê como
+ * "resultado da última tentativa"; acrescentar é aditivo).
  */
 
 /** Uma pessoa com o papel "equipe da esteira" (`gps.operadores`). */
@@ -62,6 +67,8 @@ export interface DossieDoCliente {
     por: string | null;
   };
   decisores: DossieDecisor[];
+  /** Histórico completo de tentativas de ligação, mais recente primeiro (migração `…266`/`…267`). */
+  tentativas: DossieTentativa[];
   reuniao: {
     dataAceita: string | null;
     aderiu: boolean;
@@ -69,6 +76,16 @@ export interface DossieDoCliente {
     propostaVivaData: string | null;
     propostas: DossiePropostaReuniao[];
   };
+}
+
+/** Uma tentativa de ligação no dossiê (subconjunto de `TentativaEntrevista`, ver `entrevista-tipos.ts`). */
+export interface DossieTentativa {
+  id: string;
+  tentativaEm: string;
+  resultado: string;
+  qualidade: number | null;
+  observacoes: string | null;
+  retornoEm: string | null;
 }
 
 /** Um decisor no dossiê (subconjunto de `Decisor`, ver `entrevista-tipos.ts`). */

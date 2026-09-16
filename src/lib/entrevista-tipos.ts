@@ -12,6 +12,12 @@
  *
  * A fatia roda com o ADMIN que já existe (`gp_is_admin()`), sem papel de
  * operador — o papel novo é a fatia 5, fora de escopo aqui.
+ *
+ * 🔴 ATUALIZADO EM 16/09/2026 (FATIA B, migração `…266`): a fila deixou de
+ * perder quem não atendeu. `gps.entrevista_gravar` e `gps.fila_de_ligacoes`
+ * trocaram de assinatura (a versão antiga foi DROPADA, não sobrecarregada) —
+ * ver `TentativaEntrevista`, os campos novos de `EntrevistaGravarInput`/
+ * `FilaDeLigacaoLinha` e o catálogo `MODOS_FILA` abaixo.
  */
 
 import type { PerfilDisc } from "@/lib/types";
@@ -67,7 +73,11 @@ export interface DecisorInput {
 export const DECISOR_NOME_MAXIMO = 200;
 export const DECISOR_PAPEL_MAXIMO = 200;
 
-/** Payload de `gps.entrevista_gravar` — os 4 dados de UMA ligação registrada de uma vez. */
+/**
+ * Payload de `gps.entrevista_gravar` — os dados de UMA TENTATIVA de ligação
+ * registrada de uma vez (fila B, migração `…266`, 16/09/2026: uma linha por
+ * tentativa — `resultado` deixou de ser 1 valor único por cliente).
+ */
 export interface EntrevistaGravarInput {
   clienteId: string;
   resultado: ResultadoEntrevista;
@@ -76,6 +86,10 @@ export interface EntrevistaGravarInput {
   observacoes?: string | null;
   /** Substitui o conjunto de decisores do cliente por completo (mesmo padrão de `selecao_entrevista_definir`). */
   decisores?: DecisorInput[];
+  /** Obrigatório (e no futuro) quando `resultado === "remarcar"`; ignorado nos demais. */
+  retornoEm?: string | null;
+  /** Nota de qualidade da ligação, 1-5, opcional — ver `QUALIDADE_MINIMA`/`QUALIDADE_MAXIMA`. */
+  qualidade?: number | null;
 }
 
 /** Retorno de `gps.entrevista_gravar` — usado pela action para revalidar e confirmar. */
@@ -84,10 +98,48 @@ export interface EntrevistaGravarResultado {
   erro?: string;
 }
 
+/** Teto/piso da nota de qualidade de UMA ligação (`gps.entrevista_tentativas.qualidade`). */
+export const QUALIDADE_MINIMA = 1;
+export const QUALIDADE_MAXIMA = 5;
+
 /**
- * Uma linha da fila de ligações (`gps.fila_de_ligacoes`) — os clientes
- * `selecionado_entrevista = true` com entrevista PENDENTE (sem
- * `entrevista_resultado` ainda).
+ * Os 3 modos de `gps.fila_de_ligacoes` (migração `…266`, decisão do Marcio
+ * 16/09/2026): `fila` (não encerrado, sem retorno pendente futuro),
+ * `sem_contato` (encerrado por TETO de 3 `nao_atendeu` consecutivas) e
+ * `agendados` (não encerrado, retorno futuro). Modo fora deste catálogo →
+ * a RPC recusa com 22023 ("Modo de fila inválido.").
+ */
+export const MODOS_FILA = ["fila", "sem_contato", "agendados"] as const;
+export type ModoFila = (typeof MODOS_FILA)[number];
+
+/**
+ * Uma tentativa de ligação (`gps.entrevista_tentativas`) — histórico
+ * completo de UM cliente, mais recente primeiro. Só para a ficha/dossiê de
+ * UM cliente por vez: mesma regra de LGPD já escrita para `Decisor` acima —
+ * `observacoes` e `qualidade` são o julgamento do operador sobre a ligação,
+ * nunca entram em lista/CSV agregado.
+ */
+export interface TentativaEntrevista {
+  id: string;
+  clienteId: string;
+  tentativaEm: string;
+  /**
+   * 🔴 QUEM LIGOU NÃO ENTRA no contrato (achado do pentester, 16/09/2026).
+   * A `…267` tirou `tentativa_por` do dossiê de propósito, e nenhuma tela
+   * mostra isso hoje. O campo existe na TABELA (auditoria), não no tipo que
+   * a UI consome — assim não há shape pronto convidando a exibi-lo sem
+   * decisão. Se um dia for exibir, volta junto com a tela que o justifica.
+   */
+  resultado: ResultadoEntrevista;
+  qualidade: number | null;
+  observacoes: string | null;
+  retornoEm: string | null;
+}
+
+/**
+ * Uma linha da fila de ligações (`gps.fila_de_ligacoes`) — o conjunto muda
+ * conforme `ModoFila` (ver `MODOS_FILA`): `selecionado_entrevista = true` e,
+ * dentro do modo, não encerrado/encerrado por teto/com retorno futuro.
  *
  * 🔴 Molde: `gps.admin_clientes_lista` (migração `…255`) — mesma exclusão de
  * PII (nem `registro_contato`, nem decisores, nem honorários) e mesmo
@@ -101,5 +153,14 @@ export interface FilaDeLigacaoLinha {
   grauRelacao: string | null;
   favorito: boolean;
   perfilDisc: PerfilDisc | null;
+  /** Total de tentativas já registradas para este cliente (histórico completo, não só as consecutivas). */
+  tentativasTotal: number;
+  /** Contador de `nao_atendeu` CONSECUTIVAS — zera a cada tentativa com outro resultado. */
+  tentativasSemContato: number;
+  ultimaTentativaEm: string | null;
+  /** Resultado da ÚLTIMA tentativa (`null` se ainda não houve nenhuma). */
+  ultimoResultado: ResultadoEntrevista | null;
+  /** Data/hora do retorno pedido na última tentativa `remarcar`; `null` se não há retorno pendente. */
+  retornoEm: string | null;
   totalLinhas: number;
 }

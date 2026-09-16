@@ -17,7 +17,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { ehSessaoIndeterminada } from "@/lib/auth-erros";
+import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import type { ResultadoAcao } from "@/lib/tutoriais-tipos";
 
 /**
@@ -41,7 +42,13 @@ export async function reagirTutorial(
   tutorialId: string,
   util: boolean | null,
 ): Promise<ResultadoAcao> {
-  const ctx = await getContextoSessao();
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
+  }
   if (!ctx) return { ok: false, erro: "Faça login para continuar." };
   if (!tutorialId) return { ok: false, erro: "Tutorial não encontrado." };
 

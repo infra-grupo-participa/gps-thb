@@ -12,6 +12,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
+import { ehSessaoIndeterminada } from "@/lib/auth-erros";
+import { MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import type { ResultadoAcao } from "@/lib/plantao-tipos";
 
@@ -33,7 +35,13 @@ import type { ResultadoAcao } from "@/lib/plantao-tipos";
 export async function definirInscricoesAbertas(
   aberta: boolean,
 ): Promise<ResultadoAcao> {
-  const ctx = await getContextoSessao();
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
+  }
   if (!ctx || ctx.papel !== "admin") {
     return { ok: false, erro: "Sem permissão." };
   }

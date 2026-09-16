@@ -2263,8 +2263,38 @@ limita à própria linha. Já estava resolvido; o documento é que não tinha si
       João/Marcio; o remédio é uma linha em `gps.financeiro_pode_ler` (dado já pronto).
 - [ ] **Corrida `aprovarSolicitacao` × `admin_mover_membro`** (pentest, BAIXO, código
       pré-existente): mover a lógica de `aprovarSolicitacao` para RPC ou `select … for update`.
-- [ ] **Definir o canal de contato de quem não tem acesso (UX7)** — não existe e-mail nem WhatsApp
-      no código; a tela de solicitação recusada só diz "fale com a equipe".
+- [x] ✅ **UX7 RESOLVIDO (2026-09-16, `7303403`)** — a tela de quem não tem vínculo ganhou saída
+      pelo **`gps.config.whatsapp_secretaria`** (RPC `gps.whatsapp_secretaria()`), que é do
+      Programa e a equipe troca pelo painel sem deploy. **Não** usar a monitoria
+      (`o.aceleraholding.com.br/monitoria`): é do Plantão/Acelera, ver `botao-secretaria.tsx:24`.
+      Falha fechado — sem número configurado o link não renderiza. `chamados_email_equipe`
+      continua vazio e por isso não serviu.
+- [ ] 🔴 **`getUser()` engole o `error` — o irmão do bug corrigido em 16/09** (`src/lib/auth.ts:97-101`).
+      Falha de rede/GoTrue vira `user: null` → `getContextoSessao` devolve `null` → `redirect("/login")`
+      para quem TEM sessão válida. Mesma classe do que foi fechado, **uma linha acima**.
+      `AuthRetryableFetchError` distingue falha de transporte de ausência de sessão. Achado do
+      `fable-orchestrator` no veredito de 16/09; fora do escopo daquele diff de propósito.
+- [ ] **`src/app/financeiro/error.tsx:30`** — a copy atribui a causa a "outro sistema do grupo".
+      Fica falsa quando a causa for `SessaoIndeterminadaError`. Inofensiva ("Nada foi alterado"),
+      mas é a mesma imprecisão de afirmar causa que não se conhece.
+- [x] ✅ **RESOLVIDO 16/09 — `getContextoSessao` engolia o `error` e transformava falha em "sem acesso"**
+      (`src/lib/auth.ts:73` em `perfis` e **`:102` em `gps.membros`**). Achado do
+      `fable-orchestrator` em 16/09, **não corrigido**. Falha transitória em `membros` →
+      `papel:"sem_acesso"` (`auth.ts:129`) → a home consulta `solicitacoes_acesso`, que responde
+      normalmente com 0 linhas → `falhou:false` → **a tela afirma "não há pedido registrado" para
+      um aluno que TEM acesso**. É a mesma mentira que `0354c3e` fechou, entrando por outra
+      porta — e pior, porque `getContextoSessao` é memoizada e lida por TODA página (atinge os
+      135 alunos, não só quem está sem vínculo). Vale também para admin: `perfis` falhando ⇒ cai
+      no ramo de aluno. Correção = distinguir "não deu para saber" (4º papel, ou lançar para o
+      `error.tsx`); muda o contrato do memoizado que o portal inteiro lê, **merece o pipeline
+      inteiro, não um patch de carona**.
+      🔑 **Regra geral:** `maybeSingle()` devolve `data:null, error:null` com 0 linhas e
+      `data:null` **com** `error` quando o transporte falha. Todo `if (data)` que decide papel,
+      permissão ou estado **precisa do `error` ao lado**.
+- [ ] **`getSolicitacoes` distingue erro de lista vazia só no LOG** (`src/lib/data/solicitacoes.ts`,
+      `0354c3e`). Falha do banco vira "zero pendentes" na fila do admin — ele conclui que está em
+      dia justamente quando não dá para saber. Entrega parcial declarada: distinguir na TELA do
+      admin é feature própria (5 pontos de uso no painel).
 - [ ] **Configurar SMTP customizado (Resend) no Supabase Auth** — hoje "Esqueci minha senha" sai
       pelo SMTP embutido, de baixa entrega e com limite por hora.
 - [ ] **Dropar `gps.plantao_config`** numa migration futura, depois de 1 semana de `gps.config`

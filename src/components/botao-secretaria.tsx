@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { MessageCircle } from "lucide-react";
 import { getContextoSessao } from "@/lib/auth";
+import { ehSessaoIndeterminada } from "@/lib/auth-erros";
 import { getAlunoById, getTurmaCodigo } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { linkWhatsapp } from "@/lib/whatsapp";
@@ -37,7 +38,19 @@ export async function BotaoSecretaria() {
 
   // Guarda 2 — só o PARCEIRO. A equipe fala com a secretaria por outros
   // canais, e um botão de suporte na tela de quem DÁ suporte é ruído.
-  const ctx = await getContextoSessao();
+  //
+  // 🔴 Catch ESTREITO: este componente roda no layout raiz, em toda página.
+  // "Não sei o papel" e "não mostra o botão" são a mesma coisa aqui, sem
+  // custo nenhum — o botão é decorativo, não é guarda de rota. Deixar a
+  // falha derrubar o layout inteiro por causa de um botão flutuante seria
+  // pior do que só escondê-lo (mesmo raciocínio do `OnboardingGate`).
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return null;
+  }
   if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) return null;
 
   const supabase = await createClient();

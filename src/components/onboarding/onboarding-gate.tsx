@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import { getContextoSessao } from "@/lib/auth";
+import { ehSessaoIndeterminada } from "@/lib/auth-erros";
 import { getMeuOnboarding } from "@/lib/data/onboarding";
 import { getSocioPrecisaCadastro } from "@/lib/data/socio-cadastro";
 import {
@@ -113,7 +114,23 @@ export async function OnboardingGate() {
 
   // Guarda 2 — só o ALUNO responde. Memoizado: para as páginas do aluno esta
   // chamada não custa nada, porque a página já a fez.
-  const ctx = await getContextoSessao();
+  //
+  // 🔴 Catch ESTREITO, só para `SessaoIndeterminadaError`: este componente
+  // roda no LAYOUT RAIZ, em toda página do portal. Se a falha transitória de
+  // `getContextoSessao()` propagasse, ela derrubaria o layout inteiro e caía
+  // no `global-error.tsx` — o aluno perderia a página toda por causa de um
+  // pop-up de onboarding. Aqui "não deu para saber" e "não abre o pop-up"
+  // custam o mesmo: `null` (a própria página, chamando `getContextoSessao()`
+  // de novo via `cache()`, é quem vai propagar de verdade se o problema
+  // persistir). Qualquer outra exceção (inclusive `redirect()`/`notFound()`,
+  // que funcionam LANÇANDO) tem de subir — por isso o `throw e` no `else`.
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return null;
+  }
   if (!ctx || ctx.papel !== "aluno") return null;
 
   // Guarda 3 — sem pessoa vinculada não há questionário do onboarding.

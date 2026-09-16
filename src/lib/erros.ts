@@ -626,6 +626,16 @@ const POR_CODIGO: Record<string, string> = {
 const GENERICA = "Não foi possível concluir agora. Tente de novo em instantes.";
 
 /**
+ * Frase única para quando `getContextoSessao()` lança `SessaoIndeterminadaError`
+ * (16/09/2026, `src/lib/auth.ts`) — a consulta que resolve o papel falhou, o
+ * que não é o mesmo que "sem permissão" ou "sem acesso". Toda Server Action
+ * que chama `getContextoSessao()` usa esta frase no `catch` estreito
+ * (`if (!ehSessaoIndeterminada(e)) throw e;`), em vez de inventar variação.
+ */
+export const MSG_SESSAO_INDETERMINADA =
+  "Não conseguimos confirmar seu acesso agora. Atualize a página e tente de novo.";
+
+/**
  * Frase em português para a tela; o erro cru vai para o log com `contexto`.
  *
  * @param escopo identificador da operação no log (ex.: `"atualizarCliente"`).

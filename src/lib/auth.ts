@@ -2,6 +2,8 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { PapelMembro, Papel, Perfil } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
+import { SessaoIndeterminadaError } from "@/lib/auth-erros";
+import { logErro } from "@/lib/log";
 
 export interface ContextoSessao {
   user: User;
@@ -60,6 +62,35 @@ export interface ContextoSessao {
  * persistente cross-request) — aqui isso seria vazamento de sessão entre
  * alunos. E NÃO trocar `getUser()` por `getSession()` para "ganhar" os
  * 57 ms: `getSession()` não valida o JWT no servidor.
+ *
+ * 🔴 LANÇA `SessaoIndeterminadaError`, NÃO devolve papel, quando a consulta a
+ * `perfis` ou a `gps.membros` falha (16/09/2026 — achado do
+ * `fable-orchestrator`, `CLAUDE.md`). As duas consultas usavam `maybeSingle()`
+ * e descartavam o `error`: `maybeSingle()` devolve `data:null, error:null`
+ * com 0 linhas, e `data:null` **com** `error` quando o transporte falha.
+ * Descartar o `error` colapsava as duas situações em `papel:"sem_acesso"` —
+ * um aluno com acesso real, mas com uma falha transitória de rede/banco na
+ * hora de resolver o papel, lia "você não tem vínculo com o programa".
+ *
+ * Por que lança em vez de devolver um papel:
+ * - Um 4º valor em `Papel` (`"indeterminado"`) foi REPROVADO no desenho: há
+ *   63 comparações negativas no repo (`!== "admin"`, `!== "aluno"`) que
+ *   aceitariam o valor novo sem ninguém ter pensado nele, e as `!== "aluno"`
+ *   fazem `redirect("/")` — reproduziria o mesmo bug com nome novo.
+ * - Um campo `indeterminado: boolean` também foi reprovado: só protege quem
+ *   lembrar de checá-lo; os ~71 chamadores continuariam compilando sem ler.
+ * - Lançar falha FECHADO por construção (nenhum ramo de autorização executa)
+ *   e não afirma ausência de acesso. O tipo de retorno NÃO muda
+ *   (`ContextoSessao | null`): `null` continua significando SÓ "não há
+ *   sessão" — nunca "não deu para saber".
+ *
+ * 🔴 PROIBIDO envolver a chamada desta função em `try/catch` largo.
+ * `redirect()` do Next **funciona lançando** (é assim que ele interrompe o
+ * render), e `getContextoSessao()` é chamada imediatamente antes de
+ * `redirect()` em ~40 páginas — um `catch` sem filtro ali engoliria o
+ * redirect. Quem precisa reagir a `SessaoIndeterminadaError` faz
+ * `catch (e) { if (!ehSessaoIndeterminada(e)) throw e; ... }`
+ * (`@/lib/auth-erros`) — nunca um `catch` genérico.
  */
 export const getContextoSessao = cache(async function getContextoSessao(): Promise<ContextoSessao | null> {
   const supabase = await createClient();
@@ -70,11 +101,16 @@ export const getContextoSessao = cache(async function getContextoSessao(): Promi
   if (!user) return null;
 
   // Admin?
-  const { data: perfil } = await supabase
+  const { data: perfil, error: erroPerfil } = await supabase
     .from("perfis")
     .select("id, nome, email, cargo, status")
     .eq("id", user.id)
     .maybeSingle();
+
+  if (erroPerfil) {
+    logErro("getContextoSessao", erroPerfil, { escopo: "perfis" });
+    throw new SessaoIndeterminadaError("perfis");
+  }
 
   if (
     perfil &&
@@ -99,12 +135,17 @@ export const getContextoSessao = cache(async function getContextoSessao(): Promi
   // 10/09/2026 a identidade da PESSOA era resolvida com um `ilike` em
   // `public.thb_alunos.email` — uma consulta a mais em toda requisição de
   // sócio, casando gente por e-mail. Agora custa ZERO consulta.
-  const { data: membro } = await supabase
+  const { data: membro, error: erroMembro } = await supabase
     .schema("gps")
     .from("membros")
     .select("aluno_id, papel, pessoa_aluno_id")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  if (erroMembro) {
+    logErro("getContextoSessao", erroMembro, { escopo: "membros" });
+    throw new SessaoIndeterminadaError("membros");
+  }
 
   if (membro) {
     const pessoaAlunoId = (membro.pessoa_aluno_id as string | null) ?? null;

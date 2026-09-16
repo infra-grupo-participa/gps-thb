@@ -24,7 +24,8 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
-import { traduzirErroBanco, type ErroDeBanco } from "@/lib/erros";
+import { ehSessaoIndeterminada } from "@/lib/auth-erros";
+import { traduzirErroBanco, type ErroDeBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import { listaDeEmails } from "@/lib/texto";
 import {
@@ -160,7 +161,13 @@ export async function criarUploadAssinadoDeAnexo(input: {
   | { ok: true; path: string; token: string; nome: string }
   | { ok: false; erro: string }
 > {
-  const ctx = await getContextoSessao();
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
+  }
   if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
     return { ok: false, erro: "Você não tem acesso ao suporte por chamado." };
   }
@@ -442,7 +449,21 @@ async function avisarEquipe(
   // null em 10/09 (o `ilike` por e-mail saiu do contexto de sessão, porque
   // casar pessoa por e-mail multiplica) e o campo foi removido do tipo. Esta
   // consulta já era o caminho real; agora é o único.
-  const ctx = await getContextoSessao();
+  //
+  // 🔴 Catch ESTREITO: esta função roda DEPOIS do chamado já estar gravado
+  // (`abrirChamado`/`responderChamado` chamam `avisarEquipe` só depois do
+  // insert/update ter sucesso). Se `getContextoSessao()` lançar aqui e a
+  // exceção subir sem tratamento, ela derruba a Server Action inteira e o
+  // aluno lê "não foi possível abrir o chamado" para um chamado que FOI
+  // aberto. Sem o nome, o e-mail sai como "Um aluno" — já era o
+  // comportamento para `ctx?.membroAlunoId` ausente.
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    ctx = null;
+  }
   let alunoNome: string | null = null;
   if (ctx?.membroAlunoId) {
     const supabase = await createClient();

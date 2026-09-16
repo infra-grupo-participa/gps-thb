@@ -125,11 +125,9 @@ export default async function HomePage() {
               variant={
                 recusada
                   ? "destructive"
-                  : falhou
+                  : falhou || semSolicitacao
                     ? "outline"
-                    : semSolicitacao
-                      ? "outline"
-                      : "secondary"
+                    : "secondary"
               }
             >
               {recusada

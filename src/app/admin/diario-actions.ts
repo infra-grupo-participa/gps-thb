@@ -16,6 +16,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao, ehAdmin } from "@/lib/auth";
+import { ehSessaoIndeterminada } from "@/lib/auth-erros";
+import { MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import { notificarMencao } from "@/lib/slack";
 import {
@@ -89,7 +91,13 @@ export type ResultadoDiarioAcao =
 export async function registrarNota(
   input: RegistrarNotaInput,
 ): Promise<ResultadoDiarioAcao> {
-  const ctx = await getContextoSessao();
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
+  }
   if (!ctx || ctx.papel !== "admin") {
     return { ok: false, erro: "Sem permissão." };
   }
@@ -257,7 +265,13 @@ async function registrarEAvisar(
 export async function darBaixaPendencia(
   notaId: string,
 ): Promise<ResultadoDiarioAcao> {
-  const ctx = await getContextoSessao();
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
+  }
   if (!ctx || ctx.papel !== "admin") {
     return { ok: false, erro: "Sem permissão." };
   }

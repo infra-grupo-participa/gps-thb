@@ -20,7 +20,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin, getContextoSessao } from "@/lib/auth";
-import { traduzirErroBanco, type ErroDeBanco } from "@/lib/erros";
+import { ehSessaoIndeterminada } from "@/lib/auth-erros";
+import { traduzirErroBanco, type ErroDeBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { enviarChamadoRespondidoParaAluno } from "@/lib/email-chamados";
 import { logErro } from "@/lib/log";
 import { emailValido } from "@/lib/texto";
@@ -40,7 +41,13 @@ async function gravarConfig(
   chave: string,
   valor: string,
 ): Promise<ResultadoAcao> {
-  const ctx = await getContextoSessao();
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
+  }
   if (!ctx || ctx.papel !== "admin") {
     return { ok: false, erro: "Ação restrita à equipe." };
   }

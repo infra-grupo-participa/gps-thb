@@ -4,7 +4,8 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { ehSessaoIndeterminada } from "@/lib/auth-erros";
+import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import {
   ANEXO_PATH_REGEX,
@@ -639,7 +640,13 @@ export async function criarUploadAssinadoContratoCliente(input: {
   | { ok: true; path: string; token: string; nome: string }
   | { ok: false; erro: string }
 > {
-  const ctx = await getContextoSessao();
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
+  }
   if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
     return {
       ok: false,

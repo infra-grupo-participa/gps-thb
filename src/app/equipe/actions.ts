@@ -25,9 +25,10 @@ import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
+import { ehSessaoIndeterminada } from "@/lib/auth-erros";
 import { getAlunoById } from "@/lib/data";
 import { emailValido, normalizarEmail } from "@/lib/texto";
-import { traduzirErroBanco } from "@/lib/erros";
+import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import { enviarConviteSocio } from "@/lib/email";
 
@@ -65,7 +66,13 @@ export async function convidarSocio(
   _prev: unknown,
   formData: FormData,
 ): Promise<ConvidarSocioResultado> {
-  const ctx = await getContextoSessao();
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { erro: MSG_SESSAO_INDETERMINADA };
+  }
   if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
     return { erro: "Sem permissão." };
   }
@@ -130,7 +137,13 @@ export async function reenviarConvite(
   _prev: unknown,
   formData: FormData,
 ): Promise<ReenviarConviteResultado> {
-  const ctx = await getContextoSessao();
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { erro: MSG_SESSAO_INDETERMINADA };
+  }
   if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
     return { erro: "Sem permissão." };
   }
@@ -189,7 +202,13 @@ export async function reenviarConvite(
 export async function revogarConvite(
   conviteId: string,
 ): Promise<{ erro?: string; ok?: boolean }> {
-  const ctx = await getContextoSessao();
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { erro: MSG_SESSAO_INDETERMINADA };
+  }
   if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
     return { erro: "Sem permissão." };
   }

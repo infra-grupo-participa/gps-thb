@@ -1,13 +1,42 @@
+"use client";
+
 /**
+ * 🔴 CONTORNO, NÃO CORREÇÃO (16/09/2026).
+ *
+ * Esta tela e `/admin/fila` ficavam presas em "Carregando…" para sempre em
+ * produção (Hostinger compartilhada): HTTP 200, o `loading.tsx` aparecia e o
+ * conteúdo NUNCA o substituía; depois caía no `error.tsx`.
+ *
+ * O que foi PROVADO antes desta mudança:
+ *   - o banco responde: `gps.admin_clientes_lista` devolveu 100 linhas com o
+ *     JWT do admin, e o log da API do Supabase registra HTTP 200 da chamada
+ *     no MESMO instante em que a tela mostrava "Carregando…";
+ *   - não é permissão, não é deploy faltando, não é chave errada;
+ *   - as duas telas que falhavam renderizavam Server Component; as duas do
+ *     mesmo `/admin` que funcionam (`operadores`, `tutoriais`) são
+ *     `"use client"`. As duas quebradas nasceram em 15/09 e NUNCA
+ *     funcionaram em produção.
+ *
+ * A causa raiz NÃO foi isolada — falta o log do Node na Hostinger, onde está
+ * a exceção real. O `server.js` deste repo já documenta aquele servidor como
+ * instável (`fetch failed` intermitente, TTFB variando 14× na mesma página
+ * estática), e streaming de RSC é o que mais sofre com isso.
+ *
+ * ⚠️ Se o log aparecer e apontar outra causa, REVERTER isto e corrigir lá.
+ *   Enquanto for `"use client"`, o componente não pode usar API de servidor
+ *   (cookies/headers/createClient) — hoje não usa nenhuma: é render puro
+ *   sobre `linhas`, que a page (Server Component) já buscou e passa por prop.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
  * `/admin/clientes` — busca, chips de fase e grau, contagem no topo,
  * tabela e paginação.
  *
- * Server Component: a busca e os chips são `<form>`/`<Link>` que navegam com
+ * A busca e os chips continuam sendo `<form>`/`<Link>` que navegam com
  * `searchParams` novos — quem filtra é o BANCO (`gps.admin_clientes_lista`),
  * nunca memória do cliente. Diferente de `alunos-ativos-lista` (que filtra um
  * lote já carregado), aqui não existe "lote": 1.223 linhas não cabem na
- * memória do navegador, e é exatamente essa a medição que sustenta a decisão
- * de paginar no servidor (ver docs/audits/2026-09-14-esteira/01-listas-clicaveis.md).
+ * memória do navegador (ver docs/audits/2026-09-14-esteira/01-listas-clicaveis.md).
+ * Isso NÃO muda com `"use client"`: a paginação segue no servidor.
  *
  * 🔴 `registro_contato` não existe no retorno da RPC — não é omissão de
  * tela, o dado nunca chega até aqui (decisão de LGPD do Marcio).

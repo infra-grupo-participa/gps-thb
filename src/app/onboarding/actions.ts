@@ -27,7 +27,8 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { ehSessaoIndeterminada } from "@/lib/auth-erros";
+import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { MSG_SENHA_MINIMO, SENHA_MINIMO } from "@/lib/senha-regras";
 import { logErro } from "@/lib/log";
 import {
@@ -93,7 +94,13 @@ const CHAVES_PATCH_ONBOARDING: ReadonlySet<string> = new Set([
 async function exigirAluno(): Promise<
   { ok: true; alunoId: string } | { ok: false; erro: string }
 > {
-  const ctx = await getContextoSessao();
+  let ctx;
+  try {
+    ctx = await getContextoSessao();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
+  }
   if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
     return { ok: false, erro: "Você não tem acesso ao questionário inicial." };
   }

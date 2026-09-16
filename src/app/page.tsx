@@ -67,14 +67,19 @@ export default async function HomePage() {
   }
 
   if (ctx.papel === "sem_acesso") {
-    const solicitacao = await getMinhaSolicitacao(ctx.user.id);
+    const { solicitacao, falhou } = await getMinhaSolicitacao(ctx.user.id);
     const recusada = solicitacao?.status === "recusada";
     // `null` = nem pendente nem recusada: o cargo dela não é lido pelo GPS
     // (gps.membros não tem vínculo, e agora também não é operador ativo).
     // `gps.solicitacoes_acesso` está VAZIA — ninguém preencheu ela pedindo
     // aprovação, então "Aguardando liberação" seria mentira: não há fila,
     // não há o que a equipe aprovar. Ver Tarefa B1.
-    const semSolicitacao = solicitacao === null && !recusada;
+    //
+    // 🔑 `!falhou` é a trava: a frase nova AFIRMA um fato sobre o cadastro da
+    // pessoa ("não há pedido registrado"). Só se pode afirmar isso depois de
+    // conseguir consultar. Com o banco fora do ar, cai no ramo neutro — que
+    // não promete aprovação nem nega a existência do pedido.
+    const semSolicitacao = solicitacao === null && !recusada && !falhou;
 
     // 🔑 SÓ para quem não tem solicitação. Os outros dois estados já dizem a
     // verdade ("aguardando" tem pedido de verdade na fila; "não aprovada" tem
@@ -86,7 +91,7 @@ export default async function HomePage() {
     // tela fica só com a frase honesta. Melhor sem saída do que com uma saída
     // que abre conversa vazia. A equipe troca o número pelo painel, sem deploy.
     let zapSecretaria: string | null = null;
-    if (semSolicitacao) {
+    if (semSolicitacao || falhou) {
       const supabase = await createClient();
       const { data } = await supabase.schema("gps").rpc("whatsapp_secretaria");
       if (typeof data === "string" && data) {
@@ -94,11 +99,14 @@ export default async function HomePage() {
         // Sem o fallback, um e-mail ausente escreveria a palavra "undefined"
         // dentro da mensagem que a pessoa manda para a secretaria.
         const email = ctx.user.email ?? "";
+        // A mensagem muda com o estado: no ramo `falhou` não se pode afirmar
+        // que a conta está sem acesso — só que a consulta não respondeu.
+        const assunto = falhou
+          ? "mas a tela não conseguiu verificar minha situação"
+          : "mas minha conta não está ligada a nenhum acesso";
         zapSecretaria = linkWhatsapp(
           data,
-          email
-            ? `Olá! Entrei no Programa de Implementação Assistida com o e-mail ${email}, mas minha conta não está ligada a nenhum acesso.`
-            : "Olá! Entrei no Programa de Implementação Assistida, mas minha conta não está ligada a nenhum acesso.",
+          `Olá! Entrei no Programa de Implementação Assistida${email ? ` com o e-mail ${email}` : ""}, ${assunto}.`,
         );
       }
     }
@@ -115,25 +123,42 @@ export default async function HomePage() {
             <ThbLogo />
             <Badge
               variant={
-                recusada ? "destructive" : semSolicitacao ? "outline" : "secondary"
+                recusada
+                  ? "destructive"
+                  : falhou
+                    ? "outline"
+                    : semSolicitacao
+                      ? "outline"
+                      : "secondary"
               }
             >
               {recusada
                 ? "Solicitação não aprovada"
-                : semSolicitacao
-                  ? "Conta sem acesso vinculado"
-                  : "Aguardando liberação"}
+                : falhou
+                  ? "Não foi possível verificar"
+                  : semSolicitacao
+                    ? "Conta sem acesso vinculado"
+                    : "Aguardando liberação"}
             </Badge>
             <div>
               <h1 className="text-lg font-semibold">
                 {recusada
                   ? "Sua solicitação não foi aprovada"
-                  : semSolicitacao
-                    ? "Sua conta ainda não está ligada ao Programa"
-                    : "Solicitação recebida!"}
+                  : falhou
+                    ? "Não conseguimos verificar seu acesso agora"
+                    : semSolicitacao
+                      ? "Sua conta ainda não está ligada ao Programa"
+                      : "Solicitação recebida!"}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                {semSolicitacao ? (
+                {falhou ? (
+                  <>
+                    Houve uma falha ao consultar a situação da sua conta (
+                    {ctx.user.email}). Isso não diz nada sobre o seu acesso —
+                    só que a consulta não respondeu. Atualize a página em
+                    alguns instantes; se continuar, fale com a equipe.
+                  </>
+                ) : semSolicitacao ? (
                   <>
                     Sua conta ({ctx.user.email}) foi autenticada, mas não está
                     ligada a nenhum acesso do Programa — e não há pedido de

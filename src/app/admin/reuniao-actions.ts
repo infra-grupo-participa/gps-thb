@@ -4,14 +4,24 @@
  * Reunião preliminar — Server Actions da EQUIPE (Fatia 4 da esteira,
  * migração 20260915000263): propor data e cancelar proposta.
  *
- * A guarda de verdade é `gp_is_admin()` dentro das RPCs (SECURITY DEFINER);
- * `ehAdmin()` aqui evita uma viagem ao banco à toa e devolve erro cedo, no
- * mesmo padrão de `entrevista-actions.ts`/`diario-actions.ts`.
+ * 🔴 ATUALIZADO EM 16/09/2026 (FATIA B-1): as duas RPCs NÃO têm mais a
+ * mesma guarda. `gps.reuniao_propor_data` migrou para `gps.eh_equipe()`
+ * (admin OU operador ativo da esteira) na migração `…264` (15/09);
+ * `gps.reuniao_cancelar_proposta` continua em `gp_is_admin()` — não foi
+ * tocada por aquela migração, e cancelar proposta segue de propósito
+ * restrito ao admin. A guarda de verdade é sempre a de DENTRO da RPC
+ * (SECURITY DEFINER); as guardas aqui são conveniência que evita uma
+ * viagem ao banco à toa e devolve erro cedo, no mesmo padrão de
+ * `entrevista-actions.ts`/`diario-actions.ts`.
+ *
+ * 🔑 Regra para não repetir o bug: quando uma RPC muda de guarda no banco,
+ * buscar os chamadores em TypeScript é parte DA MESMA migração, não passo
+ * seguinte.
  */
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { ehAdmin } from "@/lib/auth";
+import { ehAdmin, ehEquipeDaEsteira } from "@/lib/auth";
 import { traduzirErroBanco } from "@/lib/erros";
 import type { ReuniaoProporInput, ReuniaoResultado } from "@/lib/reuniao-preliminar-tipos";
 
@@ -28,7 +38,7 @@ function revalidar(alunoId?: string) {
 export async function proporDataReuniao(
   input: ReuniaoProporInput,
 ): Promise<ReuniaoResultado> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehEquipeDaEsteira())) return { ok: false, erro: "Sem permissão." };
 
   const clienteId = (input.clienteId ?? "").trim();
   if (!clienteId) return { ok: false, erro: "Faltou informar o cliente." };

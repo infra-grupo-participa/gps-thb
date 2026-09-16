@@ -1,18 +1,28 @@
 "use server";
 
 /**
- * Entrevista prévia — Server Actions do ADMIN (Fatia 3 da esteira, migração
- * 20260915000262). Roda com o admin que já existe (`ehAdmin()`), sem papel de
- * operador — o papel novo é a fatia 5, fora de escopo aqui.
+ * Entrevista prévia — Server Actions da EQUIPE (Fatia 3 da esteira, migração
+ * 20260915000262).
  *
- * A guarda de verdade é `gp_is_admin()` dentro de `gps.entrevista_gravar`
- * (SECURITY DEFINER); `ehAdmin()` aqui evita uma viagem ao banco à toa e
- * devolve erro cedo, no mesmo padrão de `diario-actions.ts`.
+ * 🔴 ATUALIZADO EM 16/09/2026 (FATIA B-1): o comentário anterior dizia que
+ * a guarda de verdade era `ehAdmin()`/`gp_is_admin()` — isso ficou FALSO a
+ * partir da migração `…264` (15/09), que trocou a guarda de
+ * `gps.entrevista_gravar` para `gps.eh_equipe()` (admin OU operador ativo
+ * da esteira) sem que este arquivo acompanhasse. Resultado: o operador puro
+ * abria a fila e a action recusava antes de chegar ao banco, que já o
+ * aceitava. A guarda de verdade é `gps.eh_equipe()` DENTRO da RPC (SECURITY
+ * DEFINER); `ehEquipeDaEsteira()` aqui é conveniência que evita uma viagem
+ * ao banco à toa e devolve erro cedo, no mesmo padrão de `ehAdmin()` em
+ * `diario-actions.ts`.
+ *
+ * 🔑 Regra para não repetir o bug: quando uma RPC muda de guarda no banco,
+ * buscar os chamadores em TypeScript é parte DA MESMA migração, não passo
+ * seguinte — foi a falta dessa varredura em 15/09 que produziu o bug.
  */
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { ehAdmin } from "@/lib/auth";
+import { ehEquipeDaEsteira } from "@/lib/auth";
 import { traduzirErroBanco } from "@/lib/erros";
 import {
   RESULTADOS_ENTREVISTA,
@@ -41,7 +51,7 @@ function revalidar(alunoId?: string) {
 export async function gravarEntrevista(
   input: EntrevistaGravarInput,
 ): Promise<EntrevistaGravarResultado> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehEquipeDaEsteira())) return { ok: false, erro: "Sem permissão." };
 
   const clienteId = (input.clienteId ?? "").trim();
   if (!clienteId) return { ok: false, erro: "Faltou informar o cliente." };

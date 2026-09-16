@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao, ehAdmin } from "@/lib/auth";
 import { logErro } from "@/lib/log";
+import { traduzirErroBanco } from "@/lib/erros";
 import type {
   FaseCliente1,
   GrauRelacao,
@@ -202,6 +203,11 @@ interface PessoaCrua extends RespostasCruas {
   pessoa_aluno_id?: string | null;
   papel?: string;
   nome?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  cidade?: string | null;
+  /** `character(2)` no Postgres — chega com espaço à direita (`"SP "`). */
+  estado?: string | null;
   status?: string;
   versao?: number | null;
   passo_atual?: number | null;
@@ -214,11 +220,18 @@ interface PessoaCrua extends RespostasCruas {
  * resultado, e sumiria da tela se a função só devolvesse quem respondeu.
  *
  * `ehAdmin()` aqui é conveniência; quem decide é o `gp_is_admin()` da RPC.
+ *
+ * 🔑 `[]` sozinho não distingue "ninguém respondeu" de "não consegui ler o
+ * banco" — desde a fatia A-5 (16/09/2026) este é o ÚNICO caminho até essa
+ * informação (o diálogo da Central é a superfície inteira, não mais um bloco
+ * entre vários no Resolver). `erro` preenchido é a diferença entre a tela
+ * dizer "ninguém aqui" e dizer a verdade: "não consegui ler agora". Mesma
+ * forma de `getFilaDeLigacoes` (`src/lib/data/entrevistas.ts`).
  */
 export async function getOnboardingDoAluno(
   alunoId: string,
-): Promise<OnboardingDaPessoa[]> {
-  if (!(await ehAdmin())) return [];
+): Promise<{ pessoas: OnboardingDaPessoa[]; erro?: string }> {
+  if (!(await ehAdmin())) return { pessoas: [], erro: "Sem permissão." };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -226,20 +239,27 @@ export async function getOnboardingDoAluno(
     .rpc("admin_onboarding_do_aluno", { p_aluno_id: alunoId });
 
   if (error) {
-    logErro("getOnboardingDoAluno", error, {
-      rpc: "gps.admin_onboarding_do_aluno",
-      alunoId,
-      efeito: "Central exibe o bloco de onboarding vazio",
-    });
-    return [];
+    return {
+      pessoas: [],
+      erro: traduzirErroBanco("getOnboardingDoAluno", error, {
+        rpc: "gps.admin_onboarding_do_aluno",
+        alunoId,
+      }),
+    };
   }
 
   const linhas = Array.isArray(data) ? (data as PessoaCrua[]) : [];
-  return linhas.map((p) => ({
+  const pessoas = linhas.map((p) => ({
     membroId: String(p.membro_id ?? ""),
     pessoaAlunoId: texto(p.pessoa_aluno_id),
     papel: (p.papel === "socio" ? "socio" : "titular") as PapelMembro,
     nome: texto(p.nome),
+    email: texto(p.email),
+    telefone: texto(p.telefone),
+    cidade: texto(p.cidade),
+    // `estado` é `character(2)` no Postgres: preenche com espaço à direita
+    // (ex. "SP "). `texto()` não faz trim — sem isto a tela renderiza o espaço.
+    estado: texto(p.estado?.trim()),
     status: mapearStatus(p.status),
     versao: p.versao ?? null,
     passoAtual: p.passo_atual ?? null,
@@ -254,6 +274,7 @@ export async function getOnboardingDoAluno(
     ajudaPronta: texto(p.ajuda_pronta),
     anexos: mapearAnexos(p.anexos),
   }));
+  return { pessoas };
 }
 
 /**

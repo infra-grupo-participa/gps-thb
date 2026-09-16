@@ -265,17 +265,75 @@ export function AlunosAtivosLista({
     );
   }
 
-  // 🔑 Sem fase escolhida (`null`), a aba Alunos É os 5 cards — a lista nem
-  // se monta. É o desenho do Marcio: cinco blocos, clica, vê a lista, clica
-  // de novo e entra no ambiente. `CLASSE_TODAS` é o terceiro estado (não é
-  // `null`, não é uma classe real): a sentinela dos links do dashboard, que
-  // mostra a lista inteira e deixa o filtro (`f=…`) fazer o recorte.
+  // 🔑 Sem fase escolhida (`null`), a aba Alunos é os 5 cards — MAIS a busca
+  // (FATIA C-1, 16/09/2026, pedido do Marcio: *"caso eu queira pesquisar
+  // alguém específico, eu pesquisaria na parte onde estão os 5 cards"*).
+  //
+  // Antes a busca só existia DEPOIS de entrar numa fase — achar alguém sem
+  // saber a fase custava entrar, não achar, voltar, tentar outra. Digitar
+  // aqui troca os cards pelos resultados (a mesma lógica de `visiveis` de
+  // baixo, que já ignora a fase quando há termo desde 14/09); apagar a busca
+  // devolve os cards. Ordem e filtros continuam vivendo só dentro da fase —
+  // subir tudo transformaria a visão geral numa segunda barra de ferramentas.
   if (estado.classe === null) {
-    return <CardsDeClasse
-        contagem={contagem}
-        alunos={alunos}
-        aoEscolher={definirClasse}
-      />;
+    return (
+      <div className="grid gap-3">
+        <BuscaDeAlunos termo={estado.termo} definirTermo={definirTermo} />
+
+        {buscandoAgora ? (
+          <>
+            <p aria-live="polite" className="corpo-sm text-muted-foreground">
+              {visiveis.length}{" "}
+              {visiveis.length === 1 ? "resultado" : "resultados"} em todas as
+              fases
+            </p>
+
+            {visiveis.length === 0 ? (
+              <ListaVazia
+                termo={estado.termo}
+                buscando
+                filtrosAtivos={[]}
+                setTermo={definirTermo}
+                limparFiltros={limparFiltros}
+                carregarMaisHref={hrefMais}
+                carregarMaisQtd={carregarMaisQtd}
+              />
+            ) : (
+              visiveis.map((a) => (
+                <AlunoCard
+                  mostrarFase
+                  key={a.alunoId}
+                  {...a}
+                  atendimentoDe={atendimentoDe}
+                />
+              ))
+            )}
+
+            {/* 🔴 O rodapé `parcial` tem de existir aqui também: a busca
+                varre só o lote carregado (`alunos`), nunca a base inteira.
+                Hoje `parcial` é sempre `false` (lote de 200 > 142 parceiros)
+                — no dia em que passar de 200, sem este aviso a busca global
+                passaria a mentir em silêncio para quem está fora do lote. */}
+            {parcial ? (
+              <p aria-live="polite" className="text-xs text-muted-foreground">
+                Mostrando {alunos.length} de {total} carregados. A busca vale
+                só sobre os {alunos.length} carregados.
+                {carregarMaisHref === null ? (
+                  <> Este é o teto do painel; para achar quem ficou de fora, a
+                  busca precisará passar a rodar no servidor.</>
+                ) : null}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <CardsDeClasse
+            contagem={contagem}
+            alunos={alunos}
+            aoEscolher={definirClasse}
+          />
+        )}
+      </div>
+    );
   }
 
   // A sentinela não tem card nem contagem própria: é "a lista inteira", e o
@@ -350,21 +408,7 @@ export function AlunosAtivosLista({
           leitura da lista inteira); embaixo os FILTROS (o que tira gente da
           lista). */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[240px] flex-1">
-          <Search
-            aria-hidden="true"
-            className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            id="busca-alunos"
-            type="search"
-            value={estado.termo}
-            onChange={(e) => definirTermo(e.target.value)}
-            placeholder="Buscar por nome ou e-mail"
-            aria-label="Buscar parceiro por nome ou e-mail"
-            className="pl-8"
-          />
-        </div>
+        <BuscaDeAlunos termo={estado.termo} definirTermo={definirTermo} />
 
         <Select
           value={estado.ordem}
@@ -493,6 +537,43 @@ export function AlunosAtivosLista({
           </Link>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * O campo de busca por nome/e-mail — UM SÓ componente, usado tanto na tela
+ * dos 5 cards (FATIA C-1) quanto dentro de uma fase escolhida.
+ *
+ * 🔴 `termo`/`definirTermo` vêm sempre de `useEstadoDoPainel()`, nunca de um
+ * `useState` próprio. Dois componentes com estado local escrevendo a mesma
+ * chave da URL se sobrescrevem — o comentário de `escreverEstado` em
+ * `estado-na-url.ts` já registra o efeito: o último `router.replace` devolve
+ * o valor que ele leu na montagem, e a busca "voltaria" sozinha 300 ms depois
+ * de digitar. Por isso este componente não guarda estado: só repassa.
+ */
+function BuscaDeAlunos({
+  termo,
+  definirTermo,
+}: {
+  termo: string;
+  definirTermo: (termo: string) => void;
+}) {
+  return (
+    <div className="relative min-w-[240px] flex-1">
+      <Search
+        aria-hidden="true"
+        className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+      />
+      <Input
+        id="busca-alunos"
+        type="search"
+        value={termo}
+        onChange={(e) => definirTermo(e.target.value)}
+        placeholder="Buscar por nome ou e-mail"
+        aria-label="Buscar parceiro por nome ou e-mail"
+        className="pl-8"
+      />
     </div>
   );
 }

@@ -8,10 +8,10 @@ import {
   getClientesEtapa1,
   getDiagnosticoAmbiente,
   getEtapas,
-  getOnboardingDoAluno,
   getProgressoAluno,
   contarMembrosDoAmbiente,
   alunoJaTemCliente,
+  getTutoriaisAtivo,
 } from "@/lib/data";
 import { getFinanceiroDoAluno } from "@/lib/financeiro";
 import {
@@ -19,7 +19,7 @@ import {
   proximoPasso,
   type OverridesLiberacao,
 } from "@/lib/etapas";
-import { assistenciaNavItems } from "@/lib/nav";
+import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { ErroPainel } from "@/components/ui/erro-painel";
@@ -75,8 +75,8 @@ export default async function AdminAlunoResolverPage({
     clientes,
     progressoTodas,
     favorito,
-    onboarding,
-    jaTemCliente
+    jaTemCliente,
+    tutoriaisAtivo,
   ] = await Promise.all([
     getAlunoById(alunoId),
     contarMembrosDoAmbiente(alunoId),
@@ -84,11 +84,13 @@ export default async function AdminAlunoResolverPage({
     getEtapas(),
     getClientesEtapa1(alunoId),
     getProgressoAluno(alunoId),
+    // 🔴 MANTER. Não alimenta mais a seção de onboarding (saiu na fatia A-6),
+    // mas `proximoPasso()` logo abaixo usa `favorito !== null` para saber se
+    // o gate do favorito já foi vencido — a home do aluno e o Resolver
+    // precisam dizer a mesma coisa. Remover esta linha quebra esse cálculo.
     getClienteEquipe(alunoId),
-    // Uma RPC (`gps.admin_onboarding_do_aluno`), no MESMO `Promise.all` das
-    // outras: o bloco novo não acrescenta uma ida em série à abertura da tela.
-    getOnboardingDoAluno(alunoId),
-    alunoJaTemCliente(alunoId)
+    alunoJaTemCliente(alunoId),
+    getTutoriaisAtivo(),
   ]);
 
   // Diagnóstico parcial faria o admin concluir "está tudo bem" sobre o que não
@@ -163,6 +165,7 @@ export default async function AdminAlunoResolverPage({
         navItems={assistenciaNavItems(alunoId, {
           ambienteCompartilhado: qtdMembros > 1,
         })}
+        navFixo={navFixoDoAluno(base, { tutoriais: tutoriaisAtivo })}
       />
       <AssistBanner aluno={aluno} />
 
@@ -186,19 +189,6 @@ export default async function AdminAlunoResolverPage({
           diagnostico={diagnostico}
           passo={passo}
           contratosVinculados={contratosVinculados}
-          onboarding={onboarding}
-          // `getClienteEquipe` já era carregado aqui (é ele que diz a
-          // `proximoPasso` se há favorito): nenhuma consulta nova para saber se
-          // a equipe assumiu o acompanhamento.
-          favorito={
-            favorito
-              ? {
-                  id: favorito.id,
-                  nome: favorito.nome,
-                  confirmadoEm: favorito.acompanhamento_confirmado_em,
-                }
-              : null
-          }
         />
       </main>
     </>

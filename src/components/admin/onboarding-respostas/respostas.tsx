@@ -1,49 +1,33 @@
 "use client";
 
 /**
- * O bloco "Questionário inicial" da Central (§D.3) — o que cada pessoa do
- * ambiente respondeu ao entrar, por extenso.
+ * O corpo "respostas por extenso" do questionário inicial — MOVIDO de
+ * `src/components/admin/central/secao-onboarding.tsx` (fatia A-4, 16/09/2026)
+ * para dentro do diálogo `OnboardingRespostas` (`./index.tsx`).
  *
- * 🔑 Ele é LEITURA. Nenhuma escrita nasce aqui, e isso é regra da Central, não
- * economia: confirmar e liberar o acompanhamento moram na FICHA DO CLIENTE, no
- * Modo Assistência, que é onde o admin já está olhando o cliente. Daqui sai um
- * link para lá — nenhuma segunda porta para escrita que já existe.
+ * `secao-onboarding.tsx` foi APAGADO na fatia A-6 (16/09/2026): a Central
+ * deixou de mostrar o questionário (saiu de lá e virou este diálogo), e o
+ * corpo movido para cá já cobria o mesmo conteúdo. Este arquivo é a única
+ * fonte que resta.
  *
- * 🔴 O que esta tela nunca escreve: valor em reais do saldo do programa (B-S1
- * está pendente com o João). O chip diz "Contrato de honorários enviado", e só.
- * O valor que aparece é o dos HONORÁRIOS DO ALUNO com o cliente dele — resposta
- * do questionário, não cobrança.
- *
- * 🔴 O contrato anexado é documento de TERCEIRO (o cliente do aluno): não vai
- * por e-mail, não vai para o Slack, não entra em retorno agregado, e o link sai
- * sempre com `download=` (ver `anexo-actions.ts`).
+ * Comentários originais preservados abaixo, sem reescrita de comportamento.
  */
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
-import {
-  ClipboardList,
-  Download,
-  FileSignature,
-  Paperclip,
-  Star,
-} from "lucide-react";
+import { Download, FileSignature, Paperclip } from "lucide-react";
 import type { OnboardingDaPessoa } from "@/lib/types";
 import { FASES_CLIENTE1_UI } from "@/lib/etapa1";
 import { formatarData } from "@/lib/datas";
 import { brl } from "@/lib/moeda";
 import { tamanhoLegivel } from "@/lib/chamados-tipos";
-import { urlDoAnexoDoQuestionario } from "@/app/admin/aluno/[alunoId]/resolver/anexo-actions";
+import { urlDoAnexoDoQuestionario } from "@/app/admin/onboarding-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Secao } from "@/components/ui/secao";
-import { LinhaVerificacao } from "./linha-verificacao";
-import type { EstadoLinha } from "./catalogo";
 
 /** Depois disto, "em andamento" deixa de ser normal e vira fila da equipe. */
 const DIAS_PARADO = 7;
 
-const ROTULO_ORIGEM: Record<string, string> = {
+export const ROTULO_ORIGEM: Record<string, string> = {
   captacao: "Quer que a equipe faça desde a captação — o cliente virá de lá.",
   ja_tenho: "Já tem o cliente e quer começar por ele.",
 };
@@ -56,11 +40,13 @@ function diasDesde(iso: string | null): number | null {
   return Math.floor((Date.now() - t) / 86_400_000);
 }
 
-function estadoDaPessoa(p: OnboardingDaPessoa): {
-  estado: EstadoLinha;
+type EstadoDaPessoa = {
+  estado: "informacao" | "atencao";
   valor: string;
   detalhe: string;
-} {
+};
+
+export function estadoDaPessoa(p: OnboardingDaPessoa): EstadoDaPessoa {
   if (p.status === "concluido") {
     return {
       estado: "informacao",
@@ -98,7 +84,7 @@ function estadoDaPessoa(p: OnboardingDaPessoa): {
 }
 
 /** Um anexo — a URL é assinada NO CLIQUE, nunca no render (vive 60 s). */
-function AnexoDoQuestionario({
+export function AnexoDoQuestionario({
   path,
   nome,
   tamanho,
@@ -168,7 +154,7 @@ function AnexoDoQuestionario({
 }
 
 /** As respostas por extenso de quem já respondeu (ou começou a responder). */
-function Respostas({ p }: { p: OnboardingDaPessoa }) {
+export function Respostas({ p }: { p: OnboardingDaPessoa }) {
   const fase = FASES_CLIENTE1_UI.find((f) => f.id === p.faseCliente1);
   const contrato = p.anexos.find((a) => a.tipo === "contrato_honorarios");
   const documentos = p.anexos.filter((a) => a.tipo === "documento");
@@ -280,123 +266,6 @@ function Respostas({ p }: { p: OnboardingDaPessoa }) {
           </ul>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-export function SecaoOnboarding({
-  pessoas,
-  alunoId,
-  favorito,
-}: {
-  pessoas: OnboardingDaPessoa[];
-  alunoId: string;
-  /** O cliente que o aluno marcou com a estrela — e se a equipe já o assumiu. */
-  favorito: { id: string; nome: string; confirmadoEm: string | null } | null;
-}) {
-  const base = `/admin/aluno/${alunoId}`;
-
-  // O SÓCIO não responde o questionário (decisão do Marcio, 15/09/2026) —
-  // compartilha o ambiente do titular. O denominador de "N responderam" é só
-  // quem se espera resposta (titulares); senão todo ambiente com sócio
-  // mostraria "1 de 2 responderam" para sempre, mesmo com o titular 100% ok.
-  const titulares = pessoas.filter((p) => p.papel === "titular");
-  const concluidos = titulares.filter((p) => p.status === "concluido").length;
-
-  return (
-    // 🔑 `id="onboarding"` é o alvo do botão "Respostas" do card do painel
-    // (14/09/2026): a seção existia e era completa, mas só quem já sabia do
-    // caminho a encontrava. `scroll-mt-24` porque o header do Modo
-    // Assistência é fixo — sem isso a âncora para embaixo dele.
-    //
-    // O `<div>` em vez de `id` no próprio `Secao`: o componente é
-    // compartilhado por dezenas de telas e não aceita `id`; acrescentar a
-    // prop ali para um caso só seria API nova sem necessidade.
-    <div id="onboarding" className="scroll-mt-24">
-    <Secao
-      icone={<ClipboardList />}
-      titulo="Questionário inicial"
-      descricao={
-        titulares.length === 0
-          ? "Nenhuma pessoa identificada neste ambiente."
-          : `${titulares.length} ${titulares.length === 1 ? "titular" : "titulares"} · ${concluidos} ${concluidos === 1 ? "respondeu" : "responderam"}. O questionário é do TITULAR — o sócio compartilha o ambiente dele e não responde.`
-      }
-    >
-      <ul className="border-t border-borda-fina">
-        {pessoas.map((p) => {
-          // O sócio nunca responde (15/09/2026): a linha dele nunca é
-          // pendência, é "não se aplica" — tanto para quem nunca começou
-          // quanto para quem começou e parou no meio (o questionário não
-          // reabre mais para o papel sócio, então "em andamento" viraria
-          // uma promessa que a RPC recusa). Só quem já CONCLUIU antes da
-          // mudança continua mostrado normalmente, com as respostas dele.
-          const socioSemRespostaConcluida =
-            p.papel === "socio" && p.status !== "concluido";
-          const { estado, valor, detalhe } = socioSemRespostaConcluida
-            ? {
-                estado: "informacao" as const,
-                valor: "não se aplica",
-                detalhe:
-                  p.status === "em_andamento"
-                    ? "Começou a responder antes de 15/09/2026; o questionário não se aplica mais ao sócio e não reabre. As respostas parciais ficam guardadas."
-                    : "O sócio compartilha o ambiente do titular e não responde ao questionário inicial.",
-              }
-            : estadoDaPessoa(p);
-          const nome = p.nome ?? "Cadastro não identificado";
-          return (
-            <LinhaVerificacao
-              key={p.membroId}
-              estado={estado}
-              rotulo={`${nome} · ${p.papel === "titular" ? "titular" : "sócio"}`}
-              valor={valor}
-              detalhe={detalhe}
-            >
-              {p.status === "nao_iniciado" ? null : <Respostas p={p} />}
-            </LinhaVerificacao>
-          );
-        })}
-
-        {/* Informação, não juízo: um ambiente sem acompanhamento confirmado é o
-            estado NORMAL (os 25 favoritos de hoje nasceram livres). A escrita
-            fica na ficha; aqui só o link. */}
-        <LinhaVerificacao
-          estado="informacao"
-          rotulo="Acompanhamento confirmado pela equipe"
-          valor={
-            favorito?.confirmadoEm
-              ? `sim, desde ${formatarData(favorito.confirmadoEm)}`
-              : favorito
-                ? "não"
-                : "não — o parceiro ainda não escolheu a estrela"
-          }
-          detalhe={
-            favorito?.confirmadoEm
-              ? `Enquanto estiver confirmado, o parceiro não troca a estrela, não apaga ${favorito.nome || "o cliente"} e não volta a fase para Prospecção. Liberar é na ficha.`
-              : favorito
-                ? `O parceiro escolheu ${favorito.nome || "um cliente"}. Confirmar o acompanhamento trava a escolha dele — a porta é a ficha do cliente.`
-                : "Sem estrela não há o que confirmar. Os passos 4 a 8 da Etapa 01 seguem travados para este parceiro."
-          }
-          acao={
-            favorito ? (
-              <Link
-                href={`${base}/clientes/${favorito.id}`}
-                className="foco-visivel inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-accent-foreground underline-offset-4 hover:underline"
-              >
-                <Star aria-hidden className="size-3.5" />
-                Abrir a ficha de {favorito.nome || "o cliente"}
-              </Link>
-            ) : (
-              <Link
-                href={`${base}/clientes`}
-                className="foco-visivel inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-accent-foreground underline-offset-4 hover:underline"
-              >
-                Ver os clientes deste parceiro
-              </Link>
-            )
-          }
-        />
-      </ul>
-    </Secao>
     </div>
   );
 }

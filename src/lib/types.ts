@@ -736,6 +736,11 @@ export interface OnboardingDaPessoa {
   pessoaAlunoId: string | null;
   papel: PapelMembro;
   nome: string | null;
+  /** Dados de cadastro (contato) de `public.thb_alunos`. CPF não entra (LGPD). */
+  email: string | null;
+  telefone: string | null;
+  cidade: string | null;
+  estado: string | null;
   status: StatusOnboarding;
   versao: number | null;
   passoAtual: number | null;

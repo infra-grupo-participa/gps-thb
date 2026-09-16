@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { ehAdmin } from "@/lib/auth";
+import { ehEquipeDaEsteira } from "@/lib/auth";
 import { traduzirErroBanco } from "@/lib/erros";
 import type { PerfilDisc } from "@/lib/types";
 import type { Decisor, FilaDeLigacaoLinha } from "@/lib/entrevista-tipos";
@@ -28,13 +28,14 @@ export interface FiltrosFilaDeLigacoes {
  *
  * `total` é o universo do FILTRO (o `count(*) over()` da RPC): quantos
  * clientes selecionados ainda têm entrevista pendente, não o tamanho da
- * página. `ehAdmin()` de guarda (evita viagem ao banco à toa; a fronteira
- * real é `gp_is_admin()` na RPC, 42501).
+ * página. `ehEquipeDaEsteira()` de guarda (evita viagem ao banco à toa; a
+ * fronteira real é `gps.eh_equipe()` na RPC — admin OU operador ativo da
+ * esteira, migração `…264`, 15/09/2026 — não `gp_is_admin()`, 42501).
  */
 export async function getFilaDeLigacoes(
   opts?: FiltrosFilaDeLigacoes,
 ): Promise<{ linhas: FilaDeLigacaoLinha[]; total: number; erro?: string }> {
-  if (!(await ehAdmin())) return { linhas: [], total: 0, erro: "Sem permissão." };
+  if (!(await ehEquipeDaEsteira())) return { linhas: [], total: 0, erro: "Sem permissão." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.schema("gps").rpc("fila_de_ligacoes", {

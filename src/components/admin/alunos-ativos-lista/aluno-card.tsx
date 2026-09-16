@@ -33,7 +33,7 @@
  */
 
 import Link from "next/link";
-import { ClipboardList, KeyRound, LifeBuoy, Star, UserRoundPlus } from "lucide-react";
+import { KeyRound, LifeBuoy, Star, UserRoundPlus } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import type { StatusOnboarding } from "@/lib/types";
 import { ROTULO_TIPO } from "@/components/admin/diario-labels";
@@ -41,6 +41,7 @@ import { FASES_CLIENTE } from "@/lib/etapa1";
 import { ROTULO_CLASSE } from "./estado-na-url";
 import { formatarDataHora, formatarData } from "@/lib/datas";
 import { NotaRapida } from "@/components/admin/nota-rapida";
+import { OnboardingRespostas } from "@/components/admin/onboarding-respostas";
 import { CopiarContato } from "@/components/admin/copiar-contato";
 import { mascaraTelefone } from "@/lib/masks";
 import { Card, CardContent } from "@/components/ui/card";
@@ -491,31 +492,25 @@ export function AlunoCard({
                 [...] pode ser um minibotão, de forma intuitiva e fácil de
                 entender"*).
 
-                A seção com as respostas JÁ EXISTE e é completa
-                (`central/secao-onboarding.tsx`: origem do cliente 1, fase,
-                grau de relação, descrição do caso, ajuda pedida, anexos) —
-                o que faltava era CAMINHO. Ela mora dentro da aba "Resolver",
-                que a equipe abre para consertar acesso, não para ler o que a
-                pessoa respondeu. São 77 questionários concluídos hoje, todos
-                invisíveis a quem não sabia procurar ali.
+                A seção com as respostas JÁ EXISTIA e era completa (origem do
+                cliente 1, fase, grau de relação, descrição do caso, ajuda
+                pedida, anexos) — o que faltava era CAMINHO. Ela morava dentro
+                da aba "Resolver", que a equipe abre para consertar acesso,
+                não para ler o que a pessoa respondeu. Eram 77 questionários
+                concluídos, todos invisíveis a quem não sabia procurar ali.
 
-                Só aparece para quem RESPONDEU: botão que leva a uma seção
-                vazia é pior que botão nenhum. `#onboarding` é a âncora da
-                seção na página da Central. */}
+                🔴 ATUALIZADO EM 16/09/2026 (fatia A-5): o caminho deixou de
+                ser um link para `/resolver#onboarding` e virou o diálogo
+                `OnboardingRespostas` (fatia A-4), aberto sem sair do card —
+                a âncora perdeu o alvo porque `secao-onboarding.tsx` saiu do
+                Resolver (fatia A-6). O link antigo com `#onboarding` continua
+                respondendo 200; só cai no topo da página, sem rolar até nada.
+
+                Só aparece para quem RESPONDEU: botão que abre um diálogo
+                vazio é pior que botão nenhum. Sem `marcarUltimoAluno`: quem
+                abre um diálogo não SAI da lista — a âncora é para quem sai. */}
             {onboardingStatus !== "nao_iniciado" ? (
-              <Link
-                href={`/admin/aluno/${alunoId}/resolver#onboarding`}
-                prefetch={false}
-                onClick={() => marcarUltimoAluno(alunoId)}
-                title="Ver o que este parceiro respondeu no questionário inicial"
-                className={
-                  "foco-visivel inline-flex items-center gap-1 rounded-md border border-borda-forte px-2.5 py-1 text-xs font-medium " +
-                  "text-accent-foreground hover:bg-muted"
-                }
-              >
-                <ClipboardList aria-hidden className="size-3.5" />
-                Respostas
-              </Link>
+              <OnboardingRespostas alunoId={alunoId} nomeDoAluno={nome} />
             ) : null}
             <NotaRapida alunoId={alunoId} nomeDoAluno={nome} />
           </div>

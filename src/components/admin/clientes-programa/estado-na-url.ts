@@ -30,6 +30,12 @@ const MAX_TERMO = 80;
 /** Teto de páginas aceito na URL — página absurda vira a última válida. */
 const MAX_PAGINA = 1000;
 
+/** Chip de reunião preliminar (item 5 do backlog, 17/09/2026) — catálogo
+ * fechado, mesma convenção de `grau: "_nulo"`. `null` = todos (sem filtro). */
+export type FiltroReuniao = "marcada" | "vencida" | "sem" | null;
+
+const REUNIAO_SET = new Set<string>(["marcada", "vencida", "sem"]);
+
 export interface EstadoClientesUrl {
   fase: FaseCliente | null;
   /** `"_nulo"` = sem grau informado (mesma convenção da RPC). */
@@ -37,6 +43,7 @@ export interface EstadoClientesUrl {
   busca: string;
   /** 1-based — o que a URL mostra (`?pag=2`), não o `offset` da RPC. */
   pagina: number;
+  reuniao: FiltroReuniao;
 }
 
 /** Lê `searchParams` já resolvido (`await searchParams`) do App Router. */
@@ -45,6 +52,7 @@ export function lerEstadoClientesUrl(sp: {
   grau?: string;
   q?: string;
   pag?: string;
+  reuniao?: string;
 }): EstadoClientesUrl {
   const fase = FASES_SET.has(sp.fase ?? "") ? (sp.fase as FaseCliente) : null;
   const grau =
@@ -54,7 +62,10 @@ export function lerEstadoClientesUrl(sp: {
   const busca = (sp.q ?? "").slice(0, MAX_TERMO);
   const paginaCrua = Math.trunc(Number(sp.pag)) || 1;
   const pagina = Math.min(Math.max(paginaCrua, 1), MAX_PAGINA);
-  return { fase, grau, busca, pagina };
+  const reuniao = REUNIAO_SET.has(sp.reuniao ?? "")
+    ? (sp.reuniao as FiltroReuniao)
+    : null;
+  return { fase, grau, busca, pagina, reuniao };
 }
 
 /** `pagina` (1-based) → `offset` da RPC. */
@@ -76,6 +87,7 @@ export function hrefClientes(
   if (novo.fase) sp.set("fase", novo.fase);
   if (novo.grau) sp.set("grau", novo.grau);
   if (novo.busca.trim()) sp.set("q", novo.busca.trim());
+  if (novo.reuniao) sp.set("reuniao", novo.reuniao);
   if (novo.pagina > 1) sp.set("pag", String(novo.pagina));
   const q = sp.toString();
   return q ? `/admin/clientes?${q}` : "/admin/clientes";

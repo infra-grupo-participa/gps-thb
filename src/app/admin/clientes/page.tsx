@@ -38,6 +38,7 @@ export default async function AdminClientesPage({
     grau?: string;
     q?: string;
     pag?: string;
+    reuniao?: string;
   }>;
 }) {
   const ctx = await getContextoSessao();
@@ -52,6 +53,7 @@ export default async function AdminClientesPage({
     fase: estado.fase,
     grau: estado.grau,
     busca: estado.busca || null,
+    reuniao: estado.reuniao,
   });
 
   return (

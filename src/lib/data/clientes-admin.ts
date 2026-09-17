@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { traduzirErroBanco } from "@/lib/erros";
 import type { FaseCliente, GrauRelacao } from "@/lib/types";
+import type { FiltroReuniao } from "@/components/admin/clientes-programa/estado-na-url";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Lista consolidada de clientes do programa (item 3 dos 9, 14/09/2026).
@@ -46,6 +47,8 @@ export interface FiltrosClientesDoPrograma {
   grau?: GrauRelacao | "_nulo" | null;
   /** Nome do cliente OU do parceiro. */
   busca?: string | null;
+  /** `null`/ausente = todos. Ver `FiltroReuniao` em `estado-na-url.ts`. */
+  reuniao?: FiltroReuniao;
 }
 
 /**
@@ -69,6 +72,7 @@ export async function getClientesDoPrograma(
     p_fase: opts?.fase ?? null,
     p_grau: opts?.grau ?? null,
     p_busca: opts?.busca ?? null,
+    p_reuniao: opts?.reuniao ?? null,
   });
 
   if (error) {

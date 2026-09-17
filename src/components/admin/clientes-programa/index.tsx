@@ -68,7 +68,15 @@ import {
   ITENS_POR_PAGINA,
   hrefClientes,
   type EstadoClientesUrl,
+  type FiltroReuniao,
 } from "./estado-na-url";
+
+/** Catálogo fechado dos chips de reunião — mesma allowlist da RPC/URL. */
+const CHIPS_REUNIAO: { id: FiltroReuniao; rotulo: string }[] = [
+  { id: "marcada", rotulo: "Marcada" },
+  { id: "vencida", rotulo: "Vencida" },
+  { id: "sem", rotulo: "Sem reunião" },
+];
 
 export function ClientesPrograma({
   linhas,
@@ -125,6 +133,9 @@ export function ClientesPrograma({
               {estado.grau ? (
                 <input type="hidden" name="grau" value={estado.grau} />
               ) : null}
+              {estado.reuniao ? (
+                <input type="hidden" name="reuniao" value={estado.reuniao} />
+              ) : null}
               <Search
                 aria-hidden="true"
                 className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -178,6 +189,22 @@ export function ClientesPrograma({
               ativo={estado.grau === "_nulo"}
               href={hrefClientes({ grau: "_nulo", pagina: 1 }, estado)}
             />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <ChipFiltro
+              rotulo="Todas"
+              ativo={!estado.reuniao}
+              href={hrefClientes({ reuniao: null, pagina: 1 }, estado)}
+            />
+            {CHIPS_REUNIAO.map((r) => (
+              <ChipFiltro
+                key={r.id}
+                rotulo={r.rotulo}
+                ativo={estado.reuniao === r.id}
+                href={hrefClientes({ reuniao: r.id, pagina: 1 }, estado)}
+              />
+            ))}
           </div>
         </CardContent>
       </Card>

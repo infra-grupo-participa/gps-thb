@@ -12,10 +12,10 @@
  */
 
 import Link from "next/link";
-import { Star } from "lucide-react";
+import { Star, TriangleAlert } from "lucide-react";
 import type { ClienteDoPrograma } from "@/lib/data/clientes-admin";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
-import { formatarDataSoDia } from "@/lib/datas";
+import { formatarDataSoDia, hojeSaoPaulo } from "@/lib/datas";
 import { mascaraTelefone } from "@/lib/masks";
 import { CopiarContato } from "@/components/admin/copiar-contato";
 import {
@@ -52,74 +52,101 @@ export function TabelaClientesPrograma({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {linhas.map((c) => {
-            const fase = FASES_CLIENTE.find((f) => f.id === c.fase);
-            const grau = c.grauRelacao
-              ? GRAUS_RELACAO_UI.find((g) => g.id === c.grauRelacao)?.rotulo
-              : null;
-            return (
-              <TableRow key={c.id}>
-                <TableCell className="font-medium">
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    {/* Cliente acompanhado pela equipe: mesmo desenho do
-                        card do parceiro (`aluno-card.tsx`) — estrela
-                        preenchida com o token de marca, nunca `text-primary`
-                        puro sem `fill` (não passaria contraste como sinal
-                        sozinho, e aqui é reforço visual, não a única pista:
-                        o nome continua ao lado). */}
-                    {c.acompanhadoEquipe ? (
-                      <Star
-                        aria-hidden
-                        className="size-3.5 shrink-0 fill-primary text-primary"
-                      />
+          {/* Mesmo corte de "vencida" da RPC (`data < hoje`): comparação de
+              string YYYY-MM-DD, sem `Date` no meio (ver `datas.ts`). Calculado
+              uma vez fora do loop — é o mesmo dia para as 100 linhas. */}
+          {(() => {
+            const hoje = hojeSaoPaulo();
+            return linhas.map((c) => {
+              const fase = FASES_CLIENTE.find((f) => f.id === c.fase);
+              const grau = c.grauRelacao
+                ? GRAUS_RELACAO_UI.find((g) => g.id === c.grauRelacao)?.rotulo
+                : null;
+              const dataReuniao = formatarDataSoDia(c.dataReuniaoPreliminar);
+              const reuniaoVencida = Boolean(
+                c.dataReuniaoPreliminar && c.dataReuniaoPreliminar < hoje,
+              );
+              return (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      {/* Cliente acompanhado pela equipe: mesmo desenho do
+                          card do parceiro (`aluno-card.tsx`) — estrela
+                          preenchida com o token de marca, nunca `text-primary`
+                          puro sem `fill` (não passaria contraste como sinal
+                          sozinho, e aqui é reforço visual, não a única pista:
+                          o nome continua ao lado). */}
+                      {c.acompanhadoEquipe ? (
+                        <Star
+                          aria-hidden
+                          className="size-3.5 shrink-0 fill-primary text-primary"
+                        />
+                      ) : null}
+                      <span className="truncate" title={c.clienteNome}>
+                        {c.clienteNome || "Sem nome"}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/admin/aluno/${c.alunoId}`}
+                      className="hover:text-accent-foreground hover:underline"
+                    >
+                      {c.parceiroNome || "—"}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                        fase?.cor ?? "bg-neutro text-neutro-foreground",
+                      )}
+                    >
+                      {fase?.rotulo ?? c.fase}
+                    </span>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <CopiarContato
+                      valor={c.telefone}
+                      rotuloAcessivel={`Copiar telefone de ${c.clienteNome || "cliente"}`}
+                      formatar={mascaraTelefone}
+                    />
+                    {!c.telefone ? (
+                      <span className="text-muted-foreground">—</span>
                     ) : null}
-                    <span className="truncate" title={c.clienteNome}>
-                      {c.clienteNome || "Sem nome"}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/admin/aluno/${c.alunoId}`}
-                    className="hover:text-accent-foreground hover:underline"
-                  >
-                    {c.parceiroNome || "—"}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                      fase?.cor ?? "bg-neutro text-neutro-foreground",
+                  </TableCell>
+                  <TableCell>
+                    {grau ?? (
+                      <span className="text-xs text-muted-foreground">
+                        Não informado
+                      </span>
                     )}
-                  >
-                    {fase?.rotulo ?? c.fase}
-                  </span>
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  <CopiarContato
-                    valor={c.telefone}
-                    rotuloAcessivel={`Copiar telefone de ${c.clienteNome || "cliente"}`}
-                    formatar={mascaraTelefone}
-                  />
-                  {!c.telefone ? (
-                    <span className="text-muted-foreground">—</span>
-                  ) : null}
-                </TableCell>
-                <TableCell>
-                  {grau ?? (
-                    <span className="text-xs text-muted-foreground">
-                      Não informado
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell>{c.perfilDisc ?? "—"}</TableCell>
-                <TableCell className="whitespace-nowrap">
-                  {formatarDataSoDia(c.dataReuniaoPreliminar) ?? "—"}
-                </TableCell>
-              </TableRow>
-            );
-          })}
+                  </TableCell>
+                  <TableCell>{c.perfilDisc ?? "—"}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {dataReuniao ? (
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1",
+                          reuniaoVencida && "text-destructive",
+                        )}
+                      >
+                        {reuniaoVencida ? (
+                          <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+                        ) : null}
+                        {dataReuniao}
+                        {reuniaoVencida ? (
+                          <span className="text-xs">(vencida)</span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            });
+          })()}
         </TableBody>
       </Table>
     </div>

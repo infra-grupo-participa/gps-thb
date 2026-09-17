@@ -91,6 +91,67 @@ export async function getClientesDoPrograma(
   return { linhas, total };
 }
 
+/**
+ * Os 4 números do painel de KPIs da aba "reunião agendada"
+ * (`gps.admin_clientes_reuniao_kpis`, migração `…282`, 17/09/2026).
+ *
+ * 🔑 São do universo INTEIRO de `gps.etapa1_clientes` (não do filtro de
+ * fase/grau/busca já ativo na tela) — o pedido do Marcio é o resumo fixo
+ * da aba, não um recorte que muda com outro filtro.
+ */
+export interface ReuniaoKpis {
+  totalComReuniao: number;
+  marcadas: number;
+  paraVencer: number;
+  vencidas: number;
+}
+
+const KPIS_ZERADOS: ReuniaoKpis = {
+  totalComReuniao: 0,
+  marcadas: 0,
+  paraVencer: 0,
+  vencidas: 0,
+};
+
+/**
+ * `gps.admin_clientes_reuniao_kpis()` → os 4 KPIs numa chamada só.
+ *
+ * `ehAdmin()` de guarda, mesmo padrão de `getClientesDoPrograma` — a
+ * fronteira real é `gp_is_admin()` na RPC (42501).
+ */
+export async function getClientesReuniaoKpis(): Promise<{
+  kpis: ReuniaoKpis;
+  erro?: string;
+}> {
+  if (!(await ehAdmin())) return { kpis: KPIS_ZERADOS, erro: "Sem permissão." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("admin_clientes_reuniao_kpis");
+
+  if (error) {
+    return {
+      kpis: KPIS_ZERADOS,
+      erro: traduzirErroBanco("getClientesReuniaoKpis", error, {
+        rpc: "gps.admin_clientes_reuniao_kpis",
+      }),
+    };
+  }
+
+  const linha = ((data ?? []) as Record<string, unknown>[])[0];
+  if (!linha) return { kpis: KPIS_ZERADOS };
+
+  return {
+    kpis: {
+      totalComReuniao: Number(linha.total_com_reuniao ?? 0),
+      marcadas: Number(linha.marcadas ?? 0),
+      paraVencer: Number(linha.para_vencer ?? 0),
+      vencidas: Number(linha.vencidas ?? 0),
+    },
+  };
+}
+
 function mapearLinha(d: Record<string, unknown>): ClienteDoPrograma {
   return {
     id: String(d.id),

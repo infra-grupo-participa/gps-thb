@@ -54,8 +54,8 @@
  */
 
 import Link from "next/link";
-import { Search, Users } from "lucide-react";
-import type { ClienteDoPrograma } from "@/lib/data/clientes-admin";
+import { Search, Users, AlertTriangle } from "lucide-react";
+import type { ClienteDoPrograma, ReuniaoKpis } from "@/lib/data/clientes-admin";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -71,9 +71,13 @@ import {
   type FiltroReuniao,
 } from "./estado-na-url";
 
-/** Catálogo fechado dos chips de reunião — mesma allowlist da RPC/URL. */
+/** Catálogo fechado dos chips de reunião — mesma allowlist da RPC/URL.
+ * 🔴 `para_vencer` entrou na migração `…282` (KPIs, 17/09/2026): faltava
+ * aqui embora já estivesse na allowlist de `estado-na-url.ts` desde o item 5
+ * do backlog — o chip nunca tinha sido acrescentado ao catálogo da tela. */
 const CHIPS_REUNIAO: { id: FiltroReuniao; rotulo: string }[] = [
   { id: "marcada", rotulo: "Marcada" },
+  { id: "para_vencer", rotulo: "Para vencer" },
   { id: "vencida", rotulo: "Vencida" },
   { id: "sem", rotulo: "Sem reunião" },
 ];
@@ -83,12 +87,22 @@ export function ClientesPrograma({
   total,
   erro,
   estado,
+  kpis,
+  erroKpis,
 }: {
   linhas: ClienteDoPrograma[];
   /** Universo do FILTRO (o `count(*) over()` da RPC) — nunca o da página. */
   total: number;
   erro: string | null;
   estado: EstadoClientesUrl;
+  /**
+   * Os 4 KPIs da aba "reunião agendada" (`gps.admin_clientes_reuniao_kpis`,
+   * 17/09/2026) — universo INTEIRO, não o do filtro ativo. Opcional só para
+   * não quebrar chamador antigo durante a integração; a tela real de KPIs
+   * (quais 4 números, onde clicam, o que filtram) é montagem à parte.
+   */
+  kpis?: ReuniaoKpis;
+  erroKpis?: string | null;
 }) {
   const inicio = total === 0 ? 0 : (estado.pagina - 1) * ITENS_POR_PAGINA + 1;
   const fim = Math.min(estado.pagina * ITENS_POR_PAGINA, total);
@@ -120,6 +134,8 @@ export function ClientesPrograma({
           </>
         )}
       </p>
+
+      <FaixaKpisReuniao kpis={kpis} erro={erroKpis} estado={estado} />
 
       <Card>
         <CardContent className="grid gap-4">
@@ -227,6 +243,131 @@ export function ClientesPrograma({
         />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * **Faixa de 4 KPIs de reunião** (pedido do Marcio, 17/09/2026): total,
+ * marcadas, para vencer, vencidas — acima da lista, sempre visível.
+ *
+ * 🔑 Mostrada SEMPRE, não só com o filtro de reunião ativo: a RPC
+ * (`gps.admin_clientes_reuniao_kpis`, 2,7 ms medidos em produção) já é
+ * `page.tsx` independente de filtro, então exibir custa zero a mais — e é
+ * o caso de uso mais forte (ver as 39 vencidas sem precisar filtrar antes).
+ *
+ * 🔴 `erroKpis` NUNCA vira "0" nos 4 números — zero é uma afirmação sobre o
+ * mundo ("zero vencidas"), e a busca ter falhado não prova que o conjunto é
+ * vazio. Falha mostra aviso (`role="alert"`, molde de `chamados-config.tsx`)
+ * no lugar dos números, nunca os dois ao mesmo tempo.
+ *
+ * 🔴 `kpis` undefined (chamador antigo, sem prop) não mostra nada — mesma
+ * regra: sem dado, sem número.
+ *
+ * Densa e chapada: hierarquia só por POSIÇÃO (número grande em cima, rótulo
+ * embaixo), sem elevação de card por tile — não é o `KpiTile` do dashboard
+ * (aquele carrega percentual/variação/pares, pesado demais para 4 contadores
+ * lado a lado). Cada tile é `<Link>` de verdade (nunca `useState`) para
+ * recarregar e compartilhar link devolverem a mesma tela; o tile do filtro
+ * ativo se distingue por BORDA + `aria-current`, não só por cor (contraste
+ * não pode ser o único sinal).
+ */
+function FaixaKpisReuniao({
+  kpis,
+  erro,
+  estado,
+}: {
+  kpis?: ReuniaoKpis;
+  erro?: string | null;
+  estado: EstadoClientesUrl;
+}) {
+  if (erro) {
+    return (
+      <p
+        role="alert"
+        className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+      >
+        <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
+        Não foi possível carregar os KPIs de reunião. {erro}
+      </p>
+    );
+  }
+
+  if (!kpis) return null;
+
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {/* Total: NÃO é clicável — não existe modo "com reunião" no catálogo
+          de `FiltroReuniao` (marcada/para_vencer/vencida/sem); inventar um
+          `?reuniao=` fora da allowlist é link que a RPC recusa com 22023
+          (`REUNIAO_SET` em `estado-na-url.ts`) ou que o parse silenciosamente
+          descarta. O total fica como número informativo, sem destino. */}
+      <KpiReuniaoTile rotulo="Total com reunião" valor={kpis.totalComReuniao} />
+      <KpiReuniaoTile
+        rotulo="Marcadas"
+        valor={kpis.marcadas}
+        href={hrefClientes({ reuniao: "marcada", pagina: 1 }, estado)}
+        ativo={estado.reuniao === "marcada"}
+      />
+      <KpiReuniaoTile
+        rotulo="Para vencer"
+        valor={kpis.paraVencer}
+        href={hrefClientes({ reuniao: "para_vencer", pagina: 1 }, estado)}
+        ativo={estado.reuniao === "para_vencer"}
+      />
+      <KpiReuniaoTile
+        rotulo="Vencidas"
+        valor={kpis.vencidas}
+        href={hrefClientes({ reuniao: "vencida", pagina: 1 }, estado)}
+        ativo={estado.reuniao === "vencida"}
+      />
+    </div>
+  );
+}
+
+function KpiReuniaoTile({
+  rotulo,
+  valor,
+  href,
+  ativo = false,
+}: {
+  rotulo: string;
+  valor: number;
+  /** Sem `href` = tile informativo, sem destino (caso do "Total"). */
+  href?: string;
+  ativo?: boolean;
+}) {
+  // Conteúdo comum aos dois modos (link e estático) — número grande em cima,
+  // rótulo embaixo, hierarquia só por posição/tamanho de fonte.
+  const conteudo = (
+    <>
+      <span className="numero-lg leading-none text-foreground">{valor}</span>
+      <span className="rotulo text-muted-foreground">{rotulo}</span>
+    </>
+  );
+
+  if (!href) {
+    return (
+      <div className="flex min-h-11 flex-col justify-center gap-0.5 rounded-lg border border-borda-fina bg-card px-3 py-2">
+        {conteudo}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      aria-current={ativo ? "true" : undefined}
+      aria-label={`Ver clientes com reunião ${rotulo.toLowerCase()}: ${valor}`}
+      className={cn(
+        "foco-visivel flex min-h-11 flex-col justify-center gap-0.5 rounded-lg border px-3 py-2 transition",
+        ativo
+          ? "border-2 border-marca-acao bg-marca-acao/5"
+          : "border-borda-fina bg-card hover:bg-superficie-afundada",
+      )}
+    >
+      {conteudo}
+    </Link>
   );
 }
 

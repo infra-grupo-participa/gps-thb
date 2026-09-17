@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getClientesDoPrograma } from "@/lib/data/clientes-admin";
+import { getClientesDoPrograma, getClientesReuniaoKpis } from "@/lib/data/clientes-admin";
 import { adminNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
@@ -21,6 +21,12 @@ export const metadata = { title: "Admin — Clientes" };
  * Backend já pronto e testado: `gps.admin_clientes_lista` (RPC) via
  * `getClientesDoPrograma` — não mexer nele. Esta página só lê `searchParams`
  * (allowlist fechada, `estado-na-url.ts`) e monta a tela.
+ *
+ * KPIs da aba "reunião agendada" (17/09/2026, migração `…282`): buscados em
+ * PARALELO com a lista (`Promise.all`, nunca em cascata) via
+ * `getClientesReuniaoKpis()` — uma chamada só para os 4 números (total,
+ * marcadas, para vencer, vencidas), sempre do universo inteiro, não do
+ * filtro ativo na tela.
  *
  * 🔴 Rota PRÓPRIA, fora de `/admin` (decisão do Marcio): os 1.223 clientes só
  * custam consulta/payload para quem abre `/admin/clientes`, nunca para quem
@@ -47,14 +53,20 @@ export default async function AdminClientesPage({
 
   const estado = lerEstadoClientesUrl(await searchParams);
 
-  const { linhas, total, erro } = await getClientesDoPrograma({
-    limite: ITENS_POR_PAGINA,
-    offset: offsetDaPagina(estado.pagina),
-    fase: estado.fase,
-    grau: estado.grau,
-    busca: estado.busca || null,
-    reuniao: estado.reuniao,
-  });
+  // Lista (paginada, filtrada) e KPIs (universo inteiro, mesma chamada
+  // única de sempre) são independentes — buscadas em PARALELO, nunca em
+  // cascata (protocolo de sustentabilidade, pergunta "repetição").
+  const [{ linhas, total, erro }, { kpis, erro: erroKpis }] = await Promise.all([
+    getClientesDoPrograma({
+      limite: ITENS_POR_PAGINA,
+      offset: offsetDaPagina(estado.pagina),
+      fase: estado.fase,
+      grau: estado.grau,
+      busca: estado.busca || null,
+      reuniao: estado.reuniao,
+    }),
+    getClientesReuniaoKpis(),
+  ]);
 
   return (
     <>
@@ -76,6 +88,8 @@ export default async function AdminClientesPage({
           total={total}
           erro={erro ?? null}
           estado={estado}
+          kpis={kpis}
+          erroKpis={erroKpis ?? null}
         />
       </main>
     </>

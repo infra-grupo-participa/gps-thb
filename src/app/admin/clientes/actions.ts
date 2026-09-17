@@ -26,6 +26,7 @@ import { montarCsv, nomeDoArquivo } from "@/lib/csv";
 import { COLUNAS_CSV_CLIENTES } from "@/lib/csv-clientes";
 import { getClientesDoPrograma } from "@/lib/data/clientes-admin";
 import type { FaseCliente, GrauRelacao } from "@/lib/types";
+import type { FiltroReuniao } from "@/components/admin/clientes-programa/estado-na-url";
 
 /** O TETO do universo do filtro numa única chamada — serve o CSV inteiro. */
 const LIMITE_EXPORT_CSV = 5000;
@@ -40,11 +41,19 @@ const LIMITE_EXPORT_CSV = 5000;
  * nunca travar o aluno) — aqui a trilha É a guarda, não um detalhe. Por
  * isso o `insert` do log acontece ANTES de devolver o CSV, e o erro dele
  * vira o erro da função inteira.
+ *
+ * 🔴 CORRIGIDO EM 17/09/2026: faltava repassar `reuniao` — escrita antes do
+ * filtro existir (`…274`). Sem isso, exportar com "vencida" ativo devolvia
+ * o universo inteiro (1.636), não as 39 vencidas: o CSV mentia sem erro.
+ * Corrigido nas duas pontas: a consulta (abaixo) e a trilha (RPC `…282`,
+ * `p_reuniao`), senão a auditoria registraria um filtro que não foi o
+ * exportado de fato.
  */
 export async function exportarClientesCsv(filtros?: {
   fase?: FaseCliente | null;
   grau?: GrauRelacao | "_nulo" | null;
   busca?: string | null;
+  reuniao?: FiltroReuniao;
 }): Promise<{ csv?: string; linhas?: number; erro?: string }> {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
 
@@ -54,6 +63,7 @@ export async function exportarClientesCsv(filtros?: {
     fase: filtros?.fase ?? null,
     grau: filtros?.grau ?? null,
     busca: filtros?.busca ?? null,
+    reuniao: filtros?.reuniao ?? null,
   });
 
   if (erro) return { erro };
@@ -66,6 +76,7 @@ export async function exportarClientesCsv(filtros?: {
       p_fase: filtros?.fase ?? null,
       p_grau: filtros?.grau ?? null,
       p_busca: filtros?.busca ?? null,
+      p_reuniao: filtros?.reuniao ?? null,
     });
 
   if (erroLog) {

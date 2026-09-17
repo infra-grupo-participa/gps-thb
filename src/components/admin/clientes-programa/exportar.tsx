@@ -41,6 +41,10 @@ export function ExportarClientesCsv({
         fase: estado.fase,
         grau: estado.grau,
         busca: estado.busca || null,
+        // 🔴 Corrigido em 17/09/2026: faltava repassar o filtro de reunião —
+        // exportar com "vencida" ativo devolvia o universo inteiro (1.636),
+        // não as 39 vencidas. Ver `actions.ts` (`exportarClientesCsv`).
+        reuniao: estado.reuniao,
       });
 
       if (resultado.erro || !resultado.csv) {

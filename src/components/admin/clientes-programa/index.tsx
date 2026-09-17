@@ -58,6 +58,7 @@ import { Search, Users, AlertTriangle } from "lucide-react";
 import type { ClienteDoPrograma, ReuniaoKpis } from "@/lib/data/clientes-admin";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { Card, CardContent } from "@/components/ui/card";
+import { FaixaMetricas } from "@/components/ui/faixa-metricas";
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -252,29 +253,32 @@ export function ClientesPrograma({
 }
 
 /**
- * **Faixa de 4 KPIs de reunião** (pedido do Marcio, 17/09/2026): total,
+ * **Faixa de métricas de reunião preliminar** (Marcio, 17/09/2026): total,
  * marcadas, para vencer, vencidas — acima da lista, sempre visível.
  *
- * 🔑 Mostrada SEMPRE, não só com o filtro de reunião ativo: a RPC
- * (`gps.admin_clientes_reuniao_kpis`, 2,7 ms medidos em produção) já é
- * `page.tsx` independente de filtro, então exibir custa zero a mais — e é
- * o caso de uso mais forte (ver as 39 vencidas sem precisar filtrar antes).
+ * 🔑 Desde 17/09 usa `FaixaMetricas` (`ui/faixa-metricas.tsx`) em vez de
+ * tiles próprios. A mudança não foi estética: o Marcio pediu a denominação
+ * visual **justamente para pôr à prova o dia em que outra família de
+ * métricas entrar nesta tela** (honorários, DISC, fase). Com tiles locais,
+ * a segunda família seria mais uma parede de números iguais; com o
+ * componente, é uma chamada a mais e a diferenciação vem de graça.
  *
- * 🔴 `erroKpis` NUNCA vira "0" nos 4 números — zero é uma afirmação sobre o
- * mundo ("zero vencidas"), e a busca ter falhado não prova que o conjunto é
- * vazio. Falha mostra aviso (`role="alert"`, molde de `chamados-config.tsx`)
- * no lugar dos números, nunca os dois ao mesmo tempo.
+ * **A cor aqui diz URGÊNCIA, não categoria:**
+ *   vencidas    → `risco`   (a reunião já passou e ninguém tratou)
+ *   para vencer → `atencao` (≤ 7 dias: é onde a ação ainda muda o resultado)
+ *   marcadas    → `neutro`  (> 7 dias, está em dia — nada a fazer hoje)
+ *   com reunião → `neutro`  (é âncora de navegação, não estado)
+ * Zero rebaixa qualquer tom a neutro dentro do componente — "0 vencidas"
+ * não pode ser vermelho.
  *
- * 🔴 `kpis` undefined (chamador antigo, sem prop) não mostra nada — mesma
- * regra: sem dado, sem número.
+ * 🔑 Mostrada SEMPRE, não só com o filtro ativo: a RPC
+ * (`gps.admin_clientes_reuniao_kpis`, 2,7 ms medidos) já roda em paralelo na
+ * `page.tsx` independente de filtro, então exibir custa zero a mais — e ver
+ * as 39 vencidas sem precisar filtrar antes é o caso de uso mais forte.
  *
- * Densa e chapada: hierarquia só por POSIÇÃO (número grande em cima, rótulo
- * embaixo), sem elevação de card por tile — não é o `KpiTile` do dashboard
- * (aquele carrega percentual/variação/pares, pesado demais para 4 contadores
- * lado a lado). Cada tile é `<Link>` de verdade (nunca `useState`) para
- * recarregar e compartilhar link devolverem a mesma tela; o tile do filtro
- * ativo se distingue por BORDA + `aria-current`, não só por cor (contraste
- * não pode ser o único sinal).
+ * 🔴 `erroKpis` NUNCA vira "0" nos números — zero é uma afirmação sobre o
+ * mundo, e a busca ter falhado não prova conjunto vazio. Falha mostra aviso
+ * (`role="alert"`), nunca número. `kpis` undefined não mostra nada.
  */
 function FaixaKpisReuniao({
   kpis,
@@ -300,86 +304,45 @@ function FaixaKpisReuniao({
   if (!kpis) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {/* Total CLICÁVEL: abre os 42 inteiros (pedido do Marcio, 17/09/2026 —
-          "ao selecionar os 42, exiba todos da lista"). Usa o modo
-          `com_reuniao`, acrescentado ao catálogo da RPC no mesmo dia.
-          🔑 `com_reuniao` ≠ `null`: `null` é a base INTEIRA (1.650, com os
-          1.608 que não têm reunião nenhuma); `com_reuniao` é só quem tem
-          data marcada, em qualquer prazo — a soma exata dos outros 3 tiles,
-          que é o que o número 42 promete. */}
-      <KpiReuniaoTile
-        rotulo="Total com reunião"
-        valor={kpis.totalComReuniao}
-        href={hrefClientes({ reuniao: "com_reuniao", pagina: 1 }, estado)}
-        ativo={estado.reuniao === "com_reuniao"}
-      />
-      <KpiReuniaoTile
-        rotulo="Marcadas"
-        valor={kpis.marcadas}
-        href={hrefClientes({ reuniao: "marcada", pagina: 1 }, estado)}
-        ativo={estado.reuniao === "marcada"}
-      />
-      <KpiReuniaoTile
-        rotulo="Para vencer"
-        valor={kpis.paraVencer}
-        href={hrefClientes({ reuniao: "para_vencer", pagina: 1 }, estado)}
-        ativo={estado.reuniao === "para_vencer"}
-      />
-      <KpiReuniaoTile
-        rotulo="Vencidas"
-        valor={kpis.vencidas}
-        href={hrefClientes({ reuniao: "vencida", pagina: 1 }, estado)}
-        ativo={estado.reuniao === "vencida"}
-      />
-    </div>
-  );
-}
-
-function KpiReuniaoTile({
-  rotulo,
-  valor,
-  href,
-  ativo = false,
-}: {
-  rotulo: string;
-  valor: number;
-  /** Sem `href` = tile informativo, sem destino (caso do "Total"). */
-  href?: string;
-  ativo?: boolean;
-}) {
-  // Conteúdo comum aos dois modos (link e estático) — número grande em cima,
-  // rótulo embaixo, hierarquia só por posição/tamanho de fonte.
-  const conteudo = (
-    <>
-      <span className="numero-lg leading-none text-foreground">{valor}</span>
-      <span className="rotulo text-muted-foreground">{rotulo}</span>
-    </>
-  );
-
-  if (!href) {
-    return (
-      <div className="flex min-h-11 flex-col justify-center gap-0.5 rounded-lg border border-borda-fina bg-card px-3 py-2">
-        {conteudo}
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={href}
-      prefetch={false}
-      aria-current={ativo ? "true" : undefined}
-      aria-label={`Ver clientes com reunião ${rotulo.toLowerCase()}: ${valor}`}
-      className={cn(
-        "foco-visivel flex min-h-11 flex-col justify-center gap-0.5 rounded-lg border px-3 py-2 transition",
-        ativo
-          ? "border-2 border-marca-acao bg-marca-acao/5"
-          : "border-borda-fina bg-card hover:bg-superficie-afundada",
-      )}
-    >
-      {conteudo}
-    </Link>
+    <FaixaMetricas
+      titulo="Reunião preliminar"
+      // Sem `resumo`: o primeiro tile JÁ é o total (42, "Com reunião"), e
+      // repetir o mesmo número na mesma linha é ruído, não reforço.
+      ativo={estado.reuniao}
+      metricas={[
+        {
+          id: "com_reuniao",
+          rotulo: "Com reunião",
+          valor: kpis.totalComReuniao,
+          // Âncora de navegação, não estado: neutro de propósito.
+          href: hrefClientes({ reuniao: "com_reuniao", pagina: 1 }, estado),
+          detalhe: "qualquer prazo",
+        },
+        {
+          id: "marcada",
+          rotulo: "Marcadas",
+          valor: kpis.marcadas,
+          href: hrefClientes({ reuniao: "marcada", pagina: 1 }, estado),
+          detalhe: "em mais de 7 dias",
+        },
+        {
+          id: "para_vencer",
+          rotulo: "Para vencer",
+          valor: kpis.paraVencer,
+          tom: "atencao",
+          href: hrefClientes({ reuniao: "para_vencer", pagina: 1 }, estado),
+          detalhe: "nos próximos 7 dias",
+        },
+        {
+          id: "vencida",
+          rotulo: "Vencidas",
+          valor: kpis.vencidas,
+          tom: "risco",
+          href: hrefClientes({ reuniao: "vencida", pagina: 1 }, estado),
+          detalhe: "data já passou",
+        },
+      ]}
+    />
   );
 }
 

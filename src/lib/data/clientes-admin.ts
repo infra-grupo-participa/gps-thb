@@ -140,7 +140,17 @@ export async function getClientesReuniaoKpis(): Promise<{
   }
 
   const linha = ((data ?? []) as Record<string, unknown>[])[0];
-  if (!linha) return { kpis: KPIS_ZERADOS };
+  // 🔴 Sem linha NÃO é "tudo zero": a RPC devolve SEMPRE exatamente 1 linha
+  // (4 agregados sobre a tabela inteira; `count(*)` de tabela vazia é 0, não
+  // zero linhas). Vir vazio significa que algo entre o banco e aqui falhou —
+  // e "0 vencidas" é uma afirmação sobre o mundo que não se pode fazer sem
+  // dado. Devolver `erro` faz a faixa mostrar o aviso em vez dos números.
+  if (!linha) {
+    return {
+      kpis: KPIS_ZERADOS,
+      erro: "Não foi possível apurar os números de reunião agora.",
+    };
+  }
 
   return {
     kpis: {

@@ -36,6 +36,17 @@ export const MINUTA_EXTENSAO = "pdf" as const;
 export const MINUTA_TAMANHO_MAXIMO = 5 * 1024 * 1024;
 export const BUCKET_MINUTAS = "gps-minutas";
 
+/**
+ * Contexto obrigatório da minuta (decisão do Marcio, 17/09/2026 — migração
+ * `20260917000273`). Mesmo teto de `notas`: 2000 caracteres por campo. A
+ * OBRIGATORIEDADE em si (1ª minuta exige `caso`/`oQueFoiFeito`/`pontoDeAjuda`;
+ * da 2ª em diante exige `oQueMudou`) é decidida pela RPC
+ * `gps.cliente_minuta_anexar` — este arquivo só valida TAMANHO local, nunca
+ * replica a obrigatoriedade (a fronteira é o banco; duas verdades divergem
+ * no dia em que o interruptor `minuta_contexto_obrigatorio` mudar).
+ */
+export const MINUTA_CONTEXTO_MAXIMO = 2000;
+
 /** `<ambiente_aluno_id>/<uuid>.pdf` — o MESMO formato que o CHECK e a policy
  * exigem. Só uma extensão possível (PDF), ao contrário do padrão de 4 MIMEs
  * do chamado/onboarding/contrato. */
@@ -86,6 +97,14 @@ export interface ClienteMinuta {
   enviado_por: string | null;
   /** `true` quando quem enviou foi a equipe (modo assistência), não o aluno. */
   enviado_pela_equipe: boolean;
+  /** Só preenchido na 1ª minuta do cliente (contexto obrigatório, 17/09/2026). */
+  caso: string | null;
+  /** Só preenchido na 1ª minuta do cliente (contexto obrigatório, 17/09/2026). */
+  o_que_foi_feito: string | null;
+  /** Só preenchido na 1ª minuta do cliente (contexto obrigatório, 17/09/2026). */
+  ponto_de_ajuda: string | null;
+  /** Só preenchido a partir da 2ª minuta do cliente (contexto obrigatório, 17/09/2026). */
+  o_que_mudou: string | null;
 }
 
 /** "3,7 MB" — mesmo formato de `tamanhoLegivel` de `chamados-tipos.ts`,

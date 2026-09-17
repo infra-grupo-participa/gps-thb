@@ -6,6 +6,7 @@ import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
+import { getMinutaContextoObrigatorio } from "@/lib/data/minutas";
 import { getMinutasDoCliente } from "@/lib/data/minutas";
 
 export default async function ClienteFichaPage({
@@ -29,12 +30,15 @@ export default async function ClienteFichaPage({
   // ⚠️ A guarda de propriedade continua ANTES de qualquer render: o
   // `notFound()` roda com as duas respostas em mãos, no mesmo ponto lógico
   // de antes.
-  const [cliente, aluno, minutas] = await Promise.all([
+  const [cliente, aluno, minutas, tutoriaisAtivo] = await Promise.all([
     getClienteById(clienteId),
     getAlunoById(alunoId),
     // 🔑 No MESMO Promise.all: a lista de minutas não depende do cliente nem
     // do aluno, então pedir em cascata custaria uma viagem a mais por ficha.
     getMinutasDoCliente(clienteId),
+    // 🔑 Estava SOLTO fora do Promise.all (uma ida ao banco a mais por
+    // abertura de ficha) — junto aqui, mesma independência das outras três.
+    getTutoriaisAtivo(),
   ]);
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
@@ -55,7 +59,12 @@ export default async function ClienteFichaPage({
   const outroConfirmadoNome = outroFavorito?.acompanhamento_confirmado_em
     ? (outroFavorito.nome ?? null)
     : null;
-  const tutoriaisAtivo = await getTutoriaisAtivo();
+
+  // O interruptor `gps.config.minuta_contexto_obrigatorio` (17/09/2026).
+  // Vai por RPC (`getMinutaContextoObrigatorio`) porque `gps.config` só tem
+  // policy de admin — o parceiro leria 0 linhas e cairia no fallback para
+  // sempre. Memoizada por requisição, então não custa uma ida a mais.
+  const contextoObrigatorio = await getMinutaContextoObrigatorio();
 
   return (
     <>
@@ -82,6 +91,7 @@ export default async function ClienteFichaPage({
         <ClienteFicha
           cliente={cliente}
           minutas={minutas}
+          contextoObrigatorio={contextoObrigatorio}
           alunoId={alunoId}
           outroConfirmadoNome={outroConfirmadoNome}
           outroFavoritoNome={outroFavoritoNome}

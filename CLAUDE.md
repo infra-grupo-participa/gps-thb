@@ -1977,6 +1977,90 @@ O que foi **removido** (código):
   **Não confundir com o bucket `documentos`** (público, do `sip`) nem com as policies
   `documentos_public_*` — esses são de outro sistema e devem ficar intactos.
 
+### 📄 Minutas da ficha do cliente (2026-09-15) e contexto obrigatório (2026-09-17)
+
+**O que é** (decisão do Marcio, 15/09/2026, migração `...259`): anexo de
+**minuta em PDF** na ficha do cliente (Etapa 05), em **N versões com
+histórico visível** — cada envio é uma versão nova, as anteriores **ficam**
+(diferente do contrato da ficha, `...214`, que é tudo-ou-nada e substitui).
+Só `application/pdf` (o parceiro exporta o Word antes de anexar); bucket
+próprio `gps-minutas` (privado, 5 MB), nunca `gps-onboarding`/`gps-documentos`.
+Quem anexa: **dono do ambiente (titular/sócio) OU admin** — mesma regra do
+contrato. Backend: `gps.cliente_minutas`, `gps.cliente_minuta_anexar`/
+`_remover` (SECURITY DEFINER), `gps.pode_ver_minuta`/`pode_anexar_minuta`
+(guardas de `storage.objects`). Frontend: `minutas-anexo.tsx`
+(`src/components/clientes/`), lido em `src/lib/data/minutas.ts`
+(`getMinutasDoCliente`), escrito em `src/app/clientes/minuta-actions.ts`.
+
+**Contexto obrigatório (2026-09-17, migração `...273`).** Origem: pedido da
+equipe ao João sobre o cliente Alfredo Mattos — *"Confirmar com o João se o
+campo para registro do caso que iremos acompanhar para o devido anexo das
+minutas para análise (enquanto o gerador não está pronto) foi colocado no
+sistema. Ele precisa enviar uma minuta por vez. Descreva o caso, o que foi
+feito e qual o primeiro ponto que ele precisa de ajuda."*
+
+Decisões do Marcio (fechadas):
+1. **1ª minuta do cliente**: 3 campos obrigatórios — `caso`, `o_que_foi_feito`,
+   `ponto_de_ajuda`.
+2. **2ª em diante**: obrigatório `o_que_mudou`.
+3. **Nada trava envio em sequência** — "uma por vez" é orientação de TELA,
+   não bloqueio de banco.
+4. 🔑 **A equipe também anexa, com o MESMO formulário.** Sem exceção de
+   regra: admin preenche igual ao parceiro — `gps.cliente_minuta_anexar` não
+   distingue quem chama para efeito de obrigatoriedade (só para gravar
+   `enviado_pela_equipe`, que já existia desde 15/09).
+5. Teto de **2000 caracteres** por campo — mesmo teto de `notas`.
+6. **Um caso por cliente** — `cliente_id` é o escopo de "é a primeira?".
+
+**Como a trava funciona** (dentro de `gps.cliente_minuta_anexar`, depois da
+autorização e antes do INSERT): `select 1 from gps.etapa1_clientes where id =
+p_cliente_id for update` serializa por cliente (envio simultâneo do mesmo
+cliente não pode fazer os dois se acharem "a primeira"); lê
+`gps.config.minuta_contexto_obrigatorio` (default `true` se ausente);
+`count(*) from gps.cliente_minutas where cliente_id = ...` decide se é a 1ª;
+anula o lado errado dos 4 campos antes de gravar (a 1ª minuta grava
+`o_que_mudou = null`; as demais gravam os 3 campos da 1ª como `null`) — é o
+que fecha a porta do PostgREST: sem essa anulação, mandar os 4 campos na 2ª
+minuta cairia no CHECK de forma com erro genérico de banco em vez da
+mensagem em português certa.
+
+**CHECK `chk_cliente_minutas_contexto`, 3 ramos, sem subquery** (`0A000`):
+ramo 1 = 1ª minuta (3 campos preenchidos, `o_que_mudou` nulo); ramo 2 =
+demais (`o_que_mudou` preenchido, os 3 da 1ª nulos); ramo 3 = os 4 nulos —
+existe **só** para o interruptor desligado (minuta sem contexto, como era
+antes de 17/09). Não remover o ramo 3 achando que é descuido: sem ele,
+desligar `minuta_contexto_obrigatorio` quebra todo INSERT de minuta.
+
+**Interruptor** `minuta_contexto_obrigatorio` em `gps.config` (default
+`true`) — na allowlist de `gps.config_definir` (12ª chave) e em
+`INTERRUPTORES_CONFIG` (`src/lib/config-tipos.ts`). Desligar faz a equipe e
+o parceiro voltarem a anexar minuta sem descrever nada (ramo 3 do CHECK).
+
+**Assinatura da RPC mudou de 5 para 9 argumentos**
+(`gps.cliente_minuta_anexar(uuid, text, text, integer, text, text, text,
+text, text)`) — a versão de 5 argumentos foi **dropada** antes do `create`
+novo (assinatura diferente cria sobrecarga, não substitui; a action antiga
+continuaria chamando a de 5 args e a obrigatoriedade seria contornável pelo
+PostgREST). `gps.cliente_minuta_remover(uuid)` não mudou.
+
+**Grants corrigidos junto** (mesmo achado do pentester em
+`gps.entrevista_tentativas`): `grant select` em `gps.cliente_minutas`
+(migração `...259`) não revogava o default de INSERT/UPDATE/DELETE do
+schema para `authenticated`. Não havia policy de escrita direta na tabela
+(só `cliente_minutas_select`), mas o GRANT deixava a porta pronta para abrir
+assim que uma policy de escrita aparecesse. Revogado: escrita legítima é só
+pela RPC SECURITY DEFINER.
+
+**Contrato da action** (`registrarMinutaCliente`, `src/app/clientes/minuta-actions.ts`):
+```ts
+registrarMinutaCliente({ clienteId, path, nome, tamanho,
+  notas?, caso?, oQueFoiFeito?, pontoDeAjuda?, oQueMudou? }): Promise<{ erro?: string }>
+```
+A action valida só **tamanho** local (2000 caracteres, `MINUTA_CONTEXTO_MAXIMO`
+em `src/lib/minutas-tipos.ts`) — a **obrigatoriedade** não é replicada no
+TypeScript: a fronteira é a RPC, para as duas verdades não divergirem no dia
+em que o interruptor mudar.
+
 ## Rotas
 
 - `/login` — login e-mail/senha (Supabase Auth). `/auth/signout` (POST).

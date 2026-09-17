@@ -39,6 +39,7 @@ import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import {
   BUCKET_MINUTAS,
+  MINUTA_CONTEXTO_MAXIMO,
   MINUTA_EXTENSAO,
   MINUTA_NOTA_MAXIMO,
   MINUTA_PATH_REGEX,
@@ -161,6 +162,14 @@ export async function criarUploadAssinadoMinutaCliente(input: {
  * Ao contrário do contrato, NÃO substitui: cada chamada bem-sucedida cria
  * uma linha nova em `gps.cliente_minutas`, e as anteriores ficam — é o
  * histórico de versões que o Marcio pediu.
+ *
+ * Contexto obrigatório (17/09/2026, migração `...273`): `caso`/`oQueFoiFeito`/
+ * `pontoDeAjuda` (1ª minuta) e `oQueMudou` (2ª em diante) são repassados à
+ * RPC exatamente como vieram — só TAMANHO é validado aqui (mensagem em
+ * português mais rápida que ida ao banco). A OBRIGATORIEDADE em si não é
+ * replicada: a fronteira é `gps.cliente_minuta_anexar`, que sabe se é a 1ª
+ * minuta do cliente e se o interruptor está ligado. Duplicar a regra aqui
+ * divergiria no dia em que `minuta_contexto_obrigatorio` mudasse.
  */
 export async function registrarMinutaCliente(input: {
   clienteId: string;
@@ -168,6 +177,10 @@ export async function registrarMinutaCliente(input: {
   nome: string;
   tamanho: number;
   notas?: string | null;
+  caso?: string | null;
+  oQueFoiFeito?: string | null;
+  pontoDeAjuda?: string | null;
+  oQueMudou?: string | null;
 }): Promise<{ erro?: string }> {
   if (!MINUTA_PATH_REGEX.test(input.path ?? "")) {
     return { erro: "Não foi possível anexar o arquivo. Tente enviar de novo." };
@@ -187,6 +200,23 @@ export async function registrarMinutaCliente(input: {
     return { erro: "As notas da minuta estão muito longas." };
   }
 
+  const caso = (input.caso ?? "").trim();
+  if (caso.length > MINUTA_CONTEXTO_MAXIMO) {
+    return { erro: "Descreva o caso para enviar a primeira minuta." };
+  }
+  const oQueFoiFeito = (input.oQueFoiFeito ?? "").trim();
+  if (oQueFoiFeito.length > MINUTA_CONTEXTO_MAXIMO) {
+    return { erro: "Informe o que já foi feito no caso." };
+  }
+  const pontoDeAjuda = (input.pontoDeAjuda ?? "").trim();
+  if (pontoDeAjuda.length > MINUTA_CONTEXTO_MAXIMO) {
+    return { erro: "Informe o primeiro ponto em que você precisa de ajuda." };
+  }
+  const oQueMudou = (input.oQueMudou ?? "").trim();
+  if (oQueMudou.length > MINUTA_CONTEXTO_MAXIMO) {
+    return { erro: "Informe o que foi alterado em relação à minuta anterior." };
+  }
+
   const ficha = await ambienteDoCliente(input.clienteId);
   if (!ficha.ok) return { erro: ficha.erro };
 
@@ -197,6 +227,10 @@ export async function registrarMinutaCliente(input: {
     p_nome: nome,
     p_tamanho: input.tamanho,
     p_notas: notas === "" ? null : notas,
+    p_caso: caso === "" ? null : caso,
+    p_o_que_foi_feito: oQueFoiFeito === "" ? null : oQueFoiFeito,
+    p_ponto_de_ajuda: pontoDeAjuda === "" ? null : pontoDeAjuda,
+    p_o_que_mudou: oQueMudou === "" ? null : oQueMudou,
   });
 
   if (error) {

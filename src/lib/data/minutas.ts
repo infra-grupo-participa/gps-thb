@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { logErro } from "@/lib/log";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
@@ -14,7 +15,7 @@ import type { ClienteMinuta } from "@/lib/minutas-tipos";
 // ─────────────────────────────────────────────────────────────────────────
 
 const COLUNAS_MINUTA =
-  "id, cliente_id, path, nome, tamanho, notas, enviado_em, enviado_por, enviado_pela_equipe";
+  "id, cliente_id, path, nome, tamanho, notas, enviado_em, enviado_por, enviado_pela_equipe, caso, o_que_foi_feito, ponto_de_ajuda, o_que_mudou";
 
 /**
  * Lista as minutas de UM cliente, mais recente primeiro. A RLS de
@@ -45,3 +46,34 @@ export async function getMinutasDoCliente(
   }
   return (data ?? []) as ClienteMinuta[];
 }
+
+/**
+ * O interruptor `gps.config.minuta_contexto_obrigatorio` (default LIGADO).
+ *
+ * 🔑 Vai por RPC, não por `select` em `gps.config`: aquela tabela só tem
+ * policy de ADMIN — o parceiro leria 0 linhas e cairia no fallback para
+ * sempre, com o interruptor ligado ou desligado. Mesmo molde de
+ * `getTutoriaisAtivo` (`src/lib/data/tutoriais.ts`).
+ *
+ * Memoizada por requisição (`cache()` do React): as duas telas da ficha
+ * chamam na mesma renderização.
+ *
+ * ⚠️ Erro → devolve `true` (o padrão SEGURO é EXIGIR o contexto). Falha de
+ * leitura não pode afrouxar a regra que o João pediu; no máximo faz a tela
+ * marcar campo obrigatório que a RPC também exigiria de qualquer forma.
+ */
+export const getMinutaContextoObrigatorio = cache(
+  async function getMinutaContextoObrigatorio(): Promise<boolean> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .schema("gps")
+      .rpc("minuta_contexto_obrigatorio");
+    if (error) {
+      logErro("getMinutaContextoObrigatorio", error, {
+        efeito: "assume LIGADO — o padrão seguro é exigir o contexto",
+      });
+      return true;
+    }
+    return data !== false;
+  },
+);

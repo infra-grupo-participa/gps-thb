@@ -438,6 +438,18 @@ const FRASES_DO_BANCO: Record<string, string> = {
   "Minuta não encontrada.": "Minuta não encontrada.",
   "Notas da minuta muito longas.": "As notas da minuta estão muito longas.",
 
+  // Contexto obrigatório da minuta (decisão do Marcio, 17/09/2026, migração
+  // ...273) — 4 frases, cada uma cobrindo um campo diferente. `traduzirErroBanco`
+  // casa por igualdade EXATA: as 4 precisam coexistir, mesmo parecidas.
+  "Descreva o caso para enviar a primeira minuta.":
+    "Descreva o caso para enviar a primeira minuta.",
+  "Informe o que já foi feito no caso.":
+    "Informe o que já foi feito no caso.",
+  "Informe o primeiro ponto em que você precisa de ajuda.":
+    "Informe o primeiro ponto em que você precisa de ajuda.",
+  "Informe o que foi alterado em relação à minuta anterior.":
+    "Informe o que foi alterado em relação à minuta anterior.",
+
   // ══════════════════════════════════════════════════════════════════════
   // PLANTÃO DE DÚVIDAS (migrações ...180 a ...183)
   // ══════════════════════════════════════════════════════════════════════

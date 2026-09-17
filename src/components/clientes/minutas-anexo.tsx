@@ -5,20 +5,32 @@
  * (Word exportado em PDF pelo aluno), anexadas na ficha, perto do "Contrato
  * assinado".
  *
- * Molde literal de `contrato-anexo.tsx` (auditado 3×), com duas diferenças de
+ * Molde literal de `contrato-anexo.tsx` (auditado 3×), com diferenças de
  * forma: (1) contrato é **1 arquivo que se substitui**, minuta é **N arquivos
  * que se acumulam** — cada envio é uma versão nova; as anteriores continuam
- * na lista, com data; (2) minuta aceita uma **nota livre** por versão
- * (`notas`), porque o backend deu um campo dedicado a isso.
+ * na lista, com data; (2) minuta pede **contexto por versão** — 3 campos na
+ * 1ª (caso, o que foi feito, ponto de ajuda) e 1 campo nas seguintes (o que
+ * foi alterado) — pedido da equipe (17/09), para quem lê a minuta sem ter
+ * acompanhado a conversa entender o que está vendo.
  *
  * **Só PDF.** O aluno já exportou o Word antes de chegar aqui — não é este
  * componente que converte nem compara documentos.
  *
- * 🔑 **A "instrução do vermelho"** (palavras do Marcio, 15/09): o texto de
- * apoio abaixo do título orienta a deixar em vermelho o que foi alterado da
- * minuta e a escrever notas sobre ela. É ORIENTAÇÃO — o sistema não valida,
- * não compara páginas, não destaca nada sozinho. Por isso a frase fica ANTES
- * do botão de anexar, no corpo da tela, não num tooltip que ninguém abre.
+ * 🔑 **Quem preenche o contexto:** tanto o aluno quanto a EQUIPE anexam pelo
+ * MESMO formulário (decisão do Marcio, 17/09) — não há um formulário
+ * "reduzido" para o admin. `podeAnexar` decide só SE a pessoa pode anexar,
+ * nunca QUAL formulário ela vê.
+ *
+ * 🔑 **"Uma minuta por vez" é ORIENTAÇÃO, não trava.** O texto de apoio
+ * abaixo do título orienta a anexar, descrever, e só então partir para a
+ * próxima — mas nada no sistema impede o próximo envio. Por isso a segunda
+ * frase deixa isso explícito: dizer só "uma por vez" faria a tela parecer
+ * mais restritiva do que é.
+ *
+ * 🔴 **Ramo pela CONTAGEM da lista, nunca por estado local.** `primeira =
+ * minutas.length === 0` — a lista vem do servidor e `aoMudar()` já dispara
+ * `router.refresh()`. Guardar "já enviei uma" em `useState` seria uma
+ * segunda verdade, que trava se o `refresh()` atrasar.
  *
  * Fluxo de 3 passos (igual ao contrato):
  *   1. `criarUploadAssinadoMinutaCliente` — o SERVIDOR monta o caminho e emite
@@ -40,7 +52,6 @@ import { Download, FileText, Paperclip, Trash2 } from "lucide-react";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import {
   MINUTA_TAMANHO_MAXIMO,
-  MINUTA_NOTA_MAXIMO,
   ehMinutaMime,
   minutaTamanhoLegivel,
 } from "@/lib/minutas-tipos";
@@ -55,6 +66,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
+
+/** Teto por campo de contexto — decisão do Marcio (17/09). Independente de
+ * `MINUTA_NOTA_MAXIMO` (o campo `notas` legado, que saiu do formulário mas
+ * continua sendo lido na leitura — ver o `<li>` da lista abaixo). */
+const CONTEXTO_MAXIMO = 2000;
+
+/** Um campo de contexto controlado por este formulário. */
+type CampoContexto = "caso" | "oQueFoiFeito" | "pontoDeAjuda" | "oQueMudou";
 
 const ACCEPT = ".pdf,application/pdf";
 
@@ -84,15 +103,21 @@ export function MinutasAnexo({
   clienteId,
   minutas,
   podeAnexar,
+  contextoObrigatorio,
   desabilitado = false,
   aoMudar,
 }: {
   clienteId: string;
   /** Histórico completo, mais recente primeiro. `[]` = nenhuma minuta ainda. */
   minutas: ClienteMinuta[];
-  /** Quem pode enviar uma versão nova — aluno ou equipe, a depender da tela
-   * que monta o componente (`enviado_pela_equipe` registra quem foi). */
+  /** Quem pode enviar uma versão nova — aluno OU equipe. Desde 17/09 os dois
+   * preenchem o MESMO formulário; esta prop só decide se a pessoa anexa,
+   * nunca qual formulário aparece. */
   podeAnexar: boolean;
+  /** Interruptor `minuta_contexto_obrigatorio`, lido no servidor. Desligado:
+   * os campos continuam visíveis e rotulados, só sem "(obrigatório)" e sem
+   * travar o botão — é emergência, não mudança de produto. */
+  contextoObrigatorio: boolean;
   desabilitado?: boolean;
   /** Chamado depois de gravar/remover — a ficha recarrega do servidor. */
   aoMudar: () => void;
@@ -100,10 +125,20 @@ export function MinutasAnexo({
   const uid = useId();
   const idCampo = `${uid}-minuta`;
   const idAjuda = `${uid}-minuta-ajuda`;
-  const idNota = `${uid}-minuta-nota`;
+  const idCaso = `${uid}-minuta-caso`;
+  const idOQueFoiFeito = `${uid}-minuta-o-que-foi-feito`;
+  const idPontoDeAjuda = `${uid}-minuta-ponto-de-ajuda`;
+  const idOQueMudou = `${uid}-minuta-o-que-mudou`;
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [nota, setNota] = useState("");
+  // 🔴 Ramo pela CONTAGEM da lista vinda do servidor, nunca por estado local
+  // (ver o comentário de topo do arquivo).
+  const primeira = minutas.length === 0;
+
+  const [caso, setCaso] = useState("");
+  const [oQueFoiFeito, setOQueFoiFeito] = useState("");
+  const [pontoDeAjuda, setPontoDeAjuda] = useState("");
+  const [oQueMudou, setOQueMudou] = useState("");
   const [enviando, setEnviando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [removendoId, setRemovendoId] = useState<string | null>(null);
@@ -112,16 +147,36 @@ export function MinutasAnexo({
 
   const ocupado = desabilitado || enviando !== null;
   const removendoMinuta = minutas.find((m) => m.id === removendoId) ?? null;
-  const notaLimpa = nota.trim();
-  const notaExcedida = notaLimpa.length > MINUTA_NOTA_MAXIMO;
+
+  const valores: Record<CampoContexto, string> = {
+    caso,
+    oQueFoiFeito,
+    pontoDeAjuda,
+    oQueMudou,
+  };
+  const excedido = (campo: CampoContexto) =>
+    valores[campo].trim().length > CONTEXTO_MAXIMO;
+
+  // Os campos exigidos por versão: os 3 da 1ª minuta, ou só o delta a partir
+  // da 2ª (decisões 1 e 2 do Marcio).
+  const camposObrigatorios: CampoContexto[] = primeira
+    ? ["caso", "oQueFoiFeito", "pontoDeAjuda"]
+    : ["oQueMudou"];
+
+  const faltaObrigatorio =
+    contextoObrigatorio &&
+    camposObrigatorios.some((campo) => valores[campo].trim().length === 0);
+  const algumExcedido = (Object.keys(valores) as CampoContexto[]).some(excedido);
+  const botaoDesabilitado = ocupado || faltaObrigatorio || algumExcedido;
 
   async function aoEscolher(arquivo: File | undefined) {
     if (!arquivo) return;
     setErro(null);
     if (inputRef.current) inputRef.current.value = "";
 
-    // As duas perguntas que não precisam de rede. Não são a fronteira: o
-    // bucket tem teto e allowlist, e a RPC confere o metadata do objeto.
+    // As perguntas que não precisam de rede. Não são a fronteira: o bucket
+    // tem teto e allowlist, e a RPC confere o metadata do objeto e o
+    // contexto obrigatório de novo (Server Action é endpoint HTTP).
     if (!ehMinutaMime(arquivo.type)) {
       setErro("Formato não aceito. Envie um PDF.");
       return;
@@ -130,8 +185,12 @@ export function MinutasAnexo({
       setErro(`Arquivo maior que ${minutaTamanhoLegivel(MINUTA_TAMANHO_MAXIMO)}.`);
       return;
     }
-    if (notaExcedida) {
-      setErro(`A nota pode ter até ${MINUTA_NOTA_MAXIMO} caracteres.`);
+    if (algumExcedido) {
+      setErro(`Cada campo pode ter até ${CONTEXTO_MAXIMO} caracteres.`);
+      return;
+    }
+    if (faltaObrigatorio) {
+      setErro("Preencha os campos acima para anexar.");
       return;
     }
 
@@ -173,14 +232,20 @@ export function MinutasAnexo({
       path: permissao.path,
       nome: permissao.nome,
       tamanho: arquivo.size,
-      notas: notaLimpa || null,
+      caso: primeira ? caso.trim() || null : null,
+      oQueFoiFeito: primeira ? oQueFoiFeito.trim() || null : null,
+      pontoDeAjuda: primeira ? pontoDeAjuda.trim() || null : null,
+      oQueMudou: primeira ? null : oQueMudou.trim() || null,
     });
     setEnviando(null);
     if (registro.erro) {
       setErro(registro.erro);
       return;
     }
-    setNota("");
+    setCaso("");
+    setOQueFoiFeito("");
+    setPontoDeAjuda("");
+    setOQueMudou("");
     aoMudar();
   }
 
@@ -222,13 +287,16 @@ export function MinutasAnexo({
 
   return (
     <div className="grid gap-2">
-      {/* A instrução do vermelho — ORIENTAÇÃO, o sistema não valida nem
-          compara nada. Fica no corpo da tela, ANTES do botão de anexar. */}
+      {/* A instrução do vermelho + a orientação "uma por vez" — ORIENTAÇÃO,
+          o sistema não valida nem compara nada e nada bloqueia o próximo
+          envio. Ficam no corpo da tela, ANTES do botão de anexar. */}
       <p className="corpo-sm text-muted-foreground">
         Ao enviar uma nova versão, deixe em <strong>vermelho</strong> o que foi
-        alterado em relação à minuta anterior, e inclua notas sobre a minuta
-        quando fizer sentido. O sistema não compara nem destaca nada sozinho —
-        é você quem sinaliza a mudança no próprio documento.
+        alterado em relação à minuta anterior. O sistema não compara nem
+        destaca nada sozinho — é você quem sinaliza a mudança no próprio
+        documento. Envie <strong>uma minuta por vez</strong>: anexe, descreva,
+        e só então parta para a próxima. Se anexar o arquivo errado, remova e
+        envie de novo — nada aqui trava o próximo envio.
       </p>
 
       {/* O botão nativo do `<input type="file">` escreve "Choose File" no
@@ -248,98 +316,125 @@ export function MinutasAnexo({
         />
       ) : null}
 
-      {minutas.length > 0 ? (
-        <ul className="grid gap-1.5">
-          {minutas.map((minuta) => (
-            <li
-              key={minuta.id}
-              className="grid gap-1 rounded-lg bg-superficie-afundada px-2.5 py-2"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <FileText
-                  aria-hidden
-                  className="size-4 shrink-0 text-muted-foreground"
+      {/* Campos de contexto — ACIMA do botão de anexar de propósito: o
+          upload dispara no `onChange` do input, imediatamente ao escolher o
+          arquivo. Se os campos ficassem abaixo, o parceiro subiria o PDF e
+          só então levaria a recusa. */}
+      {podeAnexar ? (
+        <div className="grid gap-3">
+          {primeira ? (
+            <>
+              <div className="grid gap-1.5">
+                <Label htmlFor={idCaso}>
+                  Descreva o caso
+                  {contextoObrigatorio ? " (obrigatório)" : ""}
+                </Label>
+                <Textarea
+                  id={idCaso}
+                  value={caso}
+                  onChange={(e) => setCaso(e.target.value)}
+                  disabled={ocupado}
+                  rows={3}
+                  aria-invalid={excedido("caso") || undefined}
+                  aria-describedby={
+                    excedido("caso") ? `${idCaso}-erro` : undefined
+                  }
                 />
-                <span className="order-first basis-full truncate corpo-sm font-medium sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto">
-                  {minuta.nome}
-                </span>
-                {minuta.tamanho ? (
-                  <span className="numero shrink-0 corpo-sm text-muted-foreground">
-                    {minutaTamanhoLegivel(minuta.tamanho)}
-                  </span>
-                ) : null}
-                <span className="shrink-0 corpo-sm text-muted-foreground">
-                  enviada em {formatarDataHora(minuta.enviado_em)}
-                  {minuta.enviado_pela_equipe ? " · pela equipe" : ""}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="xs"
-                  disabled={baixandoId || removendoAgora}
-                  aria-busy={baixandoId || undefined}
-                  aria-label={`Baixar minuta de ${formatarDataHora(minuta.enviado_em)}`}
-                  onClick={() => baixar(minuta)}
-                >
-                  <Download aria-hidden /> {baixandoId ? "Abrindo…" : "Baixar"}
-                </Button>
-                {podeAnexar ? (
-                  <Button
-                    type="button"
-                    variant="ghost-danger"
-                    size="xs"
-                    disabled={ocupado || removendoAgora}
-                    aria-label={`Remover minuta de ${formatarDataHora(minuta.enviado_em)}`}
-                    onClick={() => {
-                      setErro(null);
-                      setRemovendoId(minuta.id);
-                    }}
-                  >
-                    <Trash2 aria-hidden /> Remover
-                  </Button>
+                {excedido("caso") ? (
+                  <p id={`${idCaso}-erro`} className="corpo-sm text-destructive">
+                    Até {CONTEXTO_MAXIMO} caracteres ({caso.trim().length}{" "}
+                    digitados).
+                  </p>
                 ) : null}
               </div>
-              {minuta.notas ? (
-                <p className="corpo-sm whitespace-pre-wrap text-muted-foreground">
-                  {minuta.notas}
+              <div className="grid gap-1.5">
+                <Label htmlFor={idOQueFoiFeito}>
+                  O que foi feito
+                  {contextoObrigatorio ? " (obrigatório)" : ""}
+                </Label>
+                <Textarea
+                  id={idOQueFoiFeito}
+                  value={oQueFoiFeito}
+                  onChange={(e) => setOQueFoiFeito(e.target.value)}
+                  disabled={ocupado}
+                  rows={3}
+                  aria-invalid={excedido("oQueFoiFeito") || undefined}
+                  aria-describedby={
+                    excedido("oQueFoiFeito")
+                      ? `${idOQueFoiFeito}-erro`
+                      : undefined
+                  }
+                />
+                {excedido("oQueFoiFeito") ? (
+                  <p
+                    id={`${idOQueFoiFeito}-erro`}
+                    className="corpo-sm text-destructive"
+                  >
+                    Até {CONTEXTO_MAXIMO} caracteres (
+                    {oQueFoiFeito.trim().length} digitados).
+                  </p>
+                ) : null}
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor={idPontoDeAjuda}>
+                  Qual o primeiro ponto que você precisa de ajuda
+                  {contextoObrigatorio ? " (obrigatório)" : ""}
+                </Label>
+                <Textarea
+                  id={idPontoDeAjuda}
+                  value={pontoDeAjuda}
+                  onChange={(e) => setPontoDeAjuda(e.target.value)}
+                  disabled={ocupado}
+                  rows={2}
+                  aria-invalid={excedido("pontoDeAjuda") || undefined}
+                  aria-describedby={
+                    excedido("pontoDeAjuda")
+                      ? `${idPontoDeAjuda}-erro`
+                      : undefined
+                  }
+                />
+                {excedido("pontoDeAjuda") ? (
+                  <p
+                    id={`${idPontoDeAjuda}-erro`}
+                    className="corpo-sm text-destructive"
+                  >
+                    Até {CONTEXTO_MAXIMO} caracteres (
+                    {pontoDeAjuda.trim().length} digitados).
+                  </p>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <div className="grid gap-1.5">
+              <Label htmlFor={idOQueMudou}>
+                O que foi alterado em relação à minuta anterior
+                {contextoObrigatorio ? " (obrigatório)" : ""}
+              </Label>
+              <Textarea
+                id={idOQueMudou}
+                value={oQueMudou}
+                onChange={(e) => setOQueMudou(e.target.value)}
+                disabled={ocupado}
+                rows={3}
+                aria-invalid={excedido("oQueMudou") || undefined}
+                aria-describedby={
+                  excedido("oQueMudou") ? `${idOQueMudou}-erro` : undefined
+                }
+              />
+              {excedido("oQueMudou") ? (
+                <p id={`${idOQueMudou}-erro`} className="corpo-sm text-destructive">
+                  Até {CONTEXTO_MAXIMO} caracteres ({oQueMudou.trim().length}{" "}
+                  digitados).
                 </p>
               ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="corpo-sm text-muted-foreground">
-          Nenhuma minuta enviada ainda.
-        </p>
-      )}
-
-      {podeAnexar ? (
-        <div className="grid gap-2">
-          <div className="grid gap-1.5">
-            <Label htmlFor={idNota}>Notas sobre esta versão (opcional)</Label>
-            <Textarea
-              id={idNota}
-              value={nota}
-              onChange={(e) => setNota(e.target.value)}
-              disabled={ocupado}
-              rows={2}
-              placeholder="O que mudou nesta minuta em relação à anterior."
-              aria-invalid={notaExcedida || undefined}
-              aria-describedby={notaExcedida ? `${idNota}-erro` : undefined}
-            />
-            {notaExcedida ? (
-              <p id={`${idNota}-erro`} className="corpo-sm text-destructive">
-                A nota pode ter até {MINUTA_NOTA_MAXIMO} caracteres (
-                {notaLimpa.length} digitados).
-              </p>
-            ) : null}
-          </div>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled={ocupado || notaExcedida}
+              disabled={botaoDesabilitado}
               aria-busy={enviando !== null || undefined}
               aria-describedby={idAjuda}
               onClick={() => inputRef.current?.click()}
@@ -347,6 +442,11 @@ export function MinutasAnexo({
               <Paperclip aria-hidden />{" "}
               {minutas.length > 0 ? "Enviar nova versão" : "Escolher arquivo"}
             </Button>
+            {faltaObrigatorio ? (
+              <span className="corpo-sm text-muted-foreground">
+                Preencha os campos acima para anexar.
+              </span>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -356,6 +456,123 @@ export function MinutasAnexo({
         vira uma versão nova no histórico — as anteriores continuam listadas,
         com data.
       </p>
+
+      {minutas.length > 0 ? (
+        <ul className="grid gap-1.5">
+          {minutas.map((minuta, indice) => {
+            // "Versão N" — derivado do ÍNDICE na leitura, nunca coluna no
+            // banco (a lista vem mais recente primeiro; a mais antiga é a
+            // Versão 1). Ajuda a equipe a casar o delta com o PDF certo.
+            const versao = minutas.length - indice;
+            return (
+              <li
+                key={minuta.id}
+                className="grid gap-1.5 rounded-lg bg-superficie-afundada px-2.5 py-2"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <FileText
+                    aria-hidden
+                    className="size-4 shrink-0 text-muted-foreground"
+                  />
+                  <span className="shrink-0 corpo-sm text-muted-foreground">
+                    Versão {versao}
+                  </span>
+                  <span className="order-first basis-full truncate corpo-sm font-medium sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto">
+                    {minuta.nome}
+                  </span>
+                  {minuta.tamanho ? (
+                    <span className="numero shrink-0 corpo-sm text-muted-foreground">
+                      {minutaTamanhoLegivel(minuta.tamanho)}
+                    </span>
+                  ) : null}
+                  <span className="shrink-0 corpo-sm text-muted-foreground">
+                    enviada em {formatarDataHora(minuta.enviado_em)}
+                    {minuta.enviado_pela_equipe ? " · pela equipe" : ""}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    disabled={baixandoId || removendoAgora}
+                    aria-busy={baixandoId || undefined}
+                    aria-label={`Baixar minuta de ${formatarDataHora(minuta.enviado_em)}`}
+                    onClick={() => baixar(minuta)}
+                  >
+                    <Download aria-hidden /> {baixandoId ? "Abrindo…" : "Baixar"}
+                  </Button>
+                  {podeAnexar ? (
+                    <Button
+                      type="button"
+                      variant="ghost-danger"
+                      size="xs"
+                      disabled={ocupado || removendoAgora}
+                      aria-label={`Remover minuta de ${formatarDataHora(minuta.enviado_em)}`}
+                      onClick={() => {
+                        setErro(null);
+                        setRemovendoId(minuta.id);
+                      }}
+                    >
+                      <Trash2 aria-hidden /> Remover
+                    </Button>
+                  ) : null}
+                </div>
+
+                {/* Leitura densa e chapada: rótulo pequeno em
+                    text-muted-foreground, valor abaixo — hierarquia por
+                    POSIÇÃO, sem card por campo nem ícone decorativo. */}
+                {minuta.caso ? (
+                  <div className="grid gap-1">
+                    <p className="corpo-sm text-muted-foreground">
+                      Descreva o caso
+                    </p>
+                    <p className="corpo-sm whitespace-pre-wrap">{minuta.caso}</p>
+                  </div>
+                ) : null}
+                {minuta.o_que_foi_feito ? (
+                  <div className="grid gap-1">
+                    <p className="corpo-sm text-muted-foreground">
+                      O que foi feito
+                    </p>
+                    <p className="corpo-sm whitespace-pre-wrap">
+                      {minuta.o_que_foi_feito}
+                    </p>
+                  </div>
+                ) : null}
+                {minuta.ponto_de_ajuda ? (
+                  <div className="grid gap-1">
+                    <p className="corpo-sm text-muted-foreground">
+                      Qual o primeiro ponto que você precisa de ajuda
+                    </p>
+                    <p className="corpo-sm whitespace-pre-wrap">
+                      {minuta.ponto_de_ajuda}
+                    </p>
+                  </div>
+                ) : null}
+                {minuta.o_que_mudou ? (
+                  <div className="grid gap-1">
+                    <p className="corpo-sm text-muted-foreground">
+                      Alterado nesta versão
+                    </p>
+                    <p className="corpo-sm whitespace-pre-wrap">
+                      {minuta.o_que_mudou}
+                    </p>
+                  </div>
+                ) : null}
+                {minuta.notas ? (
+                  <div className="grid gap-1">
+                    <p className="corpo-sm text-muted-foreground">Notas</p>
+                    <p className="corpo-sm whitespace-pre-wrap">{minuta.notas}</p>
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="corpo-sm text-muted-foreground">
+          Nenhuma minuta enviada ainda.
+        </p>
+      )}
 
       {/* Região viva SEMPRE montada: uma que nasce junto com o texto não é
           anunciada por parte dos leitores de tela. */}

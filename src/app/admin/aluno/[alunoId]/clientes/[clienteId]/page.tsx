@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
+import { getMinutaContextoObrigatorio } from "@/lib/data/minutas";
 import {
   getAlunoById,
   getClienteById,
@@ -50,6 +51,10 @@ export default async function AdminAlunoClienteFichaPage({
     ? (outroConfirmado.nome ?? null)
     : null;
 
+  // Mesmo interruptor da ficha do aluno — por RPC, porque `gps.config` só
+  // tem policy de admin (ver comentário em `getMinutaContextoObrigatorio`).
+  const contextoObrigatorio = await getMinutaContextoObrigatorio();
+
   return (
     <>
       <AppHeader
@@ -83,6 +88,7 @@ export default async function AdminAlunoClienteFichaPage({
         <ClienteFicha
           cliente={cliente}
           minutas={minutas}
+          contextoObrigatorio={contextoObrigatorio}
           alunoId={alunoId}
           admin
           outroConfirmadoNome={outroConfirmadoNome}

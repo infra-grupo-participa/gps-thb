@@ -64,6 +64,7 @@ export function ClienteFicha({
   outroConfirmadoNome = null,
   outroFavoritoNome = null,
   minutas = [],
+  contextoObrigatorio = false,
 }: {
   cliente: ClienteEtapa1;
   alunoId: string;
@@ -93,6 +94,12 @@ export function ClienteFicha({
    * `getMinutasDoCliente` na page (backend em paralelo) ou nenhuma enviada.
    */
   minutas?: ClienteMinuta[];
+  /**
+   * Interruptor `minuta_contexto_obrigatorio`, lido no servidor pela page.
+   * `false` = ainda sem o helper de leitura (backend em paralelo) — os
+   * campos de contexto continuam visíveis, só sem exigir preenchimento.
+   */
+  contextoObrigatorio?: boolean;
 }) {
   const router = useRouter();
   const [nome, setNome] = useState(cliente.nome ?? "");
@@ -689,7 +696,10 @@ export function ClienteFicha({
         />
 
         {/* Minutas — perto do contrato assinado, decisão do Marcio (15/09).
-            Mesma regra do anexo acima: dado do SERVIDOR, sem espelho local. */}
+            Mesma regra do anexo acima: dado do SERVIDOR, sem espelho local.
+            🔑 Diferente do contrato: aqui a EQUIPE TAMBÉM anexa, com o MESMO
+            formulário (decisão do Marcio, 17/09) — `podeAnexar` não depende
+            de `admin`. */}
         <Secao
           icone={<FileText />}
           titulo="Minutas"
@@ -699,7 +709,8 @@ export function ClienteFicha({
           <MinutasAnexo
             clienteId={cliente.id}
             minutas={minutas}
-            podeAnexar={!admin}
+            podeAnexar
+            contextoObrigatorio={contextoObrigatorio}
             desabilitado={pending}
             aoMudar={() => router.refresh()}
           />

@@ -81,6 +81,13 @@ export const INTERRUPTORES_CONFIG: readonly InterruptorConfig[] = [
     perigoso: true,
   },
   {
+    chave: "minuta_contexto_obrigatorio",
+    rotulo: "Contexto obrigatório na minuta",
+    descricaoDesligado:
+      "O parceiro (e a equipe) volta a anexar minuta sem descrever o caso: some a exigência de caso/o que foi feito/ponto de ajuda na 1ª minuta e de o que mudou nas seguintes.",
+    perigoso: false,
+  },
+  {
     chave: "plantao_inscricao_aberta",
     rotulo: "Inscrição no Plantão de Dúvidas",
     descricaoDesligado:

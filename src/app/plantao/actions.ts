@@ -56,6 +56,7 @@ export async function buscarCalendarioLogado(
     minha_inscricao: boolean;
     encerrado: boolean;
     inscricao_encerrada: boolean;
+    bloqueio_semana: boolean;
   }>).map((r) => ({
     slotId: r.slot_id,
     data: r.data,
@@ -66,6 +67,7 @@ export async function buscarCalendarioLogado(
     minhaInscricao: r.minha_inscricao,
     encerrado: r.encerrado,
     inscricaoEncerrada: r.inscricao_encerrada,
+    bloqueioSemana: r.bloqueio_semana,
   }));
 
   return { ok: true, slots };

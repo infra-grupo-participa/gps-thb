@@ -32,6 +32,14 @@ export interface SlotPublico {
    * pessoa clicar e tomar um erro.
    */
   inscricaoEncerrada: boolean;
+  /**
+   * true quando quem está vendo já tem plantão nesta mesma semana (seg→dom).
+   * É um plantão por semana; o slot em si continua aberto para os outros.
+   *
+   * Vem junto de `inscricaoEncerrada: true` — este campo diz o MOTIVO, para
+   * a tela não anunciar "inscrições encerradas" num slot que está aberto.
+   */
+  bloqueioSemana: boolean;
 }
 
 /** A inscrição ativa (ou mais recente) do aluno logado. */

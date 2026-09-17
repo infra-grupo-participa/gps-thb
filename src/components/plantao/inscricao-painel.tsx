@@ -205,6 +205,18 @@ export function InscricaoPainel({
               <span className="shrink-0 text-xs text-muted-foreground">
                 Encerrado
               </span>
+            ) : slot.bloqueioSemana ? (
+              /*
+                O slot está aberto — quem já tem plantão nesta semana é esta
+                pessoa. Dizer "inscrições encerradas" aqui seria mentira e
+                vira chamado, então o motivo vem separado do banco
+                (`bloqueio_semana`) e ganha frase própria.
+              */
+              <span className="shrink-0 text-right text-xs text-muted-foreground">
+                Você já tem
+                <br />
+                plantão nesta semana
+              </span>
             ) : slot.inscricaoEncerrada ? (
               /*
                 Inscrições fechadas. Desde 08/09/2026 isso é o mesmo que "já

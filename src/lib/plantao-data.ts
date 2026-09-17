@@ -86,6 +86,9 @@ export async function getSlotsDoMesAdmin(
         vespera.setUTCHours(15, 0, 0, 0);
         return new Date() >= vespera;
       })(),
+      // O teto de 1 plantão/semana é por aluno; a visão do admin lista os
+      // slots, não a agenda de uma pessoa. Nunca bloqueia aqui.
+      bloqueioSemana: false,
       zoomUrl: (s.zoom_url as string) ?? null,
       publicado: s.publicado as boolean,
       gravacaoUrl: (s.gravacao_url as string) ?? null,

@@ -32,12 +32,28 @@ const MAX_PAGINA = 1000;
 
 /** Chip de reunião preliminar (item 5 do backlog, 17/09/2026) — catálogo
  * fechado, mesma convenção de `grau: "_nulo"`. `null` = todos (sem filtro).
+ * 🔑 `com_reuniao` (17/09/2026) é o universo dos que TÊM data marcada, em
+ * qualquer prazo — é o número do tile "Total com reunião" (42) e o alvo do
+ * clique nele. Não confundir com `null`, que é a base inteira (1.650,
+ * incluindo os 1.608 sem reunião nenhuma).
  * 🔴 `para_vencer` entrou na migração `…282` (KPIs): "marcada" deixou de
  * cobrir todo o futuro e passou a ser só além de 7 dias — o espelho exato
  * do catálogo de `gps.admin_clientes_lista(p_reuniao)`. */
-export type FiltroReuniao = "marcada" | "para_vencer" | "vencida" | "sem" | null;
+export type FiltroReuniao =
+  | "com_reuniao"
+  | "marcada"
+  | "para_vencer"
+  | "vencida"
+  | "sem"
+  | null;
 
-const REUNIAO_SET = new Set<string>(["marcada", "para_vencer", "vencida", "sem"]);
+const REUNIAO_SET = new Set<string>([
+  "com_reuniao",
+  "marcada",
+  "para_vencer",
+  "vencida",
+  "sem",
+]);
 
 export interface EstadoClientesUrl {
   fase: FaseCliente | null;

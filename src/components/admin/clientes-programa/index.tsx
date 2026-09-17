@@ -76,6 +76,11 @@ import {
  * aqui embora já estivesse na allowlist de `estado-na-url.ts` desde o item 5
  * do backlog — o chip nunca tinha sido acrescentado ao catálogo da tela. */
 const CHIPS_REUNIAO: { id: FiltroReuniao; rotulo: string }[] = [
+  // 🔑 Primeiro da fila: é o mais amplo (todos os que têm reunião, 42) e o
+  // destino do tile "Total". Sem ele aqui, quem chegasse pelo tile veria a
+  // lista filtrada sem nenhum chip aceso — e sem como desfazer o filtro por
+  // esta barra.
+  { id: "com_reuniao", rotulo: "Com reunião" },
   { id: "marcada", rotulo: "Marcada" },
   { id: "para_vencer", rotulo: "Para vencer" },
   { id: "vencida", rotulo: "Vencida" },
@@ -296,12 +301,19 @@ function FaixaKpisReuniao({
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {/* Total: NÃO é clicável — não existe modo "com reunião" no catálogo
-          de `FiltroReuniao` (marcada/para_vencer/vencida/sem); inventar um
-          `?reuniao=` fora da allowlist é link que a RPC recusa com 22023
-          (`REUNIAO_SET` em `estado-na-url.ts`) ou que o parse silenciosamente
-          descarta. O total fica como número informativo, sem destino. */}
-      <KpiReuniaoTile rotulo="Total com reunião" valor={kpis.totalComReuniao} />
+      {/* Total CLICÁVEL: abre os 42 inteiros (pedido do Marcio, 17/09/2026 —
+          "ao selecionar os 42, exiba todos da lista"). Usa o modo
+          `com_reuniao`, acrescentado ao catálogo da RPC no mesmo dia.
+          🔑 `com_reuniao` ≠ `null`: `null` é a base INTEIRA (1.650, com os
+          1.608 que não têm reunião nenhuma); `com_reuniao` é só quem tem
+          data marcada, em qualquer prazo — a soma exata dos outros 3 tiles,
+          que é o que o número 42 promete. */}
+      <KpiReuniaoTile
+        rotulo="Total com reunião"
+        valor={kpis.totalComReuniao}
+        href={hrefClientes({ reuniao: "com_reuniao", pagina: 1 }, estado)}
+        ativo={estado.reuniao === "com_reuniao"}
+      />
       <KpiReuniaoTile
         rotulo="Marcadas"
         valor={kpis.marcadas}

@@ -1977,6 +1977,75 @@ O que foi **removido** (código):
   **Não confundir com o bucket `documentos`** (público, do `sip`) nem com as policies
   `documentos_public_*` — esses são de outro sistema e devem ficar intactos.
 
+### 📊 KPIs de reunião na aba de clientes (2026-09-17, `308cf0e`, migração `…282`)
+
+Pedido do Marcio: *"na aba de clientes, quando selecionarmos a aba de clientes com
+reunião agendada, exiba umas KPIs informando o total, marcadas, para vencer,
+vencidas, e quando a gente clicar, exibir a lista do pessoal, podendo exportar
+como CSV"*.
+
+**O catálogo de `p_reuniao` mudou de significado** (`…274` → `…282`):
+
+| modo | antes | agora |
+|---|---|---|
+| `marcada` | todo futuro (`>= hoje`) | **`> hoje + 7`** |
+| `para_vencer` | não existia | **`hoje .. hoje+7`** |
+| `vencida` | `< hoje` | inalterado |
+| `sem` | sem data | inalterado |
+
+🔑 **Nenhum cliente sumiu na troca:** os 2 que saíram de `marcada` reapareceram em
+`para_vencer`. Medido: 1 + 2 + 39 + 1.594 = **1.636 = a base inteira**. Essa soma é
+a prova de que um recorte novo não perdeu ninguém — **repetir sempre que um
+catálogo de filtro mudar**.
+
+🔴 **DEFEITO QUE ESTAVA NO AR — o CSV ignorava o filtro de reunião.**
+`exportarClientesCsv` repassava `p_fase`/`p_grau`/`p_busca` mas **nunca
+`p_reuniao`** (foi escrita antes do filtro existir). Filtrar por "vencida" e
+exportar devolvia **1.636 linhas em vez de 39**, sem erro nenhum. A **trilha de
+auditoria** registrava o recorte errado junto — auditoria mentindo por omissão é
+pior que auditoria ausente, porque parece confiável. Corrigido nas duas pontas
+(`gps.admin_registrar_export_clientes` ganhou `p_reuniao`; a de 4 argumentos foi
+**dropada antes** do `create`, senão viraria overload e a action antiga seguiria
+chamando a errada).
+**Classe do problema: filtro novo numa RPC exige varrer TODOS os chamadores dela.**
+O export é o que menos se olha e o que mais custa quando erra — sai da tela, vai
+para planilha e circula por fora do sistema.
+
+**`gps.admin_clientes_reuniao_kpis()`** devolve os 4 números numa chamada só
+(`count(*) filter`), não 4 chamadas de `admin_clientes_lista` por abertura de tela.
+
+**UI** (`src/components/admin/clientes-programa/index.tsx`): faixa de 4 tiles acima
+da lista, **sempre visível** (a RPC já roda em paralelo na `page.tsx`, exibir custa
+zero — e ver as 39 vencidas sem filtrar antes é o caso de uso real). Marcadas/Para
+vencer/Vencidas são `<Link>` que aplicam `?reuniao=`, estado na URL (**nunca
+`useState`**); o tile ativo se distingue por **borda + `aria-current`**, não só por
+cor.
+- **"Total com reunião" NÃO é clicável de propósito**: não existe esse modo no
+  catálogo, e inventar um `?reuniao=` fora da allowlist seria link que a RPC recusa
+  com 22023. Número sem destino é melhor que destino quebrado.
+- 🔴 **`erroKpis` nunca vira zero.** "0 vencidas" é afirmação sobre o mundo; a busca
+  ter falhado não prova conjunto vazio. Erro mostra aviso, não número.
+- O chip **"Para vencer"** faltava em `CHIPS_REUNIAO` embora já estivesse na
+  allowlist de `estado-na-url.ts`.
+
+**Medido em produção** (bloco de provas no fim da migração, com os resultados, não
+um roteiro a rodar depois): KPIs 42/1/2/39 batendo com a lista que o clique abre;
+`explain analyze` em **2 passadas** (2,574 e 2,775 ms, `shared hit=389 read=0`);
+catálogo fechado recusando `'invalido'`, `'MARCADA'`, `''` e injeção com 22023;
+guarda devolvendo 42501 sem JWT **e com JWT de aluno titular real** (a lista junta
+clientes dos 135 ambientes — um parceiro veria a carteira dos outros 134);
+`proacl` sem `anon`.
+⚠️ **Latência: ~2,7 ms, não 0,66 ms.** O número menor era do `select` interno
+isolado; o `Function Scan` cobra o corpo inteiro, que é o que a tela paga.
+**Medir a RPC, não o corpo dela.**
+
+**Sem índice**: `count(*) filter` lê as 1.636 linhas de qualquer forma para os 4
+agregados — não há `where` de que um índice participe. Índice em
+`data_reuniao_preliminar` custaria escrita em toda ficha salva (a tabela mais
+quente) sem tocar no plano. Mesma conclusão de `…255` e `…274`.
+
+⚠️ **Não validado logado** — `/admin/clientes` exige sessão de admin.
+
 ### 📄 Minutas da ficha do cliente (2026-09-15) e contexto obrigatório (2026-09-17)
 
 **O que é** (decisão do Marcio, 15/09/2026, migração `...259`): anexo de

@@ -32,13 +32,32 @@ import { rotuloEtapa, type AcaoPendente } from "./tipos";
  * Mover um sócio para um cadastro SEM ambiente criaria um ambiente órfão sem
  * titular; para o próprio ambiente de origem, não moveria nada. Os dois casos
  * seriam erro do banco depois do clique — aqui viram explicação antes dele.
+ *
+ * `converter` é o alvo da terceira porta (titular de ambiente próprio que vira
+ * sócio DESTE ambiente): exige `jaNoGps` pelo motivo oposto ao do "adicionar
+ * sócio", que recusa quem já tem ambiente. Quem NÃO tem ambiente próprio não
+ * tem trabalho a levar — para esse, o caminho é "Adicionar sócio" em
+ * Gerenciar acesso, e a frase aqui diz isso em vez de deixar clicar e falhar.
+ *
+ * ⚠️ Isto é conveniência, **não é a fronteira**: `jaNoGps` diz que existe
+ * ambiente, não que a pessoa é TITULAR dele nem que ela está sozinha lá. As
+ * guardas de verdade (titular do próprio ambiente · destino com titular ·
+ * origem sem outro membro) são da RPC, e chegam à tela pelo `impedimento` da
+ * prévia — antes de o botão de confirmar acender.
  */
 export function impedimentoDoAlvo(
-  alvo: "pessoa" | "ambiente",
+  alvo: "pessoa" | "ambiente" | "converter",
   a: AlunoBusca,
   alunoId: string,
 ): string | null {
-  if (alvo !== "ambiente") return null;
+  if (alvo === "pessoa") return null;
+  if (alvo === "converter") {
+    if (a.id === alunoId) return "É o titular deste mesmo ambiente.";
+    if (!a.jaNoGps) {
+      return 'Sem ambiente próprio — não há trabalho a levar. Use "Adicionar sócio" em Gerenciar acesso.';
+    }
+    return null;
+  }
   if (a.id === alunoId) return "É o ambiente de onde o sócio está saindo.";
   if (!a.jaNoGps) return "Este cadastro ainda não tem ambiente no programa.";
   return null;

@@ -621,11 +621,71 @@ const FRASES_DO_BANCO: Record<string, string> = {
   "Login não encontrado.": "Login não encontrado.",
   "O nome passa de 200 caracteres.": "O nome passa de 200 caracteres.",
 
+  // ═══ gps.admin_converter_titular_em_socio — a terceira porta da Central
+  // (21/09/2026, chamado do Jonas) ═══
+  // Frases NOSSAS (`raise exception`), copiadas caractere por caractere dos
+  // `raise` da função — o match é por igualdade EXATA, acento e travessão
+  // inclusive. "Sem permissão." e "Membro não encontrado." JÁ estão mapeadas
+  // acima (mesmo texto de outras RPCs) — chave repetida é erro de compilação,
+  // não último-ganha.
+  //
+  // 🔴 Sem estas entradas, as SEIS guardas da RPC (titular do próprio
+  // ambiente · destino com titular · destino ≠ origem · origem sem outro
+  // membro · confirmação nomeada) cairiam todas no genérico de 22023
+  // ("Algum dado enviado está fora do formato aceito") — e o admin leria a
+  // mesma frase inútil para seis situações diferentes, numa ação que copia
+  // clientes e não se desfaz sozinha. O diálogo já mostra o `impedimento` da
+  // prévia antes do clique; isto aqui é a rede para a corrida entre conferir
+  // e confirmar, e para qualquer chamada direta ao PostgREST.
+  // ⚠️ "O ambiente de destino não tem titular." NÃO entra aqui: já está
+  // mapeada mais acima, vinda de `gps.admin_mover_membro`, com texto
+  // idêntico. Chave repetida é erro de compilação neste arquivo (TS1117).
+  // ⚠️ "Ambiente de destino não encontrado." NÃO precisa de entrada: nenhuma
+  // das duas RPCs a levanta como exceção — ela só aparece como `impedimento`
+  // da PRÉVIA, que a tela escreve direto, sem passar por `traduzirErroBanco`.
+  // (Um comentário anterior afirmava que ela já estava mapeada acima; não
+  // estava, e a afirmação foi corrigida no veredito de 21/09/2026.)
+  // 🔴 CHAVES CONFERIDAS CONTRA O `raise exception` DA RPC APLICADA EM
+  // PRODUÇÃO (21/09/2026), não contra o que a tela imaginava. Uma versão
+  // anterior deste bloco tinha quatro frases inventadas ("Esta pessoa não é
+  // titular de um ambiente próprio.", "O nome digitado não confere…") que não
+  // existem em SQL nenhum: casavam com nada e as recusas caíam no genérico.
+  // ⚠️ Travessão é EM DASH (—, U+2014) e as aspas em "Mover membro" são
+  // retas (U+0022) — é assim que a RPC emite. Normalizar qualquer um dos dois
+  // quebra a igualdade exata.
+  "Este membro já é sócio — para mudá-lo de ambiente use \"Mover membro\".":
+    "Este membro já é sócio. Para mudá-lo de ambiente use \"Mover membro\".",
+  "Este membro é titular de um ambiente que não é o cadastro dele. Use \"Trocar titular\" antes.":
+    "Este membro é titular de um ambiente que não é o cadastro dele — converter aqui deixaria o ambiente alheio sem dono. Use \"Trocar titular\" antes.",
+  "O ambiente de destino é o mesmo de origem.":
+    "O ambiente de destino é o mesmo da origem — não há o que converter.",
+  "O ambiente de origem tem outro membro. Resolva o outro membro antes de converter este.":
+    "O ambiente de origem tem outro membro. Mova ou remova esse membro antes: converter deixaria o ambiente dele sem titular.",
+  "O ambiente de origem está sem nome no cadastro — não é possível confirmar a conversão. Corrija o nome antes.":
+    "O ambiente de origem está sem nome no cadastro, então não há o que digitar na confirmação. Corrija o nome do cadastro antes de converter.",
+  "Nenhum acesso encontrado para este cadastro.":
+    "Este cadastro não tem acesso ao programa. Crie o acesso antes de convertê-lo em sócio.",
+  // 🔴 Guarda de parâmetro das DUAS RPCs de conversão, com acento e inicial
+  // maiúscula — não confundir com as chaves minúsculas sem acento do bloco
+  // de "chamador errado" mais abaixo. Sem esta entrada a recusa cai no
+  // genérico de 22023 ("Algum dado enviado está fora do formato aceito").
+  "Membro ou ambiente de destino não informado.": FALTA_PARAMETRO,
+  "Este cadastro tem mais de um acesso no programa — resolva a duplicidade antes de converter.":
+    "Este cadastro tem mais de um acesso no programa. Resolva a duplicidade antes de converter — escolher um deles em silêncio moveria os clientes da pessoa errada.",
+
   // Guardas internas de parâmetro de gps.operador_definir — mesma família de
   // "aluno nao informado" etc. (bloco abaixo), minúsculas e sem acento de
   // propósito: chegar aqui significa chamador errado, nunca erro de digitação
   // do usuário.
   "usuario nao informado": FALTA_PARAMETRO,
+  // ⚠️ As chaves minúsculas sem acento acima ("membro nao informado",
+  // "membro ou ambiente de destino nao informado") vêm de OUTRAS RPCs e NÃO
+  // cobrem `gps.admin_converter_titular_em_socio`: ela emite
+  // "Membro ou ambiente de destino não informado." com acento e maiúscula, e
+  // `FRASES_DO_BANCO` casa por igualdade EXATA. A entrada dela está no bloco
+  // da conversão, acima. (Um comentário anterior afirmava a cobertura; era
+  // falso — corrigido no veredito de 21/09/2026.)
+  "confirmacao nao informada": FALTA_PARAMETRO,
   "ativo nao informado": FALTA_PARAMETRO,
 };
 
@@ -648,6 +708,18 @@ const POR_CODIGO: Record<string, string> = {
   "22023": "Algum dado enviado está fora do formato aceito.",
   // no_data_found — as funções `gps.*` usam para "não achei o registro"
   P0002: "Registro não encontrado.",
+  // 🔴 Confirmação NOMEADA recusada. A frase do banco é DINÂMICA
+  // (`'... origem: %', v_nome_origem`), então nunca casa por igualdade exata
+  // em FRASES_DO_BANCO — só o código a alcança. Usado por
+  // `gps.admin_converter_titular_em_socio` e por `gps.admin_excluir_acesso`
+  // (que o emite com as contagens do ambiente no texto).
+  P0004:
+    "O nome digitado não confere com o do ambiente. Copie o nome exatamente como aparece na tela.",
+  // cardinality_violation — mais de uma linha onde só podia haver uma.
+  // `gps.admin_converter_titular_em_socio` usa quando o cadastro resolve para
+  // dois membros: recusar é o certo, escolher um moveria dado da pessoa errada.
+  "21000":
+    "Este cadastro tem mais de um acesso no programa. Resolva a duplicidade antes de continuar.",
 };
 
 const GENERICA = "Não foi possível concluir agora. Tente de novo em instantes.";

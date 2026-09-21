@@ -60,6 +60,11 @@ export {
   getEtapasLiberadasPara,
 } from "@/lib/data/central";
 
+// A prévia da conversão de titular em sócio NÃO passa pela fachada: quem a
+// chama é `src/app/admin/central-actions.ts` (módulo `"use server"`), que
+// importa direto de `@/lib/data/conversao-socio`. Reexportar aqui só faria a
+// fachada crescer por um caminho que nenhuma página usa.
+
 export {
   getVideosAtivo,
   getVideosDoAluno,

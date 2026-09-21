@@ -40,6 +40,8 @@ import type {
   MembroDiagnostico,
   VerificacaoDiagnostico,
 } from "@/lib/data/central";
+import type { AlunoBusca } from "@/app/admin/actions";
+import { converterTitularEmSocio } from "@/app/admin/central-actions";
 import type { ProximoPasso } from "@/lib/etapas";
 import { formatarDataHora } from "@/lib/datas";
 import { Badge } from "@/components/ui/badge";
@@ -64,14 +66,23 @@ import {
   type ContratoVinculado,
 } from "./secao-financeiro";
 import { ConfirmacaoDaAcao } from "./dialogos/confirmacoes";
+import { ConverterTitularEmSocio } from "./dialogos/converter-titular";
 import { SeletorCadastro } from "./dialogos/seletor-cadastro";
 import { executarAcao, impedimentoDoAlvo } from "./executar-acao";
 import { rotuloEtapa, type AcaoPendente } from "./tipos";
 
-/** O que o seletor de cadastro está escolhendo. */
+/**
+ * O que o seletor de cadastro está escolhendo.
+ *
+ * `converter` não carrega `membro`: o alvo é um titular de OUTRO ambiente, que
+ * por definição não está em `diagnostico.membros`. Quem resolve o
+ * `gps.membros.id` dele é a prévia no servidor, a partir do cadastro escolhido
+ * — a tela não tem (nem deve ter) uma leitura de membros alheios.
+ */
 type Seletor =
   | { tipo: "pessoa"; membro: MembroDiagnostico }
-  | { tipo: "ambiente"; membro: MembroDiagnostico };
+  | { tipo: "ambiente"; membro: MembroDiagnostico }
+  | { tipo: "converter" };
 
 export function CentralResolucao({
   alunoId,
@@ -91,6 +102,13 @@ export function CentralResolucao({
   const [motivo, setMotivo] = useState("");
   const [erroAcao, setErroAcao] = useState<string | null>(null);
   const [seletor, setSeletor] = useState<Seletor | null>(null);
+  /**
+   * A terceira porta tem estado PRÓPRIO, fora da união de `AcaoPendente`: ela
+   * busca a prévia ao abrir e tem campo de confirmação nomeada, e o `switch`
+   * de `executar-acao.ts` existe para escrita que já tem todos os argumentos
+   * na mão. Misturar faria o arquivo de copy ganhar rede.
+   */
+  const [converter, setConverter] = useState<AlunoBusca | null>(null);
   const [pendente, executando] = useTransition();
   const [reconferindo, reconferir] = useTransition();
 
@@ -304,6 +322,7 @@ export function CentralResolucao({
                   onMoverMembro={(membro) =>
                     setSeletor({ tipo: "ambiente", membro })
                   }
+                  onConverterTitular={() => setSeletor({ tipo: "converter" })}
                 />
               ) : null}
 
@@ -354,15 +373,26 @@ export function CentralResolucao({
           titulo={
             seletor.tipo === "pessoa"
               ? "Qual é o cadastro desta pessoa?"
-              : "Para qual ambiente mover este sócio?"
+              : seletor.tipo === "ambiente"
+                ? "Para qual ambiente mover este sócio?"
+                : "Quem vai virar sócio deste ambiente?"
           }
           descricao={
             seletor.tipo === "pessoa"
               ? `Ligar ${seletor.membro.emailLogin ?? "este membro"} ao cadastro do Time Holding Brasil.`
-              : `Escolha o titular do ambiente de destino de ${seletor.membro.emailLogin ?? "este sócio"}.`
+              : seletor.tipo === "ambiente"
+                ? `Escolha o titular do ambiente de destino de ${seletor.membro.emailLogin ?? "este sócio"}.`
+                : `Escolha o parceiro que hoje é titular de um ambiente próprio. O trabalho dele vem junto para ${diagnostico.nome ?? "este ambiente"}.`
           }
           impedimento={(a) => impedimentoDoAlvo(seletor.tipo, a, alunoId)}
           onEscolher={(escolhido) => {
+            if (seletor.tipo === "converter") {
+              setSeletor(null);
+              // Escolher NÃO escreve: o próximo diálogo busca a prévia e só
+              // então oferece a confirmação nomeada.
+              setConverter(escolhido);
+              return;
+            }
             const membro = seletor.membro;
             setSeletor(null);
             abrir(
@@ -372,6 +402,29 @@ export function CentralResolucao({
             );
           }}
           onCancelar={() => setSeletor(null)}
+        />
+      ) : null}
+
+      {/* A terceira porta. `key` pelo cadastro escolhido: trocar de alvo
+          remonta o diálogo e refaz a prévia, em vez de reaproveitar o número
+          do alvo anterior. */}
+      {converter ? (
+        <ConverterTitularEmSocio
+          key={converter.id}
+          ambienteDestinoId={alunoId}
+          nomeDestino={diagnostico.nome}
+          escolhido={converter}
+          converter={converterTitularEmSocio}
+          onConcluido={(mensagem) => {
+            setConverter(null);
+            toast.success(mensagem);
+            // 🔴 `revalidatePath` na action NÃO repinta esta tela sozinha: o
+            // diagnóstico chega por PROP de um Server Component. Sem o
+            // `router.refresh()` daqui, o admin veria "convertido" com a
+            // lista de membros inalterada.
+            recarregar();
+          }}
+          onCancelar={() => setConverter(null)}
         />
       ) : null}
 

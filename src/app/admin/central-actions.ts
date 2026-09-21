@@ -27,6 +27,10 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { traduzirErroBanco } from "@/lib/erros";
+import {
+  getPreviaConversaoSocio,
+  type PreviaConversaoSocio,
+} from "@/lib/data/conversao-socio";
 
 /**
  * As telas que mudam quando um vínculo ou a trilha muda.
@@ -252,6 +256,102 @@ export async function moverMembro(
   revalidatePath(`/admin/aluno/${novoAlunoId}`, "layout");
   const d = (data ?? {}) as Record<string, unknown>;
   return { de: (d.de as string) ?? null, para: (d.para as string) ?? null };
+}
+
+// ── converter titular de ambiente próprio em sócio de outro ───────────────
+
+/**
+ * A PRÉVIA da conversão — leitura, zero escrita.
+ *
+ * Existe como Server Action (e não como leitura da página) porque o alvo só é
+ * conhecido DEPOIS de o admin escolher o cadastro no seletor: a página do
+ * Resolver não tem como saber, no servidor, qual titular ele vai procurar.
+ * Buscar aqui é UMA ida ao banco por escolha, não por render.
+ *
+ * ⚠️ Módulo `"use server"` só exporta função async — `PreviaConversaoSocio`
+ * **não é reexportada daqui**. O tipo mora em `@/lib/data/conversao-socio` e a
+ * tela importa de lá com `import type`. (O caso está registrado em
+ * `admin/plantao/actions.ts`: reexporte em módulo de servidor tira o export do
+ * build.)
+ */
+export async function previaConversaoSocio(
+  membroId: string,
+  ambienteDestinoId: string,
+): Promise<{ erro?: string; previa?: PreviaConversaoSocio }> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  return getPreviaConversaoSocio(membroId, ambienteDestinoId);
+}
+
+/**
+ * Converte um TITULAR de ambiente próprio em SÓCIO de outro ambiente,
+ * **levando o trabalho junto**.
+ *
+ * 🔴 A tela TEM de escrever três coisas antes de confirmar, e as três vêm do
+ * servidor (nunca calculadas no cliente):
+ *   1. quantos clientes são COPIADOS e quantos já existem no destino;
+ *   2. que progresso, nota e chamado **ficam para trás** (decisão do projeto:
+ *      progresso se refaz clicando; nota e chamado são atendimento passado);
+ *   3. que a CÓPIA NÃO SE DESFAZ SOZINHA — o retrato na lixeira devolve o
+ *      ambiente antigo, mas as linhas copiadas no destino ficam com id novo.
+ *
+ * `p_confirmar` é o **nome do ambiente de origem**, digitado pelo admin
+ * (confirmação nomeada, como no "digite EXCLUIR"). A comparação de verdade é a
+ * da RPC; a tela só evita a ida ao banco do caso óbvio.
+ *
+ * Revalida os DOIS lados: a origem some como ambiente próprio e o destino
+ * ganha clientes. Sem a segunda linha, a Central do destino continuaria
+ * mostrando o número velho de clientes.
+ */
+export async function converterTitularEmSocio(
+  membroId: string,
+  ambienteDestinoId: string,
+  confirmar: string,
+  alunoIdOrigem?: string,
+): Promise<
+  Resultado<{
+    clientesCopiados: number;
+    clientesJaExistiam: number;
+    origemNome: string | null;
+    destinoNome: string | null;
+  }>
+> {
+  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!membroId || !ambienteDestinoId) {
+    return { erro: "Membro ou ambiente de destino não informado." };
+  }
+  const texto = confirmar.trim();
+  if (!texto) {
+    return {
+      erro: "Digite o nome do ambiente de origem para confirmar a conversão.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("admin_converter_titular_em_socio", {
+      p_membro_id: membroId,
+      p_ambiente_destino: ambienteDestinoId,
+      p_confirmar: texto,
+    });
+  if (error) {
+    return {
+      erro: traduzirErroBanco("central/converterTitularEmSocio", error, {
+        membroId,
+        ambienteDestinoId,
+      }),
+    };
+  }
+
+  revalidar(alunoIdOrigem);
+  revalidatePath(`/admin/aluno/${ambienteDestinoId}`, "layout");
+  const d = (data ?? {}) as Record<string, unknown>;
+  return {
+    clientesCopiados: Number(d.clientes_copiados ?? 0),
+    clientesJaExistiam: Number(d.clientes_ja_existiam ?? 0),
+    origemNome: (d.origem_nome as string) ?? null,
+    destinoNome: (d.destino_nome as string) ?? null,
+  };
 }
 
 // ── financeiro (escreve em cs.contatos_hm, do sip) ────────────────────────

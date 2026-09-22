@@ -42,8 +42,24 @@ export interface InterruptorConfig {
 }
 
 /**
- * As 11 chaves booleanas de `gps.config`, na ordem em que a tela lista.
+ * As 14 chaves booleanas que a TELA lista, na ordem em que aparecem.
  * Medidas no banco em 15/09/2026 — ver o levantamento no plano da feature.
+ *
+ * ⚠️ A allowlist de `gps.config_definir` tem 15: `sessoes_exige_disc` está lá
+ * e **não** aqui, de propósito (ver o comentário ao lado dela abaixo). Esta
+ * lista é subconjunto da allowlist — nunca o contrário.
+ *
+ * 🔴 O AVISO ACIMA JÁ FOI DESCUMPRIDO UMA VEZ, e custou um botão quebrado na
+ * tela: `minuta_contexto_obrigatorio` entrou aqui em 17/09 e **não** entrou na
+ * allowlist de `gps.config_definir`. Medido em 22/09 com JWT de admin real:
+ * `RECUSADO [22023] "Este interruptor não existe."` — a equipe via o botão,
+ * clicava, e ele falhava. `tsc`, `eslint` e `build` ficam verdes: a allowlist
+ * vive no CORPO da função no banco, fora do alcance do compilador.
+ *
+ * Corrigido na migration `…299`, junto com as 3 chaves da Agenda de Sessões.
+ * **Interruptor novo toca DOIS lugares.** Confira a lista de baixo contra
+ * `pg_get_functiondef('gps.config_definir')` — a função VIVA, não o arquivo
+ * da migration, que pode estar defasado.
  *
  * `entrada_codigo_ativa` existe no banco com esse nome (não
  * `entrada_pelo_codigo`, que é o nome da FEATURE/RPC de leitura — ver
@@ -86,6 +102,29 @@ export const INTERRUPTORES_CONFIG: readonly InterruptorConfig[] = [
     descricaoDesligado:
       "O parceiro (e a equipe) volta a anexar minuta sem descrever o caso: some a exigência de caso/o que foi feito/ponto de ajuda na 1ª minuta e de o que mudou nas seguintes.",
     perigoso: false,
+  },
+  {
+    chave: "sessoes_email_ativo",
+    rotulo: "E-mails da Agenda de Sessões",
+    descricaoDesligado:
+      "Param os 5 avisos automáticos das sessões: confirmação, lembretes de 24h e de 1h, e aviso de cancelamento — para a doutora e para o parceiro. As sessões continuam sendo marcadas normalmente; ninguém é avisado por e-mail, então alguém precisa avisar por fora.",
+    perigoso: true,
+  },
+  // 🔴 `sessoes_exige_disc` está na allowlist da RPC mas NÃO entra nesta
+  // lista, e é deliberado: hoje ela não desliga nada — é o ponto de engate
+  // de uma trava ainda não implementada (…294). Mostrá-la aqui criaria o pior
+  // caso possível, que a própria migration nomeia: "interruptor que não
+  // desliga nada é PIOR que interruptor nenhum se alguém acreditar que
+  // desliga". Entra nesta lista no dia em que a trava existir.
+  {
+    chave: "sessoes_exige_confirmacao",
+    rotulo: "Exigir favorito confirmado pela equipe para marcar sessão",
+    descricaoDesligado:
+      "Volta a bastar o cliente favoritado pelo parceiro para ele marcar sessão — sem precisar que a equipe tenha confirmado o acompanhamento.",
+    // 🔴 LIGAR é o movimento perigoso aqui, não desligar: medido em 22/09,
+    // `acompanhamento_confirmado_em` nunca foi preenchida, então ligado ele
+    // recusa 100% dos parceiros — e a tela carrega sem erro nenhum, só vazia.
+    perigoso: true,
   },
   {
     chave: "plantao_inscricao_aberta",

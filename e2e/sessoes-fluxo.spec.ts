@@ -155,6 +155,28 @@ test.describe("Fluxo ponta a ponta · parceiro marca → equipe vê", () => {
     const MOTIVO =
       "Sessão criada pela suíte E2E de QA. Não é cliente real; cancelamento automático.";
 
+    // 🔴 O TESTE MANDA E-MAIL DE VERDADE PARA A DOUTORA.
+    //
+    // Medido em 22/09: a primeira execução desta suíte disparou **7 e-mails de
+    // cancelamento para a Dra. Cristiane** entre 21:05 e 21:15, todos de um
+    // "CLIENTE DE TESTE (QA)". O cron `sessao-emails` roda de 5 em 5 min e não
+    // distingue sessão de teste de sessão real — nem deveria.
+    //
+    // Travar QUEM pode ser cancelado (feito) não bastava: faltava travar o
+    // EFEITO EXTERNO. Marcar e cancelar em produção é aceitável; encher a
+    // caixa de entrada de uma pessoa real não é.
+    //
+    // A trava certa não cabe no teste — ela é a pergunta "este ambiente manda
+    // e-mail?". Enquanto `sessoes_email_ativo` estiver ligado, este spec só
+    // roda com autorização explícita, por `QA_PERMITE_EMAIL=1`.
+    test.skip(
+      process.env.QA_PERMITE_EMAIL !== "1",
+      "Este teste marca e cancela sessão de verdade, e o cron manda e-mail à " +
+        "doutora a cada 5 min (medido: 7 e-mails em 22/09). Rode com " +
+        "QA_PERMITE_EMAIL=1 apenas quando isso for aceitável — de preferência " +
+        "com gps.config.sessoes_email_ativo desligado.",
+    );
+
     try {
       await entrar(pgParceiro, parceiro!, "/sessoes");
       await entrar(pgAdmin, admin!, "/admin/sessoes");

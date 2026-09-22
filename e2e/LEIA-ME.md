@@ -59,8 +59,35 @@ Em 22/09 a primeira versão cancelava "o primeiro botão da lista" e havia uma
 sessão real ao lado ("Graça · Cristiane"). Não foi cancelada por **acaso de
 ordenação**, não por desenho. A trava nasceu daí.
 
-**Regra para teste novo que escreve:** toda escrita se ancora no dado de teste
-e desfaz o que criou, inclusive quando falha no meio (`finally`).
+4. 🔴 **E-mail sai de verdade, e travar "quem" não basta.** Mesmo com a trava
+   acima funcionando, a primeira execução disparou **7 e-mails de cancelamento
+   para a Dra. Cristiane** (21:05–21:15 de 22/09): o cron `sessao-emails` roda
+   a cada 5 min e não distingue sessão de teste. Por isso
+   `sessoes-fluxo.spec.ts` só roda com `QA_PERMITE_EMAIL=1`.
+5. **Interruptor é config GLOBAL.** `interruptores.spec.ts` liga/desliga de
+   verdade — desligar `chamados_aberto` fecha o suporte para todos enquanto
+   estiver desligado. Ele restaura um por vez, e a janela dura segundos. Na
+   primeira execução, o **timeout** cortou no meio e deixou
+   `slack_mencoes_ativo` trocado em produção (restaurado à mão pela trilha).
+
+**Regra para teste novo que escreve:** ancore no dado de teste, desfaça o que
+criou (inclusive no `finally`) **e pergunte que efeito EXTERNO a escrita
+dispara** — e-mail, webhook, notificação. Desfazer a linha no banco não desfaz
+o e-mail que já saiu.
+
+### Conferir depois de uma execução interrompida
+
+```sql
+-- interruptor que ficou trocado (contagem ÍMPAR):
+select substring(detalhe from 'interruptor "([a-z_]+)"'), count(*)
+  from gps.acessos_log where acao='interruptor_alterado'
+   and criado_em > now() - interval '30 minutes' group by 1;
+
+-- sessão de teste ainda agendada:
+select a.estado, a.data, a.hora_inicio from gps.sessao_agendamentos a
+  join gps.etapa1_clientes c on c.id=a.cliente_id
+ where c.nome like 'CLIENTE DE TESTE%' and a.estado='agendado';
+```
 
 ## Os arquivos
 

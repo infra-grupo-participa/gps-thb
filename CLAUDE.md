@@ -1980,6 +1980,25 @@ sem erro nenhum.
    por PATCH no PostgREST e sumia da fila da equipe — o grant de UPDATE é de
    tabela inteira e a allowlist só existia em TypeScript.
 
+**🔑 O DISC, ponta a ponta (decisões do Marcio, 22/09):**
+- **A Entrevista Prévia CAPTURA o DISC ao ser concluída** (`…301`). A doutora
+  acabou de conversar com o cliente — é o instante em que ela sabe a resposta.
+  Antes disto ela concluía e o perfil continuava vazio, dependendo de alguém
+  lembrar de preencher na ficha. Os 4 campos são opcionais e **campo em branco
+  PRESERVA o que existe** (`coalesce(novo, antigo)`): concluir sem DISC nunca
+  apaga anotação de outra pessoa. Só no tipo 1 — na Reunião Preliminar o DISC
+  já deveria existir, e reoferecer convidaria a sobrescrever.
+- **A Reunião Preliminar AVISA, não bloqueia**, quando o cliente não tem DISC.
+  Medido: só **7 de 35** favoritos tinham a letra, e **zero** tinha o DISC
+  rico. Bloquear fecharia a etapa para 28 parceiros, com a tela carregando
+  vazia sem erro nenhum. `sessoes_exige_disc` segue **fora da tela** justamente
+  por isso — e porque hoje não desliga nada.
+- **Dois fluxos de "entrevista" convivem, e a Agenda é o que vale**: a esteira
+  da Etapa 01 (colunas `entrevista_*`) tem **0 registros** e nunca foi usada;
+  a Agenda tem 9 sessões. Os 127 DISC preenchidos vieram direto da ficha.
+  Decisão: a Agenda substitui a esteira. As colunas `entrevista_*` ficam como
+  **legado** — não se apaga histórico, mas também não se constrói em cima.
+
 **⚠️ Pendências desta feature:** disponibilidade da **Dra. Elaine** (só a
 Cristiane tem grade, 4 blocos/semana — entra por INSERT, sem deploy) e
 **não existe e-mail de "sessão realizada"** (lacuna nomeada, não esquecida).

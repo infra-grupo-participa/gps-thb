@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Secao } from "@/components/ui/secao";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getTutoriaisAtivo } from "@/lib/data";
-import { getNomesDeClientes } from "@/lib/data/clientes";
+import { getNomesEDiscLeve } from "@/lib/data/clientes";
 import {
   getHorariosLivres,
   getSessoesDoAmbiente,
@@ -18,6 +18,7 @@ import {
 } from "@/lib/data/sessoes";
 import { logErro } from "@/lib/log";
 import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
+import { TIPO_REUNIAO_PRELIMINAR } from "@/lib/sessoes-tipos";
 import type { SessaoAgendamento, SessaoTipo } from "@/lib/sessoes-tipos";
 import { createClient } from "@/lib/supabase/server";
 
@@ -249,15 +250,25 @@ export default async function SessoesPage() {
   const idsSoNaGrade = [...idsDeCliente].filter((id) => !idsComSessao.has(id));
 
   const [nomesDaGrade, discDasSessoes, papelDoLink] = await Promise.all([
-    getNomesDeClientes(idsSoNaGrade),
+    // 🔑 `getNomesEDiscLeve`: nome + a LETRA do DISC, sem os 3 campos ricos
+    // (até 2.000 caracteres cada). A letra é o que o aviso "este cliente
+    // ainda não tem DISC" precisa saber, e custa ~1 byte por linha — o
+    // raciocínio de egress acima continua valendo.
+    getNomesEDiscLeve(idsSoNaGrade),
     getDiscDosClientes([...idsComSessao]),
     getPapelDoLink(blocos.filter((b) => b.jaMarcada).map((b) => b.jaMarcada!.id)),
   ]);
 
   // Mapa único de nomes para a tela inteira, vindo das duas leituras.
-  const clientes = new Map(nomesDaGrade);
+  const clientes = new Map<string, string>();
+  const letraDiscPorCliente = new Map<string, string | null>();
+  for (const [id, c] of nomesDaGrade) {
+    if (c.nome) clientes.set(id, c.nome);
+    letraDiscPorCliente.set(id, c.perfil_disc);
+  }
   for (const [id, c] of discDasSessoes.porCliente) {
     if (c.nome) clientes.set(id, c.nome);
+    letraDiscPorCliente.set(id, c.perfil_disc);
   }
 
   return (
@@ -304,6 +315,11 @@ export default async function SessoesPage() {
           <div className="grid gap-8">
             {blocos.map((b) => (
               <BlocoDoTipo
+                letraDisc={
+                  b.elegivel?.clienteId
+                    ? letraDiscPorCliente.get(b.elegivel.clienteId)
+                    : undefined
+                }
                 key={b.tipo.id}
                 tipo={b.tipo}
                 jaMarcada={b.jaMarcada}
@@ -344,6 +360,7 @@ function BlocoDoTipo({
   erro,
   clientes,
   disc,
+  letraDisc,
   linkPorEquipe,
 }: {
   tipo: SessaoTipo;
@@ -354,6 +371,11 @@ function BlocoDoTipo({
   clientes: Map<string, string>;
   /** `null` = sem sessão marcada, ou a leitura do cliente falhou. */
   disc: DiscDoCliente | null;
+  /**
+   * A letra do DISC do cliente ELEGÍVEL (o favorito), para o aviso antes de
+   * marcar. `null` = não preenchida; `undefined` = a leitura não trouxe.
+   */
+  letraDisc: string | null | undefined;
   linkPorEquipe: boolean | null;
 }) {
   return (
@@ -385,11 +407,36 @@ function BlocoDoTipo({
       ) : horarios.length === 0 ? (
         <SemHorario motivo="sem-horario" semanas={SEMANAS_DA_JANELA} />
       ) : (
-        <GradeHorarios
-          tipo={tipo}
-          horarios={horarios}
-          clienteNome={clientes.get(elegivel.clienteId) ?? "seu cliente"}
-        />
+        <>
+          {/* 🔴 AVISA, NÃO BLOQUEIA (decisão do Marcio, 22/09).
+              A regra dele é "com o DISC pronto, agenda-se a Reunião
+              Preliminar". Medido naquele dia: só 7 de 35 clientes favoritados
+              tinham a letra — bloquear fecharia a etapa para 28 parceiros e a
+              tela carregaria vazia, sem erro nenhum. O aviso cumpre a
+              intenção (a doutora não conduz às cegas) sem transformar uma
+              orientação em catraca.
+              ⚠️ Só na Reunião Preliminar: na Entrevista Prévia o DISC ainda
+              NÃO existe por definição — é ela que o gera. */}
+          {tipo.id === TIPO_REUNIAO_PRELIMINAR && !letraDisc ? (
+            <p className="mb-3 border border-borda-fina bg-superficie-afundada px-3 py-2 corpo-sm">
+              O perfil DISC deste cliente ainda não foi preenchido. Dá para
+              marcar assim mesmo — mas a doutora conduz a reunião sem saber
+              como ele decide.{" "}
+              <Link
+                href="/clientes"
+                className="text-accent-foreground underline underline-offset-4"
+              >
+                Preencher na ficha do cliente
+              </Link>
+              .
+            </p>
+          ) : null}
+          <GradeHorarios
+            tipo={tipo}
+            horarios={horarios}
+            clienteNome={clientes.get(elegivel.clienteId) ?? "seu cliente"}
+          />
+        </>
       )}
     </Secao>
   );

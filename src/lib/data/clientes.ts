@@ -119,6 +119,51 @@ export async function getNomesDeClientes(
   );
 }
 
+/**
+ * Nome + a LETRA do perfil DISC, numa consulta só.
+ *
+ * 🔑 Irmã de `getNomesDeClientes`, com UMA coluna a mais — e existe separada
+ * porque aquela é usada em outras telas que não precisam do DISC; mudar a
+ * assinatura delas para servir esta seria alargar o contrato de todas.
+ *
+ * 🔴 Só a LETRA (`perfil_disc`, 1 caractere). Os 3 campos ricos
+ * (consciência/gatilhos/relacionamento) vão até 2.000 caracteres cada e
+ * NÃO entram aqui: o egress do Supabase é teto da ORGANIZAÇÃO, dividido com
+ * o `sip`, e quem precisa do texto completo usa o briefing da sessão.
+ *
+ * Motivo de existir (22/09): a tela do parceiro avisa "este cliente ainda não
+ * tem perfil DISC" antes de ele marcar a Reunião Preliminar. Para isso basta
+ * saber se a letra existe — medido naquele dia: 28 de 35 clientes favoritados
+ * estavam sem ela.
+ *
+ * A RLS de `gps.etapa1_clientes` continua decidindo quais linhas voltam.
+ */
+export async function getNomesEDiscLeve(
+  clienteIds: string[],
+): Promise<Map<string, { nome: string | null; perfil_disc: string | null }>> {
+  const ids = [...new Set(clienteIds)].filter(Boolean);
+  if (ids.length === 0) return new Map();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .from("etapa1_clientes")
+    .select("id, nome, perfil_disc")
+    .in("id", ids);
+
+  if (error) {
+    // Erro NÃO vira mapa vazio silencioso — a tela leria "sem DISC" sobre
+    // clientes que TÊM, e mostraria um aviso falso. Mesma regra da irmã.
+    logErro("getNomesEDiscLeve", error, { clientes: ids.length });
+    return new Map();
+  }
+
+  return new Map(
+    ((data ?? []) as { id: string; nome: string | null; perfil_disc: string | null }[])
+      .map((c) => [c.id, { nome: c.nome, perfil_disc: c.perfil_disc }]),
+  );
+}
+
 export async function getAgendamentosEtapa3(alunoId: string) {
   const supabase = await createClient();
   const { data } = await supabase

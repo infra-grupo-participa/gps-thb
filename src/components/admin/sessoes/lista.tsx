@@ -24,7 +24,12 @@ import {
 } from "@/components/sessoes/grade";
 import { BriefingSessao } from "@/components/admin/sessoes/briefing";
 import { ResumoForm } from "@/components/admin/sessoes/resumo-form";
-import { ROTULO_ESTADO_SESSAO, type SessaoAgendamento } from "@/lib/sessoes-tipos";
+import { DiscNaConclusao } from "@/components/admin/sessoes/disc-na-conclusao";
+import {
+  ROTULO_ESTADO_SESSAO,
+  TIPO_ENTREVISTA_PREVIA,
+  type SessaoAgendamento,
+} from "@/lib/sessoes-tipos";
 
 /**
  * A lista de sessões da tela `/admin/sessoes` — próximas e histórico.
@@ -99,6 +104,11 @@ function LinhaDaSessao({
   // Texto do resumo JA GRAVADO, buscado por RPC antes de abrir o form.
   // Nasce "" e só é preenchido pela leitura — ver o comentário no botão.
   const [resumoAtual, setResumoAtual] = useState("");
+  // DISC capturado na conclusão da Entrevista Prévia (decisão de 22/09).
+  // Nasce vazio; a RPC preserva o que já existe quando o campo vai em branco.
+  const [disc, setDisc] = useState({
+    letra: "", consciencia: "", gatilhos: "", relacionamento: "",
+  });
   const [briefingAberto, setBriefingAberto] = useState(false);
   // Vira `true` no 1º clique e NUNCA volta: é o que mantém o briefing montado
   // (e a trilha LGPD com uma linha por leitura real). Ver o comentário no JSX.
@@ -114,6 +124,7 @@ function LinhaDaSessao({
   const inicio = horaDeTime(sessao.hora_inicio);
   const fim = horaFimDeBloco(sessao.hora_inicio, sessao.duracao_min);
   const podeAgir = sessao.estado === "agendado";
+  const ehEntrevistaPrevia = sessao.tipo_id === TIPO_ENTREVISTA_PREVIA;
   const jaComecou = new Date(sessao.inicio_em).getTime() <= agora;
 
   function confirmarCancelamento() {
@@ -161,6 +172,16 @@ function LinhaDaSessao({
       const r = await concluirSessao({
         agendamentoId: sessao.id,
         resumo: resumo === "" ? null : resumo,
+        // 🔴 Só a Entrevista Prévia captura DISC. Na Reunião Preliminar o
+        // perfil já deveria existir, e reenviar convidaria a sobrescrever.
+        ...(ehEntrevistaPrevia
+          ? {
+              perfilDisc: disc.letra,
+              discConsciencia: disc.consciencia,
+              discGatilhos: disc.gatilhos,
+              discRelacionamento: disc.relacionamento,
+            }
+          : {}),
       });
       if (!r.ok) {
         setErroInline(r.erro);
@@ -364,6 +385,21 @@ function LinhaDaSessao({
             {clienteNome ?? "cliente"}. O resumo é opcional agora; dá para
             registrar depois.
           </p>
+          {/* 🔴 Só na Entrevista Prévia: é ela que "gera o perfil DISC"
+              (regra do Marcio). Na Reunião Preliminar o DISC já deveria
+              existir, e reoferecer convidaria a sobrescrever. */}
+          {ehEntrevistaPrevia ? (
+            <DiscNaConclusao
+              letra={disc.letra}
+              consciencia={disc.consciencia}
+              gatilhos={disc.gatilhos}
+              relacionamento={disc.relacionamento}
+              desabilitado={pendente}
+              aoMudar={(campo, valor) =>
+                setDisc((d) => ({ ...d, [campo]: valor }))
+              }
+            />
+          ) : null}
           <ResumoForm
             obrigatorio={false}
             rotuloBotao="Concluir sessão"

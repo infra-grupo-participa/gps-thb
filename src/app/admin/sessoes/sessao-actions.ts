@@ -13,8 +13,11 @@
  * 🔴 `src/app/admin/sessoes/actions.ts` NÃO é tocado (fatia F do PRD) — a
  * action nova vive aqui, em arquivo próprio.
  *
- * Contrato de banco usado aqui (aplicado, medido pelo Marcio em 23/09):
- *   `gps.sessao_concluir(uuid, text default null)`
+ * Contrato de banco usado aqui (aplicado e medido em produção):
+ *   `gps.sessao_concluir(uuid, text, text, text, text, text)` — os 4 últimos
+ *     são o DISC do CLIENTE, todos opcionais. A versão de 2 argumentos foi
+ *     DROPADA (22/09): sobrecarga deixaria a captura do DISC contornável
+ *     pelo PostgREST, chamando a assinatura antiga.
  *   `gps.sessao_resumo_editar(uuid, text)`
  *   `gps.sessao_link_definir(uuid, text)` / `gps.sessao_link_remover(uuid)`
  *     — fatia D, em paralelo. Se ainda não aplicadas quando isto rodar, a
@@ -90,10 +93,31 @@ async function guardaDeEquipe(): Promise<{ ok: true } | { ok: false; erro: strin
 export async function concluirSessao(input: {
   agendamentoId: string;
   resumo?: string | null;
+  /**
+   * DISC do CLIENTE, capturado no mesmo clique (decisão do Marcio, 22/09:
+   * *"a Entrevista Prévia gera o perfil DISC"*).
+   *
+   * 🔑 A doutora acabou de conversar com o cliente — é o instante em que ela
+   * sabe a resposta. Antes disto, `sessao_concluir` não tocava no DISC:
+   * ela concluía e o perfil continuava vazio, dependendo de alguém lembrar
+   * de preencher na ficha depois.
+   *
+   * 🔴 Campo em branco PRESERVA o que existe (a RPC usa `coalesce(novo,
+   * antigo)`). Nunca apaga anotação de outra pessoa por omissão.
+   */
+  perfilDisc?: string | null;
+  discConsciencia?: string | null;
+  discGatilhos?: string | null;
+  discRelacionamento?: string | null;
 }): Promise<
   | {
       ok: true;
-      resultado: { estado: "realizado"; comResumo: boolean; resumoCaracteres: number };
+      resultado: {
+        estado: "realizado";
+        comResumo: boolean;
+        resumoCaracteres: number;
+        discGravado: boolean;
+      };
     }
   | { ok: false; erro: string }
 > {
@@ -101,11 +125,21 @@ export async function concluirSessao(input: {
   if (!guarda.ok) return guarda;
 
   const resumo = (input.resumo ?? "").trim();
+  // Vazio vira `null`: a RPC normaliza, mas mandar string vazia faria o
+  // `coalesce` da RPC gravar "" por cima de uma anotação existente.
+  const limpo = (v: string | null | undefined) => {
+    const t = (v ?? "").trim();
+    return t === "" ? null : t;
+  };
 
   const supabase = await createClient();
   const { data, error } = await supabase.schema("gps").rpc("sessao_concluir", {
     p_agendamento_id: input.agendamentoId,
     p_resumo: resumo === "" ? null : resumo,
+    p_perfil_disc: limpo(input.perfilDisc),
+    p_disc_consciencia: limpo(input.discConsciencia),
+    p_disc_gatilhos: limpo(input.discGatilhos),
+    p_disc_relacionamento: limpo(input.discRelacionamento),
   });
 
   if (error) {
@@ -120,14 +154,26 @@ export async function concluirSessao(input: {
     };
   }
 
-  const r = data as { com_resumo: boolean; resumo_caracteres: number };
+  const r = data as {
+    com_resumo: boolean;
+    resumo_caracteres: number;
+    disc_gravado: boolean;
+  };
   revalidatePath("/admin/sessoes");
+  // 🔴 O DISC é do CLIENTE: mudou a ficha dele, então a tela de clientes
+  // também precisa reler. Sem isto, a doutora grava o DISC aqui e o parceiro
+  // continua vendo "não informado" na ficha até o cache expirar.
+  if (r.disc_gravado) {
+    revalidatePath("/clientes");
+    revalidatePath("/sessoes");
+  }
   return {
     ok: true,
     resultado: {
       estado: "realizado",
       comResumo: r.com_resumo,
       resumoCaracteres: r.resumo_caracteres,
+      discGravado: r.disc_gravado,
     },
   };
 }

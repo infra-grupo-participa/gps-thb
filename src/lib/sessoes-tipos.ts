@@ -13,6 +13,22 @@
  */
 
 /** Estados possíveis de `gps.sessao_agendamentos.estado` (CHECK `chk_sessao_agend_estado`). */
+/**
+ * Id do tipo "Entrevista Prévia" em `gps.sessao_tipos` (semente da …291).
+ *
+ * 🔑 Existe como constante NOMEADA para o `=== 1` não se espalhar pela UI:
+ * é a Entrevista que CAPTURA o perfil DISC ao ser concluída (decisão do
+ * Marcio, 22/09: *"a Entrevista Prévia gera o perfil DISC"*). A Reunião
+ * Preliminar (id 2) não pede DISC — lá ele já deveria existir.
+ *
+ * ⚠️ Se um dia houver mais tipos que capturam DISC, isto vira uma coluna em
+ * `gps.sessao_tipos` (dado), nunca uma lista de ids no TypeScript.
+ */
+export const TIPO_ENTREVISTA_PREVIA = 1;
+
+/** Id do tipo "Reunião Preliminar" (semente da …291). Par do de cima. */
+export const TIPO_REUNIAO_PRELIMINAR = 2;
+
 export const ESTADOS_SESSAO = ["agendado", "realizado", "cancelado", "falta"] as const;
 export type EstadoSessao = (typeof ESTADOS_SESSAO)[number];
 

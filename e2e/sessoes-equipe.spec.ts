@@ -127,14 +127,20 @@ test.describe("Equipe · /admin/sessoes", () => {
   test("o resumo recusa texto curto demais, com frase em português", async ({ page }) => {
     await page.goto("/admin/sessoes");
 
+    // ESPERAR, não `isVisible()` cru: ele responde no instante e o teste se
+    // pula (ou falha) enquanto a página ainda monta. Mesmo defeito que já
+    // apareceu 3× nesta suíte — aqui ele fazia o teste alternar entre
+    // "pulado" e "falha" conforme a ordem de execução.
     const botao = page.getByRole("button", { name: /registrar\/editar resumo/i }).first();
-    test.skip(
-      !(await botao.isVisible().catch(() => false)),
-      "Nenhuma sessão concluída na conta de QA.",
-    );
+    const temAlvo = await botao
+      .waitFor({ state: "visible", timeout: 12_000 })
+      .then(() => true)
+      .catch(() => false);
+    test.skip(!temAlvo, "Nenhuma sessão concluída na conta de QA.");
 
     await botao.click();
     const caixa = page.locator("textarea").first();
+    await expect(caixa).toBeVisible();
     await caixa.fill("curto");
     await page.getByRole("button", { name: /salvar resumo/i }).click();
 
@@ -153,10 +159,11 @@ test.describe("Equipe · /admin/sessoes", () => {
     await page.goto("/admin/sessoes");
 
     const abrir = page.getByRole("button", { name: /briefing/i }).first();
-    test.skip(
-      !(await abrir.isVisible().catch(() => false)),
-      "Nenhuma sessão com briefing na conta de QA.",
-    );
+    const temAlvo = await abrir
+      .waitFor({ state: "visible", timeout: 12_000 })
+      .then(() => true)
+      .catch(() => false);
+    test.skip(!temAlvo, "Nenhuma sessão com briefing na conta de QA.");
 
     await abrir.click();
     const painel = page.locator("#conteudo").last();

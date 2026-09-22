@@ -89,6 +89,11 @@ alter table gps.sessao_resumo_diario enable row level security;
 -- Sem policy de leitura: ninguém lê isto pela API. É controle interno do
 -- disparo, no mesmo espírito das colunas de carimbo da …293. O `revoke`
 -- fecha o default do schema, que concede para `authenticated`.
+--
+-- ⚠️ O linter do Supabase marca isto como `rls_enabled_no_policy` (INFO).
+-- É ESPERADO, não defeito — e NÃO se "corrige" criando uma policy, que abriria
+-- leitura onde hoje não existe nenhuma. Provado em 22/09 com 1 linha plantada
+-- (prova não-vacua): aluno, admin e anon, os três, recebem **42501**.
 revoke all on gps.sessao_resumo_diario from anon, authenticated;
 
 

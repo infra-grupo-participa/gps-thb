@@ -1933,6 +1933,57 @@ PRD: `docs/specs/2026-09-22-agenda-sessoes-equipe-PRD.md`.
 tabelas seguem órfãs e **proibidas** — o modelo novo nasce em `gps.sessao_*`.
 A seção histórica abaixo fica como registro do que foi removido e por quê.
 
+### 📅 Agenda de Sessões — ENTREGUE em 22/09/2026 (`2e26b48`…`6fc1cb1`)
+
+**No ar:** 6 tabelas `gps.sessao_*`, 19 funções, 2 crons. Rotas `/sessoes`
+(parceiro) e `/admin/sessoes` (equipe). PRD:
+`docs/specs/2026-09-22-agenda-sessoes-equipe-PRD.md`.
+
+**O fluxo:** a doutora publica a grade semanal → o parceiro escolhe um horário
+para o cliente favoritado dele → a doutora abre o briefing antes da sessão,
+define o link da sala, conclui e registra o resumo.
+
+**Decisões de produto que não se reabrem sem o Marcio:**
+- 🔴 **Sem date-picker** (§7.1, palavras dele): *"não tem que exibir uma data
+  para ele escolher, tem que exibir as opções de horário"*.
+- **As doutoras veem os atendimentos uma da outra** (revoga a premissa B2 do
+  PRD original).
+- **O DISC é do CLIENTE e é lido AO VIVO**, nunca do `briefing_snapshot`.
+  Perfil é atributo estável da pessoa; congelado, a doutora abriria a sessão
+  sem o DISC preenchido depois de agendar. Provado 4/4.
+- **Link da sala com precedência:** os dois podem pôr, a equipe vence, e a
+  guarda falha **FECHADO** (`coalesce(link_por_equipe, true)`).
+- **Resumo da sessão:** só a equipe escreve e lê; o aluno vê que houve.
+- **Cancelar tem prazo:** o parceiro cancela sozinho até 24h antes; depois,
+  só pela equipe. Não é defeito — é a regra.
+
+**E-mails (…293 e …300).** 🔴 A doutora **não** recebe aviso a cada marcação ou
+cancelamento: recebe **um resumo por dia às 18h** (cron `sessao-resumo-dra`,
+`0 21 * * *` UTC), e só quando houve movimento. Os **lembretes de 24h e 1h
+continuam imediatos** para ela — são operacionais, e agrupá-los faria a trava
+contra spam virar falta à reunião. O **parceiro continua recebendo tudo na
+hora**: ele acabou de clicar e precisa da confirmação.
+Medido: parceiro indeciso com 3 marcações + 3 cancelamentos ia de **6 e-mails
+para 0 imediatos + 1 resumo**. Desliga tudo por `gps.config.sessoes_email_ativo`,
+na tela de Interruptores.
+
+**Elegibilidade medida (não suposta):** 34 parceiros com cliente favoritado.
+`sessoes_exige_confirmacao` nasce `false` e **ligá-la hoje recusaria 100%** —
+`acompanhamento_confirmado_em` nunca foi preenchida, e a tela carregaria vazia
+sem erro nenhum.
+
+**Dois furos de segurança explorados e fechados na construção:**
+1. `sessao_pode_agendar` vazava o cliente favoritado de **qualquer** ambiente —
+   guarda sem `coalesce(…, false)` falha **ABERTA**, porque `if null` não
+   dispara. A mesma classe apareceu 2× no mesmo dia (`sessao_briefing_ler`).
+2. **Pré-existente:** o parceiro marcava a própria entrevista como encerrada
+   por PATCH no PostgREST e sumia da fila da equipe — o grant de UPDATE é de
+   tabela inteira e a allowlist só existia em TypeScript.
+
+**⚠️ Pendências desta feature:** disponibilidade da **Dra. Elaine** (só a
+Cristiane tem grade, 4 blocos/semana — entra por INSERT, sem deploy) e
+**não existe e-mail de "sessão realizada"** (lacuna nomeada, não esquecida).
+
 ---
 
 ### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10) — histórico, revogado acima
@@ -2152,6 +2203,58 @@ em `src/lib/minutas-tipos.ts`) — a **obrigatoriedade** não é replicada no
 TypeScript: a fronteira é a RPC, para as duas verdades não divergirem no dia
 em que o interruptor mudar.
 
+## 🧪 Suíte E2E — validar no navegador, não no `tsc` (22/09/2026)
+
+Pedido do Marcio: *"preciso que tu valide visualmente, tipo no browser mesmo…
+quero facilitar os testes E2e, para validar as features que criamos sempre"*.
+
+**Rodar:** `npm run e2e` (desktop 1366 + Pixel 7) · `e2e:desktop` ·
+`e2e:ver` (navegador visível) · `e2e:relatorio`.
+Credenciais em `.env.qa` **fora do repo**, apontado por `QA_ENV_FILE`; sem ele
+os testes que precisam de login **se pulam com aviso**, nunca falham por falta
+de segredo. Manual completo: `e2e/LEIA-ME.md`.
+
+**Por que existe:** `tsc`, `eslint` e `build` passam com a tela quebrada — esta
+casa já teve **1.790 testes verdes e a tela errada**, porque jsdom mocka
+`getBoundingClientRect` e **não pinta**. `e2e/apoio.ts` concentra o que vale
+para qualquer tela: contraste medido no DOM pintado (fundo composto), rolagem
+horizontal, alvo de clique (WCAG 2.5.8), console sem erro, captura no
+relatório. **Feature nova escreve o fluxo e herda a régua.**
+
+🔴 **RODA CONTRA PRODUÇÃO.** Não há ambiente de teste: são 2 contas de QA
+dedicadas contra o site publicado. As travas que isso exige, todas aprendidas
+por erro no primeiro dia:
+
+1. **Ancore no dado de teste, nunca em "o primeiro da lista".**
+   `/admin/sessoes` é a agenda INTEIRA da equipe: o helper cancelava o primeiro
+   botão e havia uma sessão **real** ao lado. Não foi cancelada por **acaso de
+   ordenação**. Hoje só toca linha que casa com `CLIENTE DE TESTE (QA)`,
+   conferido 2× (na lista e no diálogo aberto).
+2. 🔴 **Pergunte que efeito EXTERNO a escrita dispara.** Mesmo com a trava
+   acima, a 1ª execução mandou **7 e-mails de cancelamento reais** para a Dra.
+   Cristiane. **Desfazer a linha no banco não desfaz o e-mail que já saiu.**
+   `sessoes-fluxo.spec.ts` exige `QA_PERMITE_EMAIL=1`.
+3. **Config global restaura UMA POR VEZ, antes da próxima.** O teste dos
+   interruptores estourou o timeout e deixou `slack_mencoes_ativo` trocado em
+   produção (achado pela trilha: contagem ÍMPAR em `acessos_log`).
+
+**`e2e/interruptores.spec.ts` guarda uma classe inteira de defeito:**
+`INTERRUPTORES_CONFIG` (TypeScript) e a allowlist de `gps.config_definir` (o
+CORPO de uma função no Postgres) precisam concordar, e **nada no build as
+compara**. `minuta_contexto_obrigatorio` ficou 5 dias na tela recusado pelo
+banco com 22023 — a equipe clicava e acreditava ter desligado.
+🔑 **Interruptor novo toca DOIS lugares**; confira contra
+`pg_get_functiondef('gps.config_definir')`, a função VIVA.
+
+⚠️ **Um teste fica VERMELHO de propósito:** o que protege o achado ALTO do
+resumo falha enquanto não houver sessão concluída na conta de QA. Teste pulado
+fica verde para sempre enquanto a regressão volta — preferimos vermelho
+honesto a verde vazio. Destrava concluindo uma sessão de teste.
+
+**Ao ler uma falha:** pergunte primeiro se o defeito é **do teste**. Na 1ª
+rodada, 4 de 4 falhas eram (overlay do onboarding, skip link de 1×1px,
+`#conteudo` duplicado na transição de rota, e a regra das 24h para cancelar).
+
 ## Rotas
 
 - `/login` — login e-mail/senha (Supabase Auth). `/auth/signout` (POST).
@@ -2160,6 +2263,13 @@ em que o interruptor mudar.
 - `/financeiro` — aba Financeiro do aluno (leitura de `cs.contatos_hm` pela RPC
   `gps.financeiro_do_aluno`). **Só titular e admin** — o sócio não vê a aba nem a URL.
 - `/chamados` e `/chamados/[id]` — suporte do aluno (abrir chamado com anexo, responder).
+- **`/sessoes`** — o parceiro marca a sessão com a equipe jurídica, dentro dos
+  horários que as doutoras publicaram (Agenda de Sessões, 22/09). Sem
+  date-picker: mostra HORÁRIOS. O estado vazio é o caso comum (34 elegíveis
+  para 4 blocos/semana) e a tela **diz por quê** em vez de ficar muda.
+- **`/admin/sessoes`** — a tela da equipe: próximas, histórico, briefing do
+  cliente sob demanda (grava trilha LGPD a cada leitura), link da sala,
+  concluir e registrar resumo.
 - `/materiais` — **acervo**: aulas + modelos de todas as etapas (busca/filtro por tipo), agregados
   de `CONTEUDO_ETAPAS` por `src/lib/materiais.ts` (`listarMateriais`). Navegação por abas com ícones
   (Início/Clientes/Materiais) em `NavTabs`.
@@ -2527,7 +2637,21 @@ Supabase existente**. `npm run dev` → `/login` → adicionar um aluno em `/adm
 ambiente e preencher a Etapa 01.
 
 ---
-_Última atualização: 2026-09-10 — **feedback de produção + war-room** (`49f7252`, `a2135e0`
+_Última atualização: 2026-09-22 — **Agenda de Sessões entregue + suíte E2E
+permanente** (`2e26b48`, `28ced61`, `d07909a`, `6fc1cb1`; migrations `…291` a
+`…300`). O parceiro marca a sessão dentro da grade que as doutoras publicaram;
+a doutora abre o briefing, define o link, conclui e registra o resumo. A
+disponibilidade passou a partir delas — foi o que justificou revogar a decisão
+de 10/08. Entrou junto a **suíte E2E em navegador real** (Playwright, 2
+dispositivos), que na primeira rodada achou um interruptor que estava na tela
+desde 17/09 e o banco recusava com 22023: a equipe clicava e acreditava ter
+desligado. E o e-mail da doutora virou **resumo diário às 18h** em vez de um
+aviso por marcação — os lembretes de 24h e 1h seguem imediatos, porque são
+operacionais. **Aberto: disponibilidade da Dra. Elaine, o e-mail de "sessão
+realizada" (lacuna nomeada) e um teste E2E vermelho de propósito até alguém
+concluir uma sessão de teste.**_
+
+_Anterior: 2026-09-10 — **feedback de produção + war-room** (`49f7252`, `a2135e0`
 e o ciclo 1; migrações `…213`–`…216`). `/admin` em 4 abas com estado na URL; Financeiro focado
 em faturado × meta **AURUM** sem bônus; contrato do cliente como **anexo** (bucket
 `gps-onboarding`); favorito como escolha única do aluno (troca só pela equipe, via chamado);

@@ -142,7 +142,17 @@ export function BriefingSessao({ agendamentoId }: { agendamentoId: string }) {
  * com valor em branco): três rótulos vazios seguidos leem como defeito.
  */
 function BlocoDisc({ disc }: { disc: Record<string, unknown> }) {
-  const letra = typeof disc.perfil_disc === "string" ? disc.perfil_disc : null;
+  // 🔴 A chave é `letra`, NÃO `perfil_disc`. A RPC `sessao_briefing_ler`
+  // devolve `disc_ao_vivo = {letra, consciencia, gatilhos, relacionamento,
+  // divergiu, congelado_era, atualizado_em, atualizado_por}` — o nome
+  // `perfil_disc` é o da COLUNA em `etapa1_clientes`, não o do JSON.
+  //
+  // Enquanto lia a chave errada, este bloco mostrava "Perfil DISC ainda não
+  // informado" para TODO cliente, inclusive os 127 que têm a letra — ou seja,
+  // escondia da doutora exatamente o dado que ela abre o briefing para ver.
+  // Achado em 22/09 pela suíte E2E; `tsc` não pega porque o JSON chega como
+  // `Record<string, unknown>` e qualquer chave inexistente é `undefined`.
+  const letra = typeof disc.letra === "string" ? disc.letra : null;
   const consciencia = typeof disc.consciencia === "string" ? disc.consciencia : null;
   const gatilhos = typeof disc.gatilhos === "string" ? disc.gatilhos : null;
   const relacionamento =

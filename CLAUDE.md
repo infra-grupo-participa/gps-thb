@@ -1913,7 +1913,29 @@ acima tem de crescer junto.
 
 "Concluir" continua fechando direto: ali o admin está dizendo que já copiou.
 
-### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10)
+### ✅ Agendamento — decisão de 2026-08-10 REVOGADA em 2026-09-22
+
+**Decisão do Marcio, 22/09/2026:** *"sim, revoga a decisão de 10/08 — agora a
+disponibilidade parte delas"*.
+
+O que mudou, e é a razão da revogação: em agosto o desenho era **aluno propõe →
+equipe aceita**, e a equipe não aceitava. Agora a **disponibilidade parte das
+doutoras** — elas declaram a grade semanal fixa e o aluno só escolhe dentro do
+que já foi prometido. O sistema deixa de prometer reunião que a equipe não
+assumiu.
+
+**O que isto autoriza:** a nova feature `gps.sessao_*` (Entrevista Prévia e
+Reunião Preliminar com as Dras. Elaine e Cristiane).
+PRD: `docs/specs/2026-09-22-agenda-sessoes-equipe-PRD.md`.
+
+**O que isto NÃO autoriza:** ressuscitar `gps.reuniao_agendamentos`,
+`reuniao_horarios`, `reuniao_bloqueios`, `reuniao_eventos` e `gps.agenda`. Essas
+tabelas seguem órfãs e **proibidas** — o modelo novo nasce em `gps.sessao_*`.
+A seção histórica abaixo fica como registro do que foi removido e por quê.
+
+---
+
+### ⚠️ Agendamento — REMOVIDO do sistema (2026-08-10) — histórico, revogado acima
 
 **Decisão do Marcio.** O motivo é **operacional, não técnico**: o fluxo não estava fluindo e
 **a equipe não estava comparecendo**. Enquanto isso é um problema interno, **o sistema não pode

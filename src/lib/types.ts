@@ -249,6 +249,25 @@ export interface ClienteEtapa1 {
   data_reuniao_preliminar: string | null;
   aderiu_reuniao: boolean;
   perfil_disc: PerfilDisc | null;
+  /**
+   * O DISC além da letra (migração `…294`, pedido do Marcio em 22/09/2026):
+   * "nível de consciência", "gatilhos emocionais" e como o cliente se
+   * relaciona. A letra sozinha não conduz uma reunião.
+   *
+   * 🔴 CHECK no banco: 3..2000 caracteres sobre `btrim`, e `null` permitido.
+   * Campo vazio TEM de virar `null` antes de ir ao banco — mandar `""` ou
+   * `"  "` devolve 23514 quando o parceiro limpa o campo.
+   *
+   * 🔴 Lidos AO VIVO, nunca do `briefing_snapshot`: o DISC é atributo estável
+   * da pessoa, não retrato do momento do agendamento. Congelá-lo faria a
+   * doutora abrir a sessão sem o DISC que o parceiro preencheu depois de
+   * marcar — o fluxo que o Marcio descreveu (entrevista → DISC → agenda).
+   */
+  disc_consciencia: string | null;
+  disc_gatilhos: string | null;
+  disc_relacionamento: string | null;
+  disc_atualizado_em: string | null;
+  disc_atualizado_por: string | null;
   acompanhado_equipe: boolean;
   ordem: number;
   /**

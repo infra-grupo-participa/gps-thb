@@ -60,6 +60,9 @@ export type PatchCliente = Partial<
     | "valor_honorarios"
     | "contrato_url"
     | "grau_relacao"
+    | "disc_consciencia"
+    | "disc_gatilhos"
+    | "disc_relacionamento"
   >
 >;
 
@@ -91,6 +94,16 @@ const CHAVES_PATCH_CLIENTE: ReadonlySet<string> = new Set([
   // estar só no `Pick` não basta — o tipo some na compilação e o filtro abaixo
   // descartaria o campo em runtime, e a feature nasceria morta, sem erro.
   "grau_relacao",
+  // DISC além da letra (migração 20260923000294, pedido do Marcio 22/09/2026).
+  // MESMA armadilha das três acima — e aqui ela quase pegou de novo: o tipo
+  // em `types.ts` e a tela foram escritos por fatias diferentes, e nenhuma das
+  // duas alcançava ESTE arquivo. Sem estas 3 linhas, o parceiro preencheria os
+  // campos, a tela diria "salvo", e o filtro os descartaria em silêncio.
+  // ⚠️ `disc_atualizado_em`/`_por` NÃO entram: são carimbo de servidor, não
+  // campo de formulário — quem os escreve é a action, não o cliente.
+  "disc_consciencia",
+  "disc_gatilhos",
+  "disc_relacionamento",
 ]);
 
 /**

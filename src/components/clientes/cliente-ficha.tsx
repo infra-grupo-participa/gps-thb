@@ -115,6 +115,27 @@ export function ClienteFicha({
     cliente.data_reuniao_preliminar ?? "",
   );
   const [disc, setDisc] = useState(cliente.perfil_disc ?? "");
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔴 O DISC RICO (PRD 2026-09-23, fatias A/B/E) — e a armadilha do `""`
+  // ═══════════════════════════════════════════════════════════════════════
+  //
+  // O CHECK das 3 colunas em `gps.etapa1_clientes` é **3..2000 caracteres
+  // sobre `btrim`, com `null` permitido**. Ou seja: `null` passa, `"ok"` é
+  // curto demais, e **`""` ou `"   "` violam o CHECK com 23514**.
+  //
+  // Consequência direta para esta tela: **campo esvaziado tem de virar
+  // `null`** antes de ir ao banco. Se `salvar()` mandasse `""`, o parceiro
+  // que limpasse um campo levaria "violates check constraint" em vez de ver
+  // a ficha salva — e levaria isso na ficha INTEIRA, porque o update é um só.
+  // A normalização está em `salvar()` (`|| null` sobre o `trim`) e repetida
+  // aqui na comparação de `alterado`, senão a barra mente nos dois sentidos.
+  const [discConsciencia, setDiscConsciencia] = useState(
+    cliente.disc_consciencia ?? "",
+  );
+  const [discGatilhos, setDiscGatilhos] = useState(cliente.disc_gatilhos ?? "");
+  const [discRelacionamento, setDiscRelacionamento] = useState(
+    cliente.disc_relacionamento ?? "",
+  );
   const [aderiu, setAderiu] = useState(cliente.aderiu_reuniao);
   const [msgPadrao, setMsgPadrao] = useState(cliente.mensagem_padrao_enviada);
   const [estudoCaso, setEstudoCaso] = useState(cliente.estudo_caso_enviado);
@@ -221,6 +242,13 @@ export function ClienteFicha({
     fase !== (cliente.fase ?? "prospeccao") ||
     (dataReuniao || null) !== (cliente.data_reuniao_preliminar ?? null) ||
     (disc || null) !== (cliente.perfil_disc ?? null) ||
+    // MESMA normalização de `salvar()` (`trim` + `|| null`). Divergir aqui
+    // faria a barra dizer "alterações não salvas" para sempre em quem só
+    // encostou num campo e apagou de novo.
+    (discConsciencia.trim() || null) !== (cliente.disc_consciencia ?? null) ||
+    (discGatilhos.trim() || null) !== (cliente.disc_gatilhos ?? null) ||
+    (discRelacionamento.trim() || null) !==
+      (cliente.disc_relacionamento ?? null) ||
     aderiu !== cliente.aderiu_reuniao ||
     msgPadrao !== cliente.mensagem_padrao_enviada ||
     estudoCaso !== cliente.estudo_caso_enviado ||
@@ -273,6 +301,27 @@ export function ClienteFicha({
     (!/^https:\/\/[^\s]+$/.test(contratoLimpo) ||
       contratoLimpo.length < 12 ||
       contratoLimpo.length > 2000);
+
+  /**
+   * O piso de 3 caracteres dos campos ricos do DISC.
+   *
+   * Aqui é CONVENIÊNCIA — a garantia é o CHECK do banco (3..2000 sobre
+   * `btrim`, `null` permitido). Existe porque um campo com 1 ou 2 caracteres
+   * derrubaria o salvamento da ficha INTEIRA com 23514, e a pessoa não teria
+   * como adivinhar qual dos três campos era o culpado.
+   *
+   * ⚠️ O caso do campo VAZIO não aparece aqui de propósito: vazio é válido
+   * (vira `null` em `salvar()`), e é o estado de 34 de 34 favoritos no dia do
+   * deploy. Só o "quase vazio" é recusado.
+   */
+  const discRicoCurto = [
+    { rotulo: "Consciência", valor: discConsciencia },
+    { rotulo: "Gatilhos", valor: discGatilhos },
+    { rotulo: "Relacionamento", valor: discRelacionamento },
+  ].find((c) => {
+    const t = c.valor.trim();
+    return t !== "" && t.length < 3;
+  });
 
   /**
    * 🔴 Para o ALUNO, marcar a estrela pergunta antes, com a consequência
@@ -335,6 +384,14 @@ export function ClienteFicha({
       );
       return;
     }
+    if (discRicoCurto) {
+      // A frase nomeia O CAMPO. Sem isso, o 23514 do banco chegaria como
+      // "violates check constraint" sobre uma ficha de 20 campos.
+      setErroSalvar(
+        `O campo "${discRicoCurto.rotulo}" do DISC precisa de pelo menos 3 caracteres — ou deixe em branco.`,
+      );
+      return;
+    }
     // 🔑 A exigência do rótulo passou a ser real. A tarefa 1 da Etapa 01 é
     // "listar 30 clientes potenciais com ao menos 1 dos 7 problemas": o
     // problema é o que qualifica a pessoa como cliente de holding, e a legenda
@@ -362,6 +419,12 @@ export function ClienteFicha({
         fase,
         data_reuniao_preliminar: dataReuniao || null,
         perfil_disc: (disc as ClienteEtapa1["perfil_disc"]) || null,
+        // 🔴 `""` NUNCA vai ao banco: o CHECK é 3..2000 sobre `btrim` com
+        // `null` permitido, então string vazia derrubaria o salvamento da
+        // ficha inteira com 23514. Campo limpo = NÃO INFORMADO = `null`.
+        disc_consciencia: discConsciencia.trim() || null,
+        disc_gatilhos: discGatilhos.trim() || null,
+        disc_relacionamento: discRelacionamento.trim() || null,
         aderiu_reuniao: aderiu,
         mensagem_padrao_enviada: msgPadrao,
         estudo_caso_enviado: estudoCaso,
@@ -737,6 +800,69 @@ export function ClienteFicha({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              O DISC ALÉM DA LETRA (pedido 5 do Marcio, 23/09/2026)
+              ═══════════════════════════════════════════════════════════════
+
+              Denso e chapado: três campos empilhados abaixo do Select que já
+              existe, na mesma `Secao` "Registro e perfil". Não é card novo,
+              não é aba nova, não tem ícone — a hierarquia é a POSIÇÃO.
+
+              🔴 Campo em branco é o estado NORMAL, não um erro: no dia do
+              deploy, 34 de 34 favoritos estão assim (medido em 23/09). Por
+              isso nenhum dos três é obrigatório, nenhum marca `aria-invalid`
+              sozinho e o `placeholder` ensina o que escrever em vez de cobrar.
+
+              🔴 `maxLength={2000}` espelha o teto do CHECK. O piso de 3 é
+              conferido em `salvar()` (`discRicoCurto`) — travar a digitação
+              no 3º caractere impediria de apagar. */}
+          <div className="grid gap-5">
+            <div className="grid gap-2">
+              <Label htmlFor="f-disc-consc">
+                Consciência{" "}
+                <span className="rotulo text-muted-foreground">(opcional)</span>
+              </Label>
+              <Textarea
+                id="f-disc-consc"
+                value={discConsciencia}
+                onChange={(e) => setDiscConsciencia(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder="O quanto essa pessoa já percebe o problema que a holding resolve."
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="f-disc-gat">
+                Gatilhos{" "}
+                <span className="rotulo text-muted-foreground">(opcional)</span>
+              </Label>
+              <Textarea
+                id="f-disc-gat"
+                value={discGatilhos}
+                onChange={(e) => setDiscGatilhos(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder="O que move e o que trava essa pessoa numa conversa de decisão."
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="f-disc-rel">
+                Relacionamento{" "}
+                <span className="rotulo text-muted-foreground">(opcional)</span>
+              </Label>
+              <Textarea
+                id="f-disc-rel"
+                value={discRelacionamento}
+                onChange={(e) => setDiscRelacionamento(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder="Como conduzir a conversa com ela: ritmo, tom, o que evitar."
+              />
             </div>
           </div>
 

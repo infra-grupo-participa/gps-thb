@@ -1,3 +1,4 @@
+import { logErro } from "@/lib/log";
 import { createClient } from "@/lib/supabase/server";
 import type { ClienteEtapa1 } from "@/lib/types";
 import type { ClienteHonorarios } from "@/lib/etapa1";
@@ -46,7 +47,7 @@ import type { ClienteHonorarios } from "@/lib/etapa1";
  * está no `select`.
  */
 const COLUNAS_CLIENTE =
-  "id, aluno_id, nome, telefone, problemas, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, acompanhado_equipe, ordem, valor_honorarios, contrato_url, grau_relacao, acompanhamento_confirmado_em, acompanhamento_confirmado_por, contrato_path, contrato_nome, contrato_mime, contrato_tamanho, contrato_anexado_em, selecionado_entrevista, entrevista_resultado, entrevista_observacoes, entrevista_em, entrevista_por";
+  "id, aluno_id, nome, telefone, problemas, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, disc_consciencia, disc_gatilhos, disc_relacionamento, disc_atualizado_em, disc_atualizado_por, acompanhado_equipe, ordem, valor_honorarios, contrato_url, grau_relacao, acompanhamento_confirmado_em, acompanhamento_confirmado_por, contrato_path, contrato_nome, contrato_mime, contrato_tamanho, contrato_anexado_em, selecionado_entrevista, entrevista_resultado, entrevista_observacoes, entrevista_em, entrevista_por";
 /** `gps.etapa3_agendamentos` → `Etapa3Agendamento`. */
 const COLUNAS_ETAPA3_AGENDAMENTO =
   "id, aluno_id, cliente_id, descricao, data, horario, equipe_participa, criado_em";
@@ -77,6 +78,45 @@ export async function getClienteById(
     .eq("id", clienteId)
     .maybeSingle();
   return (data as ClienteEtapa1) ?? null;
+}
+
+/**
+ * Nome de vários clientes numa consulta só.
+ *
+ * 🔴 Existe para matar N+1. A tela de sessões precisa do nome do cliente de
+ * cada linha; `Array.from(ids, getClienteById)` faz UMA ida ao PostgREST por
+ * cliente distinto — a 8 sessões/semana isso vira ~400 requisições por
+ * abertura de tela em um ano, custo que cresce com a base e não com o que a
+ * tela mostra. É o padrão que motivou o protocolo de sustentabilidade.
+ *
+ * Só `id, nome`: quem precisa da ficha inteira usa `getClienteById`. A RLS
+ * continua decidindo quais linhas voltam — esta função não amplia acesso.
+ */
+export async function getNomesDeClientes(
+  clienteIds: string[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(clienteIds)].filter(Boolean);
+  if (ids.length === 0) return new Map();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .from("etapa1_clientes")
+    .select("id, nome")
+    .in("id", ids);
+
+  if (error) {
+    // Erro NÃO vira mapa vazio silencioso: a tela mostraria "—" no lugar de
+    // todo nome e pareceria cadastro faltando, não falha de leitura.
+    logErro("getNomesDeClientes", error);
+    return new Map();
+  }
+
+  return new Map(
+    ((data ?? []) as { id: string; nome: string | null }[])
+      .filter((c) => c.nome)
+      .map((c) => [c.id, c.nome as string]),
+  );
 }
 
 export async function getAgendamentosEtapa3(alunoId: string) {

@@ -72,6 +72,34 @@ export function alunoNavItems(
     ...(basePath === ""
       ? [{ href: "/plantao", label: "Plantão", icon: "materiais" as const }]
       : []),
+    // 📅 Sessões com a equipe jurídica (22/09/2026) — Entrevista Prévia e
+    // Reunião Preliminar com as Dras. Elaine e Cristiane. O aluno escolhe um
+    // horário que a equipe JÁ declarou que pode (`gps.sessao_*`).
+    //
+    // ⚠️ NÃO é o "agendamento de reunião com a equipe" removido em 10/08/2026
+    // e já reconstruído por engano uma vez (05/08). Aquela decisão foi
+    // REVOGADA pelo Marcio em 22/09 — "agora a disponibilidade parte delas" —
+    // e a revogação autorizou `gps.sessao_*`, e SÓ isso: as tabelas
+    // `gps.reuniao_*` e `gps.agenda` seguem órfãs e PROIBIDAS.
+    //
+    // 🔴 Esta linha é a PORTA DE ENTRADA da tela. Sem ela, `/sessoes`
+    // existiria completa e só seria alcançável digitando a URL — o defeito
+    // que este portal já pagou três vezes (a tela de respostas do onboarding
+    // com 77 questionários dentro, a aba Tutoriais, a aba do Inventário).
+    //
+    // 🔑 `basePath === ""` é o sinal de "é o aluno de verdade" — a MESMA
+    // condição do Plantão logo acima, e pelo mesmo motivo: não existe
+    // `admin/aluno/[id]/sessoes/page.tsx` (a tela da equipe é `/admin/sessoes`,
+    // fatia 5, e é outra tela). Sem este filtro, o link apareceria no modo
+    // assistência e o admin cairia num 404 ao clicar. Se um dia houver tela
+    // de assistência para as sessões, é só tirar a condição.
+    //
+    // Ícone reaproveitado ("materiais", o mesmo do Plantão): não existe chave
+    // dedicada a calendário/agenda em `NavItem["icon"]` (`nav-tabs.tsx`) e a
+    // regra do projeto é não inventar chave nova.
+    ...(basePath === ""
+      ? [{ href: "/sessoes", label: "Sessões", icon: "materiais" as const }]
+      : []),
     // ⏸️ FINANCEIRO EM ESPERA (decisão do Marcio, 10/09/2026): "esconder a
     // aba do financeiro, dado que ainda não está pronta, deixa mockado com
     // uma aba de em breve".
@@ -286,6 +314,30 @@ export function adminNavItems(
     // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela, `/admin/operadores`
     // existiria completa e só seria alcançável digitando a URL.
     { href: "/admin/operadores", label: "Operadores", icon: "equipe" },
+    // 📅 Sessões com a equipe jurídica (22/09/2026) — a tela DELAS: próximas
+    // sessões, briefing do cliente, cancelar. A tela do parceiro é `/sessoes`
+    // (em `alunoNavItems`); esta é a contraparte da equipe.
+    //
+    // 🔴 A ROTA É ROTEADA AQUI, PELA FATIA 4, e a tela é construída pela
+    // fatia 5 — `src/lib/nav.ts` é EXCLUSIVO desta fatia porque é o único
+    // arquivo que as duas disputariam (PRD §10). Dois agentes no mesmo
+    // arquivo ficam ambos verdes e o build quebra; pior, commitar o arquivo
+    // inteiro publica o trabalho não revisado do outro.
+    //
+    // ⚠️ ESTE ITEM FICA NO RAMO `souAdmin`, e é uma decisão, não descuido: a
+    // RLS da `…291` dá à doutora `responsavel_id = auth.uid()` e ao admin
+    // `gp_is_admin()` — o OPERADOR puro (`gps.eh_equipe()`, papel "equipe da
+    // esteira") NÃO lê sessão nenhuma e não tem por que ver o link. As duas
+    // doutoras são admin/dev em `public.perfis` (§9b.3: cristiane@advmais.com
+    // admin, elaine@advmais.com dev), então elas caem neste ramo. Link que dá
+    // erro é pior que link ausente.
+    //
+    // Ícone "materiais" (BookOpen), o MESMO do Plantão — não há chave de
+    // calendário/agenda em `NavItem["icon"]` e a regra é não inventar uma.
+    // ✅ FATIA 5 (22/09/2026): `src/app/admin/sessoes/page.tsx` existe —
+    // `emBreve: true` removido. A rota, o rótulo e o ícone eram os já
+    // decididos pela fatia 4; nada mais mudou aqui.
+    { href: "/admin/sessoes", label: "Sessões", icon: "materiais" },
     // Biblioteca de vídeos (demanda 5, 11/09/2026): mesmo ícone "materiais"
     // (BookOpen) do Plantão acima — não é o mesmo assunto, mas é o ícone mais
     // próximo do catálogo existente, e a regra do projeto é não inventar

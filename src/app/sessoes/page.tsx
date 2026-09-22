@@ -276,7 +276,16 @@ export default async function SessoesPage() {
           voltar={
             <Link
               href="/"
-              className="text-sm text-muted-foreground hover:text-foreground"
+              // 🔴 `inline-flex items-center min-h-11`: como `inline` puro, o
+              // link media 117×17px no celular e reprovava o alvo tocável do
+              // WCAG 2.5.8 (mínimo 24×24). Achado pela suíte E2E no Pixel 7 —
+              // de forma INTERMITENTE, porque só aparece depois de a página
+              // rolar. `tsc` e `build` nunca veriam; é geometria, e geometria
+              // só se prova em navegador que pinta.
+              // ⚠️ O mesmo link existe com esta classe em `/etapa/[etapa]` e
+              // nos espelhos do admin — defeito pré-existente, não corrigido
+              // aqui para o diff não passar por telas fora desta feature.
+              className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground"
             >
               ← Voltar ao início
             </Link>

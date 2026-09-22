@@ -223,6 +223,16 @@ export async function contrasteAprovado(page: Page, titulo = "a página") {
  * WCAG 2.2 (2.5.8); abaixo disso, no celular, a pessoa erra o clique.
  */
 export async function alvosDeClique(page: Page, minimo = 24) {
+  // 🔑 Rola até o fim ANTES de medir. Medido em 22/09: o link "← Voltar ao
+  // início" (117×17px, reprovado) só era detectado em 1 de 3 execuções,
+  // porque elementos abaixo da dobra podem não ter layout estável até a
+  // página rolar. Teste que acha o defeito 1 em 3 vezes é pior que teste
+  // nenhum: ensina a ignorar o vermelho.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(400);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(200);
+
   const pequenos = await page.evaluate((min) => {
     const ruins: { rotulo: string; l: number; a: number }[] = [];
     document.querySelectorAll<HTMLElement>("a[href], button, [role=button], input, select, textarea")

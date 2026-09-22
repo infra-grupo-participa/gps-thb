@@ -51,3 +51,11 @@ supabase/.temp/
 .agents/
 .claude/skills/
 skills-lock.json
+
+# Suíte E2E (Playwright): artefatos de execução, nunca versionados.
+# `test-results/` guarda vídeo, trace e captura das falhas — inclui a TELA
+# LOGADA da conta de QA, com nome de cliente real visível na agenda da equipe.
+# Versionar isso publicaria dado pessoal de terceiro num repo de código.
+/test-results/
+/e2e/.relatorio/
+/playwright-report/

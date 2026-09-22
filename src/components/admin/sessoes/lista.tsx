@@ -277,7 +277,15 @@ function LinhaDaSessao({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-wrap gap-2">
+        {/* 🔴 `min-w-0` e SEM `shrink-0`: com `shrink-0` o contêiner recusava
+            encolher e o `flex-wrap` nunca chegava a agir — medido no Pixel 7
+            (412px) com os 5 botões na tela (Ver briefing · Colar link ·
+            Concluir · Cancelar · Marcar falta): 546px de conteúdo, 134px de
+            rolagem horizontal na página inteira.
+            Só aparece quando a sessão está em andamento (é quando "Concluir"
+            e "Marcar falta" surgem), por isso passou despercebido até haver
+            uma sessão nesse estado. Achado pela suíte E2E. */}
+        <div className="flex min-w-0 flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"

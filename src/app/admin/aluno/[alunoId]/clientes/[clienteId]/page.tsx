@@ -68,6 +68,13 @@ export default async function AdminAlunoClienteFichaPage({
       ? (outroConfirmado.nome ?? null)
       : null;
 
+  // 🔴 ESPELHO (23/09/2026): a ficha faz `outroConfirmadoNome ?? outroFavoritoNome`
+  // (`cliente-ficha.tsx:278`). Sem esta linha, o admin não via nome nenhum
+  // quando OUTRO cliente do ambiente já tem a estrela mas o caso dele ainda
+  // NÃO andou — o parceiro via, o admin não. Mesma classe da omissão do painel
+  // da Entrevista Prévia, achada pela comparação das props das duas telas.
+  const outroFavoritoNome = outroConfirmado?.nome ?? null;
+
   // Mesmo interruptor da ficha do aluno — por RPC, porque `gps.config` só
   // tem policy de admin (ver comentário em `getMinutaContextoObrigatorio`).
   const contextoObrigatorio = await getMinutaContextoObrigatorio();
@@ -126,6 +133,7 @@ export default async function AdminAlunoClienteFichaPage({
           alunoId={alunoId}
           admin
           outroConfirmadoNome={outroConfirmadoNome}
+          outroFavoritoNome={outroFavoritoNome}
           qtdDecisores={decisores?.decisores.length ?? null}
           painelEntrevista={
             <PainelEntrevistaPrevia

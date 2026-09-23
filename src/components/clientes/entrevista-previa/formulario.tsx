@@ -149,8 +149,24 @@ export function FormularioEntrevistaPrevia({
 
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => router.push(voltarHref)}>Voltar para a ficha</Button>
-          <Button variant="outline" onClick={() => router.push(voltarHref)}>
-            Fazer outra entrevista
+          {/* 🔴 ABRE OUTRA de verdade. Antes este botão levava à ficha — o
+              mesmo destino do primeiro, dois botões para a mesma coisa. As
+              entrevistas são ILIMITADAS por requisito ("pode fazer a
+              entrevista previa com quantas pessoas quiser"), e é aqui que o
+              parceiro está quando acaba de falar com uma pessoa e já vai
+              chamar a próxima.
+
+              🔑 `window.location.assign`, NÃO `router.refresh()` + limpar o
+              estado: o `entrevistaId` é PROP vinda do servidor e não muda com
+              refresh. O formulário voltaria apontando para a entrevista já
+              CONCLUÍDA, e cada resposta bateria em "Esta entrevista já foi
+              concluída". A navegação real remonta a página, e a RPC abre uma
+              linha nova (a anterior está concluída, então não é retomada). */}
+          <Button
+            variant="outline"
+            onClick={() => window.location.assign(window.location.pathname)}
+          >
+            Entrevistar outra pessoa
           </Button>
         </div>
       </div>
@@ -194,7 +210,18 @@ export function FormularioEntrevistaPrevia({
           <Button onClick={concluir} disabled={pendente} aria-busy={pendente || undefined}>
             {pendente ? "Gerando o perfil…" : "Concluir e gerar o perfil"}
           </Button>
-          <Button variant="outline" onClick={() => setFase("perguntas")} disabled={pendente}>
+          <Button
+            variant="outline"
+            // 🔑 Volta para a PRIMEIRA pergunta, não para onde parou (que é a
+            // última). Quem clica aqui quer revisar o que respondeu; cair no
+            // fim obrigaria a clicar "Anterior" 23 vezes para checar a de
+            // número 1.
+            onClick={() => {
+              setIndice(0);
+              setFase("perguntas");
+            }}
+            disabled={pendente}
+          >
             Voltar às perguntas
           </Button>
         </div>
@@ -220,7 +247,14 @@ export function FormularioEntrevistaPrevia({
           <Button onClick={concluir} disabled={pendente} aria-busy={pendente || undefined}>
             {pendente ? "Gerando o perfil…" : "Concluir e gerar o perfil"}
           </Button>
-          <Button variant="outline" onClick={() => setFase("perguntas")} disabled={pendente}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setIndice(0);
+              setFase("perguntas");
+            }}
+            disabled={pendente}
+          >
             Revisar respostas
           </Button>
         </div>

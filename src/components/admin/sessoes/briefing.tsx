@@ -84,6 +84,20 @@ export function BriefingSessao({ agendamentoId }: { agendamentoId: string }) {
   const cliente = (dados.cliente ?? {}) as Record<string, unknown>;
   const onboarding = (dados.onboarding ?? {}) as Record<string, unknown>;
   const entrevista = (dados.entrevista ?? {}) as Record<string, unknown>;
+  // 🔴 QUEM DECIDE, lido AO VIVO (`decisores_ao_vivo`, irmão de `briefing`).
+  //
+  // Dois defeitos corrigidos aqui na auditoria de 23/09:
+  //  1. o snapshot já trazia `decisores` e a tela NÃO mostrava — mesmo
+  //     defeito do DISC: grava certo, não exibe;
+  //  2. o snapshot CONGELA no ato do agendamento, e a Entrevista Prévia (que
+  //     descobre os decisores) costuma rodar DEPOIS. A doutora veria a lista
+  //     velha, sem o cônjuge que o parceiro acabou de mapear — e conduziria
+  //     a reunião achando que está com todos na sala.
+  //
+  // 🔑 Mesmo raciocínio que tirou o DISC do snapshot: quem decide é atributo
+  // ESTÁVEL DA PESSOA, não fato datado. O congelado continua no snapshot
+  // (`briefing.decisores`) como histórico do que se sabia no dia.
+  const decisores = Array.isArray(b.decisores_ao_vivo) ? b.decisores_ao_vivo : [];
   const gerado = typeof dados.gerado_em === "string" ? dados.gerado_em : null;
   // 🔴 `disc_ao_vivo` vem no TOPO da resposta, irmão de `briefing` — não
   // dentro dele. Medido em produção: as chaves de `briefing` são
@@ -131,7 +145,61 @@ export function BriefingSessao({ agendamentoId }: { agendamentoId: string }) {
         />
       </dl>
 
+      <BlocoDecisores decisores={decisores} />
       <BlocoDisc disc={discAoVivo} />
+    </div>
+  );
+}
+
+/**
+ * QUEM DECIDE — a lista que a Entrevista Prévia monta.
+ *
+ * 🔴 Existe porque a regra do Marcio (23/09) é dura: *"está proibido
+ * participar da reunião sem os decisores"* · *"para realizar a reunião
+ * preliminar, todos os decisores precisam"*. A doutora precisa saber, ANTES
+ * de começar, se falta alguém na sala.
+ *
+ * O parceiro é avisado na ficha e ao marcar; a trava é de AVISO, não de
+ * bloqueio (mesma decisão do DISC). Este bloco é a última rede: se o aviso
+ * foi ignorado, quem conduz a reunião ainda vê que há mais gente decidindo.
+ *
+ * Lista vazia SOME da tela. Cliente sem entrevista ainda não tem decisores
+ * mapeados, e um rótulo "Quem decide: —" leria como defeito.
+ */
+function BlocoDecisores({ decisores }: { decisores: Record<string, unknown>[] }) {
+  const lista = decisores
+    .map((d) => ({
+      nome: typeof d.nome === "string" ? d.nome : null,
+      papel: typeof d.papel_no_negocio === "string" ? d.papel_no_negocio : null,
+      principal: d.principal === true,
+    }))
+    .filter((d) => d.nome);
+
+  if (lista.length === 0) return null;
+
+  return (
+    <div className="grid gap-2 border-t border-borda-fina pt-3">
+      <p className="rotulo text-muted-foreground">
+        Quem decide{lista.length > 1 ? ` (${lista.length})` : ""}
+      </p>
+      <ul className="corpo-sm grid gap-0.5">
+        {lista.map((d, i) => (
+          <li key={`${d.nome}-${i}`}>
+            {d.nome}
+            {d.principal ? (
+              <span className="text-muted-foreground"> — decisor principal</span>
+            ) : d.papel && d.papel.toLowerCase() !== (d.nome ?? "").toLowerCase() ? (
+              <span className="text-muted-foreground"> — {d.papel}</span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {lista.length > 1 ? (
+        <p className="corpo-sm text-accent-foreground">
+          A reunião precisa de <strong>todos presentes</strong>. Se faltar
+          alguém, remarque antes de avançar no conteúdo.
+        </p>
+      ) : null}
     </div>
   );
 }

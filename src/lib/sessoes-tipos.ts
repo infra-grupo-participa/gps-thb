@@ -220,6 +220,22 @@ export interface SessaoBriefing {
    * aconteceu 2× neste mesmo componente.
    */
   disc_ao_vivo?: Record<string, unknown> | null;
+  /**
+   * Os DECISORES lidos AO VIVO de `gps.cliente_decisores` — irmão de
+   * `briefing`, como `disc_ao_vivo`, e pela mesma razão.
+   *
+   * 🔴 O snapshot congela os decisores no ato do agendamento, mas a
+   * Entrevista Prévia (que os descobre) roda DEPOIS na maioria dos casos.
+   * Ler do congelado faria a doutora conduzir a reunião sem saber que o
+   * cônjuge decide junto — quebrando a regra do Marcio (*"proibido participar
+   * da reunião sem os decisores"*) no exato momento em que ela vale.
+   *
+   * Chaves: `nome`, `papel_no_negocio`, `principal`.
+   * ⚠️ Declarado aqui de propósito: foi a AUSÊNCIA desta declaração que
+   * produziu duas chaves erradas em `briefing.tsx` (22/09) — um
+   * `Record<string, unknown>` não valida nome de chave nenhum.
+   */
+  decisores_ao_vivo?: Record<string, unknown>[] | null;
 }
 
 /** Retorno de `gps.sessao_agendar`. */

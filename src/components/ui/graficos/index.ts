@@ -19,6 +19,10 @@ export { BarraEmpilhada } from "./barra-empilhada";
 export { Rosca } from "./rosca";
 export { Linha } from "./linha";
 export { Funil } from "./funil";
+// ⚠️ `EscadaAlcance` é o OPOSTO do `Funil`, e a escolha entre os dois é de
+// dado, não de gosto: funil só onde cada etapa é subconjunto da anterior;
+// escada onde os estágios são alcançados fora de ordem. Ver o cabeçalho dela.
+export { EscadaAlcance, type DegrauAlcance } from "./escada-alcance";
 // ⚠️ Só o que ALGUÉM importa daqui. `LegendaValores`, `COR_DO_TOM`,
 // `SerieLinha`, `FormatarValor` e `PontoGrafico` saíram do barril: os usos
 // reais importam direto de `./legenda-valores` e `./tipos`, e reexport que

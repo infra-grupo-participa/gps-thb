@@ -39,7 +39,16 @@ export function FaixaKpis({
     clientes30.semNenhumCliente + clientes30.noMeioDos30 + clientes30.fecharamOs30;
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+    /* 🔑 DENSIFICADO em 23/09/2026. Era `grid-cols-2 lg:grid-cols-3
+       xl:grid-cols-6` com `gap-3`: em 1366 px (a tela da equipe) os seis KPIs
+       ocupavam DUAS fileiras e o gráfico seguinte nascia abaixo da dobra —
+       exatamente o "4 números com muito espaço em volta" que o Marcio
+       reprovou, contra a tabela de parceiros que ele aprovou por mostrar 86
+       linhas de uma vez.
+
+       Agora os seis cabem numa fileira já a partir do `lg` (1024), e o `gap`
+       cai de 12 px para 8. Nenhum número saiu — o que encolheu foi o vão. */
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
       {/* 🔑 "Parceiros 152 · Titulares 140 · Sócios 12" — o formato que o
           Marcio pediu em 14/09: rótulo e número, sem frase. O macro passa a
           ser PESSOAS (152), não ambientes (140), porque é isso que o par

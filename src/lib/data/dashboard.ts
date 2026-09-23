@@ -242,6 +242,66 @@ export interface DashboardParceiros {
   semAbrir14d: number;
 }
 
+/**
+ * O caminho do parceiro: quantos AMBIENTES alcançaram cada estágio.
+ *
+ * 🔴 NÃO É FUNIL, e por isso não existe taxa de passagem aqui — nem no jsonb
+ * da RPC. Cada número é sobre os mesmos `ambientes`, nunca sobre o estágio
+ * anterior. Medido em 23/09/2026: 26 dos 37 que escolheram favorito nunca
+ * mandaram mensagem; 11 mandaram mensagem sem ter os 30; 8 marcaram reunião
+ * sem favorito; 8 fecharam contrato sem reunião; 11 cadastraram cliente sem
+ * ter concluído o onboarding. Logo `escolheuFavorito` NÃO é subconjunto de
+ * `mandouMsg`, e dividir um pelo outro daria taxa acima de 100%.
+ *
+ * ⚠️ `ambientes` conta o MESMO universo que `DashboardPrograma.total` — os
+ * dois aparecem na mesma tela e divergir seria um número contradizendo o
+ * outro. Se um dia divergirem, o defeito é no SQL (join sem agregar antes
+ * multiplica ambiente com sócio), não na tela.
+ */
+export interface DashboardJornada {
+  ambientes: number;
+  /** Ambientes em que algum membro já abriu o portal (titular ou sócio). */
+  entraram: number;
+  onboardingOk: number;
+  /** Ambientes com ao menos 1 cliente cadastrado. */
+  cadastrou: number;
+  /** Ficha completa = nome + telefone. Mesma regra de `parceiros.com30OuMais`. */
+  fechou30: number;
+  mandouMsg: number;
+  escolheuFavorito: number;
+  marcouReuniao: number;
+  fechouContrato: number;
+}
+
+/** Uma semana da série. `semana` é `DD/MM` do início da semana. */
+export interface DashboardSerieItem {
+  semana: string;
+  clientes: number;
+  /**
+   * 🔴 Estado ATUAL da flag `mensagem_padrao_enviada`, não "mandou naquela
+   * semana": a coluna não tem data. Lê-se "dos clientes criados naquela
+   * semana, quantos têm a flag hoje" — a mensagem pode ter saído semanas
+   * depois, e o número de uma semana antiga pode subir amanhã. A tela precisa
+   * dizer isso; é aproximação honesta, não série temporal de envio.
+   */
+  comMsg: number;
+  /** Ambientes distintos que criaram cliente naquela semana (não é login). */
+  parceirosAtivos: number;
+}
+
+/**
+ * Evolução semanal: 10 semanas INTEIRAS, da mais antiga para a mais nova.
+ *
+ * ⚠️ A última semana é a CORRENTE e está sempre incompleta — é o presente, e
+ * não se corrige cortando. `semanaCorrente` traz a chave `DD/MM` dela para a
+ * tela marcar "em andamento" em vez de desenhar uma queda que não existe.
+ * Comparar por igualdade com `item.semana`.
+ */
+export interface DashboardSerie {
+  itens: DashboardSerieItem[];
+  semanaCorrente: string;
+}
+
 export interface Dashboard {
   geradoEm: string;
   referencia: DashboardReferencia;
@@ -257,6 +317,8 @@ export interface Dashboard {
   caminho: DashboardCaminho;
   atencao: DashboardAtencao;
   parceiros: DashboardParceiros;
+  jornada: DashboardJornada;
+  serie: DashboardSerie;
 }
 
 function n(v: unknown): number {
@@ -311,6 +373,8 @@ export function mapearDashboard(d: Record<string, unknown>): Dashboard {
   const cam = (d.caminho ?? {}) as Record<string, unknown>;
   const ate = (d.atencao ?? {}) as Record<string, unknown>;
   const par = (d.parceiros ?? {}) as Record<string, unknown>;
+  const jor = (d.jornada ?? {}) as Record<string, unknown>;
+  const ser = (d.serie ?? {}) as Record<string, unknown>;
 
   const somas = Array.isArray(hon.somas_por_ambiente)
     ? (hon.somas_por_ambiente as unknown[]).map((s) => n(s))
@@ -449,6 +513,28 @@ export function mapearDashboard(d: Record<string, unknown>): Dashboard {
       semMensagem: n(par.sem_mensagem),
       comContratado: n(par.com_contratado),
       semAbrir14d: n(par.sem_abrir_14d),
+    },
+    jornada: {
+      ambientes: n(jor.ambientes),
+      entraram: n(jor.entraram),
+      onboardingOk: n(jor.onboarding_ok),
+      cadastrou: n(jor.cadastrou),
+      fechou30: n(jor.fechou_30),
+      mandouMsg: n(jor.mandou_msg),
+      escolheuFavorito: n(jor.escolheu_favorito),
+      marcouReuniao: n(jor.marcou_reuniao),
+      fechouContrato: n(jor.fechou_contrato),
+    },
+    serie: {
+      itens: Array.isArray(ser.itens)
+        ? (ser.itens as Record<string, unknown>[]).map((s) => ({
+            semana: String(s.semana ?? ""),
+            clientes: n(s.clientes),
+            comMsg: n(s.com_msg),
+            parceirosAtivos: n(s.parceiros_ativos),
+          }))
+        : [],
+      semanaCorrente: String(ser.semana_corrente ?? ""),
     },
   };
 }

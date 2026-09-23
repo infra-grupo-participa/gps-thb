@@ -9,6 +9,8 @@ import { FaixaKpis } from "./faixa-kpis";
 import { GraficosDoPrograma } from "./graficos";
 import { FilaEBase } from "./fila";
 import { CaminhoDoCliente } from "./caminho";
+import { JornadaDoParceiro } from "./jornada";
+import { EvolucaoSemanal } from "./evolucao";
 
 /**
  * A sub-aba **"O programa"** (`?vis=programa`, a padrão) da Visão geral —
@@ -100,11 +102,31 @@ export function DashboardExecutivo({
       <FaixaKpis dados={dados} clientes30={clientes30} />
       <GraficosDoPrograma dados={dados} trilha={trilha} />
 
-      {/* E. **O caminho do cliente** (Fatia 6, 23/09/2026). Fica aqui, depois
-          da forma do programa e antes da fila: as seções acima falam de
-          PARCEIROS (quantos entraram, quantos acessam, quanto progrediram) e
-          esta fala dos CLIENTES deles. É a mesma leitura macro → micro, um
-          nível abaixo. Absorveu o antigo card "Funil de clientes". */}
+      {/* E. **A jornada do parceiro** e **a evolução semanal** (23/09/2026).
+          Par deliberado: são as duas perguntas que a tela não respondia.
+          A jornada é ONDE cada parceiro está (retrato de hoje); a evolução é
+          PARA ONDE isso anda (movimento no tempo). Todo o resto da Visão geral
+          é retrato — sem a evolução, ninguém vê que o cadastro disparou na
+          semana de 14/09 enquanto a mensagem ficou rente ao chão.
+
+          A ordem geral é a hierarquia: as seções acima falam do PROGRAMA
+          (quantos entraram, quantos acessam), estas falam de cada PARCEIRO, e
+          a seguinte dos CLIENTES dele. Macro → parceiro → cliente.
+
+          🔴 Nenhuma das três vira funil, e pela mesma razão: contagem paralela
+          sobre um denominador escrito. A jornada usa `EscadaAlcance` e o
+          caminho usa `Barras`; nenhuma calcula taxa de passagem.
+
+          ⚠️ Os denominadores são DIFERENTES e cada card escreve o seu: a
+          jornada é sobre os 148 PARCEIROS no programa (o mesmo universo de
+          `programa.total`), o caminho é sobre os ~1.700 CLIENTES. Ler o
+          percentual de um com o denominador do outro é o erro que os rodapés
+          existem para impedir. */}
+      <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+        <JornadaDoParceiro dados={dados} />
+        <EvolucaoSemanal dados={dados} />
+      </div>
+
       <CaminhoDoCliente dados={dados} />
 
       <FilaEBase

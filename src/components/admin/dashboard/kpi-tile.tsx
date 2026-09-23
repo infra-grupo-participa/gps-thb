@@ -117,13 +117,20 @@ export function KpiTile({
        desde 14/09) — decisão do Marcio, para cada submétrica poder ser o seu
        próprio alvo. Sem `relative`/`after:inset-0` aqui: cada link é uma
        âncora de verdade, do tamanho do texto que ela é. */
+    /* 🔑 DENSIFICADO em 23/09/2026 (queixa do Marcio: os cards tinham "muito
+       espaço em volta" e só 4 números cabiam por tela, enquanto a TABELA de
+       parceiros — que ele aprovou — mostra 86 linhas de uma vez). O que saiu
+       foi ESPAÇO, nunca informação: nenhum número, submétrica, link ou
+       denominador foi removido daqui. Ver `faixa-kpis.tsx` para a grade. */
     <Card elevacao="raised" className="h-full transition-colors hover:border-borda-forte">
-      <CardContent className="flex h-full flex-col gap-1.5">
-        {/* `min-h-8` = duas linhas de rótulo reservadas: sem isso, o tile
-            cujo nome quebra ("Ativos nos últimos 30 dias") empurra o número
-            para baixo e os seis macros deixam de compartilhar a mesma linha de
-            base — que é o que faz a faixa ser lida de uma vez. */}
-        <span className="rotulo flex min-h-8 items-start text-muted-foreground">
+      <CardContent className="flex h-full flex-col gap-1 py-3">
+        {/* `min-h-8` reservava DUAS linhas de rótulo em todos os seis tiles
+            para alinhar a linha de base dos números — 16 px de vazio em cada
+            um dos cinco cujo rótulo cabe em uma linha. O alinhamento continua,
+            mas por `leading-tight` + o `items-baseline` do número: os rótulos
+            longos ("Ativos nos últimos 30 dias") quebram e empurram só o
+            próprio tile, que a grade já equaliza pela altura da linha. */}
+        <span className="rotulo flex items-start leading-tight text-muted-foreground">
           {rotulo}
         </span>
 
@@ -204,8 +211,11 @@ export function KpiTile({
             fina separa "o que é" de "o que fazer", sem acrescentar cor nem
             peso. `mt-auto` mantém os seis links na MESMA altura, mesmo com
             rótulos de tamanhos diferentes — é o que faz a faixa parecer uma
-            faixa, e não seis cards soltos. */}
-        <div className="mt-auto border-t border-borda-fina pt-2">
+            faixa, e não seis cards soltos.
+            ⚠️ `pt-1.5` e não `pt-2` (23/09): 3 px × 6 tiles, na densificação.
+            A régua e o link FICAM — o alvo de clique não encolheu, e cortar o
+            link tiraria o destino do tile, que é a razão de ele existir. */}
+        <div className="mt-auto border-t border-borda-fina pt-1.5">
           <Link
             href={link.href}
             prefetch={false}

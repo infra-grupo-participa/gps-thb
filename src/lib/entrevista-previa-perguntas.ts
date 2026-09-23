@@ -98,7 +98,7 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     opcoes: [
       { id: "problema_urgente", rotulo: "Tem um problema acontecendo agora", disc: { D: 2 } },
       { id: "medo_futuro", rotulo: "Medo do que pode acontecer com a família", disc: { S: 2 } },
-      { id: "indicacao", rotulo: "Alguém indicou / ouviu falar", disc: { I: 2 } },
+      { id: "indicacao", rotulo: "Alguém indicou / ouviu falar", disc: { I: 3 } },
       { id: "pesquisa", rotulo: "Vinha pesquisando e estudando o assunto", disc: { C: 2 } },
       { id: "economia", rotulo: "Quer pagar menos imposto", disc: { D: 1, C: 1 } },
     ],
@@ -109,7 +109,7 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     enunciado: "Isso é algo que você quer resolver para quando?",
     opcoes: [
       { id: "ontem", rotulo: "Para ontem — já está atrasado", disc: { D: 2 } },
-      { id: "meses", rotulo: "Nos próximos meses", disc: { D: 1, I: 1 } },
+      { id: "meses", rotulo: "Nos próximos meses", disc: { D: 1, I: 2 } },
       { id: "ano", rotulo: "Dentro de um ano", disc: { S: 1, C: 1 } },
       { id: "sem_pressa", rotulo: "Sem pressa, quer entender primeiro", disc: { C: 2, S: 1 } },
     ],
@@ -120,8 +120,8 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     enunciado: "Você já tentou resolver isso antes, com alguém?",
     opcoes: [
       { id: "nunca", rotulo: "Nunca tratou do assunto", disc: { S: 1 } },
-      { id: "conversou", rotulo: "Conversou com alguém, mas não avançou", disc: { I: 1, S: 1 } },
-      { id: "comecou", rotulo: "Começou e parou no meio", disc: { I: 2 } },
+      { id: "conversou", rotulo: "Conversou com alguém, mas não avançou", disc: { I: 2 } },
+      { id: "comecou", rotulo: "Começou e parou no meio", disc: { I: 3 } },
       { id: "outro_escritorio", rotulo: "Já fez com outro escritório", disc: { D: 1, C: 1 } },
     ],
   },
@@ -137,9 +137,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
       "🔴 Esta é a pergunta-chave. A Reunião Preliminar não acontece sem todos " +
       "os decisores presentes.",
     opcoes: [
-      { id: "sozinho", rotulo: "Decide sozinho", decisor: "sozinho", disc: { D: 2 } },
-      { id: "conjuge_participa", rotulo: "O cônjuge participa da decisão", decisor: "conjuge", disc: { S: 1 } },
-      { id: "conjuge_decide", rotulo: "Na prática, quem decide é o cônjuge", decisor: "conjuge", disc: { S: 2 } },
+      { id: "sozinho", rotulo: "Decide sozinho", decisor: "sozinho", disc: { D: 1 } },
+      { id: "conjuge_participa", rotulo: "O cônjuge participa da decisão", decisor: "conjuge" },
+      { id: "conjuge_decide", rotulo: "Na prática, quem decide é o cônjuge", decisor: "conjuge" },
       { id: "sem_conjuge", rotulo: "Não tem cônjuge", decisor: "sozinho" },
     ],
   },
@@ -151,8 +151,8 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     opcoes: [
       { id: "nao_tem", rotulo: "Não tem filhos" },
       { id: "nao_participam", rotulo: "Tem filhos, mas não participam" },
-      { id: "opinam", rotulo: "Opinam sobre as decisões", decisor: "filhos", disc: { S: 1 } },
-      { id: "participam_negocio", rotulo: "Participam do negócio / da gestão", decisor: "filhos", disc: { S: 1, C: 1 } },
+      { id: "opinam", rotulo: "Opinam sobre as decisões", decisor: "filhos" },
+      { id: "participam_negocio", rotulo: "Participam do negócio / da gestão", decisor: "filhos" },
     ],
   },
   {
@@ -165,7 +165,7 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
       { id: "ninguem", rotulo: "Decide sem consultar ninguém", disc: { D: 2 } },
       { id: "contador", rotulo: "Consulta o contador", decisor: "terceiro", disc: { C: 2 } },
       { id: "advogado", rotulo: "Consulta um advogado", decisor: "terceiro", disc: { C: 2 } },
-      { id: "familiar", rotulo: "Consulta alguém da família", decisor: "terceiro", disc: { S: 2 } },
+      { id: "familiar", rotulo: "Consulta alguém da família", decisor: "terceiro" },
     ],
   },
   {
@@ -174,8 +174,8 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     enunciado: "No seu negócio, você tem sócios?",
     opcoes: [
       { id: "sem_socios", rotulo: "Não tem sócios / não tem empresa", disc: { D: 1 } },
-      { id: "socio_familia", rotulo: "Sócio da própria família", decisor: "socio", disc: { S: 1 } },
-      { id: "socio_externo", rotulo: "Sócio de fora da família", decisor: "socio", disc: { C: 1 } },
+      { id: "socio_familia", rotulo: "Sócio da própria família", decisor: "socio" },
+      { id: "socio_externo", rotulo: "Sócio de fora da família", decisor: "socio" },
     ],
   },
   {
@@ -187,9 +187,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     ajuda: "Marque quem tem a palavra final. É o decisor PRINCIPAL.",
     opcoes: [
       { id: "eu", rotulo: "A própria pessoa entrevistada", disc: { D: 2 } },
-      { id: "conjuge_final", rotulo: "O cônjuge", decisor: "conjuge", disc: { S: 1 } },
-      { id: "juntos", rotulo: "Decidem juntos, ninguém sozinho", decisor: "conjuge", disc: { S: 2 } },
-      { id: "familia_toda", rotulo: "A família toda se reúne", decisor: "filhos", disc: { S: 2, C: 1 } },
+      { id: "conjuge_final", rotulo: "O cônjuge", decisor: "conjuge" },
+      { id: "juntos", rotulo: "Decidem juntos, ninguém sozinho", decisor: "conjuge" },
+      { id: "familia_toda", rotulo: "A família toda se reúne", decisor: "filhos" },
     ],
   },
 
@@ -222,7 +222,7 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     opcoes: [
       { id: "pro_labore", rotulo: "Pró-labore" },
       { id: "dividendos", rotulo: "Dividendos / lucros" },
-      { id: "misturado", rotulo: "Mistura pessoa física e jurídica", disc: { I: 1 } },
+      { id: "misturado", rotulo: "Mistura pessoa física e jurídica", disc: { I: 2 } },
       { id: "nao_se_aplica", rotulo: "Não tem empresa" },
     ],
   },
@@ -246,7 +246,7 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
       { id: "alto", rotulo: "Sim, é uma preocupação real", disc: { C: 2 } },
       { id: "algum", rotulo: "Algum risco, mas controlado", disc: { C: 1 } },
       { id: "nenhum", rotulo: "Não vê risco" },
-      { id: "nao_sabe", rotulo: "Nunca parou para pensar nisso", disc: { I: 1 } },
+      { id: "nao_sabe", rotulo: "Nunca parou para pensar nisso", disc: { I: 2 } },
     ],
   },
 
@@ -302,7 +302,7 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     enunciado: "Se algo dá errado num negócio seu, qual é a sua primeira reação?",
     opcoes: [
       { id: "resolve", rotulo: "Parte para resolver imediatamente", disc: { D: 3 } },
-      { id: "chama_gente", rotulo: "Chama gente para ajudar a pensar", disc: { I: 2, S: 1 } },
+      { id: "chama_gente", rotulo: "Chama gente para ajudar a pensar", disc: { I: 3 } },
       { id: "espera", rotulo: "Espera esfriar antes de agir", disc: { S: 3 } },
       { id: "investiga", rotulo: "Investiga a causa antes de qualquer coisa", disc: { C: 3 } },
     ],
@@ -312,7 +312,7 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     bloco: "comportamento",
     enunciado: "Você delega com facilidade ou prefere acompanhar de perto?",
     opcoes: [
-      { id: "delega_total", rotulo: "Delega e confia", disc: { D: 1, I: 2 } },
+      { id: "delega_total", rotulo: "Delega e confia", disc: { I: 3 } },
       { id: "delega_acompanha", rotulo: "Delega, mas acompanha", disc: { D: 2 } },
       { id: "faz_junto", rotulo: "Prefere fazer junto", disc: { S: 2 } },
       { id: "confere_tudo", rotulo: "Confere tudo pessoalmente", disc: { C: 3 } },
@@ -323,7 +323,7 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     bloco: "comportamento",
     enunciado: "Como você se sente quando precisa mudar a forma de fazer as coisas?",
     opcoes: [
-      { id: "gosta", rotulo: "Gosta de mudança, acha bom", disc: { D: 2, I: 1 } },
+      { id: "gosta", rotulo: "Gosta de mudança, acha bom", disc: { D: 2, I: 2 } },
       { id: "aceita", rotulo: "Aceita se fizer sentido", disc: { C: 2 } },
       { id: "resiste", rotulo: "Prefere o que já conhece", disc: { S: 3 } },
       { id: "precisa_entender", rotulo: "Precisa entender o porquê antes", disc: { C: 2, S: 1 } },
@@ -349,7 +349,7 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
       "Se a gente marcar uma reunião com a nossa equipe jurídica para desenhar " +
       "a sua estrutura, você consegue participar?",
     opcoes: [
-      { id: "sim_qualquer", rotulo: "Sim, em qualquer horário", disc: { D: 1, I: 1 } },
+      { id: "sim_qualquer", rotulo: "Sim, em qualquer horário", disc: { D: 1, I: 2 } },
       { id: "sim_combinado", rotulo: "Sim, combinando com antecedência", disc: { C: 1, S: 1 } },
       { id: "precisa_ver", rotulo: "Precisa ver com os outros decisores", disc: { S: 1 } },
       { id: "nao_agora", rotulo: "Agora não é o momento" },
@@ -372,9 +372,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     enunciado: "O que mais pode travar essa pessoa de seguir adiante?",
     opcoes: [
       { id: "dinheiro", rotulo: "O investimento financeiro", disc: { S: 1 } },
-      { id: "outros_decisores", rotulo: "Convencer os outros decisores", decisor: "conjuge", disc: { S: 1 } },
+      { id: "outros_decisores", rotulo: "Convencer os outros decisores", decisor: "conjuge" },
       { id: "entender", rotulo: "Não entender direito o que é", disc: { C: 1 } },
-      { id: "tempo", rotulo: "Falta de tempo para se dedicar", disc: { I: 1 } },
+      { id: "tempo", rotulo: "Falta de tempo para se dedicar", disc: { I: 2 } },
       { id: "nada", rotulo: "Nada aparente, está decidido", disc: { D: 1 } },
     ],
   },

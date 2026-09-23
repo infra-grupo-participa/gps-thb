@@ -15,7 +15,13 @@ import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
+import { estrelaTravada } from "@/components/clientes/clientes-manager/ordenacao";
 import { getMinutasDoCliente } from "@/lib/data/minutas";
+import {
+  getDecisoresPendentes,
+  getEntrevistasDoCliente,
+} from "@/lib/data/entrevista-previa";
+import { PainelEntrevistaPrevia } from "@/components/clientes/entrevista-previa/painel-resultado";
 
 export default async function AdminAlunoClienteFichaPage({
   params,
@@ -34,7 +40,7 @@ export default async function AdminAlunoClienteFichaPage({
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, qtdMembros, outroConfirmado, tutoriaisAtivo, minutas] =
+  const [aluno, qtdMembros, outroConfirmado, tutoriaisAtivo, minutas, decisores, entrevistas] =
     await Promise.all([
       getAlunoById(alunoId),
       contarMembrosDoAmbiente(alunoId),
@@ -46,10 +52,21 @@ export default async function AdminAlunoClienteFichaPage({
       // 🔑 No MESMO Promise.all (o `cliente` já foi resolvido acima): pedir em
       // cascata custaria uma viagem a mais por abertura de ficha.
       getMinutasDoCliente(clienteId),
+      // 🔑 Espelha a ficha do aluno (23/09/2026): decisores e histórico da
+      // Entrevista Prévia não dependem do cliente nem do aluno. No MESMO
+      // Promise.all — em cascata custaria duas viagens a mais por abertura
+      // de ficha, a tela mais usada do produto.
+      getDecisoresPendentes(clienteId),
+      getEntrevistasDoCliente(clienteId),
     ]);
-  const outroConfirmadoNome = outroConfirmado?.acompanhamento_confirmado_em
-    ? (outroConfirmado.nome ?? null)
-    : null;
+  // 🔴 `estrelaTravada` desde 23/09/2026 (migração ...304): o que esconde a
+  // estrela é o outro favorito cujo CASO já andou, não mais
+  // `acompanhamento_confirmado_em` — coluna que nunca foi preenchida em
+  // produção. Mesma função da ficha do aluno e da lista.
+  const outroConfirmadoNome =
+    outroConfirmado && estrelaTravada(outroConfirmado)
+      ? (outroConfirmado.nome ?? null)
+      : null;
 
   // Mesmo interruptor da ficha do aluno — por RPC, porque `gps.config` só
   // tem policy de admin (ver comentário em `getMinutaContextoObrigatorio`).
@@ -86,29 +103,22 @@ export default async function AdminAlunoClienteFichaPage({
             a CASA DE ORIGEM dessa escrita (§B.5). Quem autoriza é o
             `gp_is_admin()` das RPCs; esta prop decide o que a tela oferece.
 
-            🔴 SEM `painelEntrevista` E SEM `qtdDecisores`, DE PROPÓSITO.
-            Quem conduz a Entrevista Prévia é o parceiro, ao telefone com o
-            lead — esta page nunca chamou `getDecisoresPendentes` e **não
-            passa a chamar**: acrescentar a RPC aqui seria uma consulta nova
-            por abertura de ficha só para pintar uma linha de aviso.
+            🔴 DECISÃO REVOGADA PELO MARCIO EM 23/09/2026: o espelho do admin
+            passa a mostrar o painel da Entrevista Prévia, igual à ficha do
+            aluno — a omissão anterior (nenhum `painelEntrevista`, nenhum
+            `qtdDecisores`) deixava a visualização assistida divergir da real:
+            o parceiro conduz a entrevista, o admin acompanha, e o admin não
+            enxergava nem o resultado nem o aviso "N decisores · a Preliminar
+            exige todos presentes". Motivo original (quem conduz é o parceiro)
+            continua verdadeiro, só não justifica mais ESCONDER o resultado.
 
-            O efeito é o desenhado: no diálogo "Ver perfil" o admin vê
-            "A entrevista é conduzida pelo parceiro" no lugar do painel, e o
-            sinal "N decisores · a Preliminar exige todos presentes" **não
-            aparece** na ficha. `qtdDecisores` fica `null` = "não sabemos" —
-            nunca 0, que afirmaria não haver decisor. O admin continua
-            editando os 4 campos do DISC pelo botão, que é o que ele já fazia
-            antes desta mudança.
-
-            🔴 SEM `temEntrevistaConcluida` (23/09/2026), pelo MESMO motivo e
-            por mais um: a linha "Próximo passo · marque a sessão" leva a
-            `/sessoes`, rota que só existe para o ALUNO (`nav.ts` filtra por
-            `basePath === ""`; não há `admin/aluno/[id]/sessoes/page.tsx`).
-            Mostrá-la aqui mandaria o admin a um 404 — link que dá erro é pior
-            que link ausente, a mesma regra que já governa a aba. Saber se há
-            entrevista concluída custaria `getEntrevistasDoCliente`, consulta
-            que esta page nunca fez. O default `false` do componente resolve
-            sem que esta page precise saber. */}
+            🔴 CONTINUA SEM `temEntrevistaConcluida`, de propósito: a linha
+            "Próximo passo · marque a sessão" leva a `/sessoes`, rota que só
+            existe para o ALUNO (`nav.ts` filtra por `basePath === ""`; não há
+            `admin/aluno/[id]/sessoes/page.tsx`). Passar essa prop mandaria o
+            admin a um 404. `cliente-ficha.tsx:1175` já tem a guarda `!admin
+            &&` para essa linha, mas não depender só dela: o default `false`
+            do componente resolve sem que esta page precise declarar a prop. */}
         <ClienteFicha
           cliente={cliente}
           minutas={minutas}
@@ -116,6 +126,15 @@ export default async function AdminAlunoClienteFichaPage({
           alunoId={alunoId}
           admin
           outroConfirmadoNome={outroConfirmadoNome}
+          qtdDecisores={decisores?.decisores.length ?? null}
+          painelEntrevista={
+            <PainelEntrevistaPrevia
+              clienteId={clienteId}
+              temDisc={Boolean(cliente.perfil_disc)}
+              decisores={decisores?.decisores ?? []}
+              entrevistas={entrevistas}
+            />
+          }
         />
       </main>
     </>

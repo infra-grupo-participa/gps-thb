@@ -85,7 +85,17 @@ export function BriefingSessao({ agendamentoId }: { agendamentoId: string }) {
   const onboarding = (dados.onboarding ?? {}) as Record<string, unknown>;
   const entrevista = (dados.entrevista ?? {}) as Record<string, unknown>;
   const gerado = typeof dados.gerado_em === "string" ? dados.gerado_em : null;
-  const discAoVivo = (dados.disc_ao_vivo ?? {}) as Record<string, unknown>;
+  // 🔴 `disc_ao_vivo` vem no TOPO da resposta, irmão de `briefing` — não
+  // dentro dele. Medido em produção: as chaves de `briefing` são
+  // {cliente, minutas, aluno_id, decisores, gerado_em, cliente_id,
+  // entrevista, onboarding, parceiro_nome}, e `disc_ao_vivo` não está entre
+  // elas. É assim de propósito: o DISC é lido AO VIVO na hora da chamada,
+  // enquanto `briefing` é o snapshot congelado no ato do agendamento —
+  // aninhá-lo lá dentro contradiria a própria razão de ele existir.
+  const discAoVivo = ((b as Record<string, unknown>).disc_ao_vivo ?? {}) as Record<
+    string,
+    unknown
+  >;
 
   return (
     <div className="grid gap-3 border-t border-borda-fina px-3 py-3">

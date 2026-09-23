@@ -68,9 +68,10 @@ import {
   contarPorGrau,
   filtrarPorBusca,
   ordenarClientes,
-  travadoPelaEquipe,
+  estrelaTravada,
 } from "./ordenacao";
 import { ROTULO_ORDENACAO, type FiltroGrau, type Ordenacao } from "./tipos";
+import { textoListaNaoSelecionado } from "@/lib/clientes-textos";
 
 export function ClientesManager({
   alunoId,
@@ -156,17 +157,23 @@ export function ClientesManager({
   );
 
   /**
-   * O cliente que a EQUIPE assumiu (§B.5). Enquanto ele existe:
-   *   · a estrela não aparece em nenhum outro card/linha (o banco recusaria);
+   * O favorito cujo caso JÁ ANDOU (migração ...304, 23/09/2026). Enquanto ele
+   * existe:
+   *   · a estrela não aparece em nenhum outro card/linha — `definirClienteEquipe`
+   *     desmarcaria este primeiro e o banco recusaria (42501);
    *   · "Excluir" some nele;
-   *   · "Prospecção" sai das fases oferecidas para ele.
-   * Nada disto é a trava — a trava é a trigger `...203`. Isto é não oferecer o
-   * que vai falhar.
+   *   · "Prospecção" sai das fases oferecidas.
+   * Nada disto é a trava — a trava é a trigger. Isto é não oferecer o que vai
+   * falhar.
+   *
+   * 🔴 Era `clientes.find(travadoPelaEquipe)`, que agora casaria com QUALQUER
+   * cliente fora de prospecção — inclusive um que nunca foi favorito. Tem de
+   * ser `estrelaTravada` (favorito E caso andado), senão a estrela some da
+   * lista inteira no primeiro cliente que o aluno mover para fechamento.
    */
-  const confirmado = clientes.find(travadoPelaEquipe) ?? null;
-  const existeConfirmado = confirmado !== null;
-  /** Já existe estrela no ambiente (confirmada ou só escolhida pelo aluno)? */
-  const ctxEstrela = { admin, existeConfirmado };
+  const travado = clientes.find(estrelaTravada) ?? null;
+  const existeTravado = travado !== null;
+  const ctxEstrela = { admin, existeTravado };
 
   // ---- Ações ----
   function abrirNovo() {
@@ -226,12 +233,26 @@ export function ClientesManager({
    */
   function toggleEquipe(cliente: ClienteEtapa1) {
     if (cliente.acompanhado_equipe) {
-      // 🔴 `travadoPelaEquipe`, não `acompanhado_equipe`: enquanto a equipe
-      // não confirma, o parceiro desmarca sozinho (11/09/2026). Com a checagem
-      // antiga o botão aparecia e o clique não fazia nada.
-      if (!admin && travadoPelaEquipe(cliente)) return;
+      // 🔴 `estrelaTravada`, não `acompanhado_equipe`: enquanto o caso não
+      // andou, o parceiro desmarca sozinho (migração ...304; antes de
+      // 23/09/2026 a condição era a confirmação da equipe, que nunca vinha).
+      // Com a checagem por `acompanhado_equipe` o botão aparecia e o clique
+      // não fazia nada.
+      if (!admin && estrelaTravada(cliente)) return;
       setErroDialogo(null);
       setDesfavoritando(cliente);
+      return;
+    }
+    // 🔴 O CHECK `chk_etapa1_clientes_favorito_e_selecionado` exige que o
+    // cliente já esteja entre os 5 da Entrevista Prévia. Sem isto, o parceiro
+    // confirmava "tenho certeza" no diálogo e a escrita falhava no banco DEPOIS
+    // — o pior dos mundos. Barra ANTES de abrir qualquer diálogo, com o nome e
+    // o caminho (23/09/2026).
+    // `!cliente.acompanhado_equipe` é essencial: DESMARCAR quem já é a estrela
+    // não passa pelo CHECK e não pode ser travado por engano — mas esse caso
+    // já retornou no ramo acima, então aqui só sobra "ainda não é a estrela".
+    if (!cliente.selecionado_entrevista) {
+      setErroLista(textoListaNaoSelecionado(cliente.nome || "Este cliente"));
       return;
     }
     if (!admin) {

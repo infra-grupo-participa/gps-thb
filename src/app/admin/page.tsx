@@ -24,6 +24,8 @@ import { EtapasControle } from "@/components/admin/etapas-controle";
 import { AlunosAtivosLista } from "@/components/admin/alunos-ativos-lista";
 import { AbasPainel } from "@/components/admin/abas-painel";
 import { DashboardExecutivo } from "@/components/admin/dashboard";
+import { PrecisaDeAtencao } from "@/components/admin/dashboard/atencao";
+import { RankingDeParceiros } from "@/components/admin/dashboard/parceiros";
 import { RegistrarUrlDoPainel } from "@/components/admin/voltar-ao-painel";
 import { AvisoInline } from "@/components/ui/aviso-inline";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -139,7 +141,7 @@ export default async function AdminPage({
         <AbasPainel
           totalAlunos={totalAlunos}
           pendentes={pendentes.length}
-          visao={
+          visaoPrograma={
             dashboard ? (
               <DashboardExecutivo
                 dados={dashboard}
@@ -157,6 +159,28 @@ export default async function AdminPage({
               <AvisoInline>
                 Não foi possível carregar a visão do programa agora. A aba
                 Parceiros não depende dela.
+              </AvisoInline>
+            )
+          }
+          // 🔴 As três sub-abas saem da MESMA `dashboard` já carregada — uma
+          // RPC só, resolvida no servidor, descendo por prop. Trocar de
+          // sub-aba não busca nada: é troca de conteúdo montado, sem hook de
+          // leitura em folha que desmonta por aba.
+          visaoAtencao={
+            dashboard ? (
+              <PrecisaDeAtencao dados={dashboard} />
+            ) : (
+              <AvisoInline>
+                Não foi possível carregar a visão do programa agora.
+              </AvisoInline>
+            )
+          }
+          visaoParceiros={
+            dashboard ? (
+              <RankingDeParceiros parceiros={dashboard.parceiros} />
+            ) : (
+              <AvisoInline>
+                Não foi possível carregar a visão do programa agora.
               </AvisoInline>
             )
           }

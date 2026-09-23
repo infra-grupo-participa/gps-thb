@@ -8,14 +8,24 @@ import type {
 import { FaixaKpis } from "./faixa-kpis";
 import { GraficosDoPrograma } from "./graficos";
 import { FilaEBase } from "./fila";
+import { CaminhoDoCliente } from "./caminho";
 
 /**
- * A aba **"Visão geral"** do painel — macro → forma → fila.
+ * A sub-aba **"O programa"** (`?vis=programa`, a padrão) da Visão geral —
+ * macro → forma → caminho → fila.
  *
- * Quatro seções, e a ordem é a leitura:
+ * 🔑 **23/09/2026: a Visão geral virou três sub-abas** (`abas-painel.tsx`),
+ * e este componente é a primeira delas. As outras duas ("Precisa de atenção",
+ * `atencao.tsx`; "Parceiros", o ranking) são irmãs, não filhas: o que está
+ * aqui continua sendo o dashboard de sempre, com o caminho do cliente somado.
+ *
+ * Cinco seções, e a ordem é a leitura:
  *
  *   A. **faixa de KPIs** (`faixa-kpis.tsx`) — seis números, sem desenho.
  *   B. **gráficos, grandes** (`graficos.tsx`) — a forma dos mesmos dados.
+ *   E. **caminho do cliente** (`caminho.tsx`) — um nível abaixo: os clientes
+ *      dos parceiros. 🔴 Os 4 passos da ficha são barras PARALELAS, nunca
+ *      funil — a razão está no cabeçalho daquele arquivo.
  *   C. **fila e base** (`fila.tsx`) — o que a equipe deve atacar.
  *   D. rodapé — a hora do dado e o escopo do lote.
  *
@@ -89,6 +99,14 @@ export function DashboardExecutivo({
 
       <FaixaKpis dados={dados} clientes30={clientes30} />
       <GraficosDoPrograma dados={dados} trilha={trilha} />
+
+      {/* E. **O caminho do cliente** (Fatia 6, 23/09/2026). Fica aqui, depois
+          da forma do programa e antes da fila: as seções acima falam de
+          PARCEIROS (quantos entraram, quantos acessam, quanto progrediram) e
+          esta fala dos CLIENTES deles. É a mesma leitura macro → micro, um
+          nível abaixo. Absorveu o antigo card "Funil de clientes". */}
+      <CaminhoDoCliente dados={dados} />
+
       <FilaEBase
         dados={dados}
         atendimento={atendimento}

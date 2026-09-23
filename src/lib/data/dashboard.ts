@@ -20,7 +20,13 @@ import type { AtendimentoDoAluno } from "@/lib/data/diario";
 //     devolve — a RPC `gps.admin_painel_atendimento()` que /admin JÁ chama.
 // As duas são funções PURAS, sem I/O: custo zero, e testáveis.
 //
-// 🔑 ZERO PII no retorno da RPC: só contagens, somas e datas. Nem `aluno_id`.
+// 🔑 PII MÍNIMA no retorno da RPC: nome e id do parceiro no ranking
+//    (`parceiros.itens`). Todo o RESTO continua sendo só contagem, soma e
+//    data. Até 23/09/2026 este cabeçalho prometia "ZERO PII, nem `aluno_id`",
+//    e a promessa deixou de valer por decisão do Marcio: o ranking sem nome
+//    não responde "quem são os 10 parceiros parados", que é a pergunta que
+//    ele resolve. O nome vem de `public.thb_alunos.nome`, a mesma fonte que
+//    `getAlunoById` já usa. Nada de e-mail, telefone ou dado de cliente.
 // ─────────────────────────────────────────────────────────────────────────
 
 export interface DashboardReferencia {
@@ -139,6 +145,103 @@ export interface DashboardEquipe {
   convitesPendentes: number;
 }
 
+/**
+ * Os 4 passos da ficha do cliente, em CONTAGENS PARALELAS.
+ *
+ * 🔴 NÃO É FUNIL, e por isso não existe taxa de conversão aqui — nem no
+ * jsonb da RPC. `ficha-blocos-estado.ts:71-94` trata isso como "N de 4
+ * passos" (quantos foram marcados), e `cliente-ficha.tsx:186-188` são três
+ * `useState` independentes, sem `disabled` encadeado: dá para marcar
+ * `ligacao` sem nunca ter marcado `mensagem`. Logo `estudo` NÃO é
+ * subconjunto de `mensagem`, e dividir um pelo outro produz um número falso.
+ * Se precisar de funil, encadeie os passos na ficha ANTES.
+ */
+export interface DashboardPassos {
+  mensagem: number;
+  estudo: number;
+  ligacao: number;
+  aderiu: number;
+  total: number;
+}
+
+/**
+ * A cadeia que TEM sequência real (ao contrário de `DashboardPassos`).
+ *
+ * 🔴 `entrevista` vem de `gps.entrevista_previa`, NUNCA de
+ * `etapa1_clientes.entrevista_em` — essa coluna é legado da esteira antiga e
+ * vale 0 na base inteira. O nome da coluna velha é mais óbvio que o da
+ * tabela nova; trocar zera o número em silêncio.
+ */
+export interface DashboardCaminho {
+  favorito: number;
+  entrevista: number;
+  reuniao: number;
+  aderiu: number;
+  prospeccao: number;
+  fechamento: number;
+  contratado: number;
+  comValor: number;
+}
+
+/**
+ * As 5 réguas da fila da equipe.
+ *
+ * ⚠️ Os cortes de tempo são DIFERENTES de propósito: `favoritoParado` usa
+ * 7 dias (o cliente esfriou) e `semAbrir14d` de `DashboardParceiros` usa 14
+ * (o parceiro sumiu). São perguntas distintas — não unificar.
+ */
+export interface DashboardAtencao {
+  favoritoParado: number;
+  reuniaoSemEntrevista: number;
+  socioPendente: number;
+  ambienteSemCliente: number;
+  parceiroSemMensagem: number;
+}
+
+/** Uma linha do ranking de parceiros. Carrega PII mínima: `alunoId` e `nome`. */
+export interface DashboardParceiroItem {
+  alunoId: string;
+  nome: string;
+  clientes: number;
+  mensagens: number;
+  favoritos: number;
+  reunioes: number;
+  contratados: number;
+  /**
+   * `null` = nenhum contratado com valor. **Nunca exibir como R$ 0,00** —
+   * mesmo critério de `DashboardHonorarios.totalReais`.
+   */
+  honorarios: number | null;
+  dias: number;
+}
+
+/**
+ * Ranking de parceiros + agregados.
+ *
+ * ⚠️ `itens` tem TETO DE 200 LINHAS (hoje são 86). Os agregados abaixo são
+ * calculados no banco sobre TODOS os parceiros, não sobre os 200 — somar
+ * `itens` no cliente para recalcular a média passaria a mentir no 201º.
+ */
+export interface DashboardParceiros {
+  itens: DashboardParceiroItem[];
+  totalParceiros: number;
+  /**
+   * Média de clientes por parceiro, 1 casa (`round(avg, 1)` do banco).
+   *
+   * `null` = **nenhum parceiro com cliente** — `avg` de conjunto vazio é
+   * `null`, e "média 0" seria afirmação falsa sobre um conjunto que não
+   * existe. Mesma regra de `DashboardHonorarios.totalReais` (B7-d): ausência
+   * não vira zero. Hoje são 86 parceiros, então é inalcançável — mas o dia em
+   * que a tela dissesse "média 0" ninguém desconfiaria do número.
+   */
+  mediaClientes: number | null;
+  maxClientes: number;
+  com30OuMais: number;
+  semMensagem: number;
+  comContratado: number;
+  semAbrir14d: number;
+}
+
 export interface Dashboard {
   geradoEm: string;
   referencia: DashboardReferencia;
@@ -150,6 +253,10 @@ export interface Dashboard {
   honorarios: DashboardHonorarios;
   atividade: DashboardAtividadeDia[];
   grauRelacao: DashboardGrauRelacao;
+  passos: DashboardPassos;
+  caminho: DashboardCaminho;
+  atencao: DashboardAtencao;
+  parceiros: DashboardParceiros;
 }
 
 function n(v: unknown): number {
@@ -200,6 +307,10 @@ export function mapearDashboard(d: Record<string, unknown>): Dashboard {
   const cli = (d.clientes ?? {}) as Record<string, unknown>;
   const hon = (d.honorarios ?? {}) as Record<string, unknown>;
   const gra = (d.grau_relacao ?? {}) as Record<string, unknown>;
+  const pas = (d.passos ?? {}) as Record<string, unknown>;
+  const cam = (d.caminho ?? {}) as Record<string, unknown>;
+  const ate = (d.atencao ?? {}) as Record<string, unknown>;
+  const par = (d.parceiros ?? {}) as Record<string, unknown>;
 
   const somas = Array.isArray(hon.somas_por_ambiente)
     ? (hon.somas_por_ambiente as unknown[]).map((s) => n(s))
@@ -290,6 +401,54 @@ export function mapearDashboard(d: Record<string, unknown>): Dashboard {
           }))
         : [],
       naoInformado: n(gra.nao_informado),
+    },
+    passos: {
+      mensagem: n(pas.mensagem),
+      estudo: n(pas.estudo),
+      ligacao: n(pas.ligacao),
+      aderiu: n(pas.aderiu),
+      total: n(pas.total),
+    },
+    caminho: {
+      favorito: n(cam.favorito),
+      entrevista: n(cam.entrevista),
+      reuniao: n(cam.reuniao),
+      aderiu: n(cam.aderiu),
+      prospeccao: n(cam.prospeccao),
+      fechamento: n(cam.fechamento),
+      contratado: n(cam.contratado),
+      comValor: n(cam.com_valor),
+    },
+    atencao: {
+      favoritoParado: n(ate.favorito_parado),
+      reuniaoSemEntrevista: n(ate.reuniao_sem_entrevista),
+      socioPendente: n(ate.socio_pendente),
+      ambienteSemCliente: n(ate.ambiente_sem_cliente),
+      parceiroSemMensagem: n(ate.parceiro_sem_mensagem),
+    },
+    parceiros: {
+      itens: Array.isArray(par.itens)
+        ? (par.itens as Record<string, unknown>[]).map((p) => ({
+            alunoId: String(p.aluno_id ?? ""),
+            nome: String(p.nome ?? ""),
+            clientes: n(p.clientes),
+            mensagens: n(p.mensagens),
+            favoritos: n(p.favoritos),
+            reunioes: n(p.reunioes),
+            contratados: n(p.contratados),
+            honorarios: numeroOuNulo(p.honorarios),
+            dias: n(p.dias_sem_abrir),
+          }))
+        : [],
+      totalParceiros: n(par.total_parceiros),
+      // `numeroOuNulo`, não `n()`: avg de conjunto vazio é null e não pode
+      // virar 0 (ver o comentário do campo em DashboardParceiros).
+      mediaClientes: numeroOuNulo(par.media_clientes),
+      maxClientes: n(par.max_clientes),
+      com30OuMais: n(par.com_30_ou_mais),
+      semMensagem: n(par.sem_mensagem),
+      comContratado: n(par.com_contratado),
+      semAbrir14d: n(par.sem_abrir_14d),
     },
   };
 }

@@ -88,6 +88,33 @@ export const ABAS = ["visao", "ativos", "solicitacoes", "etapas"] as const;
 export type AbaPainel = (typeof ABAS)[number];
 
 /**
+ * As SUB-abas de dentro da "Visão geral" (`?vis=`) — 23/09/2026.
+ *
+ * 🔑 **Por que um segundo parâmetro, e não 6 abas irmãs.** Uma barra de abas
+ * responde a UMA pergunta. `ABAS` responde "que parte do painel eu opero"
+ * (resumo · gente · pedidos · etapas); estas respondem "o que está acontecendo
+ * no programa" (o programa · quem precisa de atenção · o ranking). Misturar as
+ * duas perguntas numa régua só é o que faz barra de aba virar menu.
+ *
+ * 🔴 E há geometria medida no caminho: com QUATRO abas o conteúdo já
+ * transbordava em 390 px e a primeira ficava inalcançável (`abas-painel.tsx`,
+ * o comentário do `justify-start`). Seis irmãs seria reabrir esse defeito de
+ * propósito.
+ *
+ * 🔴 `programa` é o PADRÃO e sai da URL quando escolhido: `/admin` sem
+ * parâmetro nenhum tem de abrir exatamente onde abre hoje — `LINK_LISTA` e os
+ * ~15 hrefs do dashboard dependem de `aba` continuar sozinha no endereço.
+ *
+ * Mesma allowlist fechada do resto do arquivo: `?vis=` desconhecido cai no
+ * padrão, nunca deixa a Visão geral sem conteúdo.
+ */
+export const SUBABAS_VISAO = ["programa", "atencao", "parceiros"] as const;
+export type SubAbaVisao = (typeof SUBABAS_VISAO)[number];
+
+/** A sub-aba da Visão geral sem `?vis=`. */
+export const SUBABA_VISAO_PADRAO: SubAbaVisao = "programa";
+
+/**
  * As 5 classes do programa — os cards do desenho do Marcio (10/09/2026).
  *
  * A regra é DERIVADA (`gps.admin_classes_dos_alunos`), não um campo que

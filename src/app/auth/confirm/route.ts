@@ -3,6 +3,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { destinoInterno } from "@/lib/nav";
 import { logErro } from "@/lib/log";
+import { origemPublica } from "@/lib/origem-publica";
 
 /**
  * Confirma links de e-mail do Supabase (recuperação de senha, etc.).
@@ -20,7 +21,13 @@ import { logErro } from "@/lib/log";
  * redireciona para `/esqueci-senha?erro=link`, onde ela pede outro link.
  */
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  // 🔴 A origem do redirect vem de `origemPublica`, NUNCA do `request.url`
+  // (23/09/2026): atrás do proxy da Hostinger o host é o interno do processo
+  // e o `Location` saía como `https://0.0.0.0:3000/...`, que o navegador não
+  // resolve. Aqui o estrago seria no link de redefinir senha — o caminho de
+  // quem já não consegue entrar.
+  const origin = origemPublica(request);
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;

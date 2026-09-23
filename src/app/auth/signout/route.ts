@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { origemPublica } from "@/lib/origem-publica";
 
 /**
  * Fallback server-side do "Sair".
@@ -18,7 +19,11 @@ import { createClient } from "@/lib/supabase/server";
 export async function POST(request: Request) {
   const supabase = await createClient();
   await supabase.auth.signOut({ scope: "local" });
-  return NextResponse.redirect(new URL("/login", request.url), {
+  // 🔴 `origemPublica`, nunca `request.url` (23/09/2026): atrás do proxy da
+  // Hostinger o `request.url` traz o host INTERNO, e o `Location` saía como
+  // `https://0.0.0.0:3000/login` — endereço que o navegador não resolve.
+  // Medido em produção: era isto que fazia "Sair" morrer em tela de erro.
+  return NextResponse.redirect(new URL("/login", origemPublica(request)), {
     status: 303,
   });
 }

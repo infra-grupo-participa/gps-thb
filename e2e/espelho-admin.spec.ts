@@ -52,29 +52,84 @@ const EXCECOES: Record<string, string> = {
     "leva a /sessoes, rota inexistente no modo assistência (404)",
 };
 
-/** As props passadas a `<ClienteFicha ... />` no arquivo. */
+/**
+ * As props passadas a `<ClienteFicha ... />` — SÓ as do próprio elemento.
+ *
+ * 🔴 A primeira versão deste teste tinha FALSO VERDE (achado pela auditoria de
+ * 23/09/2026, provado por mutação): ela cortava o bloco no primeiro `/>` depois
+ * de `<ClienteFicha`, e esse `/>` é o do `<PainelEntrevistaPrevia />` que vive
+ * DENTRO da prop `painelEntrevista`. Duas consequências, as duas ruins:
+ *
+ *   · as props do painel interno (`clienteId`, `temDisc`, `decisores`,
+ *     `entrevistas`) entravam contadas como props da ficha — comparação
+ *     inflada, com nomes que não são o contrato que se quer proteger;
+ *   · qualquer prop escrita DEPOIS de `painelEntrevista` ficava invisível ao
+ *     teste. Apagá-la do espelho não falhava nada.
+ *
+ * Agora o bloco termina no `>` que fecha a PRÓPRIA tag `<ClienteFicha`,
+ * contando profundidade de elementos aninhados, e só as props de nível 0
+ * entram.
+ */
 function propsDaFicha(caminhoRelativo: string): Set<string> {
-  const fonte = readFileSync(join(RAIZ, caminhoRelativo), "utf8");
+  const bruto = readFileSync(join(RAIZ, caminhoRelativo), "utf8");
+  // 🔴 Comentário JSX (`{/* ... */}`) fora ANTES de qualquer varredura: sem
+  // isto, cada palavra do comentário vira "prop" e a comparação explode com
+  // 84 nomes inventados (visto ao corrigir este teste).
+  const fonte = bruto
+    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+
   const abertura = fonte.indexOf("<ClienteFicha");
   expect(
     abertura,
-    `\`<ClienteFicha\` não encontrado em ${caminhoRelativo} — o teste precisa ser atualizado junto com a refatoração.`,
+    `\`<ClienteFicha\` não encontrado em ${caminhoRelativo}.`,
   ).toBeGreaterThan(-1);
 
-  // Do `<ClienteFicha` até o `/>` que fecha a tag.
-  const fim = fonte.indexOf("/>", abertura);
-  expect(
-    fim,
-    `\`<ClienteFicha\` sem fechamento \`/>\` em ${caminhoRelativo}.`,
-  ).toBeGreaterThan(abertura);
-
-  const bloco = fonte.slice(abertura, fim);
+  // A partir de `<ClienteFicha`, cada prop de NÍVEL 0 é `nome=` ou `nome` no
+  // fim da linha (booleana). Tudo dentro de `{...}` é valor — inclusive o
+  // `<PainelEntrevistaPrevia />`, cujo `/>` fechava o bloco cedo demais na
+  // primeira versão deste teste (falso verde provado por mutação).
   const props = new Set<string>();
-  // `nome={...}` e `nome` (booleana, como `admin`).
-  for (const m of bloco.matchAll(/^\s+([a-zA-Z][a-zA-Z0-9]*)(?==|\s*$)/gm)) {
-    props.add(m[1]);
+  let chaves = 0;
+  let fechou = false;
+  let linhaAtual = "";
+
+  for (let i = abertura + "<ClienteFicha".length; i < fonte.length; i++) {
+    const c = fonte[i];
+
+    if (chaves === 0 && (c === ">" || (c === "/" && fonte[i + 1] === ">"))) {
+      fechou = true;
+      break;
+    }
+    if (c === "{") {
+      chaves++;
+      continue;
+    }
+    if (c === "}") {
+      chaves--;
+      continue;
+    }
+    if (chaves > 0) continue;
+
+    if (c === "\n") {
+      const m = linhaAtual.match(/^\s*([a-zA-Z][a-zA-Z0-9]*)\s*$/);
+      if (m) props.add(m[1]);
+      linhaAtual = "";
+      continue;
+    }
+    if (c === "=") {
+      const m = linhaAtual.match(/([a-zA-Z][a-zA-Z0-9]*)\s*$/);
+      if (m) props.add(m[1]);
+      linhaAtual = "";
+      continue;
+    }
+    linhaAtual += c;
   }
-  props.delete("ClienteFicha");
+
+  expect(fechou, `\`<ClienteFicha\` sem fechamento em ${caminhoRelativo}.`).toBe(
+    true,
+  );
   return props;
 }
 
@@ -136,8 +191,16 @@ test.describe("espelho do admin @estatico", () => {
       "getClienteEquipe",
     ];
 
+    // 🔴 Fora de comentário (auditoria 23/09/2026): `includes("getX(")` casava
+    // chamada comentada, então apagar a consulta do espelho e deixar o `//`
+    // mantinha o teste verde. Tira linha de `//` e bloco `/* */` antes.
+    const semComentario = (t: string) =>
+      t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const limpoParceiro = semComentario(fonteParceiro);
+    const limpoEquipe = semComentario(fonteEquipe);
+
     const faltando = DA_FICHA.filter(
-      (fn) => fonteParceiro.includes(`${fn}(`) && !fonteEquipe.includes(`${fn}(`),
+      (fn) => limpoParceiro.includes(`${fn}(`) && !limpoEquipe.includes(`${fn}(`),
     );
 
     expect(

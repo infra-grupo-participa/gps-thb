@@ -66,7 +66,11 @@ export function PainelEntrevistaPrevia({
             {decisores.map((d, i) => (
               <li key={`${d.nome}-${i}`}>
                 {d.nome}
-                {d.papel ? (
+                {/* 🔑 O papel só aparece quando ACRESCENTA informação. Quando
+                    o parceiro não soube o nome, gravamos o rótulo do tipo
+                    ("Cônjuge") como nome — e repetir viraria "Cônjuge —
+                    Cônjuge", que lê como defeito. */}
+                {d.papel && d.papel.toLowerCase() !== d.nome.toLowerCase() ? (
                   <span className="text-muted-foreground"> — {d.papel}</span>
                 ) : null}
               </li>

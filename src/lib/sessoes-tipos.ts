@@ -204,6 +204,22 @@ export interface SessaoBriefing {
   inicio_em: string;
   cliente_id: string;
   briefing: Record<string, unknown> | null;
+  /**
+   * O DISC lido AO VIVO — irmão de `briefing`, NÃO aninhado dentro dele.
+   *
+   * 🔴 A separação é o ponto: `briefing` é o snapshot congelado no ato do
+   * agendamento; `disc_ao_vivo` é lido de `etapa1_clientes` na hora da
+   * chamada. Aninhar contradiria a razão de o campo existir — a doutora tem
+   * de ver o DISC preenchido DEPOIS de marcar.
+   *
+   * Chaves medidas na RPC (22/09): `letra` (a letra D/I/S/C, NÃO
+   * `perfil_disc` — esse é o nome da coluna), `consciencia`, `gatilhos`,
+   * `relacionamento`, `divergiu`, `congelado_era`, `atualizado_em`,
+   * `atualizado_por`. Ler a chave errada aqui devolve `undefined` em
+   * silêncio e a tela mostra "ainda não informado" para quem TEM — já
+   * aconteceu 2× neste mesmo componente.
+   */
+  disc_ao_vivo?: Record<string, unknown> | null;
 }
 
 /** Retorno de `gps.sessao_agendar`. */

@@ -92,10 +92,7 @@ export function BriefingSessao({ agendamentoId }: { agendamentoId: string }) {
   // elas. É assim de propósito: o DISC é lido AO VIVO na hora da chamada,
   // enquanto `briefing` é o snapshot congelado no ato do agendamento —
   // aninhá-lo lá dentro contradiria a própria razão de ele existir.
-  const discAoVivo = ((b as Record<string, unknown>).disc_ao_vivo ?? {}) as Record<
-    string,
-    unknown
-  >;
+  const discAoVivo = (b.disc_ao_vivo ?? {}) as Record<string, unknown>;
 
   return (
     <div className="grid gap-3 border-t border-borda-fina px-3 py-3">

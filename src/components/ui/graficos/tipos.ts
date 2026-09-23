@@ -79,6 +79,23 @@ export interface PontoGrafico {
    * deixa a primeira etapa sem `pct`, porque "100% de si mesma" é tinta.
    */
   pct?: number | null;
+  /**
+   * Destino da linha, **só no modo `horizontal` de `Barras`** (23/09/2026).
+   *
+   * 🔑 Por que existe: "Grau de relação" e "Fase dos clientes" desenhavam a
+   * lista DUAS vezes — uma como linhas do gráfico (rótulo + número + barra) e
+   * outra, logo abaixo, como lista de âncoras "Ver parente", "Ver amigo"… O
+   * card media **754 px**, e ~530 deles eram a mesma enumeração repetida.
+   * Com `href` na linha, o gráfico É a lista de links: um item por grau, não
+   * dois.
+   *
+   * ⚠️ O alvo não encolhe — quem vira link é a LINHA inteira (nome, número e
+   * barra), não um ícone. E `Barras` continua sem `"use client"`: `<Link>` do
+   * Next é Server Component quando não recebe handler.
+   */
+  href?: string;
+  /** Obrigatório com `href`: o que a linha É, para quem usa leitor de tela. */
+  ariaLabel?: string;
 }
 
 /** Formatador do valor exibido. `brlCompacto`, `String`, o que o card quiser. */

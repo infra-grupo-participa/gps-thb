@@ -24,12 +24,20 @@ export interface ParDoTile {
  * faixa passa a ser a primeira leitura — número grande, percentual ao lado,
  * uma linha de contexto e o destino — e os gráficos vêm depois, grandes.
  *
- * Anatomia fixa:
+ * Anatomia fixa — **TRÊS linhas**, desde 23/09/2026 (2ª rodada):
  *
- *   rótulo pequeno              ← o que é
- *   NÚMERO  ·  %                ← o dado, e de quanto ele é
- *   contexto OU variação        ← UMA linha, sempre numérica
- *   → link para a lista         ← o que fazer depois de ver
+ *   rótulo · NÚMERO · % · variação   ← tudo na MESMA linha, baseline comum
+ *   Titular 148 · Sócio 17           ← submétricas em UMA linha, separadas por ·
+ *   → link para a lista              ← o que fazer depois de ver
+ *
+ * 🔑 A versão anterior empilhava NOVE linhas (rótulo, número, variação, a nota
+ * "vs. ago, até dia 23", duas submétricas em `<dl>` vertical, a frase de
+ * contexto, a régua e o link) e media **253 px de altura para 180 px de
+ * largura** — mais alto que largo para mostrar um número. Apertar `gap` e
+ * `padding` não conserta um card de nove linhas; o que encolhe é a CONTAGEM
+ * DE LINHAS. Nenhum número saiu: as submétricas viraram linha corrida, e a
+ * única frase removida (`contexto` de "Parceiros") repetia em prosa a soma
+ * que as próprias submétricas já escreviam.
  *
  * 🔴 `pct` é `number | null`, e `null` vira **"—"**. Denominador zero não
  * produz "0%" (afirmação sobre conjunto vazio) nem `NaN%` — a conta está em
@@ -116,70 +124,72 @@ export function KpiTile({
     /* 🔴 15/09/2026: o card DEIXOU de ser alvo inteiro de clique (era assim
        desde 14/09) — decisão do Marcio, para cada submétrica poder ser o seu
        próprio alvo. Sem `relative`/`after:inset-0` aqui: cada link é uma
-       âncora de verdade, do tamanho do texto que ela é. */
-    /* 🔑 DENSIFICADO em 23/09/2026 (queixa do Marcio: os cards tinham "muito
-       espaço em volta" e só 4 números cabiam por tela, enquanto a TABELA de
-       parceiros — que ele aprovou — mostra 86 linhas de uma vez). O que saiu
-       foi ESPAÇO, nunca informação: nenhum número, submétrica, link ou
-       denominador foi removido daqui. Ver `faixa-kpis.tsx` para a grade. */
+       âncora de verdade, do tamanho do texto que ela é.
+
+       🔑 2ª RODADA, 23/09/2026. A 1ª densificação mexeu em `gap` e `padding`
+       e o Marcio reprovou de novo ("você não fez o que falamos sobre os cards
+       imensos"). Ele tinha razão: medido no card "Parceiros", 202 dos 253 px
+       eram CONTEÚDO (9 linhas de texto) e só 51 px eram vão. `gap` não tinha
+       o que entregar. Agora são 3 linhas. */
     <Card elevacao="raised" className="h-full transition-colors hover:border-borda-forte">
-      <CardContent className="flex h-full flex-col gap-1 py-3">
-        {/* `min-h-8` reservava DUAS linhas de rótulo em todos os seis tiles
-            para alinhar a linha de base dos números — 16 px de vazio em cada
-            um dos cinco cujo rótulo cabe em uma linha. O alinhamento continua,
-            mas por `leading-tight` + o `items-baseline` do número: os rótulos
-            longos ("Ativos nos últimos 30 dias") quebram e empurram só o
-            próprio tile, que a grade já equaliza pela altura da linha. */}
-        <span className="rotulo flex items-start leading-tight text-muted-foreground">
-          {rotulo}
-        </span>
+      <CardContent className="flex h-full flex-col gap-1 py-2.5">
+        {/* LINHA 1 — rótulo, número, percentual e variação na MESMA linha.
+            Antes eram 4 linhas empilhadas (~92 px); agora uma só (~34 px),
+            com `flex-wrap` para o rótulo longo ("Ativos nos últimos 30 dias")
+            poder ocupar a largura que precisar sem desalinhar os números.
 
-        {/* 🔴 O NÚMERO MACRO É LINK (15/09/2026) — `<Link>` de verdade, não
-            `<span>` esticado por `after`. `foco-visivel` para o Tab mostrar o
-            alvo, `aria-label` nomeando o conjunto (o número sozinho, "142",
-            não diz nada a quem usa leitor de tela). */}
-        <Link
-          href={link.href}
-          prefetch={false}
-          aria-label={link.ariaLabel ?? `${link.rotulo}: ${rotulo}, ${valor}`}
-          className="foco-visivel group flex w-fit flex-wrap items-baseline gap-x-1.5 rounded-sm"
-        >
-          <span
-            className={cn(
-              "numero-lg leading-none group-hover:underline",
-              destaque && "text-accent-foreground",
-            )}
-          >
-            {valor}
+            🔴 O NÚMERO MACRO CONTINUA SENDO LINK (15/09/2026) — `<Link>` de
+            verdade, não `<span>` esticado por `after`. O alvo NÃO encolheu:
+            `py-1` sobre um `numero-lg` de 34 px dá ~42 px de altura clicável,
+            e o alvo é o número inteiro, nunca um ícone. */}
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="rotulo shrink-0 leading-tight text-muted-foreground">
+            {rotulo}
           </span>
-          {pct !== undefined ? (
-            <span className={cn("numero corpo-sm font-semibold", tomPct)}>
-              {pct === null ? "—" : `${pct}%`}
+          <Link
+            href={link.href}
+            prefetch={false}
+            aria-label={link.ariaLabel ?? `${link.rotulo}: ${rotulo}, ${valor}`}
+            className="foco-visivel group -my-1 flex items-baseline gap-x-1.5 rounded-sm py-1"
+          >
+            <span
+              className={cn(
+                "numero-lg leading-none group-hover:underline",
+                destaque && "text-accent-foreground",
+              )}
+            >
+              {valor}
             </span>
-          ) : null}
-        </Link>
+            {pct !== undefined ? (
+              <span className={cn("numero corpo-sm font-semibold", tomPct)}>
+                {pct === null ? "—" : `${pct}%`}
+              </span>
+            ) : null}
+          </Link>
+          {variacao}
+        </div>
 
-        {variacao}
-        {pares && pares.length > 0 ? (
-          // `<dl>`: cada item é termo → valor, e é assim que o leitor de tela
-          // emparelha os dois. Mesmo desenho do `CardDashboard`, para a Visão
-          // geral ter uma linguagem só. Item com `href` vira `<Link>` — a
-          // LINHA inteira é o alvo, não só o número.
-          <dl className="grid gap-0.5 corpo-sm">
-            {pares.map((p) =>
+        {/* LINHA 2 — submétricas em UMA linha corrida, separadas por `·`.
+            Antes o `<dl>` era vertical: 2 submétricas = 2 linhas de ~22 px,
+            mais o `contexto` numa terceira. Agora tudo emenda numa linha só.
+
+            🔴 Nenhuma submétrica saiu, e cada uma com `href` CONTINUA sendo
+            âncora própria — o par inteiro é o alvo (rótulo + número dentro do
+            `<Link>`), com `py-1` para o toque não encolher. `<dl>` com
+            `display:flex` não perde a semântica termo→valor, e `<a>` pode
+            envolver `dt`+`dd` sem invalidar a lista de definição. */}
+        {(pares && pares.length > 0) || contexto ? (
+          <dl className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 corpo-sm">
+            {(pares ?? []).map((p, i) =>
               p.href ? (
                 <Link
                   key={p.rotulo}
                   href={p.href}
                   prefetch={false}
                   aria-label={p.ariaLabel ?? `Ver ${p.rotulo.toLowerCase()}: ${p.valor}`}
-                  className="foco-visivel group -mx-1.5 flex items-baseline justify-between gap-2 rounded-sm px-1.5 py-0.5 hover:bg-superficie-afundada"
+                  className="foco-visivel group -mx-1 -my-1 flex items-baseline gap-1.5 rounded-sm px-1 py-1 hover:bg-superficie-afundada"
                 >
-                  {/* `dt`/`dd` dentro do `<Link>`: a linha inteira é o alvo,
-                      e a semântica de termo→valor do `<dl>` não se perde —
-                      `<a>` pode envolver `dt`+`dd` sem invalidar a lista de
-                      definição. */}
-                  <dt className="min-w-0 truncate text-accent-foreground underline-offset-4 group-hover:underline">
+                  <dt className="min-w-0 text-accent-foreground underline-offset-4 group-hover:underline">
                     {p.rotulo}
                   </dt>
                   <dd className="numero shrink-0 font-semibold tabular-nums">
@@ -187,39 +197,43 @@ export function KpiTile({
                   </dd>
                 </Link>
               ) : (
-                <div
-                  key={p.rotulo}
-                  className="flex items-baseline justify-between gap-2"
-                >
-                  <dt className="min-w-0 truncate text-muted-foreground">
-                    {p.rotulo}
-                  </dt>
+                <div key={p.rotulo} className="flex items-baseline gap-1.5">
+                  {i > 0 ? (
+                    <span aria-hidden className="text-muted-foreground">
+                      ·
+                    </span>
+                  ) : null}
+                  <dt className="min-w-0 text-muted-foreground">{p.rotulo}</dt>
                   <dd className="numero shrink-0 font-semibold tabular-nums">
                     {p.valor}
                   </dd>
                 </div>
               ),
             )}
+            {contexto ? (
+              <dd className="min-w-0 text-muted-foreground">{contexto}</dd>
+            ) : null}
           </dl>
         ) : null}
-        {contexto ? (
-          <p className="corpo-sm text-muted-foreground">{contexto}</p>
-        ) : null}
 
-        {/* 🔑 Régua antes do link (14/09/2026): os seis tiles eram blocos de
-            texto contínuo, e o link de ação se misturava ao contexto. A linha
-            fina separa "o que é" de "o que fazer", sem acrescentar cor nem
-            peso. `mt-auto` mantém os seis links na MESMA altura, mesmo com
-            rótulos de tamanhos diferentes — é o que faz a faixa parecer uma
-            faixa, e não seis cards soltos.
-            ⚠️ `pt-1.5` e não `pt-2` (23/09): 3 px × 6 tiles, na densificação.
-            A régua e o link FICAM — o alvo de clique não encolheu, e cortar o
-            link tiraria o destino do tile, que é a razão de ele existir. */}
-        <div className="mt-auto border-t border-borda-fina pt-1.5">
+        {/* LINHA 3 — o destino.
+
+            🔑 A RÉGUA SAIU (23/09, 2ª rodada). Ela existia desde 14/09 para
+            separar "o que é" de "o que fazer" num bloco de texto contínuo de
+            seis linhas; com duas linhas acima, a separação já vem da posição,
+            e a régua custava 1 px de borda + 6 px de `pt` em cada um dos seis
+            tiles. O LINK FICA — cortá-lo tiraria o destino do tile, que é a
+            razão de ele existir — e `mt-auto` continua alinhando os seis na
+            mesma altura, que é o que faz a faixa parecer uma faixa e não seis
+            cards soltos.
+
+            ⚠️ O alvo de clique NÃO encolheu: `py-1` mantém a mesma altura
+            clicável de antes (a régua nunca fez parte do alvo). */}
+        <div className="mt-auto pt-0.5">
           <Link
             href={link.href}
             prefetch={false}
-            className="foco-visivel group inline-flex items-center gap-1 rounded-sm corpo-sm font-medium text-accent-foreground hover:underline"
+            className="foco-visivel group -my-1 inline-flex items-center gap-1 rounded-sm py-1 corpo-sm font-medium text-accent-foreground hover:underline"
           >
             {link.rotulo}
             <ArrowRight

@@ -69,6 +69,7 @@ export function FaixaKpis({
             mesAnterior={mesAnterior}
             mesAnteriorCurto={mesAnteriorCurto}
             substantivo="entradas"
+            compacto
           />
         }
         // 🔑 A quebra titular × sócio existia só no bloco do FIM da página
@@ -96,7 +97,13 @@ export function FaixaKpis({
         // número. Decisão do Marcio (mantida): o macro fica em pessoas, e a
         // assimetria se explica — mas em MARCAÇÃO curta, não em parágrafo
         // (queixa do Marcio de 15/09: "texto explicativo ocupando espaço").
-        contexto={`${equipe.titulares + equipe.socios} pessoas · ${programa.total} ambientes`}
+        // 🔑 23/09/2026 (2ª rodada): era `"165 pessoas · 148 ambientes"`. As
+        // "165 pessoas" REPETIAM o número macro do próprio tile (que já é
+        // titular+sócio) e a soma das duas submétricas ao lado — três vezes o
+        // mesmo número em 3 cm. O que saiu foi a repetição; os "148
+        // ambientes" FICAM, porque é o outro denominador e é justamente ele
+        // que explica a assimetria com a lista.
+        contexto={`de ${programa.total} ambientes`}
         // O card inteiro é clicável (14/09/2026) e leva à LISTA — é o que
         // quem clica em "152" espera. A ordenação por entrada recente fica,
         // mas o rótulo não promete um filtro que não existe (não há
@@ -176,6 +183,7 @@ export function FaixaKpis({
             mesAnterior={mesAnterior}
             mesAnteriorCurto={mesAnteriorCurto}
             substantivo="clientes novos"
+            compacto
           />
         }
         // 🔴 15/09/2026: a "Média por parceiro" saiu — era a pergunta mais

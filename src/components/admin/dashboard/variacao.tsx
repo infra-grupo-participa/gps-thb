@@ -23,6 +23,7 @@ export function VariacaoDoMes({
   mesAnteriorCurto,
   substantivo,
   subirEBom = true,
+  compacto = false,
 }: {
   variacao: VariacaoMes;
   mesAtual: string;
@@ -37,6 +38,17 @@ export function VariacaoDoMes({
   /** O que está sendo contado, no plural ("entradas", "conclusões"). */
   substantivo: string;
   subirEBom?: boolean;
+  /**
+   * Modo dos tiles da faixa de KPIs (23/09/2026, 2ª rodada de densificação).
+   *
+   * 🔴 A nota de prazo **NÃO SAI** — é a trava que impede a comparação de
+   * mentir todo dia 1º, e ela continua aqui, escrita, no mesmo `<span>`.
+   * O que muda é a FORMA: "vs. ago, até dia 23" (17 caracteres) vira
+   * "/ago até 23" (11), que cabe ao lado do número sem ocupar linha própria.
+   * O `title` continua com a frase inteira, com o mês por extenso e os dois
+   * números — encurtar o visível nunca pode custar a informação.
+   */
+  compacto?: boolean;
 }) {
   const delta = variacao.atual - variacao.anterior;
   const tom =
@@ -66,7 +78,15 @@ export function VariacaoDoMes({
           parecia outro número do card. Cabe em ~130 px; se faltar espaço, a
           linha inteira desce junto, que é o comportamento certo. */}
       <span className="whitespace-nowrap text-[11px] font-normal text-muted-foreground">
-        vs. {mesAnteriorCurto ?? mesAnterior}, até dia {variacao.ateODia}
+        {compacto ? (
+          <>
+            /{mesAnteriorCurto ?? mesAnterior} até {variacao.ateODia}
+          </>
+        ) : (
+          <>
+            vs. {mesAnteriorCurto ?? mesAnterior}, até dia {variacao.ateODia}
+          </>
+        )}
       </span>
     </span>
   );

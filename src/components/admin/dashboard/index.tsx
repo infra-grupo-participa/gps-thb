@@ -101,40 +101,74 @@ export function DashboardExecutivo({
       </h2>
 
       <FaixaKpis dados={dados} clientes30={clientes30} />
-      <GraficosDoPrograma dados={dados} trilha={trilha} />
 
-      {/* E. **A jornada do parceiro** e **a evolução semanal** (23/09/2026).
-          Par deliberado: são as duas perguntas que a tela não respondia.
-          A jornada é ONDE cada parceiro está (retrato de hoje); a evolução é
-          PARA ONDE isso anda (movimento no tempo). Todo o resto da Visão geral
-          é retrato — sem a evolução, ninguém vê que o cadastro disparou na
-          semana de 14/09 enquanto a mensagem ficou rente ao chão.
+      {/* 🔑 23/09/2026 (2ª rodada) — A GRADE, não o card, era o problema.
+          Queixa do Marcio: *"os cards empilhados assim fica mt ruim"*.
+          Medido em 1920 px: **nove faixas horizontais**, nunca mais de 2
+          colunas, e DUAS delas com um card só, esticado sobre metade da tela
+          ("Onboarding" e "Fase dos clientes"). Card sozinho numa faixa é meia
+          tela de vazio.
 
-          A ordem geral é a hierarquia: as seções acima falam do PROGRAMA
-          (quantos entraram, quantos acessam), estas falam de cada PARCEIRO, e
-          a seguinte dos CLIENTES dele. Macro → parceiro → cliente.
+          A causa: cada seção (`graficos`, `caminho`, `fila`) era dona da
+          PRÓPRIA `grid-cols-2`, então toda seção fechava uma faixa e o número
+          ímpar de cards dela sobrava. As três viraram FRAGMENTO de cards, e a
+          grade passou a ser desta página — assim os 13 cards fluem em duas
+          bandas contínuas, sem sobra por seção.
 
-          🔴 Nenhuma das três vira funil, e pela mesma razão: contagem paralela
-          sobre um denominador escrito. A jornada usa `EscadaAlcance` e o
-          caminho usa `Barras`; nenhuma calcula taxa de passagem.
+          Por que 3 no `xl` e 4 no `2xl`, e não mais: cada card carrega texto
+          corrido (denominador escrito, ressalva de leitura) e barras com
+          rótulo nominal de 16–22 caracteres ("Com login, nunca entraram",
+          "Fechou os 30 (ficha completa)"). Abaixo de ~300 px de coluna esses
+          rótulos passam a quebrar em duas linhas e o card volta a crescer em
+          altura — mais colunas devolveria a rolagem que elas vieram cortar.
+          Em 1920 px, 4 colunas dão ~440 px cada.
 
-          ⚠️ Os denominadores são DIFERENTES e cada card escreve o seu: a
-          jornada é sobre os 148 PARCEIROS no programa (o mesmo universo de
-          `programa.total`), o caminho é sobre os ~1.700 CLIENTES. Ler o
-          percentual de um com o denominador do outro é o erro que os rodapés
-          existem para impedir. */}
-      <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+          `items-start` + `auto-rows-min`: sem eles a grade estica todo card ao
+          tamanho do mais alto da FILEIRA, e "Onboarding" (3 números) ficaria
+          da altura de "Jornada do parceiro" (9 degraus) só por serem vizinhos.
+          É exatamente o buraco que o diagnóstico mediu.
+
+          ⚠️ A ORDEM DE LEITURA É A MESMA de antes, e ela é a hierarquia:
+          macro do PROGRAMA (entradas, atividade, etapa, acesso, onboarding) →
+          o PARCEIRO (jornada, evolução) → o CLIENTE dele (passos, marcos,
+          fases). Nenhum card mudou de banda; o que mudou foi quantos cabem
+          lado a lado. */}
+      <div className="grid auto-rows-min items-start gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <GraficosDoPrograma dados={dados} trilha={trilha} />
+
+        {/* A jornada é ONDE cada parceiro está (retrato de hoje); a evolução é
+            PARA ONDE isso anda (movimento no tempo). Todo o resto da Visão
+            geral é retrato — sem a evolução, ninguém vê que o cadastro
+            disparou na semana de 14/09 enquanto a mensagem ficou rente ao
+            chão.
+
+            🔴 Nenhuma das duas vira funil, e pela mesma razão do caminho do
+            cliente: contagem paralela sobre um denominador escrito. A jornada
+            usa `EscadaAlcance`; nenhuma calcula taxa de passagem.
+
+            ⚠️ Os denominadores são DIFERENTES e cada card escreve o seu: a
+            jornada é sobre os 148 PARCEIROS no programa (o mesmo universo de
+            `programa.total`), o caminho é sobre os ~1.700 CLIENTES. Ler o
+            percentual de um com o denominador do outro é o erro que os
+            rodapés existem para impedir. */}
         <JornadaDoParceiro dados={dados} />
         <EvolucaoSemanal dados={dados} />
+
+        <CaminhoDoCliente dados={dados} />
       </div>
 
-      <CaminhoDoCliente dados={dados} />
-
-      <FilaEBase
-        dados={dados}
-        atendimento={atendimento}
-        ambientesCarregados={ambientesCarregados}
-      />
+      {/* A fila fica em BANDA PRÓPRIA de propósito — é a única seção que pede
+          AÇÃO ("Esperando a equipe" abre lista filtrada), e misturá-la aos
+          cards de leitura tiraria dela a posição de fim-de-tela, que é a
+          hierarquia que o Marcio aprovou. São 3 ou 4 cards: cabem numa
+          fileira só, sem sobra. */}
+      <div className="grid auto-rows-min items-start gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <FilaEBase
+          dados={dados}
+          atendimento={atendimento}
+          ambientesCarregados={ambientesCarregados}
+        />
+      </div>
 
       {/* O "Apurado …" subiu para `AbasPainel`, ao lado do seletor de
           sub-abas: o carimbo vale para as TRÊS e aqui só alcançava esta.

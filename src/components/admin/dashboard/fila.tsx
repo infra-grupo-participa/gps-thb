@@ -1,7 +1,7 @@
 import { FileSignature, LifeBuoy, UserRoundPlus, UsersRound } from "lucide-react";
 import Link from "next/link";
 
-import { BarraEmpilhada, Barras, pctDe } from "@/components/ui/graficos";
+import { Barras, pctDe } from "@/components/ui/graficos";
 import { brlOuTraco } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import type { Dashboard, ResumoAtendimento } from "@/lib/data/dashboard";
@@ -148,10 +148,9 @@ export function FilaEBase({
   ];
 
   return (
-    // `items-start`: "Grau de relação" com a base inteira em branco é uma
-    // linha e um trilho vazio, e esticá-lo até a altura da fila devolveria o
-    // vão em branco que o diagnóstico de 11/09 apontou.
-    <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+    // Fragmento, não grade — ver a nota em `graficos.tsx`. A grade é de
+    // `index.tsx`.
+    <>
       <CardDashboard
         icone={<LifeBuoy />}
         rotulo="Esperando a equipe"
@@ -306,73 +305,44 @@ export function FilaEBase({
             />
           </div>
         ) : (
-          <div className="grid gap-3">
-            {/* A barra empilhada responde "quanto da base já tem vínculo
-                informado" — DUAS fatias, que é o limite em que a cor separa
-                sozinha. A repartição pelos 6 graus vai abaixo, em linhas
-                rotuladas: seis tons quentes não se distinguem (a conta está em
-                `ui/graficos/tipos.ts`). */}
-            <BarraEmpilhada
-              altura={20}
-              mostrarLegenda={false}
-              segmentos={[
-                { rotulo: "Com grau informado", valor: grauInformado, tom: "sucesso" },
-                {
-                  rotulo: "Não informado",
-                  valor: dados.grauRelacao.naoInformado,
-                  tom: "neutro",
-                },
-              ]}
-            />
-            <Barras
-              orientacao="horizontal"
-              total={totalGrau}
-              dados={[
-                ...dados.grauRelacao.itens.map((g) => ({
-                  rotulo: ROTULO_GRAU_RELACAO[g.grau] ?? g.grau,
-                  valor: g.qtd,
-                  tom: "marca" as const,
-                })),
-                // 🔴 "Não informado" sai SEPARADO e por último, nunca como uma
-                // fatia chamada "Lead": ausência de resposta sobre a vida de um
-                // terceiro não é um palpite.
-                {
-                  rotulo: "Não informado",
-                  valor: dados.grauRelacao.naoInformado,
-                  tom: "neutro" as const,
-                },
-              ]}
-              resumo={`Clientes por grau de relação: ${dados.grauRelacao.itens.map((g) => `${ROTULO_GRAU_RELACAO[g.grau] ?? g.grau} ${g.qtd}`).join(", ")}, não informado ${dados.grauRelacao.naoInformado}.`}
-            />
+          /* 🔑 23/09/2026 (2ª rodada) — ERAM TRÊS DESENHOS DO MESMO DADO,
+             empilhados, e o card media **754 px**:
 
-            {/* 🔴 14/09/2026: `Barras` é DESENHO puro (compartilhado por
-                outros cards) e não carrega link — cada grau ganha uma linha
-                própria com âncora de verdade abaixo do gráfico, para
-                `/admin/clientes?grau=…`. "Não informado" leva a `_nulo`, a
-                mesma convenção de `gps.admin_clientes_lista`. */}
-            <ul className="grid gap-0.5 border-t border-borda-fina pt-2">
-              {dados.grauRelacao.itens.map((g) => (
-                <li key={g.grau}>
-                  <Link
-                    href={`${LINK_CLIENTES}?grau=${g.grau}`}
-                    prefetch={false}
-                    className="foco-visivel -mx-2 flex items-center justify-between gap-2 rounded-md px-2 py-1 corpo-sm font-medium text-accent-foreground hover:bg-superficie-afundada hover:underline"
-                  >
-                    Ver {(ROTULO_GRAU_RELACAO[g.grau] ?? g.grau).toLowerCase()}
-                  </Link>
-                </li>
-              ))}
-              <li>
-                <Link
-                  href={`${LINK_CLIENTES}?grau=_nulo`}
-                  prefetch={false}
-                  className="foco-visivel -mx-2 flex items-center justify-between gap-2 rounded-md px-2 py-1 corpo-sm font-medium text-accent-foreground hover:bg-superficie-afundada hover:underline"
-                >
-                  Ver sem grau informado
-                </Link>
-              </li>
-            </ul>
-          </div>
+               1. `BarraEmpilhada` informado × não informado;
+               2. `Barras` com as 7 linhas (rótulo, número, % e barra);
+               3. uma lista de 7 âncoras "Ver parente", "Ver amigo"…
+
+             O item 3 repetia a enumeração do item 2 só para carregar o link
+             (`Barras` não tinha `href`), e o item 1 repetia em duas fatias o
+             que a linha "Não informado" do item 2 já diz com número E
+             percentual. Sobrou UM desenho: as 7 linhas, cada uma sendo o
+             próprio link. Nenhum grau, número, percentual ou destino saiu —
+             o que saiu foi a duplicata. */
+          <Barras
+            orientacao="horizontal"
+            total={totalGrau}
+            dados={[
+              ...dados.grauRelacao.itens.map((g) => ({
+                rotulo: ROTULO_GRAU_RELACAO[g.grau] ?? g.grau,
+                valor: g.qtd,
+                tom: "marca" as const,
+                href: `${LINK_CLIENTES}?grau=${g.grau}`,
+                ariaLabel: `Ver os ${g.qtd} clientes com grau ${(ROTULO_GRAU_RELACAO[g.grau] ?? g.grau).toLowerCase()}`,
+              })),
+              // 🔴 "Não informado" sai SEPARADO e por último, nunca como uma
+              // fatia chamada "Lead": ausência de resposta sobre a vida de um
+              // terceiro não é um palpite. Leva a `_nulo`, a mesma convenção
+              // de `gps.admin_clientes_lista`.
+              {
+                rotulo: "Não informado",
+                valor: dados.grauRelacao.naoInformado,
+                tom: "neutro" as const,
+                href: `${LINK_CLIENTES}?grau=_nulo`,
+                ariaLabel: `Ver os ${dados.grauRelacao.naoInformado} clientes sem grau informado`,
+              },
+            ]}
+            resumo={`Clientes por grau de relação: ${dados.grauRelacao.itens.map((g) => `${ROTULO_GRAU_RELACAO[g.grau] ?? g.grau} ${g.qtd}`).join(", ")}, não informado ${dados.grauRelacao.naoInformado}.`}
+          />
         )}
       </CardDashboard>
 
@@ -415,6 +385,6 @@ export function FilaEBase({
           }}
         />
       ) : null}
-    </div>
+    </>
   );
 }

@@ -18,8 +18,16 @@ import {
   rotuloDoMes,
 } from "./tipos";
 
-/** Altura útil da área de plotagem, em px. Abaixo disso o gráfico é enfeite. */
-const ALTURA_GRAFICO = 190;
+/**
+ * Altura útil da área de plotagem, em px. Abaixo disso o gráfico é enfeite.
+ *
+ * 🔑 190 → 150 em 23/09/2026 (2ª rodada). A coluna encolheu de ~760 px (grade
+ * de 2) para ~440 px (grade de 4 em 1920), então 190 px de altura já não é
+ * proporção — é coluna mais alta que larga. 150 px continua bem acima do piso
+ * de 11/09 (o defeito era plotagem de 40–60 px, que virava enfeite) e devolve
+ * 40 px por card de gráfico, em 4 deles.
+ */
+const ALTURA_GRAFICO = 150;
 
 /**
  * **Seção B — os gráficos, grandes.** Duas colunas no desktop, uma no celular,
@@ -140,10 +148,14 @@ export function GraficosDoPrograma({
   const pctOnboarding = pctDe(onboarding.concluidos, onboarding.pessoas);
 
   return (
-    // `items-start` e não `stretch`: o card de onboarding vazio é curto de
-    // propósito (tile compacto, não caixa de aviso), e esticá-lo até a altura
-    // do card ao lado devolveria o vão em branco que o diagnóstico apontou.
-    <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+    // 🔑 23/09/2026 (2ª rodada): esta seção DEIXOU de ser uma grade própria e
+    // virou um FRAGMENTO de cards. Cada seção com a sua `grid-cols-2` criava
+    // uma faixa horizontal fechada, e a tela acabou com NOVE faixas — duas
+    // delas com um único card esticado sobre metade da tela ("Onboarding" e
+    // "Fase dos clientes"). Quem manda na grade agora é `index.tsx`, que
+    // enfileira os cards de todas as seções numa grade só por banda e pode
+    // usar 3 e 4 colunas nas telas largas.
+    <>
       {/* 1 — entradas no programa, mês a mês */}
       <CardDashboard
         icone={<Users />}
@@ -434,6 +446,6 @@ export function GraficosDoPrograma({
           />
         )}
       </CardDashboard>
-    </div>
+    </>
   );
 }

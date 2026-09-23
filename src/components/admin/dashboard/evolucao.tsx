@@ -5,7 +5,7 @@ import type { Dashboard } from "@/lib/data/dashboard";
 import { CardDashboard } from "./card-dashboard";
 
 /** Altura útil da plotagem. Mesmo valor do resto da faixa de gráficos. */
-const ALTURA_GRAFICO = 190;
+const ALTURA_GRAFICO = 150;
 
 /**
  * **Evolução semanal** — a história que a Visão geral não contava.
@@ -97,10 +97,11 @@ export function EvolucaoSemanal({ dados }: { dados: Dashboard }) {
           ? `Clientes cadastrados por semana. No pico (${pico.semana}) foram ${pico.clientes}, e ${pico.comMsg} com mensagem.`
           : "Clientes cadastrados por semana."
       }
-      pares={[
-        { rotulo: "Clientes no período", valor: String(totalClientes) },
-        { rotulo: "Com mensagem", valor: String(totalComMsg) },
-      ]}
+      // 🔑 23/09/2026 (2ª rodada): "Clientes no período" saiu daqui porque era
+      // o PRÓPRIO número macro do card (`totalClientes`), repetido dois
+      // centímetros abaixo dele. "Com mensagem" FICA — é o outro número da
+      // série e não aparece em mais lugar nenhum da tela.
+      pares={[{ rotulo: "Com mensagem", valor: String(totalComMsg) }]}
       link={null}
       semLink="Série agregada por semana; não há lista por período."
     >
@@ -137,19 +138,24 @@ export function EvolucaoSemanal({ dados }: { dados: Dashboard }) {
 
         {/* As duas ressalvas que o desenho não consegue dizer sozinho. Ficam
             juntas, no rodapé, e não em balão nem em cor de alerta: são parte
-            da leitura do gráfico, não aviso de erro. */}
-        <div className="grid gap-1 border-t border-borda-fina pt-2">
+            da leitura do gráfico, não aviso de erro.
+
+            🔑 23/09/2026 (2ª rodada): eram DOIS parágrafos, que numa coluna de
+            ~440 px viravam ~6 linhas (~90 px). Viraram UM, separados por `·`.
+            🔴 As duas ressalvas CONTINUAM escritas, inteiras: a semana em
+            andamento não se compara com as fechadas, e "com mensagem" é o
+            estado de hoje. Elas existem para o gráfico não mentir — encurtar a
+            forma, nunca o conteúdo. */}
+        <p className="border-t border-borda-fina pt-1.5 text-[11px] text-muted-foreground">
           {temCorrente ? (
-            <p className="text-[11px] text-muted-foreground">
-              A semana de {serie.semanaCorrente} está em andamento — o número
-              dela ainda vai subir e não se compara com as semanas fechadas.
-            </p>
+            <>
+              {serie.semanaCorrente} está em andamento (ainda sobe; não se
+              compara com as fechadas) ·{" "}
+            </>
           ) : null}
-          <p className="text-[11px] text-muted-foreground">
-            &quot;Com mensagem&quot; é o estado de hoje dos clientes criados
-            naquela semana — a mensagem pode ter saído depois.
-          </p>
-        </div>
+          &quot;Com mensagem&quot; é o estado de hoje dos clientes criados
+          naquela semana — a mensagem pode ter saído depois.
+        </p>
       </div>
     </CardDashboard>
   );

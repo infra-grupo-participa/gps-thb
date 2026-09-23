@@ -87,14 +87,18 @@ export function EscadaAlcance({
 }) {
   if (degraus.length === 0) return null;
 
+  /* 🔑 23/09/2026 (2ª rodada): `gap-2` → `gap-1` entre degraus e barra de
+     `h-2` → `h-1.5`. São NOVE degraus, então cada pixel poupado por linha vale
+     nove — o card "Jornada do parceiro" media 637 px. Nenhum degrau, número,
+     percentual ou ressalva saiu; o que encolheu foi o vão. */
   return (
-    <div className={cn("grid gap-2", className)}>
-      <ol className="grid gap-2">
+    <div className={cn("grid gap-1.5", className)}>
+      <ol className="grid gap-1">
         {degraus.map((d, i) => {
           // 🔴 SEMPRE sobre `total`, nunca sobre `degraus[i - 1]`.
           const pct = pctDe(d.valor, total);
           return (
-            <li key={`${d.rotulo}-${i}`} className="grid gap-1">
+            <li key={`${d.rotulo}-${i}`} className="grid gap-0.5">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="flex min-w-0 items-baseline gap-2">
                   {/* A ordem é de LEITURA (mais amplo em cima), não de
@@ -121,7 +125,7 @@ export function EscadaAlcance({
                   ser comparadas a olho numa vertical só. */}
               <div
                 aria-hidden
-                className="ml-6 h-2 overflow-hidden rounded-full bg-superficie-afundada inset-ring inset-ring-black/5"
+                className="ml-6 h-1.5 overflow-hidden rounded-full bg-superficie-afundada inset-ring inset-ring-black/5"
               >
                 <div
                   className="h-full rounded-full"

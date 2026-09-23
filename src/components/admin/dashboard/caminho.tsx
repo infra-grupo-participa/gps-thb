@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { Footprints, Route, UserRound } from "lucide-react";
 
-import { Barras, Funil } from "@/components/ui/graficos";
+import { Barras } from "@/components/ui/graficos";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import type { Dashboard } from "@/lib/data/dashboard";
 import { CardDashboard } from "./card-dashboard";
@@ -55,6 +54,7 @@ export function CaminhoDoCliente({ dados }: { dados: Dashboard }) {
     { fase: "fechamento" as const, valor: caminho.fechamento },
     { fase: "contratado" as const, valor: caminho.contratado },
   ].map((f) => ({
+    fase: f.fase,
     rotulo: FASES_CLIENTE.find((x) => x.id === f.fase)?.rotulo ?? f.fase,
     valor: f.valor,
     tom: TOM_DA_FASE[f.fase],
@@ -70,7 +70,7 @@ export function CaminhoDoCliente({ dados }: { dados: Dashboard }) {
   );
 
   return (
-    <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+    <>
       {/* 1 — os 4 passos da ficha. BARRAS PARALELAS, jamais funil. */}
       <CardDashboard
         icone={<Footprints />}
@@ -176,35 +176,31 @@ export function CaminhoDoCliente({ dados }: { dados: Dashboard }) {
             : undefined
         }
       >
-        <div className="grid gap-3">
-          {/* 🔴 `mostrarPassagem={false}`. As três fases são MUTUAMENTE
-              EXCLUSIVAS (`fase` é uma coluna só, e as três somam exatamente
-              os {total} clientes): quem está em fechamento SAIU da prospecção,
-              não é subconjunto dela. Com a passagem ligada, o card afirmaria
-              "3% passam de prospecção para fechamento" — que lê como taxa de
-              conversão e é falso, porque o denominador (1.640) é justamente
-              quem NÃO avançou. A escada de magnitude continua honesta; a frase
-              de conversão, não. */}
-          <Funil etapas={porFase} mostrarPassagem={false} />
-          <ul className="grid gap-0.5 border-t border-borda-fina pt-2">
-            {[
-              { fase: "prospeccao" as const, rotulo: "prospecção" },
-              { fase: "fechamento" as const, rotulo: "fechamento" },
-              { fase: "contratado" as const, rotulo: "contratado" },
-            ].map((f) => (
-              <li key={f.fase}>
-                <Link
-                  href={`${LINK_CLIENTES}?fase=${f.fase}`}
-                  prefetch={false}
-                  className="foco-visivel -mx-2 flex items-center justify-between gap-2 rounded-md px-2 py-1 corpo-sm font-medium text-accent-foreground hover:bg-superficie-afundada hover:underline"
-                >
-                  Ver {f.rotulo}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* 🔑 23/09/2026 (2ª rodada): o `Funil` (3 linhas de nome + número +
+            barra de 24 px) vinha seguido de uma lista com as MESMAS 3 fases
+            escritas de novo, só para carregar o link — ~90 px repetindo o que
+            já estava logo acima. Agora é `Barras` horizontal com `href` por
+            linha: um desenho só, cada fase sendo o próprio destino.
+
+            🔴 Continua NÃO sendo funil, e pela mesma razão de antes: as três
+            fases são MUTUAMENTE EXCLUSIVAS (`fase` é uma coluna só, e as três
+            somam exatamente os {total} clientes). Quem está em fechamento SAIU
+            da prospecção — não é subconjunto dela. Nenhuma taxa de passagem é
+            calculada aqui; o `%` de cada linha é sobre `totalNasFases`, o
+            denominador que o card escreve. */}
+        <Barras
+          orientacao="horizontal"
+          total={totalNasFases}
+          dados={porFase.map((f) => ({
+            rotulo: f.rotulo,
+            valor: f.valor,
+            tom: f.tom,
+            href: `${LINK_CLIENTES}?fase=${f.fase}`,
+            ariaLabel: `Ver os ${f.valor} clientes na fase ${f.rotulo.toLowerCase()}`,
+          }))}
+          resumo={`Clientes por fase, cada um em uma fase só, de ${totalNasFases}: ${porFase.map((f) => `${f.rotulo} ${f.valor}`).join(", ")}.`}
+        />
       </CardDashboard>
-    </div>
+    </>
   );
 }

@@ -185,14 +185,24 @@ export function CardDashboard({
         className,
       )}
     >
-      <CardContent className="flex h-full flex-col gap-2.5">
+      {/* 🔑 23/09/2026 (2ª rodada): `gap-2.5` → `gap-1.5` e `py-3` no
+          `CardContent` — o `Card` já paga `py-4` (32 px de chrome vertical) e
+          13 cards × 8 px devolvidos somam ~100 px de página. O `IconeChip`
+          caiu de 32 px para 24: ele é DECORATIVO (`aria-hidden`) e, em 32 px,
+          era ele quem mandava na altura da linha do rótulo. */}
+      <CardContent className="flex h-full flex-col gap-1.5 py-3">
         <div className="flex items-start justify-between gap-2">
-          <span className="rotulo text-muted-foreground">{rotulo}</span>
-          <IconeChip destaque={destaque}>{icone}</IconeChip>
+          <span className="rotulo min-w-0 text-muted-foreground">{rotulo}</span>
+          <IconeChip
+            destaque={destaque}
+            className="size-6 [&>svg]:size-3.5"
+          >
+            {icone}
+          </IconeChip>
         </div>
 
         {valor !== undefined ? (
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           {valorHref ? (
             <Link
               href={valorHref}
@@ -268,14 +278,14 @@ export function CardDashboard({
               // `flex-1` no card de gráfico: quem tem gráfico elástico (as
               // colunas) cresce até a altura da linha da grade em vez de
               // deixar vão entre o desenho e o link.
-              variante === "grafico" ? "mt-1.5 min-h-0 flex-1" : "mt-0.5",
+              variante === "grafico" ? "min-h-0 flex-1" : "",
             )}
           >
             {children}
           </div>
         ) : null}
 
-        <div className="mt-auto pt-1">
+        <div className="mt-auto pt-0.5">
           {link ? (
             <Link
               href={link.href}

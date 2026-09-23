@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { cn } from "@/lib/utils";
 import {
   COR_DO_TOM,
@@ -71,14 +73,29 @@ export function Barras({
   const teto = tetoDaSerie(dados.map((d) => d.valor));
 
   if (orientacao === "horizontal") {
+    /* 🔑 23/09/2026: `gap-2.5` → `gap-1.5` e a barra de `h-2.5` → `h-2`.
+       Numa lista de 7 graus isso são ~35 px, e a barra continua com o dobro
+       da espessura mínima de um traço. O que NÃO mudou foi a contagem de
+       linhas: cada categoria continua com nome, número, percentual e barra. */
     return (
-      <ul className="grid gap-2.5">
+      <ul className="grid gap-1.5">
         {dados.map((d, i) => {
           const pct = total !== undefined ? pctDe(d.valor, total) : null;
-          return (
-            <li key={`${d.rotulo}-${i}`} className="grid gap-1">
+
+          /* O miolo da linha, idêntico com ou sem link — o `href` troca só o
+             invólucro, para a linha com destino e a linha sem destino terem
+             exatamente a mesma geometria. */
+          const miolo = (
+            <>
               <div className="flex items-baseline justify-between gap-3">
-                <span className="min-w-0 corpo-sm text-muted-foreground">
+                <span
+                  className={cn(
+                    "min-w-0 corpo-sm",
+                    d.href
+                      ? "text-accent-foreground underline-offset-4 group-hover:underline"
+                      : "text-muted-foreground",
+                  )}
+                >
                   {d.rotulo}
                 </span>
                 <span className="numero shrink-0 font-semibold whitespace-nowrap">
@@ -92,7 +109,7 @@ export function Barras({
               </div>
               <div
                 aria-hidden
-                className="h-2.5 w-full overflow-hidden rounded-full bg-superficie-afundada inset-ring inset-ring-black/5"
+                className="mt-1 h-2 w-full overflow-hidden rounded-full bg-superficie-afundada inset-ring inset-ring-black/5"
               >
                 <div
                   className="h-full rounded-full"
@@ -102,6 +119,23 @@ export function Barras({
                   }}
                 />
               </div>
+            </>
+          );
+
+          return (
+            <li key={`${d.rotulo}-${i}`}>
+              {d.href ? (
+                <Link
+                  href={d.href}
+                  prefetch={false}
+                  aria-label={d.ariaLabel}
+                  className="foco-visivel group -mx-2 block rounded-md px-2 py-1 hover:bg-superficie-afundada"
+                >
+                  {miolo}
+                </Link>
+              ) : (
+                <div className="py-0.5">{miolo}</div>
+              )}
             </li>
           );
         })}

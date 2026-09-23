@@ -6,6 +6,7 @@ import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
+import { estrelaTravada } from "@/components/clientes/clientes-manager/ordenacao";
 import { getMinutaContextoObrigatorio } from "@/lib/data/minutas";
 import { getMinutasDoCliente } from "@/lib/data/minutas";
 import {
@@ -59,17 +60,23 @@ export default async function ClienteFichaPage({
    * (42501). Uma linha indexada (`acompanhado_equipe` é único por ambiente), e
    * nem isso quando o cliente aberto já é o favorito.
    *
-   * 🔴 Desde a migração ...215 a ESCOLHA do aluno já basta para a recusa — não
-   * é mais só a confirmação da equipe. Por isso os dois nomes saem da MESMA
-   * consulta: `outroConfirmadoNome` continua separando as duas frases.
+   * 🔴 **Migração ...304 (23/09/2026)**: quem esconde a estrela desta ficha é o
+   * outro favorito cujo CASO JÁ ANDOU — `definirClienteEquipe` o desmarcaria
+   * primeiro, e é esse `update` que a trigger recusa com 42501. Era
+   * `acompanhamento_confirmado_em`, que em 3 meses nunca foi preenchida: a
+   * condição valia `false` para todo mundo e a estrela nunca sumia.
+   *
+   * `estrelaTravada` é a MESMA função que a lista e a ficha usam — um lugar só
+   * para a regra, senão duas telas discordam sobre o mesmo cliente.
    */
   const outroFavorito = cliente.acompanhado_equipe
     ? null
     : await getClienteEquipe(alunoId);
   const outroFavoritoNome = outroFavorito?.nome ?? null;
-  const outroConfirmadoNome = outroFavorito?.acompanhamento_confirmado_em
-    ? (outroFavorito.nome ?? null)
-    : null;
+  const outroConfirmadoNome =
+    outroFavorito && estrelaTravada(outroFavorito)
+      ? (outroFavorito.nome ?? null)
+      : null;
 
   // O interruptor `gps.config.minuta_contexto_obrigatorio` (17/09/2026).
   // Vai por RPC (`getMinutaContextoObrigatorio`) porque `gps.config` só tem

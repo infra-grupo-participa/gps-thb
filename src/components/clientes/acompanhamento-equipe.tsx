@@ -7,6 +7,18 @@
  *   `acompanhado_equipe`                → "foi este que EU escolhi" (do aluno)
  *   `acompanhamento_confirmado_em`      → "a equipe ACEITOU e está acompanhando"
  *
+ * 🔴 **23/09/2026 (migração ...304) — a segunda coluna deixou de TRAVAR nada.**
+ * A trava da troca passou a nascer sozinha quando o caso anda: o cliente sai de
+ * Prospecção ou ganha data de reunião preliminar. Motivo medido: em 3 meses
+ * foram 37 clientes escolhidos e **zero** confirmados; a confirmação manual
+ * nunca acontecia, então a trava só existia no papel e a diferença entre o que
+ * a tela prometia e o que o banco fazia gerou 7 chamados.
+ *
+ * `acompanhamento_confirmado_em` continua existindo como REGISTRO formal da
+ * equipe (e continua sendo escrita exclusiva dela), e `AcoesAcompanhamento`
+ * continua sendo a porta dela. O que mudou é que confirmar/liberar não liga
+ * nem desliga mais a trava do aluno.
+ *
  * Duas peças, dois públicos:
  *
  * - **`AvisoAcompanhamento`** é o que o ALUNO lê: a data em que a equipe
@@ -68,18 +80,17 @@ export function hrefChamadoTroca(basePath = ""): string {
 /**
  * A frase da estrela travada. Repetida em 4 telas, escrita aqui.
  *
- * 🔴 SÓ VALE DEPOIS QUE A EQUIPE CONFIRMA (corrigido em 10/09/2026). Antes
- * ela aparecia desde o instante em que o parceiro marcava a estrela — e a
- * trigger de fato bloqueava, mesmo sem a equipe ter olhado o cliente.
- *
- * Dos 5 chamados abertos no primeiro dia de uso, os 5 eram sobre isso.
+ * 🔴 **23/09/2026** — a frase deixou de citar a equipe "assumir", porque a
+ * equipe nunca assumia (0 confirmados em 37 escolhidos, em 3 meses) e o aluno
+ * ficava esperando um marco que não vinha. Agora ela nomeia o fato que de fato
+ * ligou a trava: o caso andou — e foi o próprio aluno que o fez andar.
  */
 export const TEXTO_TROCA_POR_CHAMADO =
-  "A equipe assumiu este cliente. Para trocar, abra um chamado";
+  "Este cliente já avançou. Para trocar, abra um chamado";
 
-/** A frase de quando a equipe AINDA NÃO assumiu: o parceiro troca sozinho. */
+/** A frase de quando o caso AINDA NÃO andou: o parceiro troca sozinho. */
 export const TEXTO_TROCA_LIVRE =
-  "Você pode trocar enquanto a equipe não assumir este cliente";
+  "Você pode trocar enquanto este cliente estiver em Prospecção e sem reunião marcada";
 
 /** O link "abra um chamado", já com o assunto preenchido. */
 export function LinkTrocaPorChamado({
@@ -105,13 +116,12 @@ export function LinkTrocaPorChamado({
 }
 
 /**
- * O aviso da ficha do cliente que o ALUNO escolheu e a equipe ainda não
- * confirmou (migração ...215).
+ * O aviso da ficha do cliente que o ALUNO escolheu e cujo caso ainda NÃO andou.
  *
- * 🔴 O caminho da troca é LIVRE aqui (corrigido em 11/09/2026): enquanto
- * `acompanhamento_confirmado_em` é nulo, a trigger devolve `old` e o parceiro
- * desmarca sozinho. Este aviso mandava abrir chamado desde o primeiro
- * instante — foi o que gerou os 5 chamados do primeiro dia de uso.
+ * 🔴 O caminho da troca é LIVRE aqui: enquanto o cliente está em Prospecção sem
+ * reunião marcada, a trigger devolve `old` e o parceiro desmarca sozinho
+ * (migração ...304, 23/09/2026 — antes a condição era a confirmação da equipe,
+ * que nunca chegava).
  */
 export function AvisoEscolhaFeita() {
   return (
@@ -124,7 +134,8 @@ export function AvisoEscolhaFeita() {
       </p>
       <p className="corpo-sm text-muted-foreground">
         {TEXTO_TROCA_LIVRE}: basta clicar na estrela deste cliente ou marcar
-        outro. Depois que ela assumir, a troca passa a ser pelo Suporte.
+        outro. Assim que ele mudar de fase ou ganhar uma data de reunião
+        preliminar, a troca passa a ser pelo Suporte.
       </p>
     </div>
   );
@@ -149,7 +160,17 @@ export function AvisoAcompanhamento({
   admin = false,
   basePath = "",
 }: {
-  confirmadoEm: string;
+  /**
+   * 🔴 `string | null` desde 23/09/2026 — e o `null` é o caso COMUM, não a
+   * borda. `acompanhamento_confirmado_em` nunca foi preenchida em produção
+   * (0 de 37 favoritos em 3 meses), e desde a migração ...304 este aviso passou
+   * a aparecer para todo cliente cujo CASO ANDOU, confirmado ou não.
+   *
+   * Com `formatarData(null)` o selo dizia "acompanhando este cliente desde
+   * 31/12/1969" — o epoch — em 95 fichas de 45 parceiros. Data que o sistema
+   * não tem não vira data errada na tela: vira frase sem data.
+   */
+  confirmadoEm: string | null;
   admin?: boolean;
   basePath?: string;
 }) {
@@ -157,28 +178,28 @@ export function AvisoAcompanhamento({
     <div className="grid gap-2 rounded-xl border border-sucesso-foreground/25 bg-sucesso p-3.5">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="success">
-          A equipe está acompanhando este cliente desde{" "}
-          {formatarData(confirmadoEm)}
+          {confirmadoEm
+            ? `A equipe está acompanhando este cliente desde ${formatarData(confirmadoEm)}`
+            : "A equipe está acompanhando este cliente"}
         </Badge>
       </div>
       <p className="corpo-sm text-sucesso-foreground">
-        Enquanto o acompanhamento estiver ativo, este cliente continua sendo o da
-        equipe: a estrela não muda, ele não pode ser excluído e a fase não volta
-        para Prospecção. <strong>O resto da ficha segue editável</strong> —
-        telefone, registro do contato, honorários, contrato assinado, perfil
+        A equipe registrou que está acompanhando este cliente. Como ele já
+        avançou, a estrela não muda, ele não pode ser excluído e a fase não
+        volta para Prospecção. <strong>O resto da ficha segue editável</strong>{" "}
+        — telefone, registro do contato, honorários, contrato assinado, perfil
         DISC e problemas.
       </p>
       {admin ? (
         <>
-          {/* ⚠️ Depois da migração ...215 “Liberar acompanhamento” NÃO devolve
-              ao aluno o direito de trocar a estrela: ele solta só a camada de
-              dentro (a fase volta a poder ir para Prospecção e o cliente volta
-              a poder ser excluído). A troca continua sendo da equipe, aqui
-              mesmo. */}
+          {/* ⚠️ Desde a migração ...304 “Liberar acompanhamento” NÃO destrava
+              NADA para o aluno: a trava não depende mais desta coluna, e sim de
+              o caso ter andado. Liberar apaga o registro formal da equipe e
+              nada mais. A troca continua sendo da equipe, aqui mesmo. */}
           <p className="previa-oculta corpo-sm text-sucesso-foreground">
-            “Liberar acompanhamento” solta a fase e a exclusão deste cliente. A
-            troca do cliente acompanhado continua sendo da equipe — feita aqui,
-            no Modo Assistência.
+            “Liberar acompanhamento” apaga o registro de que a equipe assumiu —
+            e só isso: a estrela deste cliente continua travada, porque o caso
+            dele já avançou. A troca é feita aqui, no Modo Assistência.
           </p>
           {/* A MESMA linha que o aluno lê, visível só dentro da prévia. */}
           <p className="hidden corpo-sm text-sucesso-foreground [html[data-previa=aluno]_&]:block">
@@ -201,8 +222,10 @@ export function AvisoAcompanhamento({
  * ambiente já é. Existe para a estrela ausente ter explicação — botão que some
  * sem motivo é tão ruim quanto botão que falha.
  *
- * `confirmado` separa os dois estados: a equipe já assumiu, ou o aluno apenas
- * escolheu (e a ...215 já trava a troca nos dois casos).
+ * `confirmado` separa os dois estados: a equipe já registrou que assumiu, ou o
+ * aluno apenas escolheu. Desde a ...304 a trava não depende dessa diferença —
+ * ela vem de o caso do OUTRO cliente já ter andado, que é justamente o motivo
+ * de a estrela não poder vir para cá.
  */
 export function AvisoOutroConfirmado({
   nome,

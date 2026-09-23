@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { toast } from "sonner";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
@@ -33,7 +32,7 @@ import { linkWhatsapp } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Secao } from "@/components/ui/secao";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,9 +65,16 @@ export function ClienteFicha({
   outroFavoritoNome = null,
   minutas = [],
   contextoObrigatorio = false,
+  painelEntrevista = null,
 }: {
   cliente: ClienteEtapa1;
   alunoId: string;
+  /**
+   * O painel da Entrevista Prévia, montado no SERVIDOR (decisores +
+   * histórico). `null` no modo assistência: quem entrevista é o parceiro,
+   * ao telefone com o lead — o admin vê o resultado, não conduz.
+   */
+  painelEntrevista?: React.ReactNode;
   /**
    * Modo assistência. Só com `true` aparecem "Confirmar acompanhamento" e
    * "Liberar acompanhamento" — quem autoriza mesmo é o `gp_is_admin()` das
@@ -790,26 +796,10 @@ export function ClienteFicha({
               🔑 Só para o PARCEIRO (`!admin`): quem conduz a entrevista é
               quem está ao telefone com o lead. O admin vê o resultado na
               ficha e no briefing, mas não entrevista pelo cliente de outro. */}
-          {!admin ? (
-            <div className="grid gap-2 border border-borda-fina px-4 py-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="rotulo">Entrevista Prévia</p>
-                  <p className="corpo-sm text-muted-foreground">
-                    {cliente.perfil_disc
-                      ? "O perfil já está preenchido. Uma nova entrevista atualiza o que mudou."
-                      : "Responda com o cliente ao telefone. O perfil DISC é gerado no final, sozinho."}
-                  </p>
-                </div>
-                <Link
-                  href={`/clientes/${cliente.id}/entrevista`}
-                  className={buttonVariants({ variant: cliente.perfil_disc ? "outline" : "default" })}
-                >
-                  {cliente.perfil_disc ? "Nova entrevista" : "Iniciar entrevista"}
-                </Link>
-              </div>
-            </div>
-          ) : null}
+          {/* 🔑 Vem PRONTO da página (Server Component): o painel lê decisores
+              e histórico, e esta ficha é `"use client"` — buscar aqui seria
+              uma ida ao banco no navegador, depois da tela já pintada. */}
+          {painelEntrevista}
 
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">

@@ -8,6 +8,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
 import { getMinutaContextoObrigatorio } from "@/lib/data/minutas";
 import { getMinutasDoCliente } from "@/lib/data/minutas";
+import {
+  getDecisoresPendentes,
+  getEntrevistasDoCliente,
+} from "@/lib/data/entrevista-previa";
+import { PainelEntrevistaPrevia } from "@/components/clientes/entrevista-previa/painel-resultado";
 
 export default async function ClienteFichaPage({
   params,
@@ -30,7 +35,8 @@ export default async function ClienteFichaPage({
   // ⚠️ A guarda de propriedade continua ANTES de qualquer render: o
   // `notFound()` roda com as duas respostas em mãos, no mesmo ponto lógico
   // de antes.
-  const [cliente, aluno, minutas, tutoriaisAtivo] = await Promise.all([
+  const [cliente, aluno, minutas, tutoriaisAtivo, decisores, entrevistas] =
+    await Promise.all([
     getClienteById(clienteId),
     getAlunoById(alunoId),
     // 🔑 No MESMO Promise.all: a lista de minutas não depende do cliente nem
@@ -39,6 +45,11 @@ export default async function ClienteFichaPage({
     // 🔑 Estava SOLTO fora do Promise.all (uma ida ao banco a mais por
     // abertura de ficha) — junto aqui, mesma independência das outras três.
     getTutoriaisAtivo(),
+    // 🔑 No MESMO Promise.all: decisores e histórico da Entrevista Prévia não
+    // dependem do cliente nem do aluno. Em cascata custariam duas viagens a
+    // mais por abertura de ficha — a tela mais usada do produto.
+    getDecisoresPendentes(clienteId),
+    getEntrevistasDoCliente(clienteId),
   ]);
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
@@ -95,6 +106,14 @@ export default async function ClienteFichaPage({
           alunoId={alunoId}
           outroConfirmadoNome={outroConfirmadoNome}
           outroFavoritoNome={outroFavoritoNome}
+          painelEntrevista={
+            <PainelEntrevistaPrevia
+              clienteId={clienteId}
+              temDisc={Boolean(cliente.perfil_disc)}
+              decisores={decisores?.decisores ?? []}
+              entrevistas={entrevistas}
+            />
+          }
         />
       </main>
     </>

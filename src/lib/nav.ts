@@ -50,6 +50,56 @@ export function alunoNavItems(
     // princípio. Aqui ela cai na primeira dobra, ao lado da aba onde o aluno
     // trava (Clientes).
     { href: `${basePath}/chamados`, label: "Suporte", icon: "suporte" },
+    // 📅 Sessões com a equipe jurídica (22/09/2026) — Entrevista Prévia e
+    // Reunião Preliminar com as Dras. Elaine e Cristiane. O aluno escolhe um
+    // horário que a equipe JÁ declarou que pode (`gps.sessao_*`).
+    //
+    // 🔴 4ª POSIÇÃO, NÃO 7ª (23/09/2026) — o MESMO remédio que a aba Suporte
+    // recebeu logo acima, pelo MESMO defeito medido. Pedido do Marcio:
+    // *"a aba da sessão está presente no sistema mas não é visível. A gente
+    // tem que prosseguir depois da entrevista prévia para lá. Esse é o buraco
+    // na parte do sistema"*.
+    //
+    // Em 7º, dentro do `overflow-x-auto` do header, ela nascia FORA DA TELA
+    // no celular: o parceiro que acabou de concluir a Entrevista Prévia teria
+    // de rolar a barra horizontal para descobrir que existe onde marcar a
+    // sessão. Foi exatamente assim que o Suporte ficou com ZERO chamados e
+    // 104 alunos travados (10/09).
+    //
+    // ⚠️ Ela entra DEPOIS de Suporte, não antes: Suporte em 3º é decisão
+    // registrada de 10/09 e não se rebaixa para abrir espaço. A ordem do topo
+    // (Início · Clientes · Suporte) fica intacta; Sessões toma o 4º lugar,
+    // que era da Pasta.
+    //
+    // ⚠️ NÃO é o "agendamento de reunião com a equipe" removido em 10/08/2026
+    // e já reconstruído por engano uma vez (05/08). Aquela decisão foi
+    // REVOGADA pelo Marcio em 22/09 — "agora a disponibilidade parte delas" —
+    // e a revogação autorizou `gps.sessao_*`, e SÓ isso: as tabelas
+    // `gps.reuniao_*` e `gps.agenda` seguem órfãs e PROIBIDAS.
+    //
+    // 🔴 Esta linha é a PORTA DE ENTRADA da tela. Sem ela, `/sessoes`
+    // existiria completa e só seria alcançável digitando a URL — o defeito
+    // que este portal já pagou três vezes (a tela de respostas do onboarding
+    // com 77 questionários dentro, a aba Tutoriais, a aba do Inventário).
+    //
+    // 🔑 `basePath === ""` é o sinal de "é o aluno de verdade" — a MESMA
+    // condição do Plantão logo abaixo, e pelo mesmo motivo: não existe
+    // `admin/aluno/[id]/sessoes/page.tsx` (a tela da equipe é `/admin/sessoes`,
+    // fatia 5, e é outra tela). Sem este filtro, o link apareceria no modo
+    // assistência e o admin cairia num 404 ao clicar. Se um dia houver tela
+    // de assistência para as sessões, é só tirar a condição.
+    //
+    // 🔴 ÍCONE PRÓPRIO (`"sessoes"` = `CalendarDays`), e isto REVOGA o que
+    // este mesmo comentário dizia até 23/09 ("a regra do projeto é não
+    // inventar chave nova"). Aquela regra continua valendo em geral — o que a
+    // suspende aqui é o pedido explícito do Marcio por "mais visual e mais
+    // intuitiva". Com `"materiais"` (BookOpen), esta aba usava o ícone de
+    // Materiais e do Plantão: três abas de livro lado a lado, e o ícone
+    // deixava de informar qualquer coisa. Ver `NavItem["icon"]` em
+    // `nav-tabs.tsx`, onde a exceção está registrada junto da chave.
+    ...(basePath === ""
+      ? [{ href: "/sessoes", label: "Sessões", icon: "sessoes" as const }]
+      : []),
     { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta" },
     { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" },
     // 🎧 Plantão de Dúvidas — aba do aluno do PROGRAMA dentro do sistema
@@ -67,38 +117,15 @@ export function alunoNavItems(
     // o Plantão do Programa, é só tirar a condição.
     //
     // Ícone reaproveitado ("materiais", o mesmo do Plantão no admin em
-    // `adminNavItems`) — não existe chave dedicada a calendário/plantão em
+    // `adminNavItems`) — não existe chave dedicada a plantão em
     // `NavItem["icon"]` e a regra do projeto é não inventar uma nova.
+    //
+    // ⚠️ NÃO reaproveitar aqui a chave `"sessoes"` (CalendarDays) criada em
+    // 23/09 para a aba Sessões: o pedido do Marcio era distinguir SESSÕES do
+    // resto, e dar o mesmo calendário ao Plantão refaria a confusão em outro
+    // par de abas. Plantão é atendimento em grupo, não hora marcada.
     ...(basePath === ""
       ? [{ href: "/plantao", label: "Plantão", icon: "materiais" as const }]
-      : []),
-    // 📅 Sessões com a equipe jurídica (22/09/2026) — Entrevista Prévia e
-    // Reunião Preliminar com as Dras. Elaine e Cristiane. O aluno escolhe um
-    // horário que a equipe JÁ declarou que pode (`gps.sessao_*`).
-    //
-    // ⚠️ NÃO é o "agendamento de reunião com a equipe" removido em 10/08/2026
-    // e já reconstruído por engano uma vez (05/08). Aquela decisão foi
-    // REVOGADA pelo Marcio em 22/09 — "agora a disponibilidade parte delas" —
-    // e a revogação autorizou `gps.sessao_*`, e SÓ isso: as tabelas
-    // `gps.reuniao_*` e `gps.agenda` seguem órfãs e PROIBIDAS.
-    //
-    // 🔴 Esta linha é a PORTA DE ENTRADA da tela. Sem ela, `/sessoes`
-    // existiria completa e só seria alcançável digitando a URL — o defeito
-    // que este portal já pagou três vezes (a tela de respostas do onboarding
-    // com 77 questionários dentro, a aba Tutoriais, a aba do Inventário).
-    //
-    // 🔑 `basePath === ""` é o sinal de "é o aluno de verdade" — a MESMA
-    // condição do Plantão logo acima, e pelo mesmo motivo: não existe
-    // `admin/aluno/[id]/sessoes/page.tsx` (a tela da equipe é `/admin/sessoes`,
-    // fatia 5, e é outra tela). Sem este filtro, o link apareceria no modo
-    // assistência e o admin cairia num 404 ao clicar. Se um dia houver tela
-    // de assistência para as sessões, é só tirar a condição.
-    //
-    // Ícone reaproveitado ("materiais", o mesmo do Plantão): não existe chave
-    // dedicada a calendário/agenda em `NavItem["icon"]` (`nav-tabs.tsx`) e a
-    // regra do projeto é não inventar chave nova.
-    ...(basePath === ""
-      ? [{ href: "/sessoes", label: "Sessões", icon: "materiais" as const }]
       : []),
     // ⏸️ FINANCEIRO EM ESPERA (decisão do Marcio, 10/09/2026): "esconder a
     // aba do financeiro, dado que ainda não está pronta, deixa mockado com

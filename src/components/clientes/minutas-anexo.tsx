@@ -289,14 +289,11 @@ export function MinutasAnexo({
     <div className="grid gap-2">
       {/* A instrução do vermelho + a orientação "uma por vez" — ORIENTAÇÃO,
           o sistema não valida nem compara nada e nada bloqueia o próximo
-          envio. Ficam no corpo da tela, ANTES do botão de anexar. */}
-      <p className="corpo-sm text-muted-foreground">
-        Ao enviar uma nova versão, deixe em <strong>vermelho</strong> o que foi
-        alterado em relação à minuta anterior. O sistema não compara nem
-        destaca nada sozinho — é você quem sinaliza a mudança no próprio
-        documento. Envie <strong>uma minuta por vez</strong>: anexe, descreva,
-        e só então parta para a próxima. Se anexar o arquivo errado, remova e
-        envie de novo — nada aqui trava o próximo envio.
+          envio. Ficam no corpo da tela, ANTES do botão de anexar. Peso
+          rebaixado (2026-09-23, pedido do Marcio): é observação, não aviso. */}
+      <p className="text-xs leading-snug text-muted-foreground">
+        Deixe em <strong>vermelho</strong> o que mudou em relação à minuta
+        anterior. Envie <strong>uma minuta por vez</strong>.
       </p>
 
       {/* O botão nativo do `<input type="file">` escreve "Choose File" no

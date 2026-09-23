@@ -93,7 +93,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "motivo_busca",
     bloco: "abertura",
-    enunciado: "O que te trouxe até aqui? O que fez você procurar isso agora?",
+    enunciado:
+      "Me conta: o que está acontecendo na sua vida agora que te fez " +
+      "procurar isso justo neste momento?",
     ajuda: "Deixe a pessoa falar e marque o que mais se aproxima.",
     opcoes: [
       { id: "problema_urgente", rotulo: "Tem um problema acontecendo agora", disc: { D: 2 } },
@@ -106,7 +108,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "urgencia",
     bloco: "abertura",
-    enunciado: "Isso é algo que você quer resolver para quando?",
+    enunciado:
+      "E pensando à frente: se desse certo, em quanto tempo você gostaria " +
+      "de ver isso resolvido?",
     opcoes: [
       { id: "ontem", rotulo: "Para ontem — já está atrasado", disc: { D: 2 } },
       { id: "meses", rotulo: "Nos próximos meses", disc: { D: 1, I: 2 } },
@@ -117,7 +121,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "ja_tentou",
     bloco: "abertura",
-    enunciado: "Você já tentou resolver isso antes, com alguém?",
+    enunciado:
+      "Antes de chegar aqui, você chegou a buscar ajuda com alguém sobre " +
+      "isso, ou essa é a primeira vez que trata do assunto?",
     opcoes: [
       { id: "nunca", rotulo: "Nunca tratou do assunto", disc: { S: 1 } },
       { id: "conversou", rotulo: "Conversou com alguém, mas não avançou", disc: { I: 2 } },
@@ -131,8 +137,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     id: "decide_sozinho",
     bloco: "decisores",
     enunciado:
-      "Deixa eu te perguntar: se você fosse comprar um imóvel para investimento, " +
-      "você compra sozinho ou sua esposa (ou marido) participa da decisão?",
+      "Imagina que aparece um imóvel bom para investir, e você precisa " +
+      "decidir rápido. Você fecha sozinho, ou seu cônjuge entra nessa " +
+      "decisão com você?",
     ajuda:
       "🔴 Esta é a pergunta-chave. A Reunião Preliminar não acontece sem todos " +
       "os decisores presentes.",
@@ -146,7 +153,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "filhos_participam",
     bloco: "decisores",
-    enunciado: "E os seus filhos, eles participam dos seus investimentos?",
+    enunciado:
+      "E se um dia a família se reunir para falar de patrimônio, seus " +
+      "filhos entrariam nessa conversa, dariam opinião?",
     ajuda: "Filho que opina sobre patrimônio é decisor, mesmo sem assinar nada.",
     opcoes: [
       { id: "nao_tem", rotulo: "Não tem filhos" },
@@ -159,8 +168,8 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     id: "consulta_terceiro",
     bloco: "decisores",
     enunciado:
-      "Tem alguém que vocês costumam consultar antes de decidir? " +
-      "Um contador, um advogado, alguém de confiança?",
+      "Se surgisse uma decisão importante amanhã, tem alguém de fora que " +
+      "você ligaria antes — um contador, um advogado, alguém de confiança?",
     opcoes: [
       { id: "ninguem", rotulo: "Decide sem consultar ninguém", disc: { D: 2 } },
       { id: "contador", rotulo: "Consulta o contador", decisor: "terceiro", disc: { C: 2 } },
@@ -171,7 +180,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "socios_negocio",
     bloco: "decisores",
-    enunciado: "No seu negócio, você tem sócios?",
+    enunciado:
+      "Pensando no seu negócio: se fosse mudar algo estrutural nele, você " +
+      "decidiria sozinho, ou tem sócio que entraria nessa conversa?",
     opcoes: [
       { id: "sem_socios", rotulo: "Não tem sócios / não tem empresa", disc: { D: 1 } },
       { id: "socio_familia", rotulo: "Sócio da própria família", decisor: "socio" },
@@ -182,8 +193,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     id: "quem_bate_martelo",
     bloco: "decisores",
     enunciado:
-      "Quando a decisão é grande — daquelas que mexem com o patrimônio — " +
-      "quem bate o martelo?",
+      "Imagina que essa estrutura fica pronta e chega a hora de assinar. " +
+      "Quando a decisão é dessas grandes, que mexem com o patrimônio da " +
+      "família, quem bate o martelo no final?",
     ajuda: "Marque quem tem a palavra final. É o decisor PRINCIPAL.",
     opcoes: [
       { id: "eu", rotulo: "A própria pessoa entrevistada", disc: { D: 2 } },
@@ -197,7 +209,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "composicao",
     bloco: "patrimonio",
-    enunciado: "Hoje, o seu patrimônio está mais em quê?",
+    enunciado:
+      "Se a gente fosse desenhar um mapa do que você tem hoje, ele estaria " +
+      "mais concentrado em quê?",
     opcoes: [
       { id: "imoveis", rotulo: "Imóveis" },
       { id: "empresa", rotulo: "Na empresa / no negócio" },
@@ -208,7 +222,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "imoveis_alugados",
     bloco: "patrimonio",
-    enunciado: "Você tem imóveis alugados hoje, recebendo aluguel em nome de pessoa física?",
+    enunciado:
+      "Pensa no aluguel que cai na sua conta todo mês — ele entra no seu " +
+      "nome de pessoa física, ou você não tem esse tipo de renda hoje?",
     opcoes: [
       { id: "sim_varios", rotulo: "Sim, vários" },
       { id: "sim_um", rotulo: "Sim, um ou dois" },
@@ -218,7 +234,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "pro_labore",
     bloco: "patrimonio",
-    enunciado: "Como você tira o seu dinheiro da empresa hoje?",
+    enunciado:
+      "No fim do mês, quando o dinheiro da empresa vira dinheiro seu, como " +
+      "isso costuma acontecer?",
     opcoes: [
       { id: "pro_labore", rotulo: "Pró-labore" },
       { id: "dividendos", rotulo: "Dividendos / lucros" },
@@ -229,7 +247,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "inventario_familia",
     bloco: "patrimonio",
-    enunciado: "Na sua família já passaram por algum inventário?",
+    enunciado:
+      "Pensando na sua família: já teve alguém próximo que precisou passar " +
+      "por um inventário?",
     ajuda: "Quem já viveu um inventário costuma decidir mais rápido.",
     opcoes: [
       { id: "sim_demorado", rotulo: "Sim, e foi demorado / caro", disc: { D: 2, S: 1 } },
@@ -241,7 +261,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "risco_atividade",
     bloco: "patrimonio",
-    enunciado: "A sua atividade tem risco de processo? Trabalhista, tributário, algo assim?",
+    enunciado:
+      "Se amanhã chegasse um processo — trabalhista, tributário, algo assim " +
+      "— isso te preocuparia, ou você sente que está numa área tranquila?",
     opcoes: [
       { id: "alto", rotulo: "Sim, é uma preocupação real", disc: { C: 2 } },
       { id: "algum", rotulo: "Algum risco, mas controlado", disc: { C: 1 } },
@@ -254,7 +276,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "estilo_decisao",
     bloco: "comportamento",
-    enunciado: "Quando você decide alguma coisa importante, como costuma ser?",
+    enunciado:
+      "Imagine que apareceu uma oportunidade boa, mas com prazo curto — " +
+      "precisa responder em dois dias. Nessa hora, como você costuma agir?",
     opcoes: [
       { id: "rapido", rotulo: "Decide rápido, no instinto", disc: { D: 3 } },
       { id: "conversa", rotulo: "Conversa com gente até se sentir seguro", disc: { I: 3 } },
@@ -265,7 +289,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "o_que_convence",
     bloco: "comportamento",
-    enunciado: "O que mais te convence numa proposta?",
+    enunciado:
+      "Imagina que você está entre duas propostas parecidas. O que pesaria " +
+      "mais na sua cabeça para escolher uma delas?",
     opcoes: [
       { id: "resultado", rotulo: "O resultado que ela entrega", disc: { D: 3 } },
       { id: "confianca", rotulo: "A confiança em quem está apresentando", disc: { I: 3 } },
@@ -276,7 +302,7 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "ritmo_conversa",
     bloco: "comportamento",
-    enunciado: "Durante esta conversa, como a pessoa se comportou?",
+    enunciado: "Ao longo desta conversa, qual foi o jeito da pessoa se comportar?",
     ajuda: "Aqui você observa, não pergunta. Marque o que viu.",
     opcoes: [
       { id: "direto", rotulo: "Direto, quis saber logo do que se trata", disc: { D: 3 } },
@@ -288,7 +314,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "reacao_preco",
     bloco: "comportamento",
-    enunciado: "Quando o assunto é investimento financeiro, qual é a reação?",
+    enunciado:
+      "Imagina que a gente chega na parte do investimento financeiro. Qual " +
+      "costuma ser a sua reação nessa hora?",
     opcoes: [
       { id: "quanto_retorna", rotulo: "Pergunta quanto retorna", disc: { D: 2 } },
       { id: "quem_ja_fez", rotulo: "Pergunta quem já fez, quer referência", disc: { I: 2 } },
@@ -299,7 +327,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "lidar_com_erro",
     bloco: "comportamento",
-    enunciado: "Se algo dá errado num negócio seu, qual é a sua primeira reação?",
+    enunciado:
+      "Imagina que algo dá errado num negócio seu, do nada. Qual costuma " +
+      "ser a sua primeira reação?",
     opcoes: [
       { id: "resolve", rotulo: "Parte para resolver imediatamente", disc: { D: 3 } },
       { id: "chama_gente", rotulo: "Chama gente para ajudar a pensar", disc: { I: 3 } },
@@ -310,7 +340,10 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "delega",
     bloco: "comportamento",
-    enunciado: "Você delega com facilidade ou prefere acompanhar de perto?",
+    enunciado:
+      "Se você precisasse passar uma tarefa importante para outra pessoa " +
+      "tocar, você entregaria e seguiria em frente, ou ficaria de olho em " +
+      "cada passo?",
     opcoes: [
       { id: "delega_total", rotulo: "Delega e confia", disc: { I: 3 } },
       { id: "delega_acompanha", rotulo: "Delega, mas acompanha", disc: { D: 2 } },
@@ -321,7 +354,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "mudanca",
     bloco: "comportamento",
-    enunciado: "Como você se sente quando precisa mudar a forma de fazer as coisas?",
+    enunciado:
+      "Imagina que alguém te propõe mudar totalmente o jeito como você faz " +
+      "algo hoje. Como você reage?",
     opcoes: [
       { id: "gosta", rotulo: "Gosta de mudança, acha bom", disc: { D: 2, I: 2 } },
       { id: "aceita", rotulo: "Aceita se fizer sentido", disc: { C: 2 } },
@@ -332,7 +367,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "confianca_equipe",
     bloco: "comportamento",
-    enunciado: "O que faria você confiar num escritório para cuidar do seu patrimônio?",
+    enunciado:
+      "Pensando num escritório que fosse cuidar do seu patrimônio: o que " +
+      "faria você confiar de verdade nele?",
     opcoes: [
       { id: "resultado_provado", rotulo: "Ver resultado comprovado", disc: { D: 2, C: 1 } },
       { id: "relacao", rotulo: "A relação pessoal, o atendimento", disc: { I: 3 } },
@@ -346,8 +383,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     id: "disposicao_reuniao",
     bloco: "fechamento",
     enunciado:
-      "Se a gente marcar uma reunião com a nossa equipe jurídica para desenhar " +
-      "a sua estrutura, você consegue participar?",
+      "Imagina que a gente já sai daqui com uma reunião marcada com a " +
+      "nossa equipe jurídica, para desenhar a sua estrutura. Você consegue " +
+      "encaixar isso na sua agenda?",
     opcoes: [
       { id: "sim_qualquer", rotulo: "Sim, em qualquer horário", disc: { D: 1, I: 2 } },
       { id: "sim_combinado", rotulo: "Sim, combinando com antecedência", disc: { C: 1, S: 1 } },
@@ -358,7 +396,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "temperatura",
     bloco: "fechamento",
-    enunciado: "Na sua leitura, o quanto essa pessoa está pronta para avançar?",
+    enunciado:
+      "Pela sua percepção nesta conversa, o quanto essa pessoa parece " +
+      "pronta para avançar?",
     ajuda: "Sua percepção como entrevistador. Não pergunte isso em voz alta.",
     opcoes: [
       { id: "quente", rotulo: "Quer avançar agora" },
@@ -369,7 +409,9 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
   {
     id: "objecao_principal",
     bloco: "fechamento",
-    enunciado: "O que mais pode travar essa pessoa de seguir adiante?",
+    enunciado:
+      "Pela leitura desta conversa, o que mais pode travar essa pessoa de " +
+      "seguir adiante?",
     opcoes: [
       { id: "dinheiro", rotulo: "O investimento financeiro", disc: { S: 1 } },
       { id: "outros_decisores", rotulo: "Convencer os outros decisores", decisor: "conjuge" },

@@ -106,6 +106,27 @@ export default async function ClienteFichaPage({
           alunoId={alunoId}
           outroConfirmadoNome={outroConfirmadoNome}
           outroFavoritoNome={outroFavoritoNome}
+          // 🔑 A contagem sai do MESMO `getDecisoresPendentes` que já alimenta
+          // o painel, resolvido no `Promise.all` acima. Zero consulta nova: o
+          // DISC virou pop-up e a ficha precisa do sinal de "mais de um
+          // decisor" do lado de fora dele, senão a trava da Preliminar só
+          // apareceria para quem abrisse a janela.
+          //
+          // `?? null` e não `?? 0`: a RPC devolve `null` quando falha
+          // (`getDecisoresPendentes` loga e retorna `null`), e 0 diria "não há
+          // decisor" — afirmação que um erro de leitura não autoriza.
+          qtdDecisores={decisores?.decisores.length ?? null}
+          // 🔑 ZERO CONSULTA NOVA: derivado do MESMO `getEntrevistasDoCliente`
+          // que já está no `Promise.all` acima e já alimenta o painel. É a
+          // regra que `qtdDecisores` inaugurou logo acima — o sinal na ficha
+          // não pode custar mais uma ida ao banco na tela mais usada do
+          // produto.
+          //
+          // `concluida_em != null` e não `.length > 0`: entrevista ABERTA
+          // (o parceiro começou e a conversa caiu) não é entrevista feita, e
+          // sugerir marcar a sessão em cima dela mandaria ele adiante com o
+          // mapa dos decisores pela metade.
+          temEntrevistaConcluida={entrevistas.some((e) => e.concluida_em != null)}
           painelEntrevista={
             <PainelEntrevistaPrevia
               clienteId={clienteId}

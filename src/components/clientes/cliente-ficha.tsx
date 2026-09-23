@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
@@ -10,7 +11,6 @@ import {
   FASES_CLIENTE,
   GRAUS_RELACAO_UI,
   PERFIS_DISC,
-  META_HONORARIOS,
 } from "@/lib/etapa1";
 import {
   mascaraTelefone,
@@ -27,7 +27,6 @@ import {
   FileText,
 } from "lucide-react";
 import { atualizarCliente, definirClienteEquipe } from "@/app/clientes/actions";
-import { brlInteiro } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +41,7 @@ import { FichaContrato } from "@/components/clientes/ficha-contrato";
 import { MinutasAnexo } from "@/components/clientes/minutas-anexo";
 import { FichaCabecalho } from "@/components/clientes/ficha-cabecalho";
 import { DialogoEscolherFavorito } from "@/components/clientes/dialogo-escolher-favorito";
+import { DiscDialogo } from "@/components/clientes/disc-dialogo";
 import {
   fasesDisponiveis,
   travadoPelaEquipe,
@@ -54,9 +54,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-/** Só para a copy do campo de honorários — sem centavos, que aqui só ocupam espaço. */
-const brlMeta = brlInteiro(META_HONORARIOS);
-
 export function ClienteFicha({
   cliente,
   alunoId,
@@ -66,6 +63,8 @@ export function ClienteFicha({
   minutas = [],
   contextoObrigatorio = false,
   painelEntrevista = null,
+  qtdDecisores = null,
+  temEntrevistaConcluida = false,
 }: {
   cliente: ClienteEtapa1;
   alunoId: string;
@@ -75,6 +74,35 @@ export function ClienteFicha({
    * ao telefone com o lead — o admin vê o resultado, não conduz.
    */
   painelEntrevista?: React.ReactNode;
+  /**
+   * Quantos decisores a Entrevista Prévia registrou para este cliente.
+   *
+   * Vem do `getDecisoresPendentes` que a page JÁ chama no `Promise.all` — é
+   * a contagem do painel, reaproveitada. **Nenhuma consulta nova**: o sinal
+   * de pendência na ficha não pode custar uma sexta ida ao banco na tela
+   * mais usada do produto.
+   *
+   * 🔴 `null` = NÃO SABEMOS (modo assistência, que não chama a RPC). Aí a
+   * segunda linha do bloco DISC simplesmente não aparece — ausência de dado
+   * nunca vira afirmação de que não há decisor. `0` e `1` também não
+   * mostram nada: a trava só existe com mais de um.
+   */
+  qtdDecisores?: number | null;
+  /**
+   * Já existe pelo menos uma Entrevista Prévia CONCLUÍDA neste cliente.
+   *
+   * Vem derivado do `getEntrevistasDoCliente` que a page JÁ resolve no
+   * `Promise.all` — **nenhuma consulta nova**, mesma regra de
+   * `qtdDecisores` acima.
+   *
+   * 🔴 `false` no modo assistência, e de propósito: a page do admin nunca
+   * chamou `getEntrevistasDoCliente` e não passa a chamar. O efeito é o
+   * desenhado — a linha de próximo passo NÃO aparece lá, porque a rota
+   * `/sessoes` só existe para o ALUNO (`nav.ts` filtra por `basePath === ""`;
+   * não há `admin/aluno/[id]/sessoes`). Um link aqui levaria o admin a um
+   * 404, e link que dá erro é pior que link ausente.
+   */
+  temEntrevistaConcluida?: boolean;
   /**
    * Modo assistência. Só com `true` aparecem "Confirmar acompanhamento" e
    * "Liberar acompanhamento" — quem autoriza mesmo é o `gp_is_admin()` das
@@ -742,7 +770,6 @@ export function ClienteFicha({
           contratoLimpo={contratoLimpo}
           contratoInvalido={contratoInvalido}
           faseRotulo={faseAtual?.rotulo}
-          metaFormatada={brlMeta}
           clienteId={cliente.id}
           // Vem do SERVIDOR, sempre: a escrita do anexo é por RPC e não passa
           // pelo "Salvar ficha" — manter um espelho local só criaria duas
@@ -788,103 +815,134 @@ export function ClienteFicha({
 
         <Secao icone={<NotebookPen />} titulo="Registro e perfil" nivel="h3" classeConteudo="grid gap-5">
 
-          {/* 🔴 A ENTREVISTA PRÉVIA 2.0 (23/09/2026, pedido do Marcio: "tem
-              que ter na aba do cliente um botão pra iniciar a entrevista
-              prévia"). Leva para uma ROTA, não abre diálogo: a conversa dura
-              15-20 min ao vivo e um modal que fecha no Esc perderia tudo.
+          {/* ═══════════════════════════════════════════════════════════════
+              O PERFIL DISC — UMA LINHA NA FICHA, A EDIÇÃO NO POP-UP
+              ═══════════════════════════════════════════════════════════════
 
-              🔑 Só para o PARCEIRO (`!admin`): quem conduz a entrevista é
-              quem está ao telefone com o lead. O admin vê o resultado na
-              ficha e no briefing, mas não entrevista pelo cliente de outro. */}
-          {/* 🔑 Vem PRONTO da página (Server Component): o painel lê decisores
-              e histórico, e esta ficha é `"use client"` — buscar aqui seria
-              uma ida ao banco no navegador, depois da tela já pintada. */}
-          {painelEntrevista}
+              Antes, esta `Secao` empilhava aqui: o painel da entrevista, o
+              Select do DISC e três Textareas de 3 linhas. Eram ~700 px que
+              empurravam "Registro do contato" — o campo do dia a dia — para
+              fora da tela. Agora a ficha mostra o RESULTADO em duas linhas e
+              o resto mora no `DiscDialogo`.
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="f-disc">Perfil DISC</Label>
-              <Select value={disc} onValueChange={(v) => setDisc(v ?? "")}>
-                <SelectTrigger id="f-disc">
-                  <SelectValue placeholder="—">
-                    {(v: string) =>
-                      PERFIS_DISC.find((d) => d.id === v)?.rotulo ?? v
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {PERFIS_DISC.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.rotulo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              Denso e chapado: hierarquia por POSIÇÃO (rótulo à esquerda,
+              valor ao lado, ação à direita). Sem card, sem ícone, sem fonte
+              grande.
+
+              🔑 A ENTREVISTA PRÉVIA CONTINUA SENDO UMA ROTA, NÃO UM DIÁLOGO
+              (decisão de 23/09/2026: a conversa dura 15-20 min ao vivo e um
+              modal que fecha no Esc perderia tudo). O que entrou no pop-up é
+              o BOTÃO que leva à rota `/clientes/[id]/entrevista`; o
+              formulário segue em página própria, com URL própria. Quem ler
+              "agora é diálogo" e trouxer o formulário para dentro estará
+              revogando uma decisão que NÃO foi revogada.
+
+              🔑 `painelEntrevista` vem PRONTO da página (Server Component):
+              o painel lê decisores e histórico, e esta ficha é
+              `"use client"`. Ele só atravessa o `DiscDialogo` como
+              `ReactNode` — continua sendo markup do servidor, não vira
+              componente cliente e não custa consulta nenhuma ao abrir. O
+              preço é ~1 KB de markup no payload inicial com o diálogo
+              fechado; buscar no clique custaria uma ida ao banco por
+              abertura, na tela mais usada do produto.
+
+              🔑 O rótulo do DISC sai de `PERFIS_DISC`; valor fora da lista
+              aparece CRU, que é o que o `SelectValue` do diálogo já faz.
+              Nunca inventar rótulo para código desconhecido. */}
+          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+            <div className="grid gap-0.5">
+              <div className="flex flex-wrap items-baseline gap-x-3">
+                <span className="rotulo text-muted-foreground">Perfil DISC</span>
+                <span className="corpo-sm">
+                  {disc
+                    ? (PERFIS_DISC.find((d) => d.id === disc)?.rotulo ?? disc)
+                    : "— não definido"}
+                </span>
+              </div>
+              {/* 🔴 O SINAL DE PENDÊNCIA — texto, não badge, não ícone.
+                  Regra do Marcio: *"para realizar a reunião preliminar, todos
+                  os decisores precisam"*. Aparece SÓ com mais de um decisor:
+                  com um só não há trava a avisar.
+
+                  🔴 `qtdDecisores == null` (modo assistência, sem a RPC) não
+                  mostra nada. Ausência de dado não vira afirmação de que não
+                  há decisor. */}
+              {qtdDecisores != null && qtdDecisores > 1 ? (
+                <p className="corpo-sm text-accent-foreground">
+                  {qtdDecisores} decisores · a Preliminar exige todos presentes
+                </p>
+              ) : null}
             </div>
+
+            <DiscDialogo
+              // 🔴 VALOR + SETTER, nunca cópia. Os quatro estados continuam
+              // morando aqui: é deles que `alterado` (a barra sticky) e
+              // `salvar()` leem. Cópia local dentro do diálogo seria a
+              // segunda fonte de verdade — o texto digitado sumiria do
+              // "Salvar ficha" e a barra nunca acusaria pendência.
+              // Efeito colateral bom: fechar no Esc não perde nada, porque
+              // nada mora lá dentro.
+              disc={disc}
+              setDisc={setDisc}
+              discConsciencia={discConsciencia}
+              setDiscConsciencia={setDiscConsciencia}
+              discGatilhos={discGatilhos}
+              setDiscGatilhos={setDiscGatilhos}
+              discRelacionamento={discRelacionamento}
+              setDiscRelacionamento={setDiscRelacionamento}
+              painelEntrevista={painelEntrevista}
+            />
           </div>
 
           {/* ═══════════════════════════════════════════════════════════════
-              O DISC ALÉM DA LETRA (pedido 5 do Marcio, 23/09/2026)
+              O PRÓXIMO PASSO — UMA LINHA, FORA DO POP-UP
               ═══════════════════════════════════════════════════════════════
 
-              Denso e chapado: três campos empilhados abaixo do Select que já
-              existe, na mesma `Secao` "Registro e perfil". Não é card novo,
-              não é aba nova, não tem ícone — a hierarquia é a POSIÇÃO.
+              Pedido do Marcio (23/09/2026): *"a gente tem que prosseguir
+              depois da entrevista prévia para lá [a sessão]. Esse é o buraco
+              na parte do sistema. A gente precisa ter algo que guie a pessoa
+              para lá, com uma sugestão"*.
 
-              🔴 Campo em branco é o estado NORMAL, não um erro: no dia do
-              deploy, 34 de 34 favoritos estão assim (medido em 23/09). Por
-              isso nenhum dos três é obrigatório, nenhum marca `aria-invalid`
-              sozinho e o `placeholder` ensina o que escrever em vez de cobrar.
+              🔴 FICA NA FICHA, NUNCA DENTRO DO `DiscDialogo`. É justamente o
+              sinal que precisa ser visto SEM clicar — dentro do pop-up ele só
+              apareceria para quem já abriu a janela, que é quem menos precisa
+              da dica.
 
-              🔴 `maxLength={2000}` espelha o teto do CHECK. O piso de 3 é
-              conferido em `salvar()` (`discRicoCurto`) — travar a digitação
-              no 3º caractere impediria de apagar. */}
-          <div className="grid gap-5">
-            <div className="grid gap-2">
-              <Label htmlFor="f-disc-consc">
-                Consciência{" "}
-                <span className="rotulo text-muted-foreground">(opcional)</span>
-              </Label>
-              <Textarea
-                id="f-disc-consc"
-                value={discConsciencia}
-                onChange={(e) => setDiscConsciencia(e.target.value)}
-                maxLength={2000}
-                rows={3}
-                placeholder="O quanto essa pessoa já percebe o problema que a holding resolve."
-              />
-            </div>
+              🔴 DENSO E CHAPADO: rótulo à esquerda, frase ao lado, link no
+              fim — a MESMA gramática das duas linhas do DISC logo acima. Sem
+              card, sem ícone, sem fonte grande, sem cor de alerta. O Marcio
+              acabou de pedir MENOS enfeite nesta ficha; hierarquia aqui é por
+              POSIÇÃO (vem logo depois do resultado da entrevista, que é o que
+              acabou de ser produzido).
 
-            <div className="grid gap-2">
-              <Label htmlFor="f-disc-gat">
-                Gatilhos{" "}
-                <span className="rotulo text-muted-foreground">(opcional)</span>
-              </Label>
-              <Textarea
-                id="f-disc-gat"
-                value={discGatilhos}
-                onChange={(e) => setDiscGatilhos(e.target.value)}
-                maxLength={2000}
-                rows={3}
-                placeholder="O que move e o que trava essa pessoa numa conversa de decisão."
-              />
-            </div>
+              🔴 `admin` é condição, não só `temEntrevistaConcluida`: a rota
+              `/sessoes` existe SÓ para o aluno (`nav.ts`, filtro
+              `basePath === ""`). No modo assistência isto some — ver a doc da
+              prop. As duas travas são redundantes de propósito: a page do
+              admin já não passa a prop, e mesmo que um dia passe, o link não
+              nasce aqui.
 
-            <div className="grid gap-2">
-              <Label htmlFor="f-disc-rel">
-                Relacionamento{" "}
-                <span className="rotulo text-muted-foreground">(opcional)</span>
-              </Label>
-              <Textarea
-                id="f-disc-rel"
-                value={discRelacionamento}
-                onChange={(e) => setDiscRelacionamento(e.target.value)}
-                maxLength={2000}
-                rows={3}
-                placeholder="Como conduzir a conversa com ela: ritmo, tom, o que evitar."
-              />
-            </div>
-          </div>
+              ⚠️ O aviso de decisores continua ACIMA, na linha do DISC, e não
+              é repetido aqui: dois textos dizendo a mesma trava em 40 px de
+              distância viram ruído. Quem tem mais de um decisor lê a linha do
+              DISC e depois esta. */}
+          {!admin && temEntrevistaConcluida ? (
+            <p className="corpo-sm flex flex-wrap items-baseline gap-x-2">
+              <span className="rotulo text-muted-foreground">Próximo passo</span>
+              <span>
+                Entrevista feita.{" "}
+                <Link
+                  href="/sessoes"
+                  className="foco-visivel rounded-xs font-medium underline underline-offset-2 hover:text-accent-foreground"
+                >
+                  Marque a sessão com a equipe jurídica
+                </Link>
+                {qtdDecisores != null && qtdDecisores > 1
+                  ? " — com todos os decisores presentes."
+                  : "."}
+              </span>
+            </p>
+          ) : null}
 
           <div className="grid gap-2">
             <Label htmlFor="f-reg">Registro do contato</Label>

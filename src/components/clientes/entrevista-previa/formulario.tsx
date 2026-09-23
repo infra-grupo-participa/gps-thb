@@ -147,8 +147,49 @@ export function FormularioEntrevistaPrevia({
           </div>
         ) : null}
 
+        {/* ═════════════════════════════════════════════════════════════════
+            A PONTE PARA A SESSÃO (23/09/2026)
+            ═════════════════════════════════════════════════════════════════
+
+            Pedido do Marcio: *"a gente tem que prosseguir depois da entrevista
+            prévia para lá [a sessão]. Esse é o buraco na parte do sistema. A
+            gente precisa ter algo que guie a pessoa para lá, com uma
+            sugestão"*.
+
+            Até aqui esta tela oferecia só "Voltar para a ficha" e "Entrevistar
+            outra pessoa" — as duas ficam DENTRO do cadastro. O parceiro
+            acabava de mapear os decisores e o sistema não dizia o que fazer
+            com isso. Marcar a sessão vira a ação PRINCIPAL; "Voltar para a
+            ficha" desce para secundária (`variant="outline"`), que é
+            hierarquia por posição e peso de botão, não por enfeite.
+
+            🔴 A PONTE NÃO PODE CONTRADIZER O `role="alert"` ACIMA. Com
+            `exigeTodos`, a Preliminar exige todos os decisores presentes — e o
+            texto de apoio muda para dizer isso. O botão NÃO some: quem marca
+            precisa justamente combinar data com todo mundo, e esconder o
+            caminho devolveria o buraco que este bloco existe para fechar. O
+            que não pode é ele marcar achando que vai sozinho.
+
+            🔑 `router.push`, como o "Voltar para a ficha" logo abaixo — é
+            navegação normal dentro do app. O `window.location.assign` do
+            terceiro botão é exceção dele (remontar a página para abrir OUTRA
+            entrevista), não o padrão desta tela. */}
+        <div className="border border-borda-fina px-4 py-4">
+          <p className="rotulo text-muted-foreground">Próximo passo</p>
+          <p className="corpo-sm mt-1">
+            {resultado.exigeTodos
+              ? `Marque a Reunião Preliminar com a equipe jurídica — com os ${resultado.decisoresTotal} decisores presentes. Escolha o horário e combine a presença de todos antes da data.`
+              : "Marque a sessão com a equipe jurídica. Você escolhe entre os horários que as Dras. Elaine e Cristiane já abriram."}
+          </p>
+          <Button className="mt-3" onClick={() => router.push("/sessoes")}>
+            Marcar a sessão com a equipe jurídica
+          </Button>
+        </div>
+
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => router.push(voltarHref)}>Voltar para a ficha</Button>
+          <Button variant="outline" onClick={() => router.push(voltarHref)}>
+            Voltar para a ficha
+          </Button>
           {/* 🔴 ABRE OUTRA de verdade. Antes este botão levava à ficha — o
               mesmo destino do primeiro, dois botões para a mesma coisa. As
               entrevistas são ILIMITADAS por requisito ("pode fazer a

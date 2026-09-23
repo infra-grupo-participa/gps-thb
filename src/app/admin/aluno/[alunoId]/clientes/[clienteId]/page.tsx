@@ -84,7 +84,31 @@ export default async function AdminAlunoClienteFichaPage({
 
         {/* `admin` liga "Confirmar acompanhamento"/"Liberar acompanhamento" —
             a CASA DE ORIGEM dessa escrita (§B.5). Quem autoriza é o
-            `gp_is_admin()` das RPCs; esta prop decide o que a tela oferece. */}
+            `gp_is_admin()` das RPCs; esta prop decide o que a tela oferece.
+
+            🔴 SEM `painelEntrevista` E SEM `qtdDecisores`, DE PROPÓSITO.
+            Quem conduz a Entrevista Prévia é o parceiro, ao telefone com o
+            lead — esta page nunca chamou `getDecisoresPendentes` e **não
+            passa a chamar**: acrescentar a RPC aqui seria uma consulta nova
+            por abertura de ficha só para pintar uma linha de aviso.
+
+            O efeito é o desenhado: no diálogo "Ver perfil" o admin vê
+            "A entrevista é conduzida pelo parceiro" no lugar do painel, e o
+            sinal "N decisores · a Preliminar exige todos presentes" **não
+            aparece** na ficha. `qtdDecisores` fica `null` = "não sabemos" —
+            nunca 0, que afirmaria não haver decisor. O admin continua
+            editando os 4 campos do DISC pelo botão, que é o que ele já fazia
+            antes desta mudança.
+
+            🔴 SEM `temEntrevistaConcluida` (23/09/2026), pelo MESMO motivo e
+            por mais um: a linha "Próximo passo · marque a sessão" leva a
+            `/sessoes`, rota que só existe para o ALUNO (`nav.ts` filtra por
+            `basePath === ""`; não há `admin/aluno/[id]/sessoes/page.tsx`).
+            Mostrá-la aqui mandaria o admin a um 404 — link que dá erro é pior
+            que link ausente, a mesma regra que já governa a aba. Saber se há
+            entrevista concluída custaria `getEntrevistasDoCliente`, consulta
+            que esta page nunca fez. O default `false` do componente resolve
+            sem que esta page precise saber. */}
         <ClienteFicha
           cliente={cliente}
           minutas={minutas}

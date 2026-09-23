@@ -8,6 +8,7 @@ import {
   Users,
   UsersRound,
   BookOpen,
+  CalendarDays,
   FolderOpen,
   UserRound,
   NotebookPen,
@@ -37,6 +38,18 @@ export interface NavItem {
     | "suporte"
     | "resolver"
     | "equipe"
+    // 🔴 Exceção deliberada nº 2 à regra "não inventar chave nova de ícone"
+    // (23/09/2026, pedido do Marcio: *"a aba da sessão tem que estar um pouco
+    // mais visual e mais intuitiva"*). `BookOpen` (a chave "materiais") está
+    // em uso em Materiais, Plantão e Vídeos — três abas com ícone de livro.
+    // Com ele, "Sessões" não se distinguia de nenhuma delas de relance, que é
+    // justamente como um ícone de aba é lido. `CalendarDays` diz o assunto
+    // (marcar hora com a equipe jurídica) sem precisar do rótulo.
+    //
+    // ⚠️ A regra de não inventar chave continua valendo para o resto: ela
+    // existe para o vocabulário de ícones não virar um por tela. O que a
+    // suspende aqui é um pedido explícito, não conveniência.
+    | "sessoes"
     // 🔴 Exceção deliberada à regra "não inventar chave nova de ícone"
     // (repetida 3× neste arquivo): esta é a aba FIXA à direita do header
     // (`app-header.tsx`), fora do trilho que rola — ela precisa de
@@ -81,6 +94,7 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
   inicio: Home,
   clientes: Users,
   materiais: BookOpen,
+  sessoes: CalendarDays,
   pasta: FolderOpen,
   perfil: UserRound,
   alunos: Users,

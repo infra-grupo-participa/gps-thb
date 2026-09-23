@@ -62,7 +62,6 @@ export function FichaContrato({
   contratoLimpo,
   contratoInvalido,
   faseRotulo,
-  metaFormatada,
   clienteId,
   contratoAnexo,
   podeAnexar,
@@ -83,8 +82,6 @@ export function FichaContrato({
   contratoInvalido: boolean;
   /** Rótulo da fase atual, para o aviso de "fora da meta". */
   faseRotulo: string | undefined;
-  /** `META_HONORARIOS` já formatada — a ficha calcula uma vez só. */
-  metaFormatada: string;
   clienteId: string;
   /** O anexo já gravado, ou `null`. Ver `ContratoAnexo`. */
   contratoAnexo: ContratoDoCliente | null;
@@ -178,7 +175,6 @@ export function FichaContrato({
             className="text-xs leading-snug text-muted-foreground"
           >
             Valor contratado com este cliente — não é o que já entrou no caixa.
-            Entra na meta de {metaFormatada} do seu ambiente.
           </p>
         </div>
       ) : honorariosValor != null ? (

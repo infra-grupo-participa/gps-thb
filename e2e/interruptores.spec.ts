@@ -61,9 +61,12 @@ test.describe("Admin · interruptores de gps.config", () => {
       test.info().project.name !== "desktop",
       "Escreve em config global: roda uma vez só.",
     );
-    // ~6s por interruptor (2 cliques + 2 confirmações + espera de rede), mais
-    // login e folga. O padrão de 45s cortava no 8º de 14.
-    test.setTimeout(30_000 + INTERRUPTORES_CONFIG.length * 15_000);
+    // 🔴 SEGUNDA vez que este teste deixou config trocada em produção
+    // (`slack_mencoes_ativo` em 22/09 às 21h; `minuta_contexto_obrigatorio`
+    // às 00h). A restauração um-a-um já existe; o que falhava era o TEMPO.
+    // 20s por interruptor, não 15: cada um são 2 cliques + 2 confirmações +
+    // 2 idas ao banco, e a rede de produção varia.
+    test.setTimeout(60_000 + INTERRUPTORES_CONFIG.length * 20_000);
 
     await entrar(page, cred!, "/admin/configuracoes");
     await page.goto("/admin/configuracoes");

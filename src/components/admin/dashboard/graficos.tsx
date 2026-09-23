@@ -6,7 +6,7 @@ import {
   Users,
 } from "lucide-react";
 
-import { Barras, Linha, Rosca, pctDe } from "@/components/ui/graficos";
+import { Barras, Linha, pctDe } from "@/components/ui/graficos";
 import type { Dashboard, FaixaDeTrilha } from "@/lib/data/dashboard";
 import { CardDashboard } from "./card-dashboard";
 import { VariacaoDoMes } from "./variacao";
@@ -34,6 +34,23 @@ const ALTURA_GRAFICO = 190;
  *
  * O cabeçalho de cada card carrega o número macro em 24 px (`variante
  * "grafico"`): aqui o protagonista é o desenho, e o número é a escala dele.
+ *
+ * 🔑 **FAIXA DE ESTADO: um card de cinco, e por quê** (23/09/2026). A faixa
+ * lateral (`CardDashboard estado=`) existe para desempatar peso visual, e só
+ * funciona se for rara — faixa em todo card devolve o "tudo igual" que ela
+ * veio resolver. O critério é **limiar objetivo**, não impressão:
+ *
+ * | card | estado | por quê |
+ * |---|---|---|
+ * | Entradas no programa por mês | `neutro` | não existe meta de ingresso; 3 ou 30 num mês não é bom nem ruim por si |
+ * | Atividade nos últimos 30 dias | `neutro` | ritmo, não nota — não há "eventos suficientes" definido em lugar nenhum |
+ * | Progresso na Etapa 01 (declarado) | `neutro` | DECLARADO: depende do parceiro marcar 7 tarefas manuais, e não há prazo no sistema. Pintar risco culparia o parceiro por não ter clicado |
+ * | **Acesso ao portal** | **por faixa** | quem não entrou não usa o produto. Régua já no ar no tile equivalente |
+ * | Onboarding | `neutro` | não há prazo para responder o questionário; "não iniciado" hoje não é falha hoje |
+ *
+ * ⚠️ Nenhum destes tem prazo, meta por indicador ou capacidade no sistema —
+ * inventar um corte para pintar mais cards seria fabricar juízo que o dado não
+ * sustenta.
  */
 export function GraficosDoPrograma({
   dados,
@@ -72,6 +89,36 @@ export function GraficosDoPrograma({
   const jaEntraram = Math.max(0, acesso.comLogin - acesso.nuncaEntraram);
   const pctEntraram = pctDe(jaEntraram, acesso.total);
 
+  /**
+   * 🔑 **O ÚNICO card desta seção com faixa de estado** (23/09/2026), e a
+   * razão é o critério: existe limiar objetivo que torne o número bom ou ruim?
+   *
+   * Aqui existe, e ele **já estava decidido e no ar** — é a mesma régua do
+   * tile "Já entraram no portal" da faixa de KPIs (`kpi-tile.tsx`,
+   * `pctBom="alto"`, 14/09/2026): ≥80 bom · 40–79 atenção · <40 risco. Não é
+   * número inventado para esta entrega; é a regra da casa aplicada ao card que
+   * desenha exatamente a mesma métrica que o tile. Os dois passariam a
+   * discordar se eu escolhesse outro corte.
+   *
+   * O que torna o limiar objetivo (e não gosto): parceiro sem login, ou com
+   * login que nunca abriu o portal, **não consegue usar o produto**. Isso é
+   * fato sobre acesso, não juízo sobre desempenho.
+   *
+   * 🔴 `null` (denominador zero) → `neutro`, **sem faixa**. Não dá para saber,
+   * e "não dá para saber" nunca vira risco pintado na tela.
+   *
+   * Os outros cinco cards ficam `neutro` de propósito — a justificativa de
+   * cada um está no comentário do respectivo card.
+   */
+  const estadoDoAcesso =
+    pctEntraram === null
+      ? ("neutro" as const)
+      : pctEntraram >= 80
+        ? ("bom" as const)
+        : pctEntraram >= 40
+          ? ("atencao" as const)
+          : ("risco" as const);
+
   const atividade = dados.atividade.map((d) => ({
     dia: diaCurto(d.dia),
     aluno: d.aluno,
@@ -95,7 +142,7 @@ export function GraficosDoPrograma({
   return (
     // `items-start` e não `stretch`: o card de onboarding vazio é curto de
     // propósito (tile compacto, não caixa de aviso), e esticá-lo até a altura
-    // da rosca ao lado devolveria o vão em branco que o diagnóstico apontou.
+    // do card ao lado devolveria o vão em branco que o diagnóstico apontou.
     <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
       {/* 1 — entradas no programa, mês a mês */}
       <CardDashboard
@@ -221,12 +268,21 @@ export function GraficosDoPrograma({
         />
       </CardDashboard>
 
-      {/* 5 — acesso ao portal: a rosca que o João pediu.
+      {/* 5 — acesso ao portal.
           🔴 15/09/2026: DOIS ALVOS DISTINTOS, cada um honesto. O macro
           ("117 de 136") linka para o conjunto DELE — quem já entrou
           (`f=ja_entrou`) — e o link de rodapé continua indo ao complemento,
           com o rótulo dele ("Ver quem está sem login"). Antes só existia o
-          link de rodapé, e clicar no número grande caía no complemento. */}
+          link de rodapé, e clicar no número grande caía no complemento.
+
+          🔑 23/09/2026: ERA ROSCA, virou BARRA HORIZONTAL. Rosca compara mal
+          — a diferença entre dois arcos é ângulo, e ângulo não se mede de
+          relance — e as três fatias aqui (sucesso/atenção/risco) são
+          justamente o trio que os tokens quentes NÃO separam: #A32020 ↔
+          #8A5300 dá ΔE 2,7 em deuteranopia (ver `ui/graficos/tipos.ts`). Na
+          barra cada linha carrega o nome escrito, o número e o percentual, e
+          o precedente é a casa inteira: `caminho.tsx`, `jornada.tsx` e o
+          card 4 logo acima já leem assim. */}
       <CardDashboard
         icone={<IdCard />}
         rotulo="Acesso ao portal"
@@ -234,16 +290,30 @@ export function GraficosDoPrograma({
         valorHref={`${LINK_LISTA}&f=ja_entrou`}
         valorAriaLabel={`Ver os ${jaEntraram} parceiros que já entraram no portal`}
         variante="grafico"
-        // Sem `contexto`: o rótulo, o "117 de 136" e o miolo da rosca ("86% já
-        // entraram") já dizem a mesma frase três vezes. O espaço vai para o anel.
+        // 🔑 O `contexto` VOLTOU com a saída da rosca: o "86% já entraram" era
+        // o miolo do anel, e some junto com ele. A informação não pode sair na
+        // troca de desenho — `null` vira "—", nunca "0%" (`pctDe`).
+        //
+        // 🔴 É ESTE percentual que torna a faixa redundante. `estadoDoAcesso` é
+        // função PURA dele: quem não distingue as cores (ou imprime em preto e
+        // branco) lê "86%" aqui e chega exatamente ao mesmo estado. A faixa não
+        // carrega nenhum dado que não esteja escrito — se ela sumir, não se
+        // perde informação nenhuma.
+        contexto={`${pctEntraram === null ? "—" : `${pctEntraram}%`} já entraram, de ${acesso.total} ambientes.`}
+        estado={estadoDoAcesso}
         link={{
           href: `${LINK_LISTA}&f=sem_login`,
           rotulo: "Ver quem está sem login",
           ariaLabel: `Ver os ${acesso.semLogin} parceiros sem login`,
         }}
       >
-        <Rosca
-          fatias={[
+        {/* `total={acesso.total}`: o `%` de cada linha responde "de quantos
+            ambientes", que é o denominador escrito no card. As três linhas
+            somam o total — são mutuamente exclusivas por construção da RPC. */}
+        <Barras
+          orientacao="horizontal"
+          total={acesso.total}
+          dados={[
             { rotulo: "Já entraram", valor: jaEntraram, tom: "sucesso" },
             {
               rotulo: "Com login, nunca entraram",
@@ -252,9 +322,6 @@ export function GraficosDoPrograma({
             },
             { rotulo: "Sem login", valor: acesso.semLogin, tom: "risco" },
           ]}
-          tamanho={168}
-          centroValor={pctEntraram === null ? "—" : `${pctEntraram}%`}
-          centroRotulo="já entraram"
           resumo={`De ${acesso.total} ambientes: ${jaEntraram} já entraram, ${acesso.nuncaEntraram} têm login mas nunca entraram e ${acesso.semLogin} não têm login.`}
         />
       </CardDashboard>
@@ -278,9 +345,17 @@ export function GraficosDoPrograma({
         valorAriaLabel={`Ver os ${onboarding.concluidos} parceiros com o onboarding concluído`}
         variante="grafico"
         // Ver `fila.tsx`: `h-full` venceria o `items-start` da grade. Só no
-        // estado vazio — com resposta, as duas roscas têm a mesma altura.
+        // estado vazio — com resposta, os dois cards de barra têm a mesma
+        // altura (3 linhas cada, como antes tinham 3 fatias cada).
         className={ninguemRespondeu ? "lg:h-auto" : undefined}
-        contexto={`Questionários concluídos, de ${onboarding.pessoas} pessoas.`}
+        // 🔑 O percentual estava no MIOLO DA ROSCA ("0% concluíram"). Saindo a
+        // rosca, ele vem para cá — menos no estado vazio, onde o bloco abaixo
+        // já escreve "0 de N · 0%" e repetir seria a mesma frase duas vezes.
+        contexto={
+          ninguemRespondeu
+            ? `Questionários concluídos, de ${onboarding.pessoas} pessoas.`
+            : `${pctOnboarding === null ? "—" : `${pctOnboarding}%`} concluíram, de ${onboarding.pessoas} pessoas.`
+        }
         pares={
           ninguemRespondeu
             ? [
@@ -332,8 +407,13 @@ export function GraficosDoPrograma({
             </p>
           </div>
         ) : (
-          <Rosca
-            fatias={[
+          // Mesma troca do card 5: rosca → barra horizontal. O `%` de cada
+          // linha sai de `total={onboarding.pessoas}`, que é o denominador já
+          // escrito no `contexto` do card.
+          <Barras
+            orientacao="horizontal"
+            total={onboarding.pessoas}
+            dados={[
               {
                 rotulo: "Concluído",
                 valor: onboarding.concluidos,
@@ -350,8 +430,6 @@ export function GraficosDoPrograma({
                 tom: "neutro",
               },
             ]}
-            centroValor={pctOnboarding === null ? "—" : `${pctOnboarding}%`}
-            centroRotulo="concluíram"
             resumo={`De ${onboarding.pessoas} pessoas: ${onboarding.concluidos} concluíram o onboarding, ${onboarding.emAndamento} estão em andamento e ${onboarding.naoIniciados} não começaram.`}
           />
         )}

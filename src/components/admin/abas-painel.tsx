@@ -46,6 +46,7 @@ export function AbasPainel({
   visaoPrograma,
   visaoAtencao,
   visaoParceiros,
+  apuradoEm,
   ativos,
   solicitacoes,
   etapas,
@@ -61,6 +62,15 @@ export function AbasPainel({
   visaoAtencao: React.ReactNode;
   /** Sub-aba `parceiros` — o ranking. */
   visaoParceiros: React.ReactNode;
+  /**
+   * Quando os números foram apurados, já formatado pelo servidor.
+   *
+   * Vem pronto de propósito: formatar aqui usaria o fuso do NAVEGADOR e a
+   * data mudaria para quem estivesse fora de America/Sao_Paulo. `null` quando
+   * a RPC não respondeu — e aí a linha some, em vez de afirmar uma hora que
+   * ninguém apurou.
+   */
+  apuradoEm?: string | null;
   ativos: React.ReactNode;
   solicitacoes: React.ReactNode;
   etapas: React.ReactNode;
@@ -149,11 +159,27 @@ export function AbasPainel({
           onValueChange={(v) => trocarVis(String(v))}
           className="gap-4"
         >
-          <TabsList variant="line" className="justify-start">
-            <TabsTrigger value="programa">O programa</TabsTrigger>
-            <TabsTrigger value="atencao">Precisa de atenção</TabsTrigger>
-            <TabsTrigger value="parceiros">Parceiros</TabsTrigger>
-          </TabsList>
+          {/* 🔴 O carimbo de apuração vale para as TRÊS sub-abas e por isso
+              mora aqui, não dentro de uma delas.
+
+              Até 23/09/2026 o "Dados de …" existia só no rodapé de
+              `DashboardExecutivo` — quem abria `?vis=atencao` ou
+              `?vis=parceiros` via os números SEM nenhuma indicação de quando
+              foram apurados. E são justamente as duas telas de decidir a quem
+              ligar hoje. O dado é retrato de uma RPC, não tempo real: a
+              diferença importa quando alguém age em cima dele. */}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <TabsList variant="line" className="justify-start">
+              <TabsTrigger value="programa">O programa</TabsTrigger>
+              <TabsTrigger value="atencao">Precisa de atenção</TabsTrigger>
+              <TabsTrigger value="parceiros">Parceiros</TabsTrigger>
+            </TabsList>
+            {apuradoEm ? (
+              <span className="corpo-sm text-muted-foreground">
+                Apurado {apuradoEm}
+              </span>
+            ) : null}
+          </div>
 
           <TabsContent value="programa">{visaoPrograma}</TabsContent>
           <TabsContent value="atencao">{visaoAtencao}</TabsContent>

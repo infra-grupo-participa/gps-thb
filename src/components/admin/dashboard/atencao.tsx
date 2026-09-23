@@ -35,12 +35,86 @@ import { LINK_CLIENTES, LINK_LISTA } from "./tipos";
  * faria a régua desaparecer justamente quando está em dia, e ninguém saberia
  * que ela existe.
  *
+ * 🔑 **A ORDEM É POR GRAVIDADE, FIXA NO CÓDIGO** (23/09/2026). Antes era a
+ * ordem em que as réguas foram escritas, que não significa nada.
+ *
+ * 🔴 **Gravidade NÃO é o valor bruto, e por isso a ordem não é calculada.**
+ * Os cinco números contam coisas diferentes sobre denominadores diferentes
+ * (dois são sobre ~1.700 CLIENTES, três sobre ~148 AMBIENTES); somar ou
+ * ponderar isso produziria um "score" que é peso arbitrário disfarçado de
+ * aritmética — pior que ordem fixa assumida, porque parece objetivo. Não há
+ * prazo, meta por indicador nem capacidade no sistema que sustentasse
+ * fórmula. Então: ordem fixa, escrita à mão, com a razão ao lado de cada uma.
+ *
+ * O critério, em uma pergunta: **há data marcada com terceiro, e o estrago se
+ * desfaz?**
+ *
+ * 1. **Reunião marcada sem entrevista prévia (51)** — o mais grave, e é o que
+ *    prova que o ranking não é por valor bruto: perde para dois números
+ *    maiores. É o único com **data marcada e cliente do outro lado**. A
+ *    reunião acontece no dia marcado com ou sem preparo, e a equipe chega
+ *    despreparada na frente do cliente do parceiro. **Passada a data, não se
+ *    corrige** — a primeira impressão já foi gasta. Tem janela, e a janela
+ *    fecha sozinha.
+ * 2. **Favoritos parados há 7+ dias (18)** — o menor número da lista, em
+ *    segundo. É o cliente que o parceiro escolheu para a equipe acompanhar,
+ *    esfriando: há um relacionamento específico se perdendo, e esfriamento é
+ *    progressivo (quanto mais tarde, menos recuperável). É o dano que anda
+ *    sozinho enquanto ninguém olha.
+ * 3. **Parceiros sem nenhum cliente (62)** — o parceiro não começou. Grave e
+ *    numeroso, mas **estável**: quem não começou hoje continua podendo
+ *    começar amanhã, sem nada tendo piorado no intervalo. Fica acima do
+ *    próximo por ser o passo mais básico do programa — sem cliente, nenhuma
+ *    outra régua chega a existir para essa pessoa. E é o **único com link
+ *    direto** (`f=sem_cliente`), ou seja, a única em que o clique já resolve
+ *    o "e agora?".
+ * 4. **Parceiros que não enviaram nenhuma mensagem (64)** — o maior número, e
+ *    o penúltimo. É problema **difuso e já conhecido**: 64 de ~148 é quase
+ *    metade da base, e um número que descreve a norma não é um alerta, é um
+ *    retrato. Além disso é em larga medida subconjunto do item 3 (quem não
+ *    tem cliente não teria a quem mandar mensagem), então subi-lo faria a
+ *    mesma população ocupar as duas primeiras posições.
+ * 5. **Convites de sócio em aberto (0)** — último **porque vale zero**, não
+ *    por ser menos importante em tese. Zero no fim da lista, à vista, nunca
+ *    escondido: a régua tem de continuar visível para alguém saber que ela
+ *    existe quando deixar de ser zero.
+ *
+ * ⚠️ A posição 5 é a única que depende do VALOR e não só do tipo. Se
+ * `socioPendente` deixar de ser zero, ele volta para perto do item 2 (convite
+ * em aberto trava a entrada de uma pessoa no ambiente) — e aí a ordem deixa
+ * de ser constante e passa a precisar de uma regra escrita. **Hoje não
+ * precisa**, e resolver antecipadamente um caso que não existe seria a
+ * fórmula que esta nota acabou de recusar.
+ *
  * Server Component, 0 KB de JS.
  */
 export function PrecisaDeAtencao({ dados }: { dados: Dashboard }) {
   const { atencao, programa, clientes } = dados;
 
+  /**
+   * 🔴 **ORDEM = GRAVIDADE, e ela está escrita aqui de propósito.** A
+   * justificativa de cada posição está no cabeçalho do arquivo; o resumo é:
+   * data marcada com terceiro primeiro, dano progressivo depois, problema
+   * estável em seguida, problema difuso que descreve a norma no fim, e zero
+   * por último. **Não reordenar por valor bruto** — foi exatamente o que esta
+   * ordem recusa (51 vem antes de 64 e de 62, e 18 vem antes dos três).
+   */
   const blocos: Bloco[] = [
+    // 1º — tem DATA MARCADA e cliente do outro lado. Passada a data, não se
+    // corrige. É o único com janela que fecha sozinha.
+    {
+      chave: "reuniao_sem_entrevista",
+      valor: atencao.reuniaoSemEntrevista,
+      rotulo: "Reunião marcada sem entrevista prévia",
+      denominador: `de ${clientes.total} clientes`,
+      destino: null,
+      encaminhamento: {
+        texto: "Procure em Clientes",
+        href: LINK_CLIENTES,
+      },
+    },
+    // 2º — o menor número da lista, e mesmo assim em segundo: é dano
+    // PROGRESSIVO sobre um cliente específico que o parceiro escolheu.
     {
       chave: "favorito_parado",
       valor: atencao.favoritoParado,
@@ -53,33 +127,8 @@ export function PrecisaDeAtencao({ dados }: { dados: Dashboard }) {
         href: LINK_CLIENTES,
       },
     },
-    {
-      chave: "reuniao_sem_entrevista",
-      valor: atencao.reuniaoSemEntrevista,
-      rotulo: "Reunião marcada sem entrevista prévia",
-      denominador: `de ${clientes.total} clientes`,
-      destino: null,
-      encaminhamento: {
-        texto: "Procure em Clientes",
-        href: LINK_CLIENTES,
-      },
-    },
-    {
-      chave: "socio_pendente",
-      valor: atencao.socioPendente,
-      rotulo: "Convites de sócio em aberto",
-      denominador: `de ${programa.total} ambientes`,
-      // 🔴 Sem filtro para isto. O candidato óbvio, `f=pendencia`, é OUTRA
-      // coisa — "pendência aberta no Diário" (`filtros.ts:42-47`), conjunto
-      // diferente. Usá-lo abriria uma lista que não é a deste número, e o
-      // admin não teria como perceber. Fica sem link até existir o filtro
-      // certo. (Hoje o número é 0, então não há ninguém para procurar.)
-      destino: null,
-      encaminhamento:
-        atencao.socioPendente > 0
-          ? { texto: "Procure em Parceiros", href: LINK_LISTA }
-          : null,
-    },
+    // 3º — o parceiro não começou. Grave, mas ESTÁVEL (não piora sozinho).
+    // É também o único bloco cujo clique já resolve o "e agora?".
     {
       chave: "ambiente_sem_cliente",
       valor: atencao.ambienteSemCliente,
@@ -96,6 +145,8 @@ export function PrecisaDeAtencao({ dados }: { dados: Dashboard }) {
           : null,
       encaminhamento: null,
     },
+    // 4º — o MAIOR número, e penúltimo: difuso, conhecido, quase metade da
+    // base, e em boa parte a mesma gente do bloco 3.
     {
       chave: "parceiro_sem_mensagem",
       valor: atencao.parceiroSemMensagem,
@@ -107,6 +158,24 @@ export function PrecisaDeAtencao({ dados }: { dados: Dashboard }) {
         texto: "Procure em Parceiros",
         href: LINK_LISTA,
       },
+    },
+    // 5º — último PORQUE VALE ZERO, não por ser menos importante em tese.
+    // Continua na tela: régua que some quando está em dia não é régua.
+    {
+      chave: "socio_pendente",
+      valor: atencao.socioPendente,
+      rotulo: "Convites de sócio em aberto",
+      denominador: `de ${programa.total} ambientes`,
+      // 🔴 Sem filtro para isto. O candidato óbvio, `f=pendencia`, é OUTRA
+      // coisa — "pendência aberta no Diário" (`filtros.ts:42-47`), conjunto
+      // diferente. Usá-lo abriria uma lista que não é a deste número, e o
+      // admin não teria como perceber. Fica sem link até existir o filtro
+      // certo. (Hoje o número é 0, então não há ninguém para procurar.)
+      destino: null,
+      encaminhamento:
+        atencao.socioPendente > 0
+          ? { texto: "Procure em Parceiros", href: LINK_LISTA }
+          : null,
     },
   ];
 

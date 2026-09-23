@@ -1,4 +1,3 @@
-import { formatarDataHora } from "@/lib/datas";
 import type {
   Dashboard,
   FaixaDeTrilha,
@@ -29,7 +28,9 @@ import { EvolucaoSemanal } from "./evolucao";
  *      dos parceiros. 🔴 Os 4 passos da ficha são barras PARALELAS, nunca
  *      funil — a razão está no cabeçalho daquele arquivo.
  *   C. **fila e base** (`fila.tsx`) — o que a equipe deve atacar.
- *   D. rodapé — a hora do dado e o escopo do lote.
+ *   D. rodapé — só o escopo do lote. A hora da apuração subiu para
+ *      `abas-painel.tsx` em 23/09/2026: ela vale para as três sub-abas, e
+ *      aqui alcançava apenas esta.
  *
  * 🔑 **O redesign de 11/09.** Pedido do João: "a visualização está muito crua;
  * quero gráficos, barras, linhas e pizzas, foco em KPIs e em números". Os
@@ -135,16 +136,17 @@ export function DashboardExecutivo({
         ambientesCarregados={ambientesCarregados}
       />
 
-      <p className="text-xs text-muted-foreground">
-        Dados de {formatarDataHora(dados.geradoEm)}.
-        {parcial ? (
-          <>
-            {" "}
-            Progresso e fila sobre {ambientesCarregados} de{" "}
-            {dados.programa.total} ambientes carregados.
-          </>
-        ) : null}
-      </p>
+      {/* O "Apurado …" subiu para `AbasPainel`, ao lado do seletor de
+          sub-abas: o carimbo vale para as TRÊS e aqui só alcançava esta.
+          Fica aqui apenas o aviso de lote parcial, que é específico desta
+          sub-aba — `faixasDeTrilha` e `resumoAtendimento` são puras sobre os
+          ambientes JÁ carregados, não sobre o programa inteiro. */}
+      {parcial ? (
+        <p className="text-xs text-muted-foreground">
+          Progresso e fila sobre {ambientesCarregados} de{" "}
+          {dados.programa.total} ambientes carregados.
+        </p>
+      ) : null}
     </section>
   );
 }

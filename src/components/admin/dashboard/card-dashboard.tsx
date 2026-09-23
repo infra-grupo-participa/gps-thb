@@ -13,6 +13,53 @@ export interface ParDoCard {
 }
 
 /**
+ * O juízo de valor sobre o número que o card lidera — e **só** quando existe
+ * um limiar objetivo que o torne bom ou ruim.
+ *
+ * 🔴 **`neutro` é o padrão e não pinta nada.** Card cuja métrica é proporção
+ * sem "melhor" nem "pior" (entradas por mês, eventos no portal, progresso
+ * declarado que depende do parceiro marcar) fica `neutro`. Se todo card
+ * ganhasse faixa, a hierarquia se perderia de novo — que é exatamente o
+ * problema que a faixa existe para resolver.
+ */
+export type EstadoDoCard = "neutro" | "bom" | "atencao" | "risco";
+
+/**
+ * Faixa lateral por estado. Os quatro pares semânticos do `globals.css`,
+ * nenhuma cor nova.
+ *
+ * 🔴 **A faixa é REDUNDANTE, nunca a única indicação.** Daltonismo: os tokens
+ * da casa são quentes e #A32020 ↔ #8A5300 dá ΔE 2,7 em deuteranopia (medido,
+ * ver `ui/graficos/tipos.ts`). Quem não distingue as duas cores continua lendo
+ * o estado no texto e no número do card, que dizem a mesma coisa por escrito —
+ * a faixa só reforça para quem bate o olho. **Em grayscale o card tem de
+ * continuar legível**, e continua: nada de informação vive só aqui.
+ */
+/**
+ * 🔴 A faixa é PSEUDO-ELEMENTO, não `border-l-4`.
+ *
+ * `Card` tem `rounded-xl` (12px) e `overflow-hidden`. Borda lateral de 4px num
+ * canto de raio 12 **não** desenha uma faixa reta: o arredondamento afunila os
+ * extremos e a faixa sai como uma cunha, mais fina no topo e na base que no
+ * meio. Medido no navegador em 23/09/2026 — `borderTopLeftRadius: 12px` contra
+ * `borderLeftWidth: 4px`, e a captura confirmou o afunilamento.
+ *
+ * O pseudo-elemento absoluto ignora o raio do pai e cobre `top-0 bottom-0` com
+ * largura constante. `overflow-hidden` do `Card` apara os cantos dele, o que é
+ * justamente o desejado: a faixa acompanha a curva sem perder espessura.
+ *
+ * ⚠️ Exige `relative` no `Card` — já aplicado junto com a faixa.
+ */
+const FAIXA_DO_ESTADO: Record<EstadoDoCard, string> = {
+  neutro: "",
+  bom: "relative before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-sucesso-foreground",
+  atencao:
+    "relative before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-atencao-foreground",
+  risco:
+    "relative before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-risco-foreground",
+};
+
+/**
  * A moldura de UM card do dashboard — a anatomia é fixa:
  *
  *   rótulo · chip           ← o que é
@@ -35,6 +82,12 @@ export interface ParDoCard {
  * O card NÃO é clicável por inteiro: ele contém uma legenda e um link, e
  * âncora dentro de âncora é HTML inválido e some do Tab. O alvo de clique é o
  * link do rodapé, com nome próprio ("Ver quem não respondeu").
+ *
+ * 🔑 **`estado` (23/09/2026)** — faixa lateral opcional, para atacar o "tudo
+ * tem o mesmo peso visual": até aqui TODO card tinha borda idêntica. A trava
+ * é dupla e não se afrouxa: (1) a faixa é **redundante**, o card já diz o
+ * estado em texto/número; (2) só recebe faixa o card com **limiar objetivo**
+ * — o padrão é `neutro`, sem faixa. Ver `EstadoDoCard`.
  */
 export function CardDashboard({
   icone,
@@ -44,6 +97,7 @@ export function CardDashboard({
   valorHref,
   valorAriaLabel,
   destaque = false,
+  estado = "neutro",
   variante = "kpi",
   variacao,
   contexto,
@@ -81,6 +135,14 @@ export function CardDashboard({
   valorAriaLabel?: string;
   destaque?: boolean;
   /**
+   * Faixa lateral de estado. **Padrão `neutro` = sem faixa.** Só use quando
+   * existir um limiar objetivo que torne o número bom ou ruim; na dúvida,
+   * deixe sem. Ver `EstadoDoCard` e `FAIXA_DO_ESTADO` acima — e lembre que o
+   * card precisa dizer o mesmo estado em texto, porque a faixa é reforço, não
+   * o portador da informação.
+   */
+  estado?: EstadoDoCard;
+  /**
    * `"grafico"` derruba o número macro de 30 px para 24 e deixa o desenho ser
    * a peça principal do card. Na faixa de KPIs o número é o assunto; num card
    * de gráfico ele é a escala do desenho, e dois protagonistas do mesmo
@@ -113,7 +175,15 @@ export function CardDashboard({
     <Card
       elevacao="raised"
       interativo={Boolean(link) && !valorHref}
-      className={cn("h-full", link && !valorHref && "relative", className)}
+      className={cn(
+        "h-full",
+        link && !valorHref && "relative",
+        // A faixa vem ANTES do `className` de quem chama, para o card poder
+        // sobrescrever se precisar. `neutro` contribui com string vazia — o
+        // card sem juízo de valor sai com a borda idêntica à de sempre.
+        FAIXA_DO_ESTADO[estado],
+        className,
+      )}
     >
       <CardContent className="flex h-full flex-col gap-2.5">
         <div className="flex items-start justify-between gap-2">

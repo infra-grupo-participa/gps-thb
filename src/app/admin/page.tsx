@@ -14,6 +14,7 @@ import {
   LIMITE_PAINEL_ALUNOS_MAX,
 } from "@/lib/data";
 import { contarChamadosDoBadge } from "@/lib/chamados-data";
+import { formatarDataHora } from "@/lib/datas";
 import { Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
@@ -141,6 +142,9 @@ export default async function AdminPage({
         <AbasPainel
           totalAlunos={totalAlunos}
           pendentes={pendentes.length}
+          // Formatado AQUI (servidor) e não dentro do componente: o fuso do
+          // navegador mudaria a hora para quem estivesse fora de São Paulo.
+          apuradoEm={dashboard ? formatarDataHora(dashboard.geradoEm) : null}
           visaoPrograma={
             dashboard ? (
               <DashboardExecutivo

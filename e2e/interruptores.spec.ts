@@ -130,11 +130,27 @@ test.describe("Admin · interruptores de gps.config", () => {
 
         // RESTAURA JÁ, antes do próximo — a janela trocada dura segundos.
         if (depois !== original) {
-          const final = await alternar(page, item.chave);
+          let final = await alternar(page, item.chave);
+
+          // 🔴 TENTA DE NOVO antes de desistir. Terceira config deixada
+          // trocada em produção (`slack_mencoes_ativo`, depois
+          // `minuta_contexto_obrigatorio`, depois
+          // `socio_cadastro_obrigatorio`) — e a causa raiz não era o timeout,
+          // era ESTA linha: se a 1ª restauração falhasse, o código anotava a
+          // falha e mesmo assim zerava `pendente`, tirando do `finally` a
+          // única chance de consertar.
+          for (let tentativa = 0; tentativa < 2 && final !== original; tentativa++) {
+            await page.waitForTimeout(1_500);
+            final = await alternar(page, item.chave);
+          }
+
           if (final !== original) {
             falhas.push(
-              `🔴 ${item.chave}: NÃO voltou (${original} → ${final}). CONFIG DE PRODUÇÃO.`,
+              `🔴 ${item.chave}: NÃO voltou (${original} → ${final}) após 3 ` +
+                `tentativas. CONFIG DE PRODUÇÃO — conferir e corrigir à mão.`,
             );
+            // Deixa `pendente` preenchido: o `finally` ainda tenta.
+            continue;
           }
         }
         pendente = null;

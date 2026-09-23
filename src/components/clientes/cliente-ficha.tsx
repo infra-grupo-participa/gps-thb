@@ -44,6 +44,7 @@ import { DialogoEscolherFavorito } from "@/components/clientes/dialogo-escolher-
 import { DiscDialogo } from "@/components/clientes/disc-dialogo";
 import {
   fasesDisponiveis,
+  estrelaTravada,
   travadoPelaEquipe,
 } from "@/components/clientes/clientes-manager/ordenacao";
 import {
@@ -224,7 +225,7 @@ export function ClienteFicha({
    * A equipe assumiu ESTE cliente? Vem do dado do servidor, nunca do estado
    * local: a confirmação é escrita da equipe e não passa pelo formulário.
    */
-  const confirmado = travadoPelaEquipe(cliente);
+  const confirmado = estrelaTravada(cliente);
   /** As fases que o banco ainda aceita para este cliente (§B.5). */
   const fasesDaFicha = fasesDisponiveis(cliente);
   /**
@@ -367,7 +368,7 @@ export function ClienteFicha({
    * esta linha o deixava MUDO — clique sem efeito, sem erro, sem toast. Pior
    * que o bug original, que ao menos dava uma mensagem.
    *
-   * A trava real é `confirmado` (= `travadoPelaEquipe`), a mesma do banco.
+   * A trava real é `confirmado` (= `estrelaTravada`, desde 23/09/2026), a mesma do banco.
    */
   function toggleEquipe() {
     if (acompanhado) {

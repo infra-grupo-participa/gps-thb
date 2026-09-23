@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
@@ -32,7 +33,7 @@ import { linkWhatsapp } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Secao } from "@/components/ui/secao";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -780,6 +781,35 @@ export function ClienteFicha({
         </Secao>
 
         <Secao icone={<NotebookPen />} titulo="Registro e perfil" nivel="h3" classeConteudo="grid gap-5">
+
+          {/* 🔴 A ENTREVISTA PRÉVIA 2.0 (23/09/2026, pedido do Marcio: "tem
+              que ter na aba do cliente um botão pra iniciar a entrevista
+              prévia"). Leva para uma ROTA, não abre diálogo: a conversa dura
+              15-20 min ao vivo e um modal que fecha no Esc perderia tudo.
+
+              🔑 Só para o PARCEIRO (`!admin`): quem conduz a entrevista é
+              quem está ao telefone com o lead. O admin vê o resultado na
+              ficha e no briefing, mas não entrevista pelo cliente de outro. */}
+          {!admin ? (
+            <div className="grid gap-2 border border-borda-fina px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="rotulo">Entrevista Prévia</p>
+                  <p className="corpo-sm text-muted-foreground">
+                    {cliente.perfil_disc
+                      ? "O perfil já está preenchido. Uma nova entrevista atualiza o que mudou."
+                      : "Responda com o cliente ao telefone. O perfil DISC é gerado no final, sozinho."}
+                  </p>
+                </div>
+                <Link
+                  href={`/clientes/${cliente.id}/entrevista`}
+                  className={buttonVariants({ variant: cliente.perfil_disc ? "outline" : "default" })}
+                >
+                  {cliente.perfil_disc ? "Nova entrevista" : "Iniciar entrevista"}
+                </Link>
+              </div>
+            </div>
+          ) : null}
 
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">

@@ -11,6 +11,7 @@ import { Secao } from "@/components/ui/secao";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getTutoriaisAtivo } from "@/lib/data";
 import { getNomesEDiscLeve } from "@/lib/data/clientes";
+import { getDecisoresPendentes } from "@/lib/data/entrevista-previa";
 import {
   getHorariosLivres,
   getSessoesDoAmbiente,
@@ -249,7 +250,12 @@ export default async function SessoesPage() {
   const idsComSessao = new Set(blocos.filter((b) => b.jaMarcada).map((b) => b.jaMarcada!.cliente_id));
   const idsSoNaGrade = [...idsDeCliente].filter((id) => !idsComSessao.has(id));
 
-  const [nomesDaGrade, discDasSessoes, papelDoLink] = await Promise.all([
+  // 🔑 O cliente ELEGÍVEL é um só por parceiro (o favorito), então isto é
+  // UMA chamada, não uma por linha. Vai no mesmo `Promise.all` — em cascata
+  // custaria uma viagem a mais por abertura de tela.
+  const idElegivel = blocos.find((b) => b.elegivel?.clienteId)?.elegivel?.clienteId ?? null;
+
+  const [nomesDaGrade, discDasSessoes, papelDoLink, decisoresDoElegivel] = await Promise.all([
     // 🔑 `getNomesEDiscLeve`: nome + a LETRA do DISC, sem os 3 campos ricos
     // (até 2.000 caracteres cada). A letra é o que o aviso "este cliente
     // ainda não tem DISC" precisa saber, e custa ~1 byte por linha — o
@@ -257,6 +263,7 @@ export default async function SessoesPage() {
     getNomesEDiscLeve(idsSoNaGrade),
     getDiscDosClientes([...idsComSessao]),
     getPapelDoLink(blocos.filter((b) => b.jaMarcada).map((b) => b.jaMarcada!.id)),
+    idElegivel ? getDecisoresPendentes(idElegivel) : Promise.resolve(null),
   ]);
 
   // Mapa único de nomes para a tela inteira, vindo das duas leituras.
@@ -315,6 +322,9 @@ export default async function SessoesPage() {
           <div className="grid gap-8">
             {blocos.map((b) => (
               <BlocoDoTipo
+                decisores={
+                  b.elegivel?.clienteId === idElegivel ? decisoresDoElegivel : null
+                }
                 letraDisc={
                   b.elegivel?.clienteId
                     ? letraDiscPorCliente.get(b.elegivel.clienteId)
@@ -361,6 +371,7 @@ function BlocoDoTipo({
   clientes,
   disc,
   letraDisc,
+  decisores,
   linkPorEquipe,
 }: {
   tipo: SessaoTipo;
@@ -376,6 +387,17 @@ function BlocoDoTipo({
    * marcar. `null` = não preenchida; `undefined` = a leitura não trouxe.
    */
   letraDisc: string | null | undefined;
+  /**
+   * Decisores do cliente elegível, para a trava da Reunião Preliminar.
+   * `null` = a leitura não trouxe (não é o mesmo que "decide sozinho", por
+   * isso o aviso só aparece com `exigeTodos === true`, nunca por ausência).
+   */
+  decisores: {
+    total: number;
+    decisores: { nome: string; papel: string | null; principal: boolean }[];
+    exigeTodos: boolean;
+    temDisc: boolean;
+  } | null;
   linkPorEquipe: boolean | null;
 }) {
   return (
@@ -423,13 +445,36 @@ function BlocoDoTipo({
               marcar assim mesmo — mas a doutora conduz a reunião sem saber
               como ele decide.{" "}
               <Link
-                href="/clientes"
+                href={`/clientes/${elegivel.clienteId}/entrevista`}
                 className="text-accent-foreground underline underline-offset-4"
               >
-                Preencher na ficha do cliente
-              </Link>
-              .
+                Fazer a Entrevista Prévia
+              </Link>{" "}
+              gera o perfil sozinho, no fim da conversa.
             </p>
+          ) : null}
+
+          {/* 🔴 A TRAVA DOS DECISORES (regra do Marcio, 23/09: *"está
+              proibido participar da reunião sem os decisores"* · *"para
+              realizar a reunião preliminar, todos os decisores precisam"*).
+              A Entrevista Prévia descobre quantos são; aqui a tela lembra
+              ANTES de marcar, porque marcar e descobrir depois custa o
+              horário de uma doutora e a viagem de uma família. */}
+          {tipo.id === TIPO_REUNIAO_PRELIMINAR && decisores?.exigeTodos ? (
+            <div
+              role="alert"
+              className="mb-3 border border-borda-forte bg-superficie-afundada px-3 py-2"
+            >
+              <p className="rotulo">
+                {decisores.total} pessoas decidem sobre este cliente
+              </p>
+              <p className="corpo-sm mt-1">
+                A Reunião Preliminar só acontece com{" "}
+                <strong>todos presentes</strong>:{" "}
+                {decisores.decisores.map((d) => d.nome).join(", ")}. Confirme a
+                presença de cada um antes de escolher o horário.
+              </p>
+            </div>
           ) : null}
           <GradeHorarios
             tipo={tipo}

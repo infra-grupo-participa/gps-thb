@@ -54,6 +54,15 @@ export function DialogoEscolherFavorito({
           sua primeira holding. Você pode trocar enquanto a equipe ainda não
           assumiu; <strong>depois que ela assumir</strong>, a troca passa a ser
           pelo Suporte.
+          {/* 🔴 A escolha só acontece no BOTÃO (23/09/2026). Quem lê a
+              consequência e fecha no X não marca ninguém, e entende que o
+              sistema recusou — foi o chamado da T53 ("não aceita marcar o
+              cliente principal") num ambiente sem nenhuma trava. A frase
+              nomeia o botão porque é ele que decide, não a estrela. */}
+          <span className="mt-2 block">
+            Para confirmar, clique em{" "}
+            <strong>&ldquo;Escolher este cliente&rdquo;</strong> abaixo.
+          </span>
         </>
       }
       rotuloConfirmar="Escolher este cliente"

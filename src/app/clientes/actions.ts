@@ -347,6 +347,14 @@ export async function mudarFaseCliente(
  * card marcado enquanto houver favorito — botão que sempre falha é pior do que
  * botão ausente. Isso é tarefa do frontend; aqui é a rede de segurança.
  *
+ * ⚠️ EXCEÇÃO NOMEADA (23/09/2026): o pré-requisito da Entrevista Prévia
+ * (`chk_etapa1_clientes_favorito_e_selecionado` — só vira estrela quem já
+ * está entre os 5 selecionados) NÃO segue a regra acima. Ali a UI mostra o
+ * botão DESABILITADO com o motivo escrito ao lado, porque a ação existe e é
+ * do próprio parceiro (basta escolher o cliente entre os 5 da entrevista) —
+ * sumir o botão devolveria a tela muda sobre um caminho que ele pode seguir
+ * sozinho. Não apagar este botão achando que é descuido.
+ *
  * 🔑 O ADMIN passa pela trava: é por esta MESMA função, em Modo Assistência,
  * que a equipe troca o cliente acompanhado quando o aluno pede pelo Suporte.
  * (A ...203 continua valendo por dentro: `acompanhamento_confirmado_em` é a
@@ -376,7 +384,7 @@ export async function definirClienteEquipe(
   if (ativar) {
     const { data: alvo, error: eAlvo } = await gps
       .from("etapa1_clientes")
-      .select("id")
+      .select("id, selecionado_entrevista")
       .eq("id", clienteId)
       .eq("aluno_id", alunoId)
       .maybeSingle();
@@ -384,6 +392,25 @@ export async function definirClienteEquipe(
     if (!alvo) {
       return {
         erro: "Cliente não encontrado neste ambiente. Recarregue a lista.",
+      };
+    }
+    // 🔴 MESMA classe de defeito do comentário acima (Auditor A), outra porta
+    // (23/09/2026): o CHECK `chk_etapa1_clientes_favorito_e_selecionado`
+    // (migração 20260915000261) só permite `acompanhado_equipe=true` quando
+    // `selecionado_entrevista=true`. Sem esta guarda, o primeiro `update`
+    // (desmarcar todos) já tinha rodado quando o segundo batia no CHECK — o
+    // parceiro perdia a estrela que tinha por uma marcação que ia falhar.
+    //
+    // Isto NÃO duplica a regra em TypeScript: a pré-checagem não decide *se
+    // pode*, ela LÊ o estado que o banco vai exigir e evita a escrita
+    // destrutiva anterior à recusa. A verdade continua no CHECK — se ele
+    // mudar, este código para de recusar e o banco recusa no lugar dele, com
+    // a mesma frase (traduzida por nome de constraint em `erros.ts`).
+    // Conveniência em cima, verdade embaixo.
+    if (!alvo.selecionado_entrevista) {
+      return {
+        erro:
+          "Este cliente precisa estar entre os 5 escolhidos para a Entrevista Prévia antes de ser marcado como cliente da equipe.",
       };
     }
   }

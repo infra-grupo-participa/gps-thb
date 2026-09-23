@@ -722,6 +722,38 @@ const POR_CODIGO: Record<string, string> = {
     "Este cadastro tem mais de um acesso no programa. Resolva a duplicidade antes de continuar.",
 };
 
+/**
+ * Tradução por NOME DE CONSTRAINT — mecanismo separado de `FRASES_DO_BANCO` de
+ * propósito (Central de resolução, 23/09/2026).
+ *
+ * `FRASES_DO_BANCO` casa por IGUALDADE EXATA da mensagem inteira. O PostgREST
+ * não devolve uma mensagem fixa para violação de CHECK: ele devolve algo como
+ * `new row for relation "etapa1_clientes" violates check constraint
+ * "chk_etapa1_clientes_favorito_e_selecionado"`, com o nome da TABELA
+ * embutido — igualdade exata nunca casaria de forma estável. O nome da
+ * CONSTRAINT, esse sim é estável, e por isso o casamento aqui é por
+ * SUBSTRING do nome, não da frase inteira.
+ *
+ * ⚠️ Isto NÃO ensina `erros.ts` a regra de negócio "quem pode ser estrela".
+ * A verdade continua só no CHECK (`chk_etapa1_clientes_favorito_e_selecionado`
+ * em `gps.etapa1_clientes`, migração 20260915000261: só vira estrela quem já
+ * está entre os 5 selecionados da Entrevista Prévia). Este mapa só TRADUZ o
+ * nome que o banco já devolve — se o CHECK mudar de regra sem mudar de nome,
+ * a frase abaixo é que fica desatualizada, não o inverso.
+ *
+ * Consultado ANTES de `POR_CODIGO["23514"]`: sem esta entrada, a recusa caía
+ * no genérico "Algum campo está fora do formato aceito. Revise e tente de
+ * novo." — que não existe campo errado nenhum, e o parceiro não tinha como
+ * saber o que fazer.
+ */
+const POR_CONSTRAINT: Array<{ contem: string; frase: string }> = [
+  {
+    contem: "chk_etapa1_clientes_favorito_e_selecionado",
+    frase:
+      "Este cliente precisa estar entre os 5 escolhidos para a Entrevista Prévia antes de ser marcado como cliente da equipe.",
+  },
+];
+
 const GENERICA = "Não foi possível concluir agora. Tente de novo em instantes.";
 
 /**
@@ -753,11 +785,23 @@ export function traduzirErroBanco(
   const bruto = (erro.message ?? "").trim();
   const conhecida = frasesExtras?.[bruto] ?? FRASES_DO_BANCO[bruto];
 
+  // Nome de constraint: casamento por SUBSTRING, não por igualdade da frase
+  // inteira — ver o comentário de `POR_CONSTRAINT`. Procura em `message` e em
+  // `details`, porque o PostgREST varia onde coloca o texto da violação.
+  const textoParaConstraint = `${erro.message ?? ""} ${erro.details ?? ""}`;
+  const porConstraint = POR_CONSTRAINT.find((c) =>
+    textoParaConstraint.includes(c.contem),
+  );
+
   // Log SEMPRE: mesmo o erro previsto é sinal de fluxo travando na produção, e
   // é a única forma de descobrir que uma frase nova precisa entrar aqui.
-  logErro(escopo, erro, { ...contexto, mapeado: Boolean(conhecida) });
+  logErro(escopo, erro, {
+    ...contexto,
+    mapeado: Boolean(conhecida) || Boolean(porConstraint),
+  });
 
   if (conhecida) return conhecida;
+  if (porConstraint) return porConstraint.frase;
   if (bruto.startsWith(PREFIXO_DIREITO)) return bruto;
   return POR_CODIGO[erro.code ?? ""] ?? GENERICA;
 }

@@ -149,10 +149,10 @@ export default async function ClienteFichaPage({
           temEntrevistaConcluida={entrevistas.some((e) => e.concluida_em != null)}
           painelEntrevista={
             <PainelEntrevistaPrevia
-              clienteId={clienteId}
               temDisc={Boolean(cliente.perfil_disc)}
               decisores={decisores?.decisores ?? []}
               entrevistas={entrevistas}
+              hrefEntrevista={`/clientes/${clienteId}/entrevista`}
             />
           }
         />

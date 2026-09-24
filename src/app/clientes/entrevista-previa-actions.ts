@@ -200,6 +200,14 @@ export async function concluirEntrevistaPrevia(input: {
   revalidatePath(`/clientes/${input.clienteId}`);
   revalidatePath("/sessoes");
   revalidatePath("/admin/sessoes");
+  // 🔴 Espelho do admin (24/09/2026): esta action não recebe `alunoId`, só
+  // `clienteId` — não dá para montar `/admin/aluno/[alunoId]/clientes/...`.
+  // `"layout"` revalida a árvore inteira sob `/admin/aluno`, então o admin
+  // que estiver na ficha do cliente durante/depois da conclusão vê o painel
+  // atualizado sem precisar de F5. Sem isto, o resultado da entrevista
+  // conduzida pelo admin ficaria em cache stale exatamente na tela que a
+  // Entrevista Prévia existe para alimentar.
+  revalidatePath("/admin/aluno", "layout");
 
   const r = data as {
     perfil_disc: string | null;

@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
   exigeLogin,
+  exigeAdmin,
   entrar,
   semRolagemHorizontal,
   contrasteAprovado,
@@ -506,5 +507,171 @@ test.describe("Entrevista Prévia 2.0 · a ponte para a sessão", () => {
     await botao.click();
     await page.waitForURL(/\/sessoes/, { timeout: 15_000 });
     await expect(page).toHaveURL(/\/sessoes/);
+  });
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * O BECO DO ADMIN (24/09/2026) — o espelho tinha de linkar para a rota DELE
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🔴 POR QUE ESTE BLOCO EXISTE: até hoje o painel da ficha no espelho do admin
+ * (`/admin/aluno/[alunoId]/clientes/[clienteId]`) linkava para
+ * `/clientes/[clienteId]/entrevista` — a rota do PARCEIRO, que faz
+ * `redirect("/admin")` para `papel === "admin"`. O admin clicava em "Nova
+ * entrevista"/"Iniciar entrevista" e caía de volta no próprio painel, sem
+ * erro nenhum na tela. A correção deu ao admin a rota própria
+ * `/admin/aluno/[alunoId]/clientes/[clienteId]/entrevista` (prop
+ * `hrefEntrevista`, `admin/aluno/.../[clienteId]/page.tsx:158`).
+ *
+ * 🔑 CAMINHO PARA O ESPELHO SEM `QA_ALUNO_ID`: o mesmo de
+ * `ficha-abas.spec.ts:1264-1308` — `/admin/clientes?q=<nome>` (lista
+ * consolidada) → link do parceiro dono do CLIENTE DE TESTE →
+ * `/admin/aluno/<id>/clientes` (mesmo `ClientesManager`, com `basePath`) →
+ * ficha do cliente pelo nome.
+ *
+ * 🔴 Sem responder nem concluir: a conclusão grava DISC no CLIENTE DE TESTE
+ * (já coberto, do lado do parceiro, pelo describe acima). Aqui só se prova
+ * que a rota do admin abre e monta — a escrita mínima é a mesma de
+ * `iniciarEntrevistaPrevia` (RPC `entrevista_previa_iniciar`, cria/retoma a
+ * linha em aberto), que o describe "a ponte para a sessão" já aceita sem
+ * gate de `QA_PERMITE_ESCRITA` nos testes de "o formulário abre" e "contraste
+ * WCAG AA" — mesmo custo, mesma trava (a régua não muda por ser admin).
+ */
+test.describe("Entrevista Prévia 2.0 · modo assistência (admin)", () => {
+  const admin = exigeAdmin();
+  test.skip(!admin, "Sem QA_ADMIN_EMAIL/SENHA no .env.qa.");
+
+  const BUSCA_ADMIN = "CLIENTE DE TESTE";
+  const CLIENTE_DE_TESTE_ADMIN = /CLIENTE DE TESTE \(QA\)/i;
+
+  /**
+   * Vai da lista consolidada até a ficha do CLIENTE DE TESTE no espelho do
+   * admin. Devolve `null` quando o cliente não está acessível desta conta —
+   * o teste se pula com a razão, em vez de falhar por dado ausente.
+   */
+  async function abrirFichaEspelhoAdmin(page: import("@playwright/test").Page) {
+    await entrar(page, admin!, "/admin/clientes");
+    await page.goto(`/admin/clientes?q=${encodeURIComponent(BUSCA_ADMIN)}`);
+
+    const linha = page
+      .getByRole("row")
+      .filter({ hasText: CLIENTE_DE_TESTE_ADMIN })
+      .first();
+    const achouLinha = await linha
+      .waitFor({ state: "visible", timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!achouLinha) return false;
+
+    const doAmbiente = linha.getByRole("link").first();
+    const href = await doAmbiente.getAttribute("href");
+    if (!href?.startsWith("/admin/aluno/")) return false;
+
+    await page.goto(`${href}/clientes`);
+    const linkCliente = page
+      .getByRole("link", { name: CLIENTE_DE_TESTE_ADMIN })
+      .first();
+    const achouCliente = await linkCliente
+      .waitFor({ state: "visible", timeout: 12_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!achouCliente) return false;
+
+    await linkCliente.click();
+    await page.waitForURL(/\/admin\/aluno\/[^/]+\/clientes\/[0-9a-f-]+$/i, {
+      timeout: 15_000,
+    });
+    return true;
+  }
+
+  test("o espelho do admin linka para a rota DELE, não para a do parceiro", async ({
+    page,
+  }, info) => {
+    const achou = await abrirFichaEspelhoAdmin(page);
+    test.skip(!achou, "Cliente de teste não acessível por esta conta admin.");
+
+    // 🔴 A PROVA DO BECO: o painel da entrevista mora dentro da ficha do
+    // espelho (mesmo componente `PainelEntrevistaPrevia` da ficha do
+    // parceiro) — sem diálogo "Ver perfil" no meio, ao contrário do fluxo do
+    // parceiro em `ficha-abas.spec.ts`.
+    const link = page
+      .getByRole("link", { name: /iniciar entrevista|nova entrevista/i })
+      .first();
+    await expect(
+      link,
+      "O espelho do admin não oferece o link da Entrevista Prévia — sem ele " +
+        "o admin não alcança nem o beco corrigido nem o formulário.",
+    ).toBeVisible({ timeout: 12_000 });
+
+    const href = await link.getAttribute("href");
+    expect(
+      href,
+      "O link da entrevista no espelho do admin tem de apontar para a rota " +
+        "PRÓPRIA do admin (`/admin/aluno/<id>/clientes/<id>/entrevista`), " +
+        "nunca para `/clientes/<id>/entrevista` — essa é a rota do parceiro, " +
+        "que faz `redirect(\"/admin\")` para quem está logado como admin. É " +
+        "exatamente o beco que foi corrigido hoje.",
+    ).toMatch(/^\/admin\/aluno\/[^/]+\/clientes\/[^/]+\/entrevista$/);
+    expect(href, "O href não pode virar a rota do parceiro.").not.toMatch(
+      /^\/clientes\//,
+    );
+
+    await registrarTela(page, info, "admin-espelho-com-entrevista.png");
+  });
+
+  test("clicar no link ABRE o formulário da entrevista, sem cair em /admin", async ({
+    page,
+  }, info) => {
+    const console_ = vigiarConsole(page);
+    const achou = await abrirFichaEspelhoAdmin(page);
+    test.skip(!achou, "Cliente de teste não acessível por esta conta admin.");
+
+    await page
+      .getByRole("link", { name: /iniciar entrevista|nova entrevista/i })
+      .first()
+      .click();
+
+    // 🔴 A prova de que o clique NÃO caiu no `redirect("/admin")` do beco
+    // antigo: a URL final continua na rota do admin, casando a MESMA regex
+    // do href — nunca virou `/admin` puro.
+    await page.waitForURL(
+      /\/admin\/aluno\/[^/]+\/clientes\/[^/]+\/entrevista$/i,
+      { timeout: 15_000 },
+    );
+    await expect(page).toHaveURL(
+      /\/admin\/aluno\/[^/]+\/clientes\/[^/]+\/entrevista$/i,
+    );
+
+    await expect(
+      page.getByRole("heading", { name: /entrevista prévia/i }),
+      "A rota abriu, mas sem o heading 'Entrevista Prévia' — pode ter caído " +
+        "na tela de erro da RPC (`abertura.erro`) em vez do formulário.",
+    ).toBeVisible({ timeout: 12_000 });
+
+    // O formulário montou: reusa os mesmos seletores do describe do parceiro
+    // (progresso ou a 1ª pergunta como botões marcáveis). Não responde nada.
+    const progresso = page.getByRole("progressbar");
+    await expect(
+      progresso,
+      "O heading apareceu mas o indicador de progresso não montou — o " +
+        "formulário (`FormularioEntrevistaPrevia`) pode não ter recebido as " +
+        "props certas para `conduzidoPor=\"admin\"`.",
+    ).toBeVisible({ timeout: 12_000 });
+
+    await expect(page.locator("button[aria-pressed]").first()).toBeVisible();
+
+    await semRolagemHorizontal(page);
+    await registrarTela(page, info, `admin-entrevista-formulario-${test.info().project.name}.png`);
+    console_.semErros();
+
+    // 🔴 NÃO responde nada e NÃO conclui. `iniciar` (RPC
+    // `entrevista_previa_iniciar`) já criou ou retomou a linha em aberto —
+    // escrita mínima idêntica à que os testes "o formulário abre..." e
+    // "contraste WCAG AA" do describe do parceiro fazem sem gate de escrita.
+    // Concluir gravaria DISC no CLIENTE DE TESTE; isso já está coberto (do
+    // lado do parceiro) no describe "a ponte para a sessão", atrás de
+    // `QA_PERMITE_ESCRITA=1`. Duplicar aqui dobraria o custo sem provar nada
+    // novo sobre o beco do admin.
   });
 });

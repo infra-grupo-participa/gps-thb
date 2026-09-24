@@ -152,10 +152,10 @@ export default async function AdminAlunoClienteFichaPage({
           qtdDecisores={decisores?.decisores.length ?? null}
           painelEntrevista={
             <PainelEntrevistaPrevia
-              clienteId={clienteId}
               temDisc={Boolean(cliente.perfil_disc)}
               decisores={decisores?.decisores ?? []}
               entrevistas={entrevistas}
+              hrefEntrevista={`/admin/aluno/${alunoId}/clientes/${clienteId}/entrevista`}
             />
           }
         />

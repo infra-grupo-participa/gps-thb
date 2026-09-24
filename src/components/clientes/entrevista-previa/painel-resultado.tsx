@@ -16,15 +16,24 @@ import type { EntrevistaPreviaLinha } from "@/lib/data/entrevista-previa";
  * Feature que grava certo e não mostra é feature que ninguém confia.
  */
 export function PainelEntrevistaPrevia({
-  clienteId,
   temDisc,
   decisores,
   entrevistas,
+  hrefEntrevista,
 }: {
-  clienteId: string;
   temDisc: boolean;
   decisores: { nome: string; papel: string | null; principal: boolean }[];
   entrevistas: EntrevistaPreviaLinha[];
+  /**
+   * Destino do botão "Nova entrevista"/"Iniciar entrevista". SEM DEFAULT DE
+   * PROPÓSITO: o painel é montado tanto na ficha do parceiro
+   * (`/clientes/[clienteId]/entrevista`) quanto no espelho do admin
+   * (`/admin/aluno/[alunoId]/clientes/[clienteId]/entrevista`) — rotas
+   * diferentes, e a rota do parceiro devolve o admin para `/admin` (defeito
+   * em produção, 24/09/2026). Um default silencioso repetiria o bug para
+   * qualquer chamador futuro que esquecesse a prop.
+   */
+  hrefEntrevista: string;
 }) {
   const concluidas = entrevistas.filter((e) => e.concluida_em);
   const ultima = concluidas[0] ?? null;
@@ -46,7 +55,7 @@ export function PainelEntrevistaPrevia({
           </p>
         </div>
         <Link
-          href={`/clientes/${clienteId}/entrevista`}
+          href={hrefEntrevista}
           className={buttonVariants({ variant: ultima ? "outline" : "default" })}
         >
           {ultima ? "Nova entrevista" : "Iniciar entrevista"}

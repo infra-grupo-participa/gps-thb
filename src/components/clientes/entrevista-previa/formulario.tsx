@@ -47,6 +47,7 @@ export function FormularioEntrevistaPrevia({
   entrevistado,
   respostasIniciais,
   voltarHref,
+  conduzidoPor,
 }: {
   entrevistaId: string;
   clienteId: string;
@@ -54,6 +55,14 @@ export function FormularioEntrevistaPrevia({
   entrevistado: string | null;
   respostasIniciais: RespostasEntrevista;
   voltarHref: string;
+  /**
+   * Quem está conduzindo: o parceiro (na rota dele) ou a equipe, em modo
+   * assistência (`/admin/aluno/[alunoId]/clientes/[clienteId]/entrevista`).
+   * 🔴 Sem default de propósito: a tela final muda de destino — `/sessoes` é
+   * rota do PARCEIRO (`page.tsx` faz `redirect("/admin")` para admin), e o
+   * admin que clicasse ali seria despejado no painel (achado do João, 24/09).
+   */
+  conduzidoPor: "parceiro" | "admin";
 }) {
   const router = useRouter();
   const [respostas, setRespostas] = useState<RespostasEntrevista>(respostasIniciais);
@@ -176,20 +185,41 @@ export function FormularioEntrevistaPrevia({
             entrevista), não o padrão desta tela. */}
         <div className="border border-borda-fina px-4 py-4">
           <p className="rotulo text-muted-foreground">Próximo passo</p>
-          <p className="corpo-sm mt-1">
-            {resultado.exigeTodos
-              ? `Marque a Reunião Preliminar com a equipe jurídica — com os ${resultado.decisoresTotal} decisores presentes. Escolha o horário e combine a presença de todos antes da data.`
-              : "Marque a sessão com a equipe jurídica. Você escolhe entre os horários que as Dras. Elaine e Cristiane já abriram."}
-          </p>
-          <Button className="mt-3" onClick={() => router.push("/sessoes")}>
-            Marcar a sessão com a equipe jurídica
-          </Button>
+          {conduzidoPor === "admin" ? (
+            /* 🔴 Em modo assistência NÃO há `/sessoes`: quem marca a Reunião
+               Preliminar é o parceiro, na conta dele. Empurrar o admin para
+               `/sessoes` o despejava em `/admin` (o mesmo beco do botão da ficha,
+               corrigido no mesmo dia). O primário vira "Voltar para a ficha". */
+            <>
+              <p className="corpo-sm mt-1">
+                {resultado.exigeTodos
+                  ? `A Reunião Preliminar exige os ${resultado.decisoresTotal} decisores presentes. Quem marca é o parceiro, em Sessões — combine a data com ele.`
+                  : "Quem marca a Reunião Preliminar é o parceiro, em Sessões — combine a data com ele. O perfil já está na ficha."}
+              </p>
+              <Button className="mt-3" onClick={() => router.push(voltarHref)}>
+                Voltar para a ficha
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="corpo-sm mt-1">
+                {resultado.exigeTodos
+                  ? `Marque a Reunião Preliminar com a equipe jurídica — com os ${resultado.decisoresTotal} decisores presentes. Escolha o horário e combine a presença de todos antes da data.`
+                  : "Marque a sessão com a equipe jurídica. Você escolhe entre os horários que as Dras. Elaine e Cristiane já abriram."}
+              </p>
+              <Button className="mt-3" onClick={() => router.push("/sessoes")}>
+                Marcar a sessão com a equipe jurídica
+              </Button>
+            </>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => router.push(voltarHref)}>
-            Voltar para a ficha
-          </Button>
+          {conduzidoPor === "parceiro" ? (
+            <Button variant="outline" onClick={() => router.push(voltarHref)}>
+              Voltar para a ficha
+            </Button>
+          ) : null}
           {/* 🔴 ABRE OUTRA de verdade. Antes este botão levava à ficha — o
               mesmo destino do primeiro, dois botões para a mesma coisa. As
               entrevistas são ILIMITADAS por requisito ("pode fazer a

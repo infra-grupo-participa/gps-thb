@@ -19,15 +19,40 @@
  * 🔴 **Um escritor só por parâmetro.** Este componente escreve `aba` e `vis`
  * (as sub-abas da Visão geral, 23/09/2026) e mais nada; `useEstadoDoPainel`
  * escreve `q`, `ordem` e `f` e **não toca em nenhum dos dois** (ele preserva o
- * que já está no endereço). Dois `router.replace` com estado local próprio
+ * que já está no endereço). Dois escritores com estado local próprio
  * disputando a mesma chave se sobrescrevem: o último a rodar devolve o valor
  * velho que ele leu na montagem.
  *
- * `scroll: false` porque trocar de aba não é mudar de página — pular para o
- * topo apagaria a posição de leitura do admin.
+ * 🔴 **`window.history.replaceState`, e NÃO `router.replace` — o precedente é
+ * `dashboard/regua.tsx` (leia o cabeçalho dele).** Em App Router, um
+ * `router.replace` que muda `searchParams` numa página `ƒ (Dynamic)` que lê
+ * `searchParams` **re-executa o Server Component**: `/admin/page.tsx` lê
+ * `?mais=`, então cada clique numa aba refazia `getDashboard()`,
+ * `getAlunosGps()` e as outras cinco leituras — a RPC de ~60 ms de novo, para
+ * mostrar conteúdo que **já estava na página**. As quatro abas e as três
+ * sub-abas chegam pré-renderizadas por prop (`visaoPrograma`, `ativos`, …); a
+ * troca é escolha de qual nó já montado aparece, não navegação.
+ *
+ * Desde o Next 14.1 o `useSearchParams()` **sincroniza com `pushState`/
+ * `replaceState` nativos** sem ir ao servidor (docs: "Using the native History
+ * API"). O `replaceState` troca o endereço, o `useSearchParams()` reavalia no
+ * mesmo tick, este componente re-renderiza e a aba certa aparece.
+ *
+ * ⚠️ **Não "uniformize" isto de volta para `router.replace`.** A troca é
+ * deliberada e foi medida; `regua.tsx` faz o mesmo pela mesma razão.
+ *
+ * 🔑 **Por que trocar de aba nunca precisa do servidor**, inclusive
+ * `?aba=ativos` com filtro: a lista de parceiros filtra **em memória sobre o
+ * lote** já carregado (`useEstadoDoPainel` + `ordenacao.ts`); `page.tsx` lê
+ * **só `?mais=`**, e `mais` só muda por `<Link>` ("Mostrar mais"), que é
+ * navegação de verdade e não passa por aqui. `trocar()` preserva os demais
+ * parâmetros, então o conteúdo de `ativos` já veio pronto.
+ *
+ * Sem `scroll: false` porque não há navegação para mover a rolagem — a
+ * History API não mexe na posição, que é justamente o que se queria.
  */
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -75,7 +100,6 @@ export function AbasPainel({
   solicitacoes: React.ReactNode;
   etapas: React.ReactNode;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -106,7 +130,7 @@ export function AbasPainel({
     // visita sem que ninguém o tenha escolhido de novo.
     if (valor !== "visao") sp.delete("vis");
     const q = sp.toString().replace(/%2C/g, ",");
-    router.replace(`${pathname}${q ? `?${q}` : ""}`, { scroll: false });
+    window.history.replaceState(null, "", `${pathname}${q ? `?${q}` : ""}`);
   }
 
   /**
@@ -114,6 +138,11 @@ export function AbasPainel({
    * componente é o dono de `aba` e de `vis`, e `useEstadoDoPainel` não toca em
    * nenhum dos dois (ele parte da consulta atual, então preserva os dois de
    * graça).
+   *
+   * 🔴 `replaceState`, não `router.replace` — as três sub-abas já chegam
+   * renderizadas em `visaoPrograma`/`visaoAtencao`/`visaoParceiros`, e ir ao
+   * servidor aqui era a RPC de ~60 ms por clique. Ver o cabeçalho do arquivo
+   * e `dashboard/regua.tsx`.
    */
   function trocarVis(valor: string) {
     if (!(SUBABAS_VISAO as readonly string[]).includes(valor)) return;
@@ -121,7 +150,7 @@ export function AbasPainel({
     if (valor === SUBABA_VISAO_PADRAO) sp.delete("vis");
     else sp.set("vis", valor);
     const q = sp.toString().replace(/%2C/g, ",");
-    router.replace(`${pathname}${q ? `?${q}` : ""}`, { scroll: false });
+    window.history.replaceState(null, "", `${pathname}${q ? `?${q}` : ""}`);
   }
 
   return (

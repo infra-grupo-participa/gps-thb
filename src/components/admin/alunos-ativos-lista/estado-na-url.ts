@@ -18,10 +18,16 @@
  * 🔴 Nada de PII aqui: `q` é o que o admin digitou (pode ser um nome), e é por
  * isso que a URL é a ÚNICA persistência de busca — nada vai para `localStorage`,
  * que sobrevive à sessão.
+ *
+ * 🔴 **Quem GRAVA o endereço usa `window.history.replaceState`, nunca
+ * `router.replace`.** Vale para os três escritores de URL do painel —
+ * `useEstadoDoPainel` (aqui, `q`/`ordem`/`f`/`classe`), `abas-painel.tsx`
+ * (`aba`/`vis`) e `dashboard/regua.tsx` (`foco`). O porquê medido está no
+ * comentário de `useEstadoDoPainel`, no fim deste arquivo.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { ORDENS, type OrdemAlunos } from "./tipos";
 
@@ -266,12 +272,13 @@ function escreverEstado(
     if (valor === padrao) sp.delete(chave);
     else sp.set(chave, valor);
   };
-  // 🔴 `aba` NÃO é escrita aqui. Quem manda nela é `AbasPainel`
-  // (`src/components/admin/abas-painel.tsx`); este hook só a PRESERVA, porque
-  // `sp` já parte da consulta atual. Dois componentes com estado local próprio
-  // escrevendo a mesma chave se sobrescrevem: o último `router.replace` a
-  // rodar devolve o valor que ele leu na montagem, e trocar de aba "voltaria"
-  // sozinho 300 ms depois de digitar uma letra na busca.
+  // 🔴 `aba` (e `vis`, e `foco`, e `mais`) NÃO são escritas aqui. Quem manda
+  // em `aba`/`vis` é `AbasPainel` (`src/components/admin/abas-painel.tsx`), em
+  // `foco` é `dashboard/regua.tsx` e em `mais` é o servidor; este hook só as
+  // PRESERVA, porque `sp` já parte da consulta atual. Dois componentes com
+  // estado local próprio escrevendo a mesma chave se sobrescrevem: o último a
+  // gravar o endereço devolve o valor que ele leu na montagem, e trocar de aba
+  // "voltaria" sozinho 300 ms depois de digitar uma letra na busca.
   // Sem classe escolhida a tela mostra os 5 cards — e a URL fica limpa.
   por("classe", estado.classe ?? "", "");
   por("q", estado.termo.trim(), "");
@@ -295,18 +302,46 @@ function escreverEstado(
  * O estado do painel, sincronizado com a URL.
  *
  * A tela responde na hora (o estado é local) e a URL é atualizada **com 300 ms
- * de atraso**: `router.replace` a cada tecla digitada empilharia uma entrada
- * de navegação por caractere e faria o Server Component reavaliar sem
- * necessidade. `scroll: false` porque o admin está no meio da lista — pular
- * para o topo a cada letra digitada seria pior do que não persistir nada.
+ * de atraso** — sem o debounce, cada tecla digitada reescreveria o endereço.
+ *
+ * 🔴 **`window.history.replaceState`, e NÃO `router.replace` — este é o
+ * TERCEIRO e último escritor de URL do painel a fazer a troca.** Os outros
+ * dois são `abas-painel.tsx` (`aba`/`vis`) e `dashboard/regua.tsx` (`foco`);
+ * leia o cabeçalho dos dois. Em App Router, um `router.replace` que muda
+ * `searchParams` numa página que lê `searchParams` **re-executa o Server
+ * Component**: `/admin/page.tsx` lê `?mais=`, então cada tecla na busca
+ * refazia `getDashboard()` (a RPC de ~60 ms), `getAlunosGps()` e as outras
+ * quatro leituras — para filtrar uma lista que **já está em memória** no
+ * cliente.
+ *
+ * 🔑 **Por que filtrar aqui nunca precisa do servidor.** `page.tsx` tipa
+ * `searchParams` como `{ mais?: string }` e lê **só `mais`**; `q`, `ordem`,
+ * `f` e `classe` não são lidos por servidor nenhum. Busca, ordem e filtro
+ * rodam sobre o array `alunos` que já desceu por prop (`index.tsx` +
+ * `ordenacao.ts` + `filtros.ts`) — é a regra escrita no CLAUDE.md: *"busca e
+ * filtro do painel são em memória sobre o lote"*. O endereço aqui serve para
+ * recarregar, voltar pelo histórico e mandar o link a um colega; nada mais.
+ *
+ * Desde o Next 14.1 o `useSearchParams()` **sincroniza com `pushState`/
+ * `replaceState` nativos** sem ir ao servidor (docs: "Using the native History
+ * API") — é o que mantém `RegistrarUrlDoPainel` (`voltar-ao-painel.tsx`), que
+ * observa `[pathname, searchParams]`, gravando a URL certa no `sessionStorage`.
+ *
+ * ⚠️ **Não "uniformize" isto de volta para `router.replace`.** Os TRÊS
+ * escritores de URL do painel usam a History API, pela mesma razão medida.
+ * Não há mais `scroll: false` porque não existe navegação para mover a
+ * rolagem — a History API não mexe na posição, que é justamente o que se
+ * queria enquanto o admin digita no meio da lista.
  */
 export function useEstadoDoPainel() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   // Só a leitura INICIAL vem da URL. Depois é o estado que manda: reler a cada
-  // render faria a busca "pular" enquanto o `replace` não tivesse chegado.
+  // render faria a busca "pular" enquanto o endereço não tivesse sido trocado.
+  // 🔑 Não existe efeito de volta (URL -> estado), então `replaceState` mudar
+  // o `useSearchParams()` NÃO realimenta o estado local: o fluxo é de mão
+  // única e não há laço.
   const [estado, setEstado] = useState<EstadoDoPainel>(() =>
     lerEstado(new URLSearchParams(searchParams.toString())),
   );
@@ -322,10 +357,14 @@ export function useEstadoDoPainel() {
         new URLSearchParams(searchParams.toString()),
         estado,
       );
-      router.replace(`${pathname}${destino}`, { scroll: false });
+      window.history.replaceState(null, "", `${pathname}${destino}`);
     }, 300);
+    // 🔴 O `clearTimeout` no cleanup é o que impede o timer de escrever o
+    // endereço depois que o painel saiu da tela (o admin troca de aba enquanto
+    // os 300 ms correm). Sem ele, `replaceState` reescreveria a URL de uma
+    // página que já mudou — e, diferente de `router.replace`, ninguém avisa.
     return () => clearTimeout(t);
-  }, [estado, pathname, router, searchParams]);
+  }, [estado, pathname, searchParams]);
 
   const alternarFiltro = useCallback((id: FiltroId, ligado: boolean) => {
     setEstado((e) => {

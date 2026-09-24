@@ -186,6 +186,13 @@ export function DashboardExecutivo({ dados }: { dados: Dashboard }) {
 interface Submetrica {
   rotulo: string;
   valor: number;
+  /**
+   * 🔴 A unidade, **só quando ela NÃO é a da régua** (que conta ambientes, e
+   * escreve "de 148 parceiros" uma vez no rodapé da fita). As submétricas de
+   * `onboarding` contam PESSOAS e por isso a declaram. Um token — "pessoas",
+   * não "52 de 161 pessoas convidadas ainda não responderam".
+   */
+  unidade?: string;
   href: string | null;
 }
 
@@ -204,11 +211,24 @@ function submetricasDoFoco(dados: Dashboard, foco: Foco | null): Submetrica[] {
     ];
   }
   if (foco === "onboarding") {
+    // 🔴 **Estas duas contam PESSOAS, e a fita acima diz "de 148 parceiros"**
+    // (24/09/2026, achado do João). `naoIniciados` é
+    // `pessoas − concluídos − em andamento` — o universo é de MEMBROS (161),
+    // não de ambientes, então o número pode passar do denominador da régua e
+    // parecer erro de conta. O sufixo é UM TOKEN, não frase: "Não responderam
+    // 52 pessoas". Trocar a unidade da fonte seria outra feature (a RPC não
+    // devolve onboarding por ambiente); dizer a unidade certa custa 7 letras.
     return [
-      { rotulo: "Parados 7d", valor: dados.onboarding.parados7d, href: null },
+      {
+        rotulo: "Parados 7d",
+        valor: dados.onboarding.parados7d,
+        unidade: "pessoas",
+        href: null,
+      },
       {
         rotulo: "Não responderam",
         valor: dados.onboarding.naoIniciados,
+        unidade: "pessoas",
         href: `${LINK_LISTA}&f=onb_nao`,
       },
     ];
@@ -248,11 +268,18 @@ function Variante({
             <li key={s.rotulo} className="flex items-baseline gap-2">
               <span className="corpo-sm text-muted-foreground">{s.rotulo}</span>
               <span className="numero font-semibold tabular-nums">{s.valor}</span>
+              {/* A unidade quando ela não é a da régua — token cinza colado
+                  no número, não frase. Ver `Submetrica.unidade`. */}
+              {s.unidade ? (
+                <span className="corpo-sm text-muted-foreground">
+                  {s.unidade}
+                </span>
+              ) : null}
               {s.href ? (
                 <Link
                   href={s.href}
                   prefetch={false}
-                  aria-label={`Ver ${s.rotulo.toLowerCase()}: ${s.valor}`}
+                  aria-label={`Ver ${s.rotulo.toLowerCase()}: ${s.valor}${s.unidade ? ` ${s.unidade}` : ""}`}
                   className="foco-visivel rounded-md px-1 corpo-sm font-medium text-accent-foreground hover:bg-superficie-afundada hover:underline"
                 >
                   Ver

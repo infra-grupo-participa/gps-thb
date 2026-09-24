@@ -133,10 +133,23 @@ export function SubAbaParceiros({
           ariaLabel: `Ver os ${clientes30.fecharamOs30} parceiros que fecharam os ${META_CLIENTES} clientes`,
         }}
       >
-        {/* Os outros dois recortes dos mesmos ambientes (`sem nenhum
-            cliente` / `no meio dos 30`) NÃO ficam aqui: migraram para
-            `atencao.tsx`, onde são fila da equipe. Repeti-los seria o mesmo
-            número em duas abas. */}
+        {/* 🔴 O comentário que estava aqui MENTIA (consertado em 24/09/2026,
+            achado do João): dizia que "sem nenhum cliente" e "no meio dos 30"
+            NÃO ficavam nesta tela — e a barra logo abaixo desenha os dois.
+            O desenho é que está certo, e o texto é que estava velho.
+
+            Por que os três aparecem aqui apesar de dois deles também viverem
+            em `atencao.tsx`: aqui eles são **as três fatias de uma mesma
+            escada** (`clientesComDados`: fechou · está no meio · não começou),
+            e uma barra 100% empilhada sem as outras duas fatias não é barra,
+            é um número com moldura. Lá eles são **fila de trabalho**, cada um
+            com o próprio link. Mesmo dado, duas perguntas.
+
+            ⚠️ E o "sem nenhum cliente" daqui NÃO é numericamente o de lá:
+            esta barra mede `clientesComDados === 0` (a escada dos 30);
+            `atencao.tsx` mede `clientesPreenchidos === 0`, que é o predicado
+            do filtro `sem_cliente` que o link de lá abre. Ver o comentário
+            de `semNenhumClienteCadastrado` em `dashboard.ts`. */}
         <Barras
           orientacao="horizontal"
           total={ambientesNaTrilha}
@@ -161,15 +174,25 @@ export function SubAbaParceiros({
         />
       </Bloco>
 
-      {/* ───── 2 · Entradas por mês ─────
+      {/* ───── 2 · No programa (entradas por mês) ─────
           Era o gráfico 1 de `graficos.tsx`. A comparação com o mês anterior
           (`VariacaoDoMes`) NÃO veio junto: ela é uma frase ("+3 vs. setembro
-          até o dia 23"), e esta tela não tem frase. O número macro é o total
-          da base, e a série mostra o ritmo. */}
+          até o dia 23"), e esta tela não tem frase.
+
+          🔴 **O TÍTULO virou "No programa" (24/09/2026, achado do João).**
+          Era "Entradas por mês" com 148 do lado — e número colado em título
+          de série mensal lê como "entraram 148 este mês". 148 é o total
+          acumulado da base. Das duas saídas possíveis (tirar o número do
+          título, ou o título passar a descrever o número), escolhi a segunda:
+          o par título+valor desta tela é sempre "rótulo · número · denominador"
+          e um `Bloco` sem valor abriria exceção no contrato para resolver um
+          problema de redação. O ritmo mensal continua legível — é o que as
+          barras abaixo desenham, e o `aria-label` delas já diz "Entradas por
+          mês" para quem não vê o gráfico. */}
       <Bloco
-        titulo="Entradas por mês"
+        titulo="No programa"
         valor={programa.total}
-        denominador="parceiros no programa"
+        denominador="parceiros no total"
         link={{
           href: `${LINK_LISTA}&ordem=recentes`,
           rotulo: "Ver os mais recentes",

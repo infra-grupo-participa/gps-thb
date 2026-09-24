@@ -180,6 +180,18 @@ export default async function AdminPage({
           // RPC só, resolvida no servidor, descendo por prop. Trocar de
           // sub-aba não busca nada: é troca de conteúdo montado, sem hook de
           // leitura em folha que desmonta por aba.
+          //
+          // ⚠️ Essa afirmação depende do MECANISMO, não é verdade estrutural
+          // desta página: até `89dd8a0` era falsa — `abas-painel.tsx` escrevia
+          // `?vis=` com `router.replace`, que em App Router re-executa este
+          // Server Component (esta página lê `searchParams`) a cada troca de
+          // sub-aba. Hoje é verdade porque há TRÊS escritores de URL do
+          // painel e os três usam `window.history.replaceState` puro (sem ida
+          // ao servidor): `abas-painel.tsx` (`aba`/`vis`), `dashboard/regua.tsx`
+          // (`foco`) e `useEstadoDoPainel` (`alunos-ativos-lista/
+          // estado-na-url.ts`, `q`/`ordem`/`f`/`classe`). Quem trocar esse
+          // mecanismo de volta para `router.replace` — em qualquer um dos
+          // três arquivos — quebra esta promessa.
           visaoAtencao={
             dashboard ? (
               <PrecisaDeAtencao

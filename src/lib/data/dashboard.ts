@@ -184,17 +184,26 @@ export interface DashboardCaminho {
 }
 
 /**
- * As 5 réguas da fila da equipe.
+ * As réguas da fila da equipe.
  *
  * ⚠️ Os cortes de tempo são DIFERENTES de propósito: `favoritoParado` usa
  * 7 dias (o cliente esfriou) e `semAbrir14d` de `DashboardParceiros` usa 14
  * (o parceiro sumiu). São perguntas distintas — não unificar.
+ *
+ * 🔴 **`gps.admin_dashboard()` AINDA devolve `ambiente_sem_cliente`, e o
+ * mapeador a IGNORA de propósito (24/09/2026).** A coluna não virou campo
+ * deste tipo: o predicado dela é `not exists (etapa1_clientes)`, enquanto o
+ * número que a tela mostra tem de ser o MESMO do filtro que o link abre
+ * (`f=sem_cliente` → `clientesPreenchidos === 0`, sobre o lote já carregado).
+ * Dois predicados diferentes fariam o clique cair numa lista com outra
+ * contagem — a tela mentindo sobre o próprio recorte. O bloco "Sem nenhum
+ * cliente" de `atencao.tsx` lê `clientes30.semNenhumClienteCadastrado`.
+ * Remover a coluna da RPC é migration separada (com `explain analyze`).
  */
 export interface DashboardAtencao {
   favoritoParado: number;
   reuniaoSemEntrevista: number;
   socioPendente: number;
-  ambienteSemCliente: number;
   parceiroSemMensagem: number;
 }
 
@@ -487,7 +496,9 @@ export function mapearDashboard(d: Record<string, unknown>): Dashboard {
       favoritoParado: n(ate.favorito_parado),
       reuniaoSemEntrevista: n(ate.reuniao_sem_entrevista),
       socioPendente: n(ate.socio_pendente),
-      ambienteSemCliente: n(ate.ambiente_sem_cliente),
+      // `ate.ambiente_sem_cliente` NÃO é lido de propósito — ver o comentário
+      // em `DashboardAtencao`. O número da tela vem do lote, com o predicado
+      // do filtro `f=sem_cliente`.
       parceiroSemMensagem: n(ate.parceiro_sem_mensagem),
     },
     parceiros: {
@@ -597,6 +608,27 @@ export interface ResumoClientes30 {
   /** `clientesComDados >= META_CLIENTES` — fato observável, não depende de
    * o parceiro marcar tarefa nenhuma. */
   fecharamOs30: number;
+  /**
+   * `clientesPreenchidos === 0` — **nenhuma linha de cliente cadastrada**,
+   * nem incompleta.
+   *
+   * 🔴 **NÃO é `semNenhumCliente`, e a diferença é o motivo deste campo
+   * existir** (24/09/2026, achado do João). São dois predicados sobre dois
+   * campos:
+   *
+   * | campo | predicado | quem cai dentro |
+   * |---|---|---|
+   * | `semNenhumCliente` | `clientesComDados === 0` | inclui quem cadastrou clientes mas nenhum com ficha completa (nome + telefone) |
+   * | `semNenhumClienteCadastrado` | `clientesPreenchidos === 0` | só quem não cadastrou NADA |
+   *
+   * O primeiro é maior ou igual ao segundo. `atencao.tsx` mostra este,
+   * porque o link dele abre o filtro `sem_cliente`
+   * (`filtros.ts`: `a.clientesPreenchidos === 0`) — **número e link com o
+   * MESMO predicado**, que é a regra que o veredito anterior já tinha
+   * cobrado. `base.tsx` continua com `semNenhumCliente`, que é a barra da
+   * escada dos 30 (o denominador dela é `clientesComDados`, não outro).
+   */
+  semNenhumClienteCadastrado: number;
 }
 
 /**
@@ -615,12 +647,23 @@ export function resumoClientes30(alunos: AlunoGps[]): ResumoClientes30 {
   let semNenhumCliente = 0;
   let noMeioDos30 = 0;
   let fecharamOs30 = 0;
+  // 🔴 Conta SEPARADA, por `clientesPreenchidos` — não é ramo do `if` acima
+  // (que divide por `clientesComDados` e é uma escada de 3 degraus mutuamente
+  // exclusivos). Este é outro eixo: ver o comentário do campo na interface.
+  let semNenhumClienteCadastrado = 0;
   for (const a of alunos) {
     if (a.clientesComDados === 0) semNenhumCliente += 1;
     else if (a.clientesComDados < META_CLIENTES) noMeioDos30 += 1;
     else fecharamOs30 += 1;
+
+    if (a.clientesPreenchidos === 0) semNenhumClienteCadastrado += 1;
   }
-  return { semNenhumCliente, noMeioDos30, fecharamOs30 };
+  return {
+    semNenhumCliente,
+    noMeioDos30,
+    fecharamOs30,
+    semNenhumClienteCadastrado,
+  };
 }
 
 export interface ResumoAtendimento {

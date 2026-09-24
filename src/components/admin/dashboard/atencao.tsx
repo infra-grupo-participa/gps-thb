@@ -161,16 +161,35 @@ export function PrecisaDeAtencao({
     // 3º — o parceiro não começou. Grave, mas ESTÁVEL. Único com link direto.
     // 🔑 Veio TAMBÉM do par "Sem nenhum cliente" do KPI "Clientes
     // cadastrados": o mesmo conjunto, que estava em dois lugares.
+    //
+    // 🔴 **O NÚMERO E O LINK PASSARAM A TER O MESMO PREDICADO** (24/09/2026,
+    // achado do João — mesma classe do que ele já reprovou no veredito
+    // anterior). Eram TRÊS definições de "sem nenhum cliente" convivendo:
+    //
+    //   · o número aqui   → coluna `ambiente_sem_cliente` da RPC (até 24/09;
+    //                       o mapeador não a lê mais): `not exists (etapa1_clientes)`
+    //   · o link `f=sem_cliente` → `clientesPreenchidos === 0` (`filtros.ts`)
+    //   · a barra em `base.tsx`  → `clientesComDados === 0`
+    //
+    // Clicar num número e cair numa lista com OUTRA contagem é a tela
+    // mentindo sobre o próprio recorte. O número agora vem do LOTE, com o
+    // predicado do filtro que o link abre (`semNenhumClienteCadastrado`,
+    // `clientesPreenchidos === 0`). `base.tsx` fica com `semNenhumCliente`
+    // porque lá a barra é a escada dos 30, medida em `clientesComDados` —
+    // eixo diferente, e o rótulo de lá diz o denominador dele.
+    //
+    // ⚠️ Como vem do lote, vale sobre `ambientesCarregados` — o rodapé de
+    // lote parcial desta seção já cobre isso, igual aos outros números puros.
     {
       chave: "ambiente_sem_cliente",
-      valor: atencao.ambienteSemCliente,
+      valor: clientes30.semNenhumClienteCadastrado,
       rotulo: "Sem nenhum cliente",
       destino:
-        atencao.ambienteSemCliente > 0
+        clientes30.semNenhumClienteCadastrado > 0
           ? {
               href: `${LINK_LISTA}&f=sem_cliente`,
               rotulo: "Ver os parceiros",
-              ariaLabel: `Ver os ${atencao.ambienteSemCliente} parceiros sem nenhum cliente cadastrado`,
+              ariaLabel: `Ver os ${clientes30.semNenhumClienteCadastrado} parceiros sem nenhum cliente cadastrado`,
             }
           : null,
       encaminhamento: null,
@@ -593,7 +612,23 @@ function SubBloco({
 interface Bloco {
   chave: string;
   valor: number;
-  /** 🔴 Até 3 palavras. */
+  /**
+   * 🔴 **Até 3 palavras — e NÚMERO NÃO CONTA COMO PALAVRA** (24/09/2026).
+   *
+   * O contrato dizia "até 3" e dois rótulos legítimos o estouravam na
+   * contagem literal: "No meio dos 30" (4) e "Sem abrir há 14+ dias" (5, no
+   * ranking). Encurtá-los exigiria tirar o PRAZO — e o prazo é a trava de
+   * "parado nunca aparece sozinho": esta tela tem três cortes de tempo
+   * diferentes (7 dias para favorito parado, 14 para parceiro sumido, 30 para
+   * inatividade), e a palavra nua "parado" faria os três parecerem a mesma
+   * régua. O número e a preposição que o carrega são DADO, não prosa.
+   *
+   * A regra que vale, então: **até 3 palavras de conteúdo**; o corte de tempo
+   * ("30", "14+ dias", "7d") e as preposições que o prendem à frase não
+   * entram na conta. O que continua proibido é a frase explicativa — "sem
+   * abrir há 14+ dias" passa, "parceiros que não abriram o portal nos últimos
+   * 14 dias" não.
+   */
   rotulo: string;
   /**
    * O denominador só quando ele NÃO é o da seção — hoje, os dois blocos que

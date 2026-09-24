@@ -13,12 +13,11 @@
  * de exploração transformaria 1 chamada em 6.
  *
  * 🔴 **`window.history.replaceState`, e NÃO `router.replace` — a diferença é
- * o motivo desta zona existir.** `abas-painel.tsx` escreve `?vis=` com
- * `router.replace(url, { scroll: false })`, e em App Router isso **re-executa
- * o Server Component** quando a página lê `searchParams` (e `page.tsx` lê):
- * a RPC roda de novo a cada troca de sub-aba. Aqui, com seis estágios feitos
- * para serem varridos em sequência, esse desenho transformaria uma exploração
- * de 6 cliques em 6 RPCs.
+ * o motivo desta zona existir.** A página (`page.tsx`) lê `searchParams`, e em
+ * App Router `router.replace` **re-executa o Server Component** nesse caso: a
+ * RPC roda de novo a cada troca. Aqui, com seis estágios feitos para serem
+ * varridos em sequência, esse desenho transformaria uma exploração de 6
+ * cliques em 6 RPCs.
  *
  * Desde o Next 14.1 o `useSearchParams()` **sincroniza com `pushState`/
  * `replaceState` nativos** sem ir ao servidor (docs: "Using the native History
@@ -26,16 +25,15 @@
  * mesmo tick, este componente re-renderiza e a variante certa aparece — zero
  * fetch, e sem `scroll: false` porque não há navegação para mover a rolagem.
  *
- * ⚠️ **Não "uniformize" isto com `abas-painel.tsx`.** A diferença é
- * deliberada e tem direção: quem está certo é este arquivo. O `?vis=` de lá
- * merece a MESMA troca, em outra fatia — o comentário do `page.tsx` que diz
- * "trocar de sub-aba não busca nada" está errado sobre o próprio `?vis=`.
- *
- * 🔴 **Um escritor só: este arquivo é o dono de `?foco=`.** Mesma regra que
- * `abas-painel.tsx` cumpre para `aba`/`vis` e `useEstadoDoPainel` para
- * `q`/`ordem`/`f`. Dois componentes com estado local disputando a mesma chave
- * se sobrescrevem: o último `router.replace` a rodar devolve o valor velho que
- * leu na montagem. Ninguém mais grava `foco`.
+ * 🔑 **Três escritores de URL no painel, cada um dono de um parâmetro,
+ * todos com o mesmo mecanismo.** Nenhum usa `router.replace`:
+ *   · este arquivo (`regua.tsx`) escreve `?foco=`;
+ *   · `abas-painel.tsx` (`trocar`/`trocarVis`) escreve `?aba=`/`?vis=`;
+ *   · `useEstadoDoPainel` (`alunos-ativos-lista/estado-na-url.ts`) escreve
+ *     `?q=`/`?ordem=`/`?f=`/`?classe=`.
+ * Um escritor por parâmetro é a regra — dois componentes disputando a mesma
+ * chave se sobrescrevem: o último `replaceState` a rodar devolve o valor
+ * velho que leu na montagem. Ninguém além deste arquivo grava `foco`.
  *
  * 🔑 **Nenhum estado local, nem `useState`.** O foco é derivado da URL a cada
  * render (`lerFoco(searchParams.get("foco"))`). `useEstadoDoPainel` guarda
@@ -50,6 +48,16 @@ import { useCallback, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 import { lerFoco, type Foco } from "../alunos-ativos-lista/estado-na-url";
+
+/**
+ * O id do ÚNICO `tabpanel` da régua — literal, não gerado por `useId()`.
+ *
+ * 🔑 Há uma régua por tela e o painel é um só (as variantes trocam o conteúdo
+ * dele, nunca coexistem no DOM), então um id fixo é estável entre servidor e
+ * cliente e legível no inspetor. `useId()` daria um id opaco por instância
+ * para resolver uma colisão que este componente não tem.
+ */
+const ID_PAINEL_REGUA = "regua-painel";
 
 /** Um estágio da régua: a chave da URL, o que se lê e quantos são. */
 export interface EstagioRegua {
@@ -191,10 +199,24 @@ export function Regua({ denominador, estagios, variantes }: ReguaProps) {
               }}
               type="button"
               role="tab"
-              // 🔴 `aria-current` além de `aria-selected`: o pedido da casa é
-              // que o ativo NUNCA seja só cor (padrão de
-              // `clientes-programa/index.tsx`). Quem lê a tela recebe o estado
-              // pelo ARIA; quem enxerga recebe pela régua de 2 px abaixo.
+              // 🔴 O par que faltava (24/09/2026, achado do João): `role="tab"`
+              // sem `aria-controls` e `role="tabpanel"` sem `id` deixa o
+              // padrão pela metade — o leitor de tela anuncia "aba", e não tem
+              // como levar a pessoa ao painel que a aba comanda.
+              //
+              // 🔑 **Os SEIS `aria-controls` apontam para o MESMO id**, e isso
+              // é de propósito: só a variante ativa entra no DOM (ver o
+              // comentário do `tabpanel` abaixo — elemento invisível continua
+              // contando na área rolável do ancestral). O painel é um só e
+              // troca de conteúdo; seis painéis empilhados com `hidden` é
+              // exatamente o que este componente recusa.
+              id={`regua-tab-${estagio.foco}`}
+              aria-controls={ID_PAINEL_REGUA}
+              // 🔴 `aria-current` FICA. Em `role="tab"` ele é redundante com
+              // `aria-selected` para um leitor de tela — mas é o padrão da
+              // casa (`clientes-programa/index.tsx`) e o pedido é que o ativo
+              // nunca seja só cor. Redundância em ARIA de estado é barata;
+              // divergir do padrão da casa numa peça só é que sai caro.
               aria-selected={ativo}
               aria-current={ativo ? "true" : undefined}
               // Roving tabindex: um único parada de Tab na régua inteira, e as
@@ -253,12 +275,19 @@ export function Regua({ denominador, estagios, variantes }: ReguaProps) {
           continua contando na área rolável do ancestral, e sete tabelas
           empilhadas dariam rolagem sobre o vazio. */}
       <div
+        id={ID_PAINEL_REGUA}
         role="tabpanel"
-        aria-label={
-          focoAtivo
-            ? (estagios.find((e) => e.foco === focoAtivo)?.rotulo ?? "Todos")
-            : "Todos os parceiros"
-        }
+        // 🔴 `aria-labelledby` aponta para a ABA ATIVA — é ela que nomeia o
+        // painel, e é assim que o padrão manda (o `aria-label` fixo que estava
+        // aqui repetia o rótulo em vez de amarrar os dois). Sem foco, nenhuma
+        // aba está selecionada e o painel mostra "todos": aí não há aba para
+        // apontar, e o `aria-label` próprio é que nomeia.
+        {...(focoAtivo
+          ? { "aria-labelledby": `regua-tab-${focoAtivo}` }
+          : { "aria-label": "Todos os parceiros" })}
+        // Painel de aba tem de ser alcançável pelo Tab quando não há elemento
+        // focável dentro — e aqui pode não haver (uma variante é só gráfico).
+        tabIndex={0}
       >
         {variantes[focoAtivo ?? "todos"]}
       </div>

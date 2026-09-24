@@ -269,18 +269,29 @@ test.describe("Admin · Visão geral · régua + cruzamento + ranking", () => {
     ).toBeVisible();
 
     // Rótulos-chave do que migrou do dashboard (um por origem):
-    //  · "Parados há 30+ dias"  ← KPI "ativos 30 dias"
+    //  · "Sem acessar 30+ dias" ← KPI "ativos 30 dias"
     //  · "Sem login"            ← card "acesso ao portal"
     //  · "Onboarding parado"    ← card "onboarding"
     //  · "Em fechamento"        ← KPI "clientes em fechamento" (seção Clientes)
     for (const rotulo of [
-      /parados h(á|a) 30\+ dias/i,
+      /sem acessar 30\+ dias/i,
       /^sem login$/i,
       /onboarding parado/i,
       /em fechamento/i,
     ]) {
       await expect(page.getByText(rotulo).first()).toBeVisible();
     }
+
+    // 🔴 A NEGATIVA que protege o achado anterior (23/09/2026): o bloco
+    // "Parados há 30+ dias" (`acesso.semAcesso30d`, RPC) foi REMOVIDO porque
+    // duplicava "Sem acessar 30+ dias" (`atendimento.semAcesso30d`) com o
+    // MESMO link (`&f=inativos`) e um NÚMERO DIFERENTE — as duas fontes usam
+    // definições distintas de "sem acesso" (a RPC exclui quem nunca entrou, o
+    // filtro `inativos` inclui). Se o rótulo voltar, o número duplicado voltou
+    // junto: este teste vermelha antes de a tela mentir de novo.
+    await expect(page.locator("body")).not.toContainText(
+      /parados h(á|a) 30/i,
+    );
 
     // 🔴 Número sem link não parece link: os dois que ficaram sem destino.
     for (const rotulo of [
@@ -304,7 +315,12 @@ test.describe("Admin · Visão geral · régua + cruzamento + ranking", () => {
     await entrar(page, admin!, "/admin?vis=parceiros");
 
     // O ranking é a primeira peça (foi a que o Marcio aprovou).
-    const tabela = page.getByRole("table").first();
+    // 🔴 Ancorado pelo nome acessível da região (`ranking-parceiros`), não
+    // por `.first()` — mesmo defeito do teste 13: `.first()` pegaria a
+    // primeira `<table>` da página inteira, não necessariamente o ranking.
+    const tabela = page
+      .getByRole("region", { name: /ranking de parceiros/i })
+      .getByRole("table");
     await expect(tabela).toBeVisible();
     // O cabeçalho carrega o prazo: "parado" nunca aparece sozinho.
     await expect(tabela.locator("thead")).toContainText(/14/);
@@ -315,13 +331,24 @@ test.describe("Admin · Visão geral · régua + cruzamento + ranking", () => {
     // dashboard — título de até 3 palavras, sem card.
     for (const rotulo of [
       /fecharam os \d+/i,
-      /entradas por m(ê|e)s/i,
+      // 🔑 Era "Entradas por mês" (24/09/2026): o número ao lado do título é o
+      // TOTAL acumulado da base (148), e colado num título de série mensal ele
+      // lia como "entraram 148 este mês". O título passou a descrever o número
+      // que está do lado dele; a série mensal continua nas barras abaixo, com
+      // "Entradas por mês" no `aria-label` delas (que é `aria-label`, não
+      // texto visível — por isso este teste procura o título novo).
+      /^no programa$/i,
       /progresso etapa 01/i,
       /titulares e s(ó|o)cios/i,
       /grau de rela(ç|c)(ã|a)o/i,
     ]) {
       await expect(page.getByText(rotulo).first()).toBeVisible();
     }
+
+    // O gráfico mensal não perdeu o nome para quem não vê o desenho.
+    await expect(
+      page.getByRole("img", { name: /entradas por m(ê|e)s/i }).first(),
+    ).toBeVisible();
   });
 
   test("9 · 🔴 clicar na régua NÃO dispara requisição ao servidor", async ({
@@ -399,5 +426,107 @@ test.describe("Admin · Visão geral · régua + cruzamento + ranking", () => {
     // dispositivo da matriz.
     await entrar(page, admin!, "/admin?foco=contrato");
     await semRolagemHorizontal(page);
+  });
+
+  test("13 · 🔴 métrica clicada mostra a LISTA INTEIRA daquele recorte; só a visão 'todos' corta", async ({
+    page,
+  }) => {
+    /**
+     * 🔴 O critério do Marcio, literal: *"clicando numa métrica, ela tem que
+     * mostrar a lista das pessoas daquela lista específica"*.
+     *
+     * O que este teste impede de voltar (achado do João, 24/09/2026): a tabela
+     * cortava em 15 linhas SEMPRE, inclusive com recorte ativo, e o link de
+     * saída dizia "ver os 60 →" apontando para `?vis=parceiros&foco=X` — só
+     * que o destino (`base.tsx`) renderiza `foco={null}` e mostrava os 86.
+     * Link prometendo 60, destino entregando 86, sem aviso.
+     *
+     * Quatro casos, e os quatro têm de valer ao mesmo tempo:
+     *   · com recorte  → lista inteira, SEM link de saída (nada escondido)
+     *   · sem recorte  → 15 linhas, COM link (é a visão que abre sozinha)
+     *   · identidade (`cadastrou`) → o ranking JÁ É essa lista: 15 + link,
+     *     cabeçalho "N de N" e SEM o token "sem recorte" (há recorte, é tudo)
+     *   · sem recorte (`entrou`) → 15 + link, token visível e cabeçalho
+     *     "N parceiros" — NUNCA "N de N" ao lado do token (achado do João,
+     *     it. 3: as duas frases juntas se contradizem)
+     */
+    // 🔴 `page.getByRole("table").first()` pega a PRIMEIRA tabela da
+    // página inteira, não a do ranking — ancorar pelo nome acessível da
+    // `<section aria-labelledby="ranking-parceiros">` (`parceiros.tsx`).
+    const ranking = (p: typeof page) =>
+      p.getByRole("region", { name: /ranking de parceiros/i });
+    const linhasDoRanking = (p: typeof page) =>
+      ranking(p).getByRole("table").locator("tbody tr");
+    const linkVerTodos = (p: typeof page) =>
+      p.getByRole("link", { name: /ver todos os \d+/i });
+
+    // ── Visão "todos": corta em 15 e oferece a saída ──
+    await entrar(page, admin!, "/admin");
+    await expect(ranking(page).getByRole("table")).toBeVisible();
+    await expect(linhasDoRanking(page)).toHaveCount(15);
+    await expect(linkVerTodos(page)).toBeVisible();
+    // 🔴 O link vai para a sub-aba SEM `&foco=` — é o que ele de fato abre.
+    await expect(linkVerTodos(page)).toHaveAttribute(
+      "href",
+      "/admin?vis=parceiros",
+    );
+
+    // ── Recorte ativo: a lista das pessoas daquela métrica, inteira ──
+    // `favorito` é o recorte mais numeroso (37 em produção) e por isso o que
+    // prova o corte: se o `limite` voltar a morder, ele para em 15.
+    await entrar(page, admin!, "/admin?foco=favorito");
+    await expect(ranking(page).getByRole("table")).toBeVisible();
+    const comFoco = await linhasDoRanking(page).count();
+    expect(
+      comFoco,
+      "com `?foco=favorito` a tabela tem de mostrar TODAS as linhas do recorte, não as 15 primeiras",
+    ).toBeGreaterThan(15);
+    // Nada escondido = nada a oferecer. Link aqui seria a promessa quebrada.
+    await expect(linkVerTodos(page)).toHaveCount(0);
+
+    // ── Identidade: o ranking JÁ É a lista de quem cadastrou ──
+    // Sem esta metade, `cadastrou` voltava a desenhar os 86 inteiros
+    // (achado do João, 24/09): "recorte" que não recorta nada desligava o
+    // corte de 15 e abria ~4.400 px de tabela na sub-aba padrão.
+    await entrar(page, admin!, "/admin?foco=cadastrou");
+    await expect(ranking(page).getByRole("table")).toBeVisible();
+    await expect(linhasDoRanking(page)).toHaveCount(15);
+    await expect(linkVerTodos(page)).toBeVisible();
+    await expect(page.getByText(/^(\d+) de \1$/)).toBeVisible();
+    await expect(
+      page.getByText(/sem recorte por este est(á|a)gio/i),
+    ).toHaveCount(0);
+
+    // ── Sem recorte: token E cabeçalho sem denominador ──
+    await entrar(page, admin!, "/admin?foco=entrou");
+    await expect(ranking(page).getByRole("table")).toBeVisible();
+    await expect(linhasDoRanking(page)).toHaveCount(15);
+    await expect(linkVerTodos(page)).toBeVisible();
+    await expect(
+      page.getByText(/sem recorte por este est(á|a)gio/i),
+    ).toBeVisible();
+    await expect(page.getByText(/^\d+ parceiros$/)).toBeVisible();
+    await expect(page.getByText(/^(\d+) de \1$/)).toHaveCount(0);
+  });
+
+  test("14 · a régua completa o padrão ARIA de abas (tab ↔ tabpanel)", async ({
+    page,
+  }) => {
+    await entrar(page, admin!, "/admin?foco=contrato");
+
+    const aba = page.getByRole("tab", { name: /contrato/i });
+    await expect(aba).toHaveAttribute("aria-selected", "true");
+
+    // 🔑 UM painel só (a variante ativa troca o conteúdo dele), e a aba ativa
+    // é quem o nomeia. `aria-controls` sem painel com esse `id` é ARIA quebrado
+    // — e passa despercebido sem um teste que amarre os dois lados.
+    const idPainel = await aba.getAttribute("aria-controls");
+    expect(idPainel).toBeTruthy();
+
+    const painel = page.locator(`#${idPainel}`);
+    await expect(painel).toHaveAttribute("role", "tabpanel");
+
+    const idAba = await aba.getAttribute("id");
+    await expect(painel).toHaveAttribute("aria-labelledby", idAba!);
   });
 });

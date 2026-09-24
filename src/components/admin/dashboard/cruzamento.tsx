@@ -94,7 +94,6 @@ export function Cruzamento({
   const iCorrente = itens.findIndex((i) => i.semana === serie.semanaCorrente);
 
   const totalClientes = itens.reduce((s, i) => s + i.clientes, 0);
-  const totalPar = itens.reduce((s, i) => s + i[campo], 0);
 
   /**
    * O token `· em curso` para onde ele ainda cabe: o resumo do leitor de tela
@@ -136,10 +135,16 @@ export function Cruzamento({
       {/* Hierarquia por POSIÇÃO: rótulo pequeno, número macro do período e a
           legenda de UMA palavra por série, tudo numa faixa só antes do
           desenho. Sem ícone, sem card interno, sem frase. */}
+      {/* 🔴 O `h3` identifica o PERÍODO ("N semanas"), não a série — o número
+          macro ao lado é o total de cadastros. A legenda abaixo não repete
+          esse número: repetir seria o mesmo valor duas vezes na mesma faixa
+          (o que o comentário de `mostrarLegenda={false}` já recusa fazer
+          contra o gráfico; aqui é a mesma regra contra o próprio cabeçalho).
+          `itens.length`, nunca literal "10" — a série pode encolher. */}
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <div className="flex items-baseline gap-3">
           <h3 id="cruzamento-titulo" className="rotulo text-muted-foreground">
-            Por semana
+            {itens.length} semanas
           </h3>
           <span className="numero numero-lg font-semibold">
             {totalClientes}
@@ -148,7 +153,8 @@ export function Cruzamento({
 
         {/* Legenda: uma palavra por série, com a forma do desenho ao lado —
             bloco para a barra, traço para a linha. A forma é o segundo canal
-            que o par de cores sozinho não daria. */}
+            que o par de cores sozinho não daria. Sem número: o total já está
+            no cabeçalho acima, e o valor por semana está na tabela abaixo. */}
         {/* `gap-3`, não `gap-4`, e `whitespace-nowrap` nos itens: medido em
             390px, os 3 itens da legenda pediam 330px e a seção dava 324 —
             "em curso" quebrava em "em / curso". Com 8px a menos cabe (322).
@@ -162,9 +168,6 @@ export function Cruzamento({
               style={{ backgroundColor: COR_DO_TOM.marca }}
             />
             <span className="corpo-sm text-muted-foreground">cadastros</span>
-            <span className="numero corpo-sm font-semibold">
-              {totalClientes}
-            </span>
           </li>
           <li className="flex items-baseline gap-1.5">
             <span
@@ -175,7 +178,6 @@ export function Cruzamento({
             <span className="corpo-sm text-muted-foreground">
               {rotuloLinha}
             </span>
-            <span className="numero corpo-sm font-semibold">{totalPar}</span>
           </li>
 
           {/* 🔑 **O terceiro item explica a FORMA, não uma série.** A hachura
@@ -249,7 +251,7 @@ export function Cruzamento({
         <thead>
           <tr>
             <th scope="col" className="py-1 rotulo text-muted-foreground">
-              Semana
+              semana
             </th>
             <th scope="col" className="py-1 text-right rotulo text-muted-foreground">
               cadastros

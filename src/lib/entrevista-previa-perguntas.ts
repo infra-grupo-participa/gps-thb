@@ -6,6 +6,26 @@
  * para sabermos o perfil disc dele, e ao final, eh gerado um relatorio geral
  * do perfil disc dele, automatico, sem precisar informar, anexar"*.
  *
+ * ── AJUSTE DE 24/09/2026 (aprovado pelo Marcio) ────────────────────────────
+ *
+ * A entrevista existe para ABASTECER o "Script de Fechamento da Reunião
+ * Preliminar" (SPIN: abertura citando bens concretos → história de conflito
+ * de herdeiros → diagnóstico "bens em PF?"/"já tem planejamento?" →
+ * implicação (conflito + inventário até 21%) → solução → oferta binária com
+ * pagamento no ato). Três mudanças, nessa ordem de motivo:
+ *   1. **5 perguntas novas de FATO** (`titularidade`, `instrumento_existente`,
+ *      `conflito_herdeiros`, `imoveis_qtd`, `imoveis_heranca`) + 1 de
+ *      FECHAMENTO (`decide_investimento`) — todas SEM peso DISC, porque são
+ *      dado objetivo para o script, não jeito de ser. Total: 30.
+ *   2. **Bloco `patrimonio` passou para ANTES de `decisores`** — a abertura
+ *      do script cita bens concretos, então o roteiro precisa sabê-los antes
+ *      de perguntar quem decide sobre eles.
+ *   3. **Teto de peso DISC fora do bloco `comportamento`: máximo 2 por letra
+ *      por opção.** Peso 3 fora de `comportamento` inflava uma letra com
+ *      sinal de contexto (indicação, histórico), não de comportamento
+ *      observado — corrigidas as 2 opções que excediam
+ *      (`motivo_busca.indicacao`, `ja_tentou.comecou`, ambas I:3 → I:2).
+ *
  * ── 🔑 A REGRA QUE GOVERNA ESTE ARQUIVO ────────────────────────────────────
  *
  * **NENHUMA pergunta aberta.** Palavras dele: *"nao tem pergunta aberta, com
@@ -79,13 +99,17 @@ export interface PerguntaEntrevista {
 }
 
 /**
- * 🔴 O ROTEIRO. 24 perguntas, dentro da faixa pedida (20 a 30).
+ * 🔴 O ROTEIRO. 30 perguntas, dentro da faixa pedida (20 a 30).
  *
- * A ordem importa: abre leve (contexto), entra em decisores cedo (é a trava
- * que o Marcio mais enfatizou — *"está proibido participar da reunião sem os
- * decisores"*), passa por patrimônio, e fecha no comportamento, que é onde o
- * DISC ganha mais peso. Perguntar comportamento no fim é deliberado: depois
- * de 15 minutos de conversa a pessoa já relaxou, e as respostas são mais
+ * A ordem importa: abre leve (contexto), passa por PATRIMÔNIO antes de
+ * DECISORES — ajuste de 24/09/2026, porque a abertura do "Script de
+ * Fechamento da Reunião Preliminar" (SPIN) depende de já saber o que a
+ * pessoa TEM (bens concretos, imóveis, titularidade) antes de perguntar
+ * quem decide sobre eles. Decisores continua cedo — é a trava que o Marcio
+ * mais enfatizou (*"está proibido participar da reunião sem os
+ * decisores"*) — e o roteiro fecha no comportamento, que é onde o DISC
+ * ganha mais peso. Perguntar comportamento no fim é deliberado: depois de
+ * 15 minutos de conversa a pessoa já relaxou, e as respostas são mais
  * fiéis do que seriam na primeira pergunta.
  */
 export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
@@ -100,7 +124,7 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     opcoes: [
       { id: "problema_urgente", rotulo: "Tem um problema acontecendo agora", disc: { D: 2 } },
       { id: "medo_futuro", rotulo: "Medo do que pode acontecer com a família", disc: { S: 2 } },
-      { id: "indicacao", rotulo: "Alguém indicou / ouviu falar", disc: { I: 3 } },
+      { id: "indicacao", rotulo: "Alguém indicou / ouviu falar", disc: { I: 2 } },
       { id: "pesquisa", rotulo: "Vinha pesquisando e estudando o assunto", disc: { C: 2 } },
       { id: "economia", rotulo: "Quer pagar menos imposto", disc: { D: 1, C: 1 } },
     ],
@@ -127,8 +151,146 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     opcoes: [
       { id: "nunca", rotulo: "Nunca tratou do assunto", disc: { S: 1 } },
       { id: "conversou", rotulo: "Conversou com alguém, mas não avançou", disc: { I: 2 } },
-      { id: "comecou", rotulo: "Começou e parou no meio", disc: { I: 3 } },
+      { id: "comecou", rotulo: "Começou e parou no meio", disc: { I: 2 } },
       { id: "outro_escritorio", rotulo: "Já fez com outro escritório", disc: { D: 1, C: 1 } },
+    ],
+  },
+
+  // ─── PATRIMÔNIO ──────────────────────────────────────────────────────────
+  {
+    id: "composicao",
+    bloco: "patrimonio",
+    enunciado:
+      "Se a gente fosse desenhar um mapa do que você tem hoje, ele estaria " +
+      "mais concentrado em quê?",
+    opcoes: [
+      { id: "imoveis", rotulo: "Imóveis" },
+      { id: "empresa", rotulo: "Na empresa / no negócio" },
+      { id: "investimentos", rotulo: "Investimentos financeiros" },
+      { id: "misto", rotulo: "Um pouco de cada" },
+    ],
+  },
+  {
+    id: "titularidade",
+    bloco: "patrimonio",
+    enunciado:
+      "Esses bens estão no seu nome mesmo, de pessoa física, ou já dentro " +
+      "de alguma empresa?",
+    ajuda: "Diagnóstico do script — 'tudo PF' é o gancho da história do Rafael.",
+    opcoes: [
+      { id: "tudo_pf", rotulo: "Tudo em pessoa física" },
+      { id: "parte_pj", rotulo: "Parte já está em empresa" },
+      { id: "tudo_pj", rotulo: "Tudo em empresa" },
+      { id: "nao_sabe", rotulo: "Não sabe dizer" },
+    ],
+  },
+  {
+    id: "instrumento_existente",
+    bloco: "patrimonio",
+    enunciado:
+      "Hoje existe alguma coisa formal para o dia em que você faltar — " +
+      "testamento, doação em vida, uma empresa patrimonial?",
+    ajuda: "Diagnóstico — quem já tem holding não recebe oferta de holding.",
+    opcoes: [
+      { id: "nada", rotulo: "Nada" },
+      { id: "testamento", rotulo: "Testamento" },
+      { id: "doacao", rotulo: "Doação em vida" },
+      { id: "holding", rotulo: "Holding / empresa patrimonial" },
+      { id: "nao_sabe", rotulo: "Não sabe" },
+    ],
+  },
+  {
+    id: "conflito_herdeiros",
+    bloco: "patrimonio",
+    enunciado:
+      "Se acontecesse alguma coisa amanhã, como você imagina a divisão " +
+      "entre os seus herdeiros?",
+    ajuda: "Implicação — é o peso do 'seus filhos estão na situação do Rafael'.",
+    opcoes: [
+      { id: "tranquila", rotulo: "Tranquila, todos se entendem" },
+      { id: "discussao", rotulo: "Provavelmente daria discussão" },
+      { id: "conflito_hoje", rotulo: "Já existe conflito hoje" },
+      { id: "nunca_pensou", rotulo: "Nunca parou para pensar" },
+    ],
+  },
+  {
+    id: "imoveis_qtd",
+    bloco: "patrimonio",
+    enunciado: "Quantos imóveis, contando o que você mora e o que aluga?",
+    ajuda: "Abertura — o parceiro cita 'as três casas de aluguel' em vez de falar genérico.",
+    opcoes: [
+      { id: "nenhum", rotulo: "Nenhum" },
+      { id: "um_dois", rotulo: "1 ou 2" },
+      { id: "tres_cinco", rotulo: "3 a 5" },
+      { id: "seis_mais", rotulo: "6 ou mais" },
+    ],
+  },
+  {
+    // 🔴 `dependeDe` NÃO é lido em nenhum lugar (nem `formulario.tsx`, nem o
+    // cálculo) — confirmado por grep antes de escrever esta pergunta. Usá-lo
+    // aqui deixaria a pergunta sempre visível, então ela é INDEPENDENTE, com
+    // uma opção própria para quem não tem imóvel.
+    id: "imoveis_heranca",
+    bloco: "patrimonio",
+    enunciado: "Algum desses imóveis veio de herança, ou é dos seus pais?",
+    ajuda: "Abertura — 'aquele apartamento da sua mãe'.",
+    opcoes: [
+      { id: "sim_heranca", rotulo: "Sim, veio de herança" },
+      { id: "sim_pais", rotulo: "Sim, é dos pais / da família" },
+      { id: "nao", rotulo: "Não, foi tudo construído/comprado" },
+      { id: "nao_tem", rotulo: "Não tem imóveis" },
+    ],
+  },
+  {
+    id: "imoveis_alugados",
+    bloco: "patrimonio",
+    enunciado:
+      "Pensa no aluguel que cai na sua conta todo mês — ele entra no seu " +
+      "nome de pessoa física, ou você não tem esse tipo de renda hoje?",
+    opcoes: [
+      { id: "sim_varios", rotulo: "Sim, vários" },
+      { id: "sim_um", rotulo: "Sim, um ou dois" },
+      { id: "nao", rotulo: "Não" },
+    ],
+  },
+  {
+    id: "pro_labore",
+    bloco: "patrimonio",
+    enunciado:
+      "No fim do mês, quando o dinheiro da empresa vira dinheiro seu, como " +
+      "isso costuma acontecer?",
+    opcoes: [
+      { id: "pro_labore", rotulo: "Pró-labore" },
+      { id: "dividendos", rotulo: "Dividendos / lucros" },
+      { id: "misturado", rotulo: "Mistura pessoa física e jurídica", disc: { I: 2 } },
+      { id: "nao_se_aplica", rotulo: "Não tem empresa" },
+    ],
+  },
+  {
+    id: "inventario_familia",
+    bloco: "patrimonio",
+    enunciado:
+      "Pensando na sua família: já teve alguém próximo que precisou passar " +
+      "por um inventário?",
+    ajuda: "Quem já viveu um inventário costuma decidir mais rápido.",
+    opcoes: [
+      { id: "sim_demorado", rotulo: "Sim, e foi demorado / caro", disc: { D: 2, S: 1 } },
+      { id: "sim_tranquilo", rotulo: "Sim, e correu bem", disc: { S: 1 } },
+      { id: "nao", rotulo: "Nunca passaram" },
+      { id: "em_curso", rotulo: "Tem um acontecendo agora", disc: { D: 2 } },
+    ],
+  },
+  {
+    id: "risco_atividade",
+    bloco: "patrimonio",
+    enunciado:
+      "Se amanhã chegasse um processo — trabalhista, tributário, algo assim " +
+      "— isso te preocuparia, ou você sente que está numa área tranquila?",
+    opcoes: [
+      { id: "alto", rotulo: "Sim, é uma preocupação real", disc: { C: 2 } },
+      { id: "algum", rotulo: "Algum risco, mas controlado", disc: { C: 1 } },
+      { id: "nenhum", rotulo: "Não vê risco" },
+      { id: "nao_sabe", rotulo: "Nunca parou para pensar nisso", disc: { I: 2 } },
     ],
   },
 
@@ -202,73 +364,6 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
       { id: "conjuge_final", rotulo: "O cônjuge", decisor: "conjuge" },
       { id: "juntos", rotulo: "Decidem juntos, ninguém sozinho", decisor: "conjuge" },
       { id: "familia_toda", rotulo: "A família toda se reúne", decisor: "filhos" },
-    ],
-  },
-
-  // ─── PATRIMÔNIO ──────────────────────────────────────────────────────────
-  {
-    id: "composicao",
-    bloco: "patrimonio",
-    enunciado:
-      "Se a gente fosse desenhar um mapa do que você tem hoje, ele estaria " +
-      "mais concentrado em quê?",
-    opcoes: [
-      { id: "imoveis", rotulo: "Imóveis" },
-      { id: "empresa", rotulo: "Na empresa / no negócio" },
-      { id: "investimentos", rotulo: "Investimentos financeiros" },
-      { id: "misto", rotulo: "Um pouco de cada" },
-    ],
-  },
-  {
-    id: "imoveis_alugados",
-    bloco: "patrimonio",
-    enunciado:
-      "Pensa no aluguel que cai na sua conta todo mês — ele entra no seu " +
-      "nome de pessoa física, ou você não tem esse tipo de renda hoje?",
-    opcoes: [
-      { id: "sim_varios", rotulo: "Sim, vários" },
-      { id: "sim_um", rotulo: "Sim, um ou dois" },
-      { id: "nao", rotulo: "Não" },
-    ],
-  },
-  {
-    id: "pro_labore",
-    bloco: "patrimonio",
-    enunciado:
-      "No fim do mês, quando o dinheiro da empresa vira dinheiro seu, como " +
-      "isso costuma acontecer?",
-    opcoes: [
-      { id: "pro_labore", rotulo: "Pró-labore" },
-      { id: "dividendos", rotulo: "Dividendos / lucros" },
-      { id: "misturado", rotulo: "Mistura pessoa física e jurídica", disc: { I: 2 } },
-      { id: "nao_se_aplica", rotulo: "Não tem empresa" },
-    ],
-  },
-  {
-    id: "inventario_familia",
-    bloco: "patrimonio",
-    enunciado:
-      "Pensando na sua família: já teve alguém próximo que precisou passar " +
-      "por um inventário?",
-    ajuda: "Quem já viveu um inventário costuma decidir mais rápido.",
-    opcoes: [
-      { id: "sim_demorado", rotulo: "Sim, e foi demorado / caro", disc: { D: 2, S: 1 } },
-      { id: "sim_tranquilo", rotulo: "Sim, e correu bem", disc: { S: 1 } },
-      { id: "nao", rotulo: "Nunca passaram" },
-      { id: "em_curso", rotulo: "Tem um acontecendo agora", disc: { D: 2 } },
-    ],
-  },
-  {
-    id: "risco_atividade",
-    bloco: "patrimonio",
-    enunciado:
-      "Se amanhã chegasse um processo — trabalhista, tributário, algo assim " +
-      "— isso te preocuparia, ou você sente que está numa área tranquila?",
-    opcoes: [
-      { id: "alto", rotulo: "Sim, é uma preocupação real", disc: { C: 2 } },
-      { id: "algum", rotulo: "Algum risco, mas controlado", disc: { C: 1 } },
-      { id: "nenhum", rotulo: "Não vê risco" },
-      { id: "nao_sabe", rotulo: "Nunca parou para pensar nisso", disc: { I: 2 } },
     ],
   },
 
@@ -394,6 +489,24 @@ export const PERGUNTAS_ENTREVISTA: readonly PerguntaEntrevista[] = [
     ],
   },
   {
+    id: "decide_investimento",
+    bloco: "fechamento",
+    enunciado:
+      "Se a solução fizer sentido, um investimento inicial de alguns " +
+      "milhares de reais é decisão que você toma na hora, ou passa por " +
+      "mais alguém?",
+    ajuda:
+      "Parte 06 do script é oferta binária com pagamento no ato — quem " +
+      "paga tem de estar na sala.",
+    opcoes: [
+      { id: "na_hora", rotulo: "Toma na hora", disc: { D: 1 } },
+      { id: "consulta_conjuge", rotulo: "Consulta o cônjuge", decisor: "conjuge" },
+      { id: "consulta_socio", rotulo: "Consulta sócio / família", decisor: "socio" },
+      { id: "planejar_caixa", rotulo: "Precisa planejar o caixa antes", disc: { S: 1 } },
+      { id: "nao_agora", rotulo: "Não faria agora" },
+    ],
+  },
+  {
     id: "temperatura",
     bloco: "fechamento",
     enunciado:
@@ -428,8 +541,8 @@ export const TOTAL_PERGUNTAS = PERGUNTAS_ENTREVISTA.length;
 /** Rótulo de cada bloco, na ordem em que aparecem. */
 export const BLOCOS_ENTREVISTA = [
   { id: "abertura", rotulo: "Abertura" },
-  { id: "decisores", rotulo: "Quem decide" },
   { id: "patrimonio", rotulo: "Patrimônio" },
+  { id: "decisores", rotulo: "Quem decide" },
   { id: "comportamento", rotulo: "Como a pessoa é" },
   { id: "fechamento", rotulo: "Fechamento" },
 ] as const;

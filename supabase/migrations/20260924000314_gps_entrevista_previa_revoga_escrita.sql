@@ -1,0 +1,42 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- gps.entrevista_previa: revogar INSERT/UPDATE/DELETE de `authenticated`
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Achado do pentester (kirad) na auditoria de 24/09/2026 da feature "Entrevista
+-- Prévia abastece o Script de Fechamento", conferido no banco vivo:
+--
+--   role_table_grants gps.entrevista_previa · authenticated = INSERT,SELECT,UPDATE,DELETE
+--
+-- A …302 fez `revoke all from anon` + `grant select to authenticated`, e `grant
+-- select` NÃO revoga o default do schema (ALTER DEFAULT PRIVILEGES dá
+-- INSERT/UPDATE/DELETE a `authenticated` em toda tabela nova). É a MESMA classe
+-- que a …309 fechou em gps.cliente_croquis e que a …273 achou em
+-- gps.cliente_minutas / gps.entrevista_tentativas.
+--
+-- Hoje a RLS segura: a única policy é gps_entrevista_previa_select (SELECT) —
+-- um PATCH/POST/DELETE pelo PostgREST bate em "0 linhas" sem erro. Mas o GRANT
+-- deixa a porta pronta para abrir no dia em que alguém criar uma policy de
+-- escrita "para o dono" — e o parceiro passaria a reescrever `respostas`,
+-- `perfil_disc`, `decisores_total` da própria entrevista sem passar pelas RPCs,
+-- que são a fronteira (todas as 4 são SECURITY DEFINER: iniciar, salvar,
+-- concluir, pode — conferido em pg_proc.prosecdef em 24/09).
+--
+-- Toda escrita legítima já passa por RPC: src/app/clientes/entrevista-previa-
+-- actions.ts chama gps.entrevista_previa_{iniciar,salvar,concluir}; o único
+-- .from("entrevista_previa") do TypeScript (src/lib/data/entrevista-previa.ts)
+-- é SELECT. Nada quebra.
+--
+-- Reversão: `grant insert, update, delete on gps.entrevista_previa to
+-- authenticated;` — mas não há motivo: escrita direta na tabela nunca foi
+-- caminho suportado.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+revoke insert, update, delete on gps.entrevista_previa from public, anon, authenticated;
+grant select on gps.entrevista_previa to authenticated;
+
+-- ── Prova (rodada em 24/09 logo após aplicar; resultado no rodapé) ─────────
+-- select grantee, string_agg(privilege_type, ',') from information_schema.role_table_grants
+--  where table_schema='gps' and table_name='entrevista_previa' group by grantee;
+-- esperado: authenticated=SELECT (só); postgres=tudo.
+--
+-- APLICADA em 24/09/2026 ~16:40 UTC. role_table_grants depois:
+--   authenticated = SELECT (só) · postgres = SELECT,UPDATE,DELETE,INSERT,REFERENCES,TRIGGER,TRUNCATE

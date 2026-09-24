@@ -28,7 +28,7 @@ import {
  *
  * ── 🔑 POR QUE UMA POR VEZ, E NÃO UM FORMULÁRIO LONGO ──────────────────────
  *
- * O parceiro está FALANDO COM UMA PESSOA enquanto usa isto. Uma tela com 24
+ * O parceiro está FALANDO COM UMA PESSOA enquanto usa isto. Uma tela com 30
  * perguntas de uma vez obriga a procurar onde estava a cada resposta — e
  * procurar no meio de uma conversa é o que faz a conversa morrer. Uma
  * pergunta grande, opções grandes, e o enunciado escrito para ser lido em voz

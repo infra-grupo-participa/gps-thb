@@ -12,6 +12,11 @@
  * neste arquivo nem em `src/lib/data/sessoes.ts` (PRD §5.4, `…291`/`…292`).
  */
 
+// `import type` puro: some na compilação, então este arquivo continua sendo só
+// tipo — nenhum valor de `entrevista-previa-perguntas.ts` (que é grande) entra
+// no bundle de quem importa daqui.
+import type { LetraDisc } from "@/lib/entrevista-previa-perguntas";
+
 /** Estados possíveis de `gps.sessao_agendamentos.estado` (CHECK `chk_sessao_agend_estado`). */
 /**
  * Id do tipo "Entrevista Prévia" em `gps.sessao_tipos` (semente da …291).
@@ -236,6 +241,51 @@ export interface SessaoBriefing {
    * `Record<string, unknown>` não valida nome de chave nenhum.
    */
   decisores_ao_vivo?: Record<string, unknown>[] | null;
+  /**
+   * A ENTREVISTA PRÉVIA lida AO VIVO — irmã de `disc_ao_vivo` e
+   * `decisores_ao_vivo`, pela mesma razão das duas: o snapshot congela no ato
+   * do agendamento, e a Entrevista roda DEPOIS na maioria dos casos.
+   *
+   * É o que alimenta as 7 partes do Script de Fechamento da Reunião
+   * Preliminar (`src/lib/script-reuniao.ts`): `respostas` é o mapa
+   * `perguntaId → opcaoId` que `montarParte` resolve contra
+   * `PERGUNTAS_ENTREVISTA`.
+   *
+   * 🔴 `null` quando o cliente NÃO tem entrevista concluída — e `null` tem de
+   * virar TEXTO na tela ("Entrevista Prévia ainda não concluída"), nunca uma
+   * lista vazia silenciosa. Um briefing que mostra 7 seções vazias sem dizer
+   * por quê lê como sistema quebrado, não como "ainda não houve entrevista".
+   *
+   * 🔴 TIPADO CAMPO A CAMPO de propósito, diferente de `disc_ao_vivo`. Foi um
+   * `Record<string, unknown>` que deixou `disc.perfil_disc` (chave
+   * inexistente) compilar em silêncio e mostrar "DISC não informado" para 127
+   * clientes que TINHAM a letra (22/09). Aqui o `tsc` recusa o nome errado.
+   *
+   * ⚠️ `perfil_disc` EXISTE neste objeto e NÃO é a fonte da letra do
+   * briefing — a letra vigente é `disc_ao_vivo.letra`, lida de
+   * `etapa1_clientes` (decisão de 22/09). Este `perfil_disc` é o que a
+   * entrevista calculou no dia; usá-lo na tela reabriria exatamente o defeito
+   * dos "dois valores para a mesma pergunta".
+   */
+  entrevista_previa_ao_vivo?: EntrevistaPreviaAoVivo | null;
+}
+
+/**
+ * O retrato AO VIVO da Entrevista Prévia concluída de um cliente, devolvido
+ * por `gps.sessao_briefing_ler` (migration `…313`).
+ *
+ * Campos opcionais/nulos são a regra, não a exceção: entrevista concluída sem
+ * DISC calculado e sem decisores mapeados é estado válido.
+ */
+export interface EntrevistaPreviaAoVivo {
+  concluida_em: string;
+  /** O DISC que a ENTREVISTA calculou — não é a letra vigente do briefing. */
+  perfil_disc: LetraDisc | null;
+  /** Pontuação bruta por letra, quando houve cálculo. */
+  disc_pontos: Record<string, number> | null;
+  decisores_total: number | null;
+  /** `perguntaId` → `opcaoId`. Chaves são ids de `PERGUNTAS_ENTREVISTA`. */
+  respostas: Record<string, string>;
 }
 
 /** Retorno de `gps.sessao_agendar`. */

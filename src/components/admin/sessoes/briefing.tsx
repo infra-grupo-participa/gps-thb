@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { abrirBriefingDaSessao } from "@/app/admin/sessoes/actions";
 import { formatarData, formatarDataHora } from "@/lib/datas";
-import type { SessaoBriefing } from "@/lib/sessoes-tipos";
+import type { LetraDisc } from "@/lib/entrevista-previa-perguntas";
+import { logErro } from "@/lib/log";
+import { montarParte, PARTES_SCRIPT, type ParteMontada } from "@/lib/script-reuniao";
+import type { EntrevistaPreviaAoVivo, SessaoBriefing } from "@/lib/sessoes-tipos";
 
 /**
  * O briefing de UMA sessão — carregado SÓ quando esta ficha abre (nunca na
@@ -18,10 +21,32 @@ import type { SessaoBriefing } from "@/lib/sessoes-tipos";
  * originais podem ter mudado depois. Este componente não tenta "atualizar"
  * nada — mostra exatamente o congelado, com `gerado_em`.
  *
- * 🔴 `descricao_caso`/`observacoes`/decisores são dado pessoal de cliente de
- * terceiro. Aparecem aqui porque esta é a FICHA de uma sessão específica,
- * aberta por quem tem RLS para ela (doutora dona ou admin) — nunca em lista
- * consolidada, CSV ou e-mail (§4.3, regra do PRD).
+ * 🔴 `descricao_caso`/decisores/respostas da Entrevista Prévia são dado
+ * pessoal de cliente de terceiro. Aparecem aqui porque esta é a FICHA de uma
+ * sessão específica, aberta por quem tem RLS para ela (doutora dona ou admin)
+ * — nunca em lista consolidada, CSV ou e-mail (§4.3, regra do PRD).
+ *
+ * ── AS 7 PARTES DO SCRIPT (24/09) ──────────────────────────────────────────
+ *
+ * Abaixo dos blocos fixos, o briefing monta as 7 partes do "Script de
+ * Fechamento da Reunião Preliminar" a partir de `entrevista_previa_ao_vivo`
+ * (irmã de `disc_ao_vivo`, lida AO VIVO — a entrevista quase sempre roda
+ * DEPOIS do agendamento, então o snapshot congelado não serve). A estrutura
+ * vem de `src/lib/script-reuniao.ts`; este componente só desenha.
+ *
+ * 🔴 `entrevista.observacoes` FOI REMOVIDO daqui em 24/09. Vinha da esteira
+ * legada da Etapa 01 (0 registros em produção) e, ao lado da Entrevista
+ * Prévia, criaria DUAS verdades sobre "a entrevista" na mesma tela — a
+ * doutora leria "Observações da entrevista: —" logo acima das 7 partes
+ * montadas por uma entrevista de verdade. O campo continua no snapshot
+ * (`briefing.entrevista`), porque remover do banco não é decisão desta tela.
+ *
+ * 🔴 A LETRA VIGENTE é `disc_ao_vivo.letra`, a MESMA de `BlocoDisc` — nunca
+ * `entrevista_previa_ao_vivo.perfil_disc`. Duas letras na mesma tela é
+ * exatamente o defeito que a decisão de 22/09 fechou. Sem letra, as partes
+ * não mostram linha de gatilho e NÃO se escolhe uma letra por default: o
+ * bloco DISC já diz "ainda não informado" uma vez, e inventar "D" faria a
+ * doutora conduzir a reunião pelo roteiro errado.
  */
 export function BriefingSessao({ agendamentoId }: { agendamentoId: string }) {
   const [estado, setEstado] = useState<
@@ -80,10 +105,26 @@ export function BriefingSessao({ agendamentoId }: { agendamentoId: string }) {
     );
   }
 
-  const dados = b.briefing as Record<string, unknown>;
+  return <CorpoBriefing b={b} />;
+}
+
+/**
+ * O DESENHO do briefing, separado da busca.
+ *
+ * Exportado de propósito: é o que permite provar a GEOMETRIA das 7 seções em
+ * navegador de verdade (harness temporário com `SessaoBriefing` sintético, em
+ * 1366 e 390) sem passar pela server action — que exige sessão, RLS e grava
+ * trilha LGPD a cada leitura. jsdom não pinta e não prova rolagem horizontal;
+ * preview isolado prova pigmento, não geometria.
+ *
+ * ⚠️ NÃO chame isto direto na aplicação: a única porta do briefing continua
+ * sendo `BriefingSessao` → `abrirBriefingDaSessao` → `gps.sessao_briefing_ler`
+ * (a trilha é a guarda de leitura de dado pessoal).
+ */
+export function CorpoBriefing({ b }: { b: SessaoBriefing }) {
+  const dados = (b.briefing ?? {}) as Record<string, unknown>;
   const cliente = (dados.cliente ?? {}) as Record<string, unknown>;
   const onboarding = (dados.onboarding ?? {}) as Record<string, unknown>;
-  const entrevista = (dados.entrevista ?? {}) as Record<string, unknown>;
   // 🔴 QUEM DECIDE, lido AO VIVO (`decisores_ao_vivo`, irmão de `briefing`).
   //
   // Dois defeitos corrigidos aqui na auditoria de 23/09:
@@ -107,6 +148,12 @@ export function BriefingSessao({ agendamentoId }: { agendamentoId: string }) {
   // enquanto `briefing` é o snapshot congelado no ato do agendamento —
   // aninhá-lo lá dentro contradiria a própria razão de ele existir.
   const discAoVivo = (b.disc_ao_vivo ?? {}) as Record<string, unknown>;
+  // 🔴 A letra que conduz as 7 partes sai DAQUI — a mesma chave que
+  // `BlocoDisc` lê (`letra`, não `perfil_disc`). Ver o comentário do topo.
+  const letraVigente = letraValida(discAoVivo.letra);
+  // 🔴 `null`/ausente é ESTADO COM TEXTO, não lista vazia. Ausente e
+  // "concluída sem respostas" são coisas diferentes na tela.
+  const entrevistaPrevia = b.entrevista_previa_ao_vivo ?? null;
 
   return (
     <div className="grid gap-3 border-t border-borda-fina px-3 py-3">
@@ -138,16 +185,177 @@ export function BriefingSessao({ agendamentoId }: { agendamentoId: string }) {
           valor={txt(onboarding.ajuda_pronta)}
           bloco
         />
-        <Campo
-          rotulo="Observações da entrevista"
-          valor={txt(entrevista.observacoes)}
-          bloco
-        />
       </dl>
 
       <BlocoDecisores decisores={decisores} />
       <BlocoDisc disc={discAoVivo} />
+      <PartesDoScript entrevista={entrevistaPrevia} letra={letraVigente} />
     </div>
+  );
+}
+
+/** Aceita só as 4 letras; qualquer outra coisa vira `null` (nunca um default). */
+function letraValida(v: unknown): LetraDisc | null {
+  return v === "D" || v === "I" || v === "S" || v === "C" ? v : null;
+}
+
+/**
+ * RÓTULO CURTO por pergunta — o que a doutora lê de relance na seção.
+ *
+ * 🔑 POR QUE NÃO USAR `enunciado`: ele é escrito para ser LIDO EM VOZ ALTA
+ * ("Imagina que a gente já sai daqui com uma reunião marcada com a nossa
+ * equipe jurídica, para desenhar a sua estrutura. Você consegue encaixar isso
+ * na sua agenda?" — 150+ caracteres). Numa seção densa, 5 enunciados desses
+ * empilhados são 10 linhas de texto conversacional onde deveria haver 5 linhas
+ * de fato. O briefing não é o roteiro falado: é o que a entrevista APUROU.
+ *
+ * Então cada pergunta vira `rótulo curto → rótulo da opção` ("Urgência → Para
+ * ontem"). O `enunciado` continua disponível em `montarParte` para quem
+ * precisar; aqui ele só entra como reserva, quando um id novo aparecer em
+ * `script-reuniao.ts` antes de ganhar rótulo nesta tabela — a tela degrada
+ * para o texto longo em vez de mostrar o id cru.
+ *
+ * ⚠️ Esta tabela é de EXIBIÇÃO, não contrato: id ausente aqui não quebra nada
+ * e não vai para `idsDesconhecidos` (aquilo é descompasso com o catálogo de
+ * perguntas, coisa diferente).
+ */
+const ROTULO_CURTO: Record<string, string> = {
+  motivo_busca: "Motivo da busca",
+  urgencia: "Urgência",
+  ja_tentou: "Já tentou antes",
+  composicao: "Concentração do patrimônio",
+  titularidade: "Titularidade",
+  instrumento_existente: "Instrumento existente",
+  conflito_herdeiros: "Divisão entre herdeiros",
+  imoveis_qtd: "Imóveis",
+  imoveis_heranca: "Imóvel de herança",
+  imoveis_alugados: "Renda de aluguel",
+  pro_labore: "Retirada da empresa",
+  inventario_familia: "Inventário na família",
+  risco_atividade: "Risco da atividade",
+  o_que_convence: "O que convence",
+  confianca_equipe: "O que gera confiança",
+  mudanca: "Reação a mudança",
+  decide_investimento: "Decide o investimento",
+  reacao_preco: "Reação ao preço",
+  objecao_principal: "Objeção principal",
+  quem_bate_martelo: "Quem bate o martelo",
+  disposicao_reuniao: "Disposição para a reunião",
+  temperatura: "Temperatura",
+};
+
+/**
+ * AS 7 PARTES do Script de Fechamento, na ordem, cada uma como `<section>`.
+ *
+ * Denso e chapado (preferência do Marcio, 14/09): título da parte, os pares
+ * `rótulo → resposta`, e a linha de condução da letra vigente. Sem card, sem
+ * ícone, sem cor decorativa — hierarquia por POSIÇÃO: parte 01 no topo, parte
+ * 07 no fim, exatamente a ordem em que a conversa acontece.
+ *
+ * 🔴 NADA de `disc_gatilhos`/`consciencia`/`relacionamento` aqui: aquilo é do
+ * `BlocoDisc` e continua lá. O `gatilho` desta seção é outro dado — vem de
+ * `PARTES_SCRIPT[n].gatilho[letra]`, é por PARTE, e não duplica o relatório.
+ *
+ * 🔴 NENHUM VALOR EM REAIS, em nenhuma parte — em especial na 05 (Virada), em
+ * que o script proíbe citar preço. As `variantes` entram como TÍTULO apenas
+ * ("Sessão de Viabilidade" · "Croqui Estrutural"): quem escolhe é a doutora,
+ * na hora, e a tela não sugere nenhuma das duas.
+ */
+function PartesDoScript({
+  entrevista,
+  letra,
+}: {
+  entrevista: EntrevistaPreviaAoVivo | null;
+  letra: LetraDisc | null;
+}) {
+  const idBase = useId();
+  // `respostas: null` faz `montarParte` devolver cobertura "nenhuma" em todas
+  // as 7 — o mesmo caminho da entrevista que não cobriu nada. A diferença
+  // ("não houve entrevista" × "houve e não cobriu") é dita no cabeçalho, uma
+  // vez, em vez de repetida 7×.
+  const montadas = PARTES_SCRIPT.map((parte) =>
+    montarParte(parte, entrevista?.respostas ?? null, letra),
+  );
+
+  // Descompasso entre `script-reuniao.ts` e `entrevista-previa-perguntas.ts`:
+  // vai para o log UMA vez por render, sem PII (só ids de pergunta, que são
+  // constantes de código), e NADA na tela — a doutora não tem o que fazer com
+  // isso no meio de uma reunião.
+  const desconhecidos = montadas.flatMap((m) => m.idsDesconhecidos);
+  useEffect(() => {
+    if (desconhecidos.length === 0) return;
+    logErro("BriefingSessao.PartesDoScript", "ids de pergunta desconhecidos no script", {
+      ids: desconhecidos.join(","),
+    });
+    // `join` na dependência, não o array: array novo a cada render reexecutaria
+    // o efeito (e o log) em toda repintura, mesmo sem nada ter mudado.
+  }, [desconhecidos.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="grid gap-3 border-t border-borda-fina pt-3">
+      <div className="grid gap-0.5">
+        <p className="rotulo text-muted-foreground">Script da Reunião Preliminar</p>
+        {entrevista ? (
+          <p className="corpo-sm text-muted-foreground">
+            Montado com a Entrevista Prévia de{" "}
+            {formatarData(entrevista.concluida_em)}.
+            {letra ? "" : " Sem perfil DISC, as partes não trazem a linha de condução."}
+          </p>
+        ) : (
+          <p className="corpo-sm text-muted-foreground">
+            Entrevista Prévia ainda não concluída — as 7 partes aparecem sem o
+            que o cliente respondeu.
+          </p>
+        )}
+      </div>
+
+      {montadas.map((m) => (
+        <ParteSecao key={m.parte.id} montada={m} idBase={idBase} />
+      ))}
+    </div>
+  );
+}
+
+function ParteSecao({ montada, idBase }: { montada: ParteMontada; idBase: string }) {
+  const { parte, itens, gatilho, cobertura } = montada;
+  const idTitulo = `${idBase}-${parte.id}`;
+  const numero = String(parte.numero).padStart(2, "0");
+
+  return (
+    <section aria-labelledby={idTitulo} className="grid gap-1">
+      <h4 id={idTitulo} className="rotulo">
+        {numero} · {parte.titulo}
+      </h4>
+
+      {cobertura === "nenhuma" ? (
+        <p className="corpo-sm text-muted-foreground">
+          A entrevista não cobriu esta parte.
+        </p>
+      ) : (
+        <dl className="grid gap-0.5">
+          {itens.map((item) => (
+            <div key={item.perguntaId} className="flex flex-wrap gap-x-3 gap-y-0.5">
+              <dt className="w-40 shrink-0 corpo-sm text-muted-foreground">
+                {ROTULO_CURTO[item.perguntaId] ?? item.enunciado}
+              </dt>
+              <dd className="min-w-0 flex-1 corpo-sm">{item.rotuloDaOpcao}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {/* Parte 05: os dois caminhos, TÍTULO apenas — a doutora escolhe um na
+          hora. Aparecem mesmo sem entrevista: são estrutura do script, não
+          dado do cliente. */}
+      {parte.variantes ? (
+        <p className="corpo-sm">
+          <span className="text-muted-foreground">Caminhos: </span>
+          {parte.variantes.join(" · ")}
+        </p>
+      ) : null}
+
+      {gatilho ? <p className="corpo-sm">{gatilho}</p> : null}
+    </section>
   );
 }
 
@@ -217,6 +425,19 @@ function BlocoDecisores({ decisores }: { decisores: Record<string, unknown>[] })
  * com valor em branco): três rótulos vazios seguidos leem como defeito.
  */
 function BlocoDisc({ disc }: { disc: Record<string, unknown> }) {
+  // 🔴 `role="region"` + `aria-labelledby` existe por DUAS razões que se
+  // somam:
+  //  1. acessibilidade — o bloco vira marco navegável, como as 7 seções do
+  //     script logo abaixo;
+  //  2. o E2E `sessoes-equipe.spec.ts` afirma "o briefing traz o DISC"
+  //     procurando /consciência|gatilho|relacionamento/ no painel. Desde
+  //     24/09 as 7 partes do script também exibem uma linha de "gatilho"
+  //     por parte. ⚠️ Medido: nenhuma das 28 frases de condução casa a
+  //     regex hoje, então o teste ainda falha certo — mas a garantia é
+  //     ACIDENTAL, presa à redação de frases que existem para mudar. O
+  //     seletor foi apertado para esta região; o rótulo LITERAL "Perfil
+  //     DISC" é contrato com aquele teste, não texto solto.
+  const idTitulo = useId();
   // 🔴 A chave é `letra`, NÃO `perfil_disc`. A RPC `sessao_briefing_ler`
   // devolve `disc_ao_vivo = {letra, consciencia, gatilhos, relacionamento,
   // divergiu, congelado_era, atualizado_em, atualizado_por}` — o nome
@@ -235,8 +456,15 @@ function BlocoDisc({ disc }: { disc: Record<string, unknown> }) {
   const divergiu = disc.divergiu === true;
 
   return (
-    <div className="grid gap-2 border-t border-borda-fina pt-3">
-      <p className="rotulo text-muted-foreground">Perfil DISC</p>
+    <section
+      role="region"
+      aria-labelledby={idTitulo}
+      data-slot="bloco-disc"
+      className="grid gap-2 border-t border-borda-fina pt-3"
+    >
+      <p id={idTitulo} className="rotulo text-muted-foreground">
+        Perfil DISC
+      </p>
 
       {letra ? (
         <dl className="grid gap-2">
@@ -260,7 +488,7 @@ function BlocoDisc({ disc }: { disc: Record<string, unknown> }) {
           Atualizado depois do agendamento.
         </p>
       ) : null}
-    </div>
+    </section>
   );
 }
 

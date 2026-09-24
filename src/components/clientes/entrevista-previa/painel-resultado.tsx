@@ -9,7 +9,7 @@ import type { EntrevistaPreviaLinha } from "@/lib/data/entrevista-previa";
  *
  * 🔴 POR QUE EXISTE (achado da 2ª onda de polimento, 23/09): a entrevista
  * gravava o DISC e os decisores corretamente, e a ficha **não mostrava
- * nenhum dos dois**. O parceiro conduzia 24 perguntas, via o resultado uma
+ * nenhum dos dois**. O parceiro conduzia as perguntas (24 até 23/09; 30 desde 24/09), via o resultado uma
  * vez na tela final, e ao voltar para a ficha não havia sinal de que aquilo
  * tinha acontecido — nem de quem precisa estar na Reunião Preliminar.
  *

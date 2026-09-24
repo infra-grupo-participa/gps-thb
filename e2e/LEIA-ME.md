@@ -25,6 +25,10 @@ O que só esta suíte pega:
 export QA_ENV_FILE=/caminho/para/.env.qa   # fora do repo!
 npm run e2e              # tudo (desktop 1366px + Pixel 7)
 npm run e2e:desktop      # só desktop
+E2E_CHROME=1 npx playwright test e2e/ficha-abas.spec.ts --project=chrome
+                         # Chrome REAL (janela visível): a única forma de provar que o
+                         # visor de PDF da ficha pinta (o headless shell não tem viewer;
+                         # o teste 6b se pula com aviso nos outros projetos)
 npm run e2e:ver          # com o navegador visível, para acompanhar
 npm run e2e:relatorio    # abre o relatório da última rodada
 ```

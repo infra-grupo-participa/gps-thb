@@ -185,6 +185,7 @@ test.describe("espelho do admin @estatico", () => {
     const DA_FICHA = [
       "getClienteById",
       "getMinutasDoCliente",
+      "getCroquisDoCliente",
       "getDecisoresPendentes",
       "getEntrevistasDoCliente",
       "getMinutaContextoObrigatorio",

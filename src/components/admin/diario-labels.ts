@@ -99,6 +99,10 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   reuniao_preliminar_proposta: "Propôs data para a reunião preliminar",
   reuniao_preliminar_aceita: "Aceitou a data da reunião preliminar",
   reuniao_preliminar_contestada: "Contestou a data da reunião preliminar",
+  cliente_entrevista_sem_contato: "Registrou que não conseguiu contato para a entrevista prévia",
+  cliente_croqui_anexado: "Anexou um croqui do cliente",
+  cliente_croqui_removido: "Removeu um croqui do cliente",
+  cliente_documento_lido: "Equipe abriu um documento do cliente na ficha",
 };
 
 export const ROTULO_ATOR: Record<AtorEvento, string> = {

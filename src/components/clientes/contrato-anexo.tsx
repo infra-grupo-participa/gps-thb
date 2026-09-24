@@ -32,7 +32,7 @@
  */
 
 import { useId, useRef, useState, useTransition } from "react";
-import { Download, FileText, Paperclip, Trash2 } from "lucide-react";
+import { Download, Eye, FileText, Paperclip, Trash2 } from "lucide-react";
 import {
   criarUploadAssinadoContratoCliente,
   registrarContratoCliente,
@@ -47,6 +47,7 @@ import {
 import { formatarData } from "@/lib/datas";
 import { Button } from "@/components/ui/button";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
+import { VisorDocumento } from "@/components/clientes/visor-documento";
 
 const ACCEPT =
   ".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf";
@@ -107,6 +108,7 @@ export function ContratoAnexo({
   const [enviando, setEnviando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [removendo, setRemovendo] = useState(false);
+  const [visualizando, setVisualizando] = useState(false);
   const [baixando, iniciarDownload] = useTransition();
   const [removendoAgora, iniciarRemocao] = useTransition();
 
@@ -256,6 +258,17 @@ export function ContratoAnexo({
             type="button"
             variant="outline"
             size="xs"
+            disabled={removendoAgora}
+            aria-pressed={visualizando}
+            aria-label={`Pré-visualizar contrato assinado ${contrato?.nome ?? ""}`}
+            onClick={() => setVisualizando((v) => !v)}
+          >
+            <Eye aria-hidden /> {visualizando ? "Fechar" : "Pré-visualizar"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
             disabled={baixando || removendoAgora}
             aria-busy={baixando || undefined}
             aria-label={`Baixar contrato assinado ${contrato?.nome ?? ""}`}
@@ -286,6 +299,20 @@ export function ContratoAnexo({
           >
             <Trash2 aria-hidden /> Remover
           </Button>
+
+          {visualizando ? (
+            <div className="w-full">
+              <VisorDocumento
+                src={`/clientes/${clienteId}/documento/contrato/contrato`}
+                tipo={
+                  (contrato?.mime ?? "").startsWith("image/") ? "imagem" : "pdf"
+                }
+                titulo={contrato?.nome ?? "Contrato assinado"}
+                onFechar={() => setVisualizando(false)}
+                onBaixar={baixar}
+              />
+            </div>
+          ) : null}
         </div>
       ) : podeAnexar ? (
         <div className="flex flex-wrap items-center gap-2">

@@ -9,6 +9,7 @@ import { ClienteFicha } from "@/components/clientes/cliente-ficha";
 import { estrelaTravada } from "@/components/clientes/clientes-manager/ordenacao";
 import { getMinutaContextoObrigatorio } from "@/lib/data/minutas";
 import { getMinutasDoCliente } from "@/lib/data/minutas";
+import { getCroquisDoCliente } from "@/lib/data/croquis";
 import {
   getDecisoresPendentes,
   getEntrevistasDoCliente,
@@ -36,15 +37,26 @@ export default async function ClienteFichaPage({
   // ⚠️ A guarda de propriedade continua ANTES de qualquer render: o
   // `notFound()` roda com as duas respostas em mãos, no mesmo ponto lógico
   // de antes.
-  const [cliente, aluno, minutas, tutoriaisAtivo, decisores, entrevistas] =
-    await Promise.all([
+  const [
+    cliente,
+    aluno,
+    minutas,
+    croquis,
+    tutoriaisAtivo,
+    decisores,
+    entrevistas,
+  ] = await Promise.all([
     getClienteById(clienteId),
     getAlunoById(alunoId),
     // 🔑 No MESMO Promise.all: a lista de minutas não depende do cliente nem
     // do aluno, então pedir em cascata custaria uma viagem a mais por ficha.
     getMinutasDoCliente(clienteId),
+    // 🔑 No MESMO Promise.all, pelo mesmo motivo das minutas: o histórico de
+    // croquis depende só do `clienteId`, que veio dos `params`. Em cascata
+    // custaria mais uma viagem ao banco na tela mais aberta do produto.
+    getCroquisDoCliente(clienteId),
     // 🔑 Estava SOLTO fora do Promise.all (uma ida ao banco a mais por
-    // abertura de ficha) — junto aqui, mesma independência das outras três.
+    // abertura de ficha) — junto aqui, mesma independência das demais.
     getTutoriaisAtivo(),
     // 🔑 No MESMO Promise.all: decisores e histórico da Entrevista Prévia não
     // dependem do cliente nem do aluno. Em cascata custariam duas viagens a
@@ -109,6 +121,7 @@ export default async function ClienteFichaPage({
         <ClienteFicha
           cliente={cliente}
           minutas={minutas}
+          croquis={croquis}
           contextoObrigatorio={contextoObrigatorio}
           alunoId={alunoId}
           outroConfirmadoNome={outroConfirmadoNome}

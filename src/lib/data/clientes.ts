@@ -46,8 +46,43 @@ import type { ClienteHonorarios } from "@/lib/etapa1";
  * servindo de critério de `.order()`, e o PostgREST ordena por coluna que não
  * está no `select`.
  */
-const COLUNAS_CLIENTE =
+const COLUNAS_CLIENTE_LISTA =
   "id, aluno_id, nome, telefone, problemas, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, disc_consciencia, disc_gatilhos, disc_relacionamento, disc_atualizado_em, disc_atualizado_por, acompanhado_equipe, ordem, valor_honorarios, contrato_url, grau_relacao, acompanhamento_confirmado_em, acompanhamento_confirmado_por, contrato_path, contrato_nome, contrato_mime, contrato_tamanho, contrato_anexado_em, selecionado_entrevista, entrevista_resultado, entrevista_observacoes, entrevista_em, entrevista_por";
+
+/**
+ * `COLUNAS_CLIENTE_LISTA` + as 4 colunas de PESSOA JURÍDICA (migração `…308`,
+ * 24/09/2026). Usada SÓ por `getClienteById` — a ficha de UM cliente.
+ *
+ * 🔴 POR QUE DUAS CONSTANTES, E NÃO UMA COM AS 4 DENTRO
+ *   `getClientesEtapa1` traz a carteira INTEIRA do aluno (a base tem 1.710
+ *   fichas em 24/09/2026) e nenhuma tela de lista mostra razão social, CNPJ,
+ *   ramo ou regime — nem o card, nem o quadro de fases, nem o CSV. Deixar as
+ *   4 na lista faria cada abertura de `/clientes` pagar egress por 4 colunas
+ *   de texto que ninguém renderiza, multiplicado pelo número de clientes.
+ *   O egress do Supabase tem teto DA ORGANIZAÇÃO, dividido com o sip.
+ *   A ficha lê UMA linha: ali as 4 colunas custam uma linha, não 1.710.
+ *
+ * ⚠️ `getClienteEquipe` (o favorito, 1 linha) fica na LISTA de propósito: é
+ *   um CARTÃO de destaque na home/etapa, não a ficha — não exibe PJ. Se um
+ *   dia passar a exibir, troca a constante ali, não se funde as duas.
+ *
+ * ⚠️ Vale o MESMO contrato da lista: as duas têm de conter tudo que o
+ *   consumidor declara. Campo que falta chega `undefined` e a tela mostra
+ *   vazio EM SILÊNCIO — `select` explícito não erra por coluna ausente.
+ *   Como `ClienteEtapa1` agora declara os 4 campos PJ, qualquer função que
+ *   use `COLUNAS_CLIENTE_LISTA` devolve `ClienteEtapa1` com esses 4
+ *   `undefined`: isso é deliberado (a lista não os usa), e é por isso que
+ *   nenhuma tela de lista pode passar a lê-los sem trocar a constante.
+ *
+ * 🔴 É uma STRING LITERAL, não `COLUNAS_CLIENTE_LISTA + ", razao_social, …"`.
+ *   O supabase-js tipa `.select()` a partir do LITERAL da string: concatenar
+ *   em runtime degrada o tipo para `string` e o retorno vira
+ *   `GenericStringError`, que o `as ClienteEtapa1` recusa (`TS2352`, medido
+ *   em 24/09/2026). O preço é a duplicação abaixo — e o contrato das duas
+ *   constantes é o que a mantém honesta.
+ */
+const COLUNAS_CLIENTE_FICHA =
+  "id, aluno_id, nome, telefone, problemas, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, disc_consciencia, disc_gatilhos, disc_relacionamento, disc_atualizado_em, disc_atualizado_por, acompanhado_equipe, ordem, valor_honorarios, contrato_url, grau_relacao, acompanhamento_confirmado_em, acompanhamento_confirmado_por, contrato_path, contrato_nome, contrato_mime, contrato_tamanho, contrato_anexado_em, selecionado_entrevista, entrevista_resultado, entrevista_observacoes, entrevista_em, entrevista_por, razao_social, cnpj, ramo_atividade, regime_tributario";
 /** `gps.etapa3_agendamentos` → `Etapa3Agendamento`. */
 const COLUNAS_ETAPA3_AGENDAMENTO =
   "id, aluno_id, cliente_id, descricao, data, horario, equipe_participa, criado_em";
@@ -61,7 +96,7 @@ export async function getClientesEtapa1(
   const { data } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
-    .select(COLUNAS_CLIENTE)
+    .select(COLUNAS_CLIENTE_LISTA)
     .eq("aluno_id", alunoId)
     .order("ordem")
     .order("criado_em");
@@ -74,7 +109,7 @@ export async function getClienteById(
   const { data } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
-    .select(COLUNAS_CLIENTE)
+    .select(COLUNAS_CLIENTE_FICHA)
     .eq("id", clienteId)
     .maybeSingle();
   return (data as ClienteEtapa1) ?? null;
@@ -194,7 +229,7 @@ export async function getClienteEquipe(
   const { data } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
-    .select(COLUNAS_CLIENTE)
+    .select(COLUNAS_CLIENTE_LISTA)
     .eq("aluno_id", alunoId)
     .eq("acompanhado_equipe", true)
     .maybeSingle();

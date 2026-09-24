@@ -48,7 +48,7 @@
  */
 
 import { useId, useRef, useState, useTransition } from "react";
-import { Download, FileText, Paperclip, Trash2 } from "lucide-react";
+import { Download, Eye, FileText, Paperclip, Trash2 } from "lucide-react";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import {
   MINUTA_TAMANHO_MAXIMO,
@@ -66,6 +66,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
+import { VisorDocumento } from "@/components/clientes/visor-documento";
 
 /** Teto por campo de contexto — decisão do Marcio (17/09). Independente de
  * `MINUTA_NOTA_MAXIMO` (o campo `notas` legado, que saiu do formulário mas
@@ -142,6 +143,7 @@ export function MinutasAnexo({
   const [enviando, setEnviando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [removendoId, setRemovendoId] = useState<string | null>(null);
+  const [visualizandoId, setVisualizandoId] = useState<string | null>(null);
   const [baixandoId, iniciarDownload] = useTransition();
   const [removendoAgora, iniciarRemocao] = useTransition();
 
@@ -490,6 +492,22 @@ export function MinutasAnexo({
                     type="button"
                     variant="outline"
                     size="xs"
+                    disabled={removendoAgora}
+                    aria-pressed={visualizandoId === minuta.id}
+                    aria-label={`Pré-visualizar minuta de ${formatarDataHora(minuta.enviado_em)}`}
+                    onClick={() =>
+                      setVisualizandoId(
+                        visualizandoId === minuta.id ? null : minuta.id,
+                      )
+                    }
+                  >
+                    <Eye aria-hidden />{" "}
+                    {visualizandoId === minuta.id ? "Fechar" : "Pré-visualizar"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
                     disabled={baixandoId || removendoAgora}
                     aria-busy={baixandoId || undefined}
                     aria-label={`Baixar minuta de ${formatarDataHora(minuta.enviado_em)}`}
@@ -560,6 +578,16 @@ export function MinutasAnexo({
                     <p className="corpo-sm text-muted-foreground">Notas</p>
                     <p className="corpo-sm whitespace-pre-wrap">{minuta.notas}</p>
                   </div>
+                ) : null}
+
+                {visualizandoId === minuta.id ? (
+                  <VisorDocumento
+                    src={`/clientes/${clienteId}/documento/minuta/${minuta.id}`}
+                    tipo="pdf"
+                    titulo={minuta.nome}
+                    onFechar={() => setVisualizandoId(null)}
+                    onBaixar={() => baixar(minuta)}
+                  />
                 ) : null}
               </li>
             );

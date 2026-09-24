@@ -44,6 +44,35 @@ const cred = exigeLogin();
 const CLIENTE_TESTE = /CLIENTE DE TESTE/i;
 
 /**
+ * 🔴 A FICHA VIROU 4 ABAS EM 24/09 (fatia 4) — e a Entrevista mora na 2ª.
+ *
+ * "Perfil DISC", o botão "Ver perfil", a linha "Próximo passo · Entrevista
+ * feita" e o convite para `/sessoes` vivem todos em `ficha-aba-preliminar.tsx`
+ * — a folha **"Reunião preliminar"**, que é a aba 2.
+ *
+ * Com `keepMounted`, as quatro folhas ficam no DOM e as inativas levam
+ * `hidden`: quem abrir a ficha numa fase cujo padrão é outra folha (
+ * `contratado` abre em "Fechamento") encontraria o botão presente no DOM e
+ * INVISÍVEL. O teste falharia por mudança de layout, não por defeito — e
+ * pior, a mensagem de erro falaria de "porta de entrada sumida", mandando
+ * procurar um defeito que não existe.
+ *
+ * A correção é navegar até a folha antes de procurar. Nenhuma asserção foi
+ * afrouxada: o que se prova continua sendo que a porta de entrada existe e é
+ * alcançável — agora a partir da folha em que ela de fato mora.
+ */
+async function irParaFolhaPreliminar(page: import("@playwright/test").Page) {
+  const base = page.url().split("?")[0];
+  await page.goto(`${base}?aba=preliminar`);
+  await expect(
+    page.getByRole("tab", { name: /reuni(ã|a)o preliminar/i }),
+    "A ficha não tem a folha 'Reunião preliminar'. A pasta de 4 abas " +
+      "(fatia 4, 24/09/2026) é onde a Entrevista Prévia passou a morar — sem " +
+      "essa aba, a feature inteira ficou sem porta de entrada.",
+  ).toHaveAttribute("aria-selected", "true", { timeout: 12_000 });
+}
+
+/**
  * 🔴 A ENTREVISTA MUDOU DE LUGAR EM 23/09 — e a régua mudou junto.
  *
  * O painel da Entrevista Prévia (com o link "Iniciar/Nova entrevista") saiu da
@@ -54,8 +83,12 @@ const CLIENTE_TESTE = /CLIENTE DE TESTE/i;
  * link e quebrariam. Este helper é o caminho novo — e, ao exigir que o botão
  * exista antes de o link aparecer, ele PROVA a porta de entrada em vez de
  * supor que ela está lá.
+ *
+ * 🔑 Desde 24/09 ele começa indo para a folha 2 (ver acima): o botão "Ver
+ * perfil" é conteúdo de aba, e aba inativa é conteúdo escondido.
  */
 async function abrirPerfilDoCliente(page: import("@playwright/test").Page) {
+  await irParaFolhaPreliminar(page);
   const verPerfil = page.getByRole("button", { name: /ver perfil/i }).first();
   await expect(
     verPerfil,
@@ -96,6 +129,10 @@ test.describe("Entrevista Prévia 2.0", () => {
     // ausente — ele garante que a regressão passa despercebida.
     //
     // Agora a régua é a LINHA DENSA que o Marcio pediu: rótulo + valor.
+    //
+    // 🔑 A linha mora na folha 2 desde 24/09 — ir até ela é o que separa
+    // "a linha sumiu" de "a linha está numa aba fechada".
+    await irParaFolhaPreliminar(page);
     await expect(
       page.getByText(/perfil disc/i).first(),
       "A ficha não mostra a linha 'Perfil DISC'. É ela que carrega o " +
@@ -314,6 +351,12 @@ test.describe("Entrevista Prévia 2.0 · a ponte para a sessão", () => {
     // 🔑 Não concluo uma entrevista aqui para criar a condição: concluir
     // chama `entrevista_previa_concluir`, que GRAVA o perfil DISC na ficha de
     // um cliente real. Ver o cabeçalho do teste seguinte.
+    //
+    // 🔴 24/09: a linha "Próximo passo" mora na folha 2. Sem navegar até ela,
+    // este teste PULARIA sempre ("não tem entrevista concluída") mesmo com o
+    // dado presente — o pior dos dois mundos: nem verde falso, nem cobertura,
+    // e um skip mentindo sobre o motivo no relatório.
+    await irParaFolhaPreliminar(page);
     const marcaDaEntrevista = page.getByText(/entrevista feita/i).first();
     const temEntrevista = await marcaDaEntrevista
       .waitFor({ state: "visible", timeout: 12_000 })

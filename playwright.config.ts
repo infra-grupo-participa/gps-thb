@@ -84,5 +84,51 @@ export default defineConfig({
       name: "celular",
       use: { ...devices["Pixel 7"] },
     },
+    /**
+     * ═══════════════════════════════════════════════════════════════════════
+     * 🔴 `chrome` — O CHROME DE VERDADE, ATRÁS DE UMA VARIÁVEL DE AMBIENTE
+     * ═══════════════════════════════════════════════════════════════════════
+     *
+     * Existe por UMA prova que os outros dois projetos não conseguem dar: que
+     * o PDF **PINTA** no visor nativo (teste 6b de `ficha-abas.spec.ts`). O
+     * `chromium` dos projetos `desktop`/`celular` é o **headless shell**, que
+     * não embarca o viewer de PDF e ABORTA o request — o frame filho nunca
+     * vira `chrome-extension://…`, e o teste se PULA com a razão escrita.
+     * "1 iframe no DOM" nunca provou que pintou: foi assim que um `sandbox=""`
+     * sobreviveu a uma suíte verde, com o elemento presente e o conteúdo em
+     * `chrome-error://chromewebdata/`.
+     *
+     * 🔴 POR QUE GATEADO, e não um projeto a mais na lista. `npm run e2e` é um
+     * `playwright test` **sem `--project`**, então TODO projeto declarado roda.
+     * Um `headless: false` fixo aqui abriria janela em toda execução da suíte —
+     * inclusive em CI, onde não há display. Com o gate, `npm run e2e` não muda
+     * em nada sem a variável.
+     *
+     * Rodar a prova da junção:
+     *   E2E_CHROME=1 npx playwright test e2e/ficha-abas.spec.ts --project=chrome
+     *
+     * 🔑 Não há `testMatch`/`testIgnore`/`grep` neste config, então todo spec
+     * de `./e2e` roda em todo projeto declarado — o teste 6b entra neste
+     * projeto sem precisar de filtro. Conferido em 24/09/2026.
+     *
+     * ⚠️ Exige o **Chrome instalado na máquina** (`channel: "chrome"` usa o
+     * binário do sistema, não o Chromium que o Playwright baixa). Sem ele o
+     * projeto falha ao abrir o navegador — por isso ele não entra por padrão.
+     */
+    ...(process.env.E2E_CHROME
+      ? [
+          {
+            name: "chrome",
+            use: {
+              ...devices["Desktop Chrome"],
+              channel: "chrome",
+              // `headless: false` é REQUISITO, não preferência: o viewer de
+              // PDF não existe no modo headless nem no Chrome de verdade.
+              headless: false,
+              viewport: { width: 1366, height: 768 },
+            },
+          },
+        ]
+      : []),
   ],
 });

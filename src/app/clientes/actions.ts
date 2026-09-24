@@ -14,8 +14,12 @@ import {
   ehAnexoMime,
   nomeDeArquivoSeguro,
 } from "@/lib/chamados-tipos";
-import { GRAUS_RELACAO } from "@/lib/types";
-import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
+import { GRAUS_RELACAO, REGIMES_TRIBUTARIOS } from "@/lib/types";
+// `ClienteEtapa1` saiu daqui em 24/09/2026 junto com `PatchCliente`: era ele
+// quem alimentava o `Pick<>`, e o tipo agora mora em `@/lib/clientes-tipos`.
+import type { FaseCliente, ModoEnfase } from "@/lib/types";
+import type { PatchCliente } from "@/lib/clientes-tipos";
+import { soDigitos } from "@/lib/masks";
 
 /*
  * CD3 (09/09/2026) — este arquivo morava em `src/app/etapa-1/`, uma pasta com
@@ -29,42 +33,20 @@ import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
  * link e bookmark antigos, e nunca teve relação com este módulo.
  */
 
-/**
- * Campos do cliente que a UI pode atualizar.
+/*
+ * 🔴 `PatchCliente` MUDOU DE ARQUIVO em 24/09/2026 — ele era
+ * `export type` AQUI, e este módulo é `"use server"`.
  *
- * `status` saiu da lista de propósito (migração 20260909000060): a coluna
- * ficou CONGELADA no banco e é o caminho de volta da Fase 4 — enquanto
- * nenhuma escrita a toca, `drop column fase` restaura o estado anterior sem
- * restore de backup. Se voltar aqui, o caminho de volta morre em silêncio.
+ * Módulo `"use server"` só pode exportar `async function`: o Turbopack emite
+ * no chunk do servidor uma referência ao VALOR do que foi exportado, o tipo
+ * não existe em runtime e o módulo sai do build com ZERO exports — quem
+ * importa recebe `undefined`. `tsc` e `next build` passam; só o log de
+ * runtime da Hostinger mostra. Já derrubou tela 4 vezes neste produto, e este
+ * arquivo estava na lista dos 15 com a bomba viva.
+ *
+ * O tipo mora em `src/lib/clientes-tipos.ts` e entra por `import type`.
+ * **Não reexportar daqui.**
  */
-export type PatchCliente = Partial<
-  Pick<
-    ClienteEtapa1,
-    | "nome"
-    | "telefone"
-    // 🔴 `nivel_relacionamento` e `perda_inercia` SAÍRAM daqui em 10/09/2026
-    // (decisão do Marcio). Tirar da allowlist é o que CONGELA de verdade: o
-    // tipo abaixo só vale em compilação, mas Server Action é endpoint HTTP e
-    // uma chamada forjada mandaria a coluna direto. Sem esta remoção, o
-    // congelamento seria só promessa. As colunas continuam no banco com o
-    // dado histórico; nenhum caminho de escrita as toca.
-    | "problemas"
-    | "registro_contato"
-    | "mensagem_padrao_enviada"
-    | "estudo_caso_enviado"
-    | "ligacao_realizada"
-    | "fase"
-    | "data_reuniao_preliminar"
-    | "aderiu_reuniao"
-    | "perfil_disc"
-    | "valor_honorarios"
-    | "contrato_url"
-    | "grau_relacao"
-    | "disc_consciencia"
-    | "disc_gatilhos"
-    | "disc_relacionamento"
-  >
->;
 
 /**
  * Allowlist em RUNTIME das chaves de PatchCliente. O tipo acima só vale em
@@ -104,6 +86,17 @@ const CHAVES_PATCH_CLIENTE: ReadonlySet<string> = new Set([
   "disc_consciencia",
   "disc_gatilhos",
   "disc_relacionamento",
+  // Pessoa jurídica (migração 20260924000308, 24/09/2026). MESMA armadilha
+  // das anteriores: estar só no `Pick` de `PatchCliente` não basta — o tipo
+  // some na compilação e `filtrarPatch` descartaria os 4 em runtime; o
+  // parceiro preencheria, a tela diria "Ficha salva." e nada teria sido
+  // gravado. Escrita direta pelo PostgREST é deliberada: são texto digitado,
+  // como `registro_contato`, e não têm trigger de trava (diferente de
+  // `contrato_*`, que promete a existência de um arquivo).
+  "razao_social",
+  "cnpj",
+  "ramo_atividade",
+  "regime_tributario",
 ]);
 
 /**
@@ -198,6 +191,91 @@ function validarPatch(patch: PatchCliente): {
       } else {
         saida.contrato_url = url;
       }
+    }
+  }
+
+  // ── Pessoa jurídica (migração ...308, 24/09/2026) ────────────────────
+  //
+  // Os 4 CHECKs do banco são a garantia; isto aqui existe para (a) o erro
+  // chegar em PORTUGUÊS em vez de `23514 violates check constraint`, e (b)
+  // campo esvaziado na tela virar `null`, nunca `''` — string vazia não passa
+  // nos CHECKs de `razao_social`/`ramo_atividade` e derrubaria o salvamento
+  // INTEIRO da ficha (o parceiro perderia o resto do que digitou).
+  //
+  // Server Action é endpoint HTTP: os `typeof` não são paranoia.
+
+  /**
+   * `null`/`undefined`/`""` → `null`; string → `trim` (e `""` depois do trim
+   * também vira `null` — o CHECK recusa vazio, e "informado em branco" não é
+   * um estado que alguma tela saiba mostrar). Qualquer outro tipo devolve
+   * `{ ok: false }`, nunca um valor silenciosamente coagido.
+   */
+  const textoOuNulo = (
+    v: unknown,
+  ): { ok: true; valor: string | null } | { ok: false } => {
+    if (v === null || v === undefined) return { ok: true, valor: null };
+    if (typeof v !== "string") return { ok: false };
+    const t = v.trim();
+    return { ok: true, valor: t === "" ? null : t };
+  };
+
+  if ("razao_social" in saida) {
+    const r = textoOuNulo(saida.razao_social);
+    if (!r.ok) return { erro: "Razão social inválida." };
+    if (r.valor !== null && r.valor.length > 200) {
+      return { erro: "A razão social é longa demais (máximo 200 caracteres)." };
+    }
+    saida.razao_social = r.valor;
+  }
+
+  if ("cnpj" in saida) {
+    const v = saida.cnpj;
+    if (v === null || v === undefined || v === "") {
+      saida.cnpj = null;
+    } else if (typeof v !== "string") {
+      return { erro: "CNPJ inválido." };
+    } else {
+      // 🔑 `soDigitos` (src/lib/masks.ts) é o único `.replace(/\D/g,"")` do
+      // repo. A coluna guarda DÍGITO PURO — a máscara 00.000.000/0000-00 é da
+      // tela, e gravar com pontuação faria a mesma empresa ter duas formas.
+      const d = soDigitos(v);
+      if (d === "") {
+        // O parceiro apagou o campo (ou digitou só pontuação): vira NÃO
+        // INFORMADO, não erro. Esvaziar um campo opcional é ação legítima.
+        saida.cnpj = null;
+      } else if (d.length !== 14) {
+        return { erro: "O CNPJ precisa ter 14 dígitos." };
+      } else {
+        // 🔴 SEM dígito verificador, por decisão do Marcio (24/09/2026):
+        // `cnpjValido` existe em `masks.ts`, mas a ficha é cadastro de
+        // PROSPECT e não pode travar por um dígito trocado. Se um dia virar
+        // exigência, é AQUI que ela entra (mensagem em português), nunca no
+        // CHECK — que só guarda a forma `^[0-9]{14}$`.
+        saida.cnpj = d;
+      }
+    }
+  }
+
+  if ("ramo_atividade" in saida) {
+    const r = textoOuNulo(saida.ramo_atividade);
+    if (!r.ok) return { erro: "Ramo de atividade inválido." };
+    if (r.valor !== null && r.valor.length > 120) {
+      return {
+        erro: "O ramo de atividade é longo demais (máximo 120 caracteres).",
+      };
+    }
+    saida.ramo_atividade = r.valor;
+  }
+
+  if ("regime_tributario" in saida) {
+    const v = saida.regime_tributario;
+    if (v === null || v === undefined || v === "") {
+      saida.regime_tributario = null;
+    } else if (
+      typeof v !== "string" ||
+      !REGIMES_TRIBUTARIOS.some((r) => r.valor === v)
+    ) {
+      return { erro: "Escolha um regime tributário da lista." };
     }
   }
 

@@ -171,6 +171,61 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
       },
+      // 🔴 A ROTA QUE SERVE DOCUMENTO INLINE — precisa vir DEPOIS do bloco
+      // acima, e este é o único motivo de ela existir aqui.
+      //
+      // MEDIDO em 24/09/2026 (rota de sonda, `next dev`, Next 16.2.10): o
+      // header de `next.config.ts` **SUBSTITUI** o que o Route Handler define
+      // em `new Response(...)` — não é merge, não duplica. Uma sonda que
+      // devolvia `Content-Security-Policy: sandbox` respondeu ao curl com o
+      // `frame-ancestors 'none'; frame-src 'self' …` deste arquivo, e o
+      // `Referrer-Policy: no-referrer` dela virou
+      // `strict-origin-when-cross-origin`. Ou seja: sem esta entrada, DOIS
+      // dos cabeçalhos de segurança da rota de documento (`sandbox` e
+      // `no-referrer`) NÃO chegariam ao navegador, e o `route.ts` estaria
+      // mentindo em comentário.
+      //
+      // `sandbox` sem token nenhum dá ao documento uma ORIGEM OPACA: PDF com
+      // JavaScript embutido não executa, não vê cookie/`localStorage` do GPS
+      // e não navega o topo. `no-referrer` impede que a URL — que carrega
+      // `clienteId` e o id da minuta — vaze no `Referer` de qualquer recurso
+      // que o documento tente buscar.
+      //
+      // 🔴 `X-Frame-Options: SAMEORIGIN` PRECISA estar AQUI, repetido.
+      //
+      // MEDIDO em Chrome 154 (24/09/2026): a substituição por chave do Next só
+      // acontece para as chaves que a regra ESPECÍFICA declara. O bloco geral
+      // `/((?!p/).*)` também casa esta URL e, como esta entrada não declarava
+      // `X-Frame-Options`, o `DENY` dele sobrevivia na resposta — o `<iframe>`
+      // da pré-visualização morria com `net::ERR_BLOCKED_BY_RESPONSE` e a
+      // tela ficava branca. `SAMEORIGIN` mantém a proteção contra clickjacking
+      // de terceiro e libera só a nossa própria ficha a emoldurar. A CSP vai
+      // junto (`frame-ancestors 'self'`), porque navegador moderno prefere
+      // `frame-ancestors` e `X-Frame-Options` é o fallback.
+      //
+      // ⚠️ `sandbox` CONTINUA na CSP: o isolamento do documento vem da
+      // RESPOSTA, nunca do atributo `sandbox` do `<iframe>` (que desliga o
+      // visor de PDF do Chrome — ver `visor-documento.tsx`). As três camadas
+      // reais, em ordem de confiabilidade:
+      //   (a) `Content-Type` decidido por MAGIC BYTES na rota + `nosniff` —
+      //       o arquivo nunca vira `text/html`, então não há o que executar;
+      //   (b) o viewer de PDF do Chrome roda em `chrome-extension://…`, fora
+      //       da nossa origem — não alcança cookie nem `localStorage` do GPS;
+      //   (c) `CSP: sandbox` como camada extra, onde o LiteSpeed da Hostinger
+      //       deixar o header passar (ver a nota do `/p/plantao`: lá ele
+      //       sobrescreve a CSP inteira em produção).
+      {
+        source: "/clientes/:clienteId/documento/:tipo/:id",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          {
+            key: "Content-Security-Policy",
+            value: "sandbox; frame-ancestors 'self'",
+          },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+        ],
+      },
     ];
   },
 };

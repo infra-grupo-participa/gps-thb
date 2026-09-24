@@ -42,10 +42,10 @@ export interface InterruptorConfig {
 }
 
 /**
- * As 14 chaves booleanas que a TELA lista, na ordem em que aparecem.
+ * As 15 chaves booleanas que a TELA lista, na ordem em que aparecem.
  * Medidas no banco em 15/09/2026 — ver o levantamento no plano da feature.
  *
- * ⚠️ A allowlist de `gps.config_definir` tem 15: `sessoes_exige_disc` está lá
+ * ⚠️ A allowlist de `gps.config_definir` tem 16: `sessoes_exige_disc` está lá
  * e **não** aqui, de propósito (ver o comentário ao lado dela abaixo). Esta
  * lista é subconjunto da allowlist — nunca o contrário.
  *
@@ -87,6 +87,18 @@ export const INTERRUPTORES_CONFIG: readonly InterruptorConfig[] = [
     rotulo: "Convite de sócio (autosserviço)",
     descricaoDesligado:
       "O titular deixa de conseguir convidar um sócio pela tela — o botão some da aba Equipe. Convites já enviados continuam valendo até expirar.",
+    perigoso: false,
+  },
+  {
+    chave: "documento_inline_ativo",
+    rotulo: "Pré-visualização de documentos na ficha do cliente",
+    descricaoDesligado:
+      "Contrato, minuta e croqui param de abrir na tela: a equipe volta a só baixar o arquivo para ler. Nada é apagado e nenhum acesso é ampliado — quem podia ver o documento continua podendo, só que baixando. Religue e a pré-visualização volta na hora, sem deploy.",
+    // Botão de pânico de uma feature que já está no ar: DESLIGAR é o movimento
+    // seguro (volta ao comportamento anterior, que é baixar), e por isso não é
+    // "perigoso". Ligado é o estado normal — inclusive quando a chave não
+    // existe em `gps.config`, porque `gps.documento_inline_ativo()` (…310)
+    // trata ausente como LIGADO.
     perigoso: false,
   },
   {

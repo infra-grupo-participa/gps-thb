@@ -27,10 +27,8 @@
  */
 
 import { ExternalLink } from "lucide-react";
-import { FileSignature } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Secao } from "@/components/ui/secao";
 import { mascaraMoeda, numeroParaMoeda } from "@/lib/masks";
 import {
   ContratoAnexo,
@@ -150,13 +148,8 @@ export function FichaContrato({
       </details>
     ) : null;
 
-  return (
-    <Secao
-      icone={<FileSignature />}
-      titulo="Contrato"
-      nivel="h3"
-      classeConteudo="grid gap-5"
-    >
+  const conteudo = (
+    <>
       {anexo}
 
       {contratado ? (
@@ -201,6 +194,12 @@ export function FichaContrato({
       )}
 
       {legado}
-    </Secao>
+    </>
   );
+
+  // O cabeçalho é o `<summary>` do bloco que envolve este componente
+  // (`FichaBloco`, 23/09/2026) — aqui fica só o CONTEÚDO. A grade de 5 morava
+  // em `classeConteudo` da `Secao`; vem para cá porque é do conteúdo, não da
+  // moldura, e sumir com ela colaria os campos.
+  return <div className="grid gap-5">{conteudo}</div>;
 }

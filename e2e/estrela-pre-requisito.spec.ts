@@ -42,6 +42,28 @@ const parceiro = exigeLogin();
  * 🔴 A 2ª conferência é dentro da ficha, no campo "Nome" — é o valor que a
  * ficha enviaria se alguém salvasse, ou seja, exatamente a ficha em que
  * estamos. Em produção, agir na ficha errada é estrago real.
+ *
+ * ── 🔴 AJUSTE DA FATIA 4 (24/09/2026): A FICHA VIROU 4 ABAS ────────────────
+ *
+ * O campo "Nome" mora agora na folha 1 ("Dados básicos"), e **essa folha
+ * quase nunca é a que abre**: `abaPadraoPorFase` devolve `preliminar` para
+ * `prospeccao`/`fechamento` e `fechamento` para `contratado` — e essas são
+ * as ÚNICAS 3 fases que existem (`FaseCliente`). Ou seja, na prática a ficha
+ * nunca abre em "Dados básicos" sozinha.
+ *
+ * Com `keepMounted` as quatro folhas ficam no DOM e as inativas levam
+ * `hidden`, então `toHaveValue` sobre o campo seria uma asserção sobre
+ * elemento invisível — Playwright aguardaria até o timeout e o teste
+ * quebraria por MUDANÇA DE LAYOUT, não por defeito do produto.
+ *
+ * A correção é só navegar: `?aba=dados` põe a folha do nome à vista. A
+ * conferência continua sendo sobre QUAL ficha está aberta, que é o que ela
+ * sempre quis provar — nenhuma asserção foi afrouxada.
+ *
+ * ⚠️ O botão da estrela e o `#estrela-motivo-selecao` NÃO precisam disto:
+ * eles vivem em `FichaCabecalho`, que é montado FORA das abas (conferido em
+ * `cliente-ficha.tsx`). Por isso os testes abaixo seguem lendo a ficha
+ * direto, sem tocar em aba nenhuma.
  */
 async function abrirFicha(page: Page, nome: RegExp, busca: string) {
   await page.goto("/clientes");
@@ -56,6 +78,12 @@ async function abrirFicha(page: Page, nome: RegExp, busca: string) {
 
   await link.click();
   await page.waitForURL(/\/clientes\/[0-9a-f-]{36}/i, { timeout: 15_000 });
+
+  // 🔴 A folha do campo "Nome". Sem isto, a conferência da ficha certa cai
+  // num campo `hidden` e o teste falha por layout, não por defeito.
+  const base = page.url().split("?")[0];
+  await page.goto(`${base}?aba=dados`);
+
   await expect(
     page.getByLabel(/^Nome$/),
     "A ficha aberta não é a que o teste pediu — abortando antes de agir.",

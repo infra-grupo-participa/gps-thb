@@ -17,6 +17,7 @@ import { AssistBanner } from "@/components/admin/assist-banner";
 import { ClienteFicha } from "@/components/clientes/cliente-ficha";
 import { estrelaTravada } from "@/components/clientes/clientes-manager/ordenacao";
 import { getMinutasDoCliente } from "@/lib/data/minutas";
+import { getCroquisDoCliente } from "@/lib/data/croquis";
 import {
   getDecisoresPendentes,
   getEntrevistasDoCliente,
@@ -40,25 +41,38 @@ export default async function AdminAlunoClienteFichaPage({
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
   const base = `/admin/aluno/${alunoId}`;
-  const [aluno, qtdMembros, outroConfirmado, tutoriaisAtivo, minutas, decisores, entrevistas] =
-    await Promise.all([
-      getAlunoById(alunoId),
-      contarMembrosDoAmbiente(alunoId),
-      // Mesma regra da ficha do aluno: só quando este cliente não é a estrela.
-      cliente.acompanhado_equipe
-        ? Promise.resolve(null)
-        : getClienteEquipe(alunoId),
-      getTutoriaisAtivo(),
-      // 🔑 No MESMO Promise.all (o `cliente` já foi resolvido acima): pedir em
-      // cascata custaria uma viagem a mais por abertura de ficha.
-      getMinutasDoCliente(clienteId),
-      // 🔑 Espelha a ficha do aluno (23/09/2026): decisores e histórico da
-      // Entrevista Prévia não dependem do cliente nem do aluno. No MESMO
-      // Promise.all — em cascata custaria duas viagens a mais por abertura
-      // de ficha, a tela mais usada do produto.
-      getDecisoresPendentes(clienteId),
-      getEntrevistasDoCliente(clienteId),
-    ]);
+  const [
+    aluno,
+    qtdMembros,
+    outroConfirmado,
+    tutoriaisAtivo,
+    minutas,
+    croquis,
+    decisores,
+    entrevistas,
+  ] = await Promise.all([
+    getAlunoById(alunoId),
+    contarMembrosDoAmbiente(alunoId),
+    // Mesma regra da ficha do aluno: só quando este cliente não é a estrela.
+    cliente.acompanhado_equipe
+      ? Promise.resolve(null)
+      : getClienteEquipe(alunoId),
+    getTutoriaisAtivo(),
+    // 🔑 No MESMO Promise.all (o `cliente` já foi resolvido acima): pedir em
+    // cascata custaria uma viagem a mais por abertura de ficha.
+    getMinutasDoCliente(clienteId),
+    // 🔑 Espelha a ficha do parceiro (24/09/2026): o histórico de croquis
+    // entra no MESMO Promise.all, nunca em cascata. Commit separado
+    // publicaria o parceiro com o espelho defasado — a defasagem silenciosa
+    // que `e2e/espelho-admin.spec.ts` existe para pegar.
+    getCroquisDoCliente(clienteId),
+    // 🔑 Espelha a ficha do aluno (23/09/2026): decisores e histórico da
+    // Entrevista Prévia não dependem do cliente nem do aluno. No MESMO
+    // Promise.all — em cascata custaria duas viagens a mais por abertura
+    // de ficha, a tela mais usada do produto.
+    getDecisoresPendentes(clienteId),
+    getEntrevistasDoCliente(clienteId),
+  ]);
   // 🔴 `estrelaTravada` desde 23/09/2026 (migração ...304): o que esconde a
   // estrela é o outro favorito cujo CASO já andou, não mais
   // `acompanhamento_confirmado_em` — coluna que nunca foi preenchida em
@@ -129,6 +143,7 @@ export default async function AdminAlunoClienteFichaPage({
         <ClienteFicha
           cliente={cliente}
           minutas={minutas}
+          croquis={croquis}
           contextoObrigatorio={contextoObrigatorio}
           alunoId={alunoId}
           admin

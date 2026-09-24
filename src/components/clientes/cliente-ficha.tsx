@@ -1,59 +1,107 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+/**
+ * A FICHA DO CLIENTE — uma PASTA COM QUATRO FOLHAS (Marcio, 24/09/2026).
+ *
+ * Este arquivo é o **index**: ele é dono de todo o estado do formulário, da
+ * validação, do `salvar()` e dos diálogos da estrela. Saíram daqui:
+ *
+ * | arquivo | o que é |
+ * |---|---|
+ * | `ficha-abas.tsx` | a casca das abas (régua, contador, marca) |
+ * | `ficha-abas-estado.ts` | **puro, sem React**: allowlist de `?aba=`, padrão por fase, contadores, `camposAlteradosDaFicha`, `alteradoPorAba`, a frase da barra |
+ * | `ficha-aba-dados.tsx` · `ficha-pj.tsx` | folha 1 |
+ * | `ficha-aba-preliminar.tsx` | folha 2 |
+ * | `ficha-croqui.tsx` | folha 3 (**slot da fatia 5**) |
+ * | `ficha-aba-fechamento.tsx` | folha 4 (sobre `ficha-contrato` + `minutas-anexo`) |
+ * | `ficha-barra-salvar.tsx` | a barra sticky |
+ *
+ * ⚠️ **O index ficou em ~700 linhas, não em 400** — e a métrica da casa é "até
+ * 400". O que sobrou aqui é UMA responsabilidade: os 22 `useState` do
+ * formulário, as 5 guardas de validação e o `salvar()` que monta o
+ * `PatchCliente`. Cortar por linha separaria a guarda do campo que ela
+ * valida e o estado do `salvar()` que o envia — a mesma razão pela qual
+ * `slots-actions.ts` ficou com 731. O que era puro (a comparação campo a
+ * campo, a frase da barra) **já saiu** para `ficha-abas-estado.ts`, e é lá
+ * que a lógica se confere sem montar a tela. Eram 1.033 linhas numa só.
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ * 🔴 POR QUE TODOS OS `useState` FICAM AQUI, E NÃO DENTRO DAS FOLHAS
+ * ═══════════════════════════════════════════════════════════════════════
+ * `TabsPanel` do Base UI desmonta o painel inativo por padrão (`keepMounted =
+ * false`). Estado que morasse numa folha morreria a cada troca de aba, em
+ * silêncio, e o "Salvar ficha" mandaria ao banco o valor do servidor por cima
+ * do que a pessoa digitou. Aqui, acima das abas, eles sobrevivem.
+ *
+ * `FichaAbas` ainda passa `keepMounted` por causa do estado PRÓPRIO de
+ * `MinutasAnexo`/`ContratoAnexo` (texto de contexto, arquivo escolhido), que
+ * não sobe para cá — ver o cabeçalho de lá. As duas travas são
+ * independentes: esta protege o formulário, aquela protege os anexos.
+ *
+ * 🔑 **Zero consulta ao trocar de aba.** Conferido hook a hook em 24/09/2026:
+ * nenhuma folha, e nenhum componente que elas montam (`DiscDialogo`,
+ * `MinutasAnexo`, `ContratoAnexo`, `PainelEntrevistaPrevia`), chama `fetch`,
+ * `useEffect` de carga ou `createClient()` fora de um handler de clique.
+ * `painelEntrevista` é markup do SERVIDOR que atravessa por `ReactNode`. A
+ * armadilha conhecida (hook com cara de local escondendo `SELECT` por troca
+ * de aba) não existe aqui — e a razão está escrita para quem for acrescentar
+ * a próxima folha: **folha que desmonta não carrega nada próprio**.
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ * 🔴 A BARRA STICKY NOMEIA A FOLHA
+ * ═══════════════════════════════════════════════════════════════════════
+ * "Você tem alterações não salvas em Reunião preliminar." Com quatro folhas,
+ * "nesta ficha" não diz ONDE — a pessoa alteraria o DISC, iria ao Fechamento
+ * e teria de abrir as quatro para achar. A aba alterada também ganha marca
+ * própria (ponto + `sr-only`), porque a barra fica no rodapé e a régua das
+ * abas, no topo.
+ *
+ * 🔴 **Pendência puxa a folha.** `faltaEssencial` (nome/telefone) é da aba 1 e
+ * bloqueia o salvar da ficha INTEIRA. Ao tentar salvar com outra folha aberta,
+ * a ficha troca para "Dados básicos" e foca o campo vazio — botão morto numa
+ * folha, motivo em outra, é o defeito que esta fatia existe para não criar.
+ */
+
+import { useCallback, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
+import type { ClienteCroqui } from "@/lib/croquis-tipos";
+import { FASES_CLIENTE } from "@/lib/etapa1";
 import {
-  PROBLEMAS_7,
-  FASES_CLIENTE,
-  GRAUS_RELACAO_UI,
-  PERFIS_DISC,
-} from "@/lib/etapa1";
-import {
+  mascaraCpfCnpj,
   mascaraTelefone,
   moedaParaNumero,
   numeroParaMoeda,
+  soDigitos,
 } from "@/lib/masks";
-import {
-  Phone,
-  Calendar,
-  User,
-  IdCard,
-  ListChecks,
-  NotebookPen,
-  FileText,
-} from "lucide-react";
 import { atualizarCliente, definirClienteEquipe } from "@/app/clientes/actions";
 import { linkWhatsapp } from "@/lib/whatsapp";
-import { cn } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
-import { Secao } from "@/components/ui/secao";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { DialogoDesfavoritar } from "@/components/clientes/dialogo-desfavoritar";
-import { FichaContrato } from "@/components/clientes/ficha-contrato";
-import { MinutasAnexo } from "@/components/clientes/minutas-anexo";
 import { FichaCabecalho } from "@/components/clientes/ficha-cabecalho";
 import { DialogoEscolherFavorito } from "@/components/clientes/dialogo-escolher-favorito";
-import { DiscDialogo } from "@/components/clientes/disc-dialogo";
+import { FichaAbas } from "@/components/clientes/ficha-abas";
+import { FichaAbaDados } from "@/components/clientes/ficha-aba-dados";
+import { FichaAbaPreliminar } from "@/components/clientes/ficha-aba-preliminar";
+import { FichaCroqui } from "@/components/clientes/ficha-croqui";
+import { FichaAbaFechamento } from "@/components/clientes/ficha-aba-fechamento";
+import { FichaBarraSalvar } from "@/components/clientes/ficha-barra-salvar";
+import {
+  ABAS_FICHA,
+  ROTULO_DA_ABA,
+  abaDaPendencia,
+  alteradoPorAba,
+  camposAlteradosDaFicha,
+  contadorDaAba,
+  frasePendenciaDaFicha,
+  resolverAba,
+  type AbaFicha,
+} from "@/components/clientes/ficha-abas-estado";
 import {
   fasesDisponiveis,
   estrelaTravada,
-  travadoPelaEquipe,
 } from "@/components/clientes/clientes-manager/ordenacao";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export function ClienteFicha({
   cliente,
@@ -62,6 +110,7 @@ export function ClienteFicha({
   outroConfirmadoNome = null,
   outroFavoritoNome = null,
   minutas = [],
+  croquis,
   contextoObrigatorio = false,
   painelEntrevista = null,
   qtdDecisores = null,
@@ -79,9 +128,7 @@ export function ClienteFicha({
    * Quantos decisores a Entrevista Prévia registrou para este cliente.
    *
    * Vem do `getDecisoresPendentes` que a page JÁ chama no `Promise.all` — é
-   * a contagem do painel, reaproveitada. **Nenhuma consulta nova**: o sinal
-   * de pendência na ficha não pode custar uma sexta ida ao banco na tela
-   * mais usada do produto.
+   * a contagem do painel, reaproveitada. **Nenhuma consulta nova**.
    *
    * 🔴 `null` = NÃO SABEMOS (modo assistência, que não chama a RPC). Aí a
    * segunda linha do bloco DISC simplesmente não aparece — ausência de dado
@@ -91,17 +138,13 @@ export function ClienteFicha({
   qtdDecisores?: number | null;
   /**
    * Já existe pelo menos uma Entrevista Prévia CONCLUÍDA neste cliente.
+   * Derivado do `getEntrevistasDoCliente` que a page JÁ resolve — nenhuma
+   * consulta nova.
    *
-   * Vem derivado do `getEntrevistasDoCliente` que a page JÁ resolve no
-   * `Promise.all` — **nenhuma consulta nova**, mesma regra de
-   * `qtdDecisores` acima.
-   *
-   * 🔴 `false` no modo assistência, e de propósito: a page do admin nunca
-   * chamou `getEntrevistasDoCliente` e não passa a chamar. O efeito é o
-   * desenhado — a linha de próximo passo NÃO aparece lá, porque a rota
-   * `/sessoes` só existe para o ALUNO (`nav.ts` filtra por `basePath === ""`;
-   * não há `admin/aluno/[id]/sessoes`). Um link aqui levaria o admin a um
-   * 404, e link que dá erro é pior que link ausente.
+   * 🔴 `false` no modo assistência, e de propósito: a rota `/sessoes` só
+   * existe para o ALUNO (`nav.ts` filtra por `basePath === ""`). Um link
+   * aqui levaria o admin a um 404, e link que dá erro é pior que link
+   * ausente.
    */
   temEntrevistaConcluida?: boolean;
   /**
@@ -112,59 +155,71 @@ export function ClienteFicha({
   admin?: boolean;
   /**
    * Nome do cliente que a equipe JÁ acompanha no ambiente, quando não é este.
-   * `null` = não há outro confirmado. Com um confirmado em outro cliente, a
-   * estrela desta ficha some (o banco recusaria a troca) e o motivo é escrito.
+   * `null` = não há outro confirmado.
    */
   outroConfirmadoNome?: string | null;
   /**
    * Nome do cliente que o ALUNO já escolheu no ambiente, quando não é este e a
-   * equipe ainda não confirmou. Desde a migração ...215 a escolha basta para o
-   * banco recusar a troca (42501), então a estrela também some daqui — com a
-   * razão escrita. `null` = não há outro escolhido.
+   * equipe ainda não confirmou. `null` = não há outro escolhido.
    */
   outroFavoritoNome?: string | null;
   /**
    * Histórico de minutas do cliente (mais recente primeiro), vindo do
    * SERVIDOR — mesma regra do anexo de contrato: a escrita é por RPC e não
-   * passa pelo "Salvar ficha", então não vira estado local. `[]` = ainda sem
-   * `getMinutasDoCliente` na page (backend em paralelo) ou nenhuma enviada.
+   * passa pelo "Salvar ficha", então não vira estado local.
    */
   minutas?: ClienteMinuta[];
   /**
+   * Versões do CROQUI deste cliente, mais recente primeiro
+   * (`getCroquisDoCliente`). Alimenta a aba 3 e o contador do rótulo dela.
+   *
+   * 🔑 **Obrigatória.** Sem default: as DUAS `page.tsx` da ficha (parceiro e
+   * espelho do admin) buscam a lista no servidor e passam aqui. Um default
+   * `[]` deixaria a aba dizer "Nenhum croqui" para uma página que esqueceu de
+   * buscar — afirmação sobre o banco que a tela não tem como sustentar, e que
+   * o `tsc` deixaria passar em silêncio. Sendo obrigatória, page nova que
+   * monte a ficha sem os croquis não compila.
+   */
+  croquis: ClienteCroqui[];
+  /**
    * Interruptor `minuta_contexto_obrigatorio`, lido no servidor pela page.
-   * `false` = ainda sem o helper de leitura (backend em paralelo) — os
-   * campos de contexto continuam visíveis, só sem exigir preenchimento.
    */
   contextoObrigatorio?: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [nome, setNome] = useState(cliente.nome ?? "");
   const [telefone, setTelefone] = useState(
     cliente.telefone ? mascaraTelefone(cliente.telefone) : "",
   );
   const [grau, setGrau] = useState<string>(cliente.grau_relacao ?? "");
-  const [problemas, setProblemas] = useState<string[]>(cliente.problemas ?? []);
-  const [fase, setFase] = useState<FaseCliente>(
-    cliente.fase ?? "prospeccao",
+  // ── PESSOA JURÍDICA (migração `…308`) ────────────────────────────────
+  // 🔴 `cnpj` mora MASCARADO no estado e vai em DÍGITOS PUROS ao banco (o
+  // CHECK é `^[0-9]{14}$`). A conversão está em `salvar()` e repetida na
+  // comparação de `alterado`, senão a barra mente nos dois sentidos — mesma
+  // armadilha do telefone.
+  const [razaoSocial, setRazaoSocial] = useState(cliente.razao_social ?? "");
+  const [cnpj, setCnpj] = useState(
+    cliente.cnpj ? mascaraCpfCnpj(cliente.cnpj) : "",
   );
+  const [ramo, setRamo] = useState(cliente.ramo_atividade ?? "");
+  const [regime, setRegime] = useState<string>(cliente.regime_tributario ?? "");
+  const [problemas, setProblemas] = useState<string[]>(cliente.problemas ?? []);
+  const [fase, setFase] = useState<FaseCliente>(cliente.fase ?? "prospeccao");
   const [dataReuniao, setDataReuniao] = useState(
     cliente.data_reuniao_preliminar ?? "",
   );
   const [disc, setDisc] = useState(cliente.perfil_disc ?? "");
   // ═══════════════════════════════════════════════════════════════════════
-  // 🔴 O DISC RICO (PRD 2026-09-23, fatias A/B/E) — e a armadilha do `""`
+  // 🔴 O DISC RICO (PRD 2026-09-23) — e a armadilha do `""`
   // ═══════════════════════════════════════════════════════════════════════
-  //
-  // O CHECK das 3 colunas em `gps.etapa1_clientes` é **3..2000 caracteres
-  // sobre `btrim`, com `null` permitido**. Ou seja: `null` passa, `"ok"` é
-  // curto demais, e **`""` ou `"   "` violam o CHECK com 23514**.
-  //
-  // Consequência direta para esta tela: **campo esvaziado tem de virar
-  // `null`** antes de ir ao banco. Se `salvar()` mandasse `""`, o parceiro
-  // que limpasse um campo levaria "violates check constraint" em vez de ver
-  // a ficha salva — e levaria isso na ficha INTEIRA, porque o update é um só.
-  // A normalização está em `salvar()` (`|| null` sobre o `trim`) e repetida
-  // aqui na comparação de `alterado`, senão a barra mente nos dois sentidos.
+  // O CHECK das 3 colunas é **3..2000 caracteres sobre `btrim`, com `null`
+  // permitido**: `null` passa, `"ok"` é curto demais, e **`""` ou `"   "`
+  // violam o CHECK com 23514**. Campo esvaziado tem de virar `null` antes de
+  // ir ao banco — senão quem limpasse um campo levaria "violates check
+  // constraint" na ficha INTEIRA, porque o update é um só.
   const [discConsciencia, setDiscConsciencia] = useState(
     cliente.disc_consciencia ?? "",
   );
@@ -180,9 +235,7 @@ export function ClienteFicha({
   const [acompanhado, setAcompanhado] = useState(cliente.acompanhado_equipe);
   /**
    * PL11 — desmarcar a estrela aqui trava os passos 4 a 8 da Etapa 01, igual
-   * a desmarcá-la na lista. A lista já confirmava; a ficha desligava num
-   * clique. `true` = diálogo aberto. Só o DESLIGAR pergunta: ligar é
-   * reversível e não tranca nada.
+   * a desmarcá-la na lista. `true` = diálogo aberto. Só o DESLIGAR pergunta.
    */
   const [desfavoritando, setDesfavoritando] = useState(false);
   /** Diálogo de ESCOLHA do cliente acompanhado (aluno, migração ...215). */
@@ -191,13 +244,12 @@ export function ClienteFicha({
   /**
    * Falha da estrela FORA do diálogo (o caminho de ligar, que é um clique só).
    * Fica na tela, com `role="alert"`: a frase que vem da action já é a
-   * traduzida do banco ("A equipe está acompanhando este cliente…") e é a única
-   * pista do que aconteceu — um toast a apagaria em 4 segundos.
+   * traduzida do banco e é a única pista do que aconteceu — um toast a
+   * apagaria em 4 segundos.
    */
   const [erroEstrela, setErroEstrela] = useState<string | null>(null);
   // Honorários e link do contrato (Fase 7-B). Ficam no estado mesmo quando a
-  // fase não é "contratado": o valor SOBREVIVE à volta de fase (B9-b) e é
-  // reenviado como está — mudar de fase nunca apaga o que o aluno digitou.
+  // fase não é "contratado": o valor SOBREVIVE à volta de fase (B9-b).
   const [honorarios, setHonorarios] = useState(
     numeroParaMoeda(cliente.valor_honorarios),
   );
@@ -205,13 +257,7 @@ export function ClienteFicha({
   const [pending, startTransition] = useTransition();
   /**
    * Por que a ficha recusou salvar — a frase EXATA, no `role="alert"` da barra
-   * de salvar.
-   *
-   * Era `toast.error("Erro ao salvar.")`, que jogava fora a frase que a action
-   * já traduziu do banco (`traduzirErroBanco`): quando a trigger do
-   * acompanhamento confirmado recusa com 42501, "Erro ao salvar." não diz nada
-   * e o aluno tenta de novo para sempre. O erro mora ao lado do botão que
-   * falhou, não some sozinho em 4 segundos, e some quando ele salva de novo.
+   * de salvar. Não some sozinha em 4 segundos; some quando ele salva de novo.
    */
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
   /** Já houve uma tentativa de salvar? Marca os campos inválidos só depois. */
@@ -221,6 +267,34 @@ export function ClienteFicha({
   const contratoLimpo = contratoUrl.trim();
   const faseAtual = FASES_CLIENTE.find((f) => f.id === fase);
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // A FOLHA ABERTA — mora na URL (`?aba=`), com allowlist fechada
+  // ═══════════════════════════════════════════════════════════════════════
+  // Ver o cabeçalho de `ficha-abas.tsx` para o porquê de `replaceState`. A
+  // fase que decide o PADRÃO é a do SERVIDOR (`cliente.fase`), não o `fase`
+  // do formulário: com o estado local, trocar a fase no `Select` moveria a
+  // folha aberta debaixo dos pés de quem está digitando.
+  const aba: AbaFicha = resolverAba(searchParams.get("aba"), cliente.fase);
+
+  /**
+   * 🔴 **Um escritor só de `aba`.** Esta é a única função em toda a ficha que
+   * toca a chave — e ela parte de `searchParams.toString()`, então preserva
+   * qualquer outro parâmetro de graça.
+   *
+   * O padrão SAI do endereço: `/clientes/[id]` limpo continua limpo.
+   */
+  const irParaAba = useCallback(
+    (destino: AbaFicha) => {
+      if (!(ABAS_FICHA as readonly string[]).includes(destino)) return;
+      const sp = new URLSearchParams(searchParams.toString());
+      if (destino === resolverAba(null, cliente.fase)) sp.delete("aba");
+      else sp.set("aba", destino);
+      const q = sp.toString().replace(/%2C/g, ",");
+      window.history.replaceState(null, "", `${pathname}${q ? `?${q}` : ""}`);
+    },
+    [searchParams, pathname, cliente.fase],
+  );
+
   /**
    * A equipe assumiu ESTE cliente? Vem do dado do servidor, nunca do estado
    * local: a confirmação é escrita da equipe e não passa pelo formulário.
@@ -229,69 +303,58 @@ export function ClienteFicha({
   /** As fases que o banco ainda aceita para este cliente (§B.5). */
   const fasesDaFicha = fasesDisponiveis(cliente);
   /**
-   * 🔴 Migração ...215 — a escolha do aluno é DEFINITIVA. Este cliente já é a
-   * estrela e quem lê não é a equipe? Então não há botão nenhum: nem para
-   * desmarcar (o banco recusa) nem para trocar. A estrela vira sinal.
-   *
-   * A leitura é do dado do SERVIDOR (`cliente.acompanhado_equipe`), nunca do
-   * `acompanhado` otimista: com o otimista, o botão sumiria no clique, antes de
-   * o banco confirmar, e a falha deixaria a ficha sem caminho de volta.
+   * 🔴 Migração ...215 — a escolha do aluno é DEFINITIVA. A leitura é do dado
+   * do SERVIDOR, nunca do `acompanhado` otimista: com o otimista, o botão
+   * sumiria no clique, antes de o banco confirmar, e a falha deixaria a ficha
+   * sem caminho de volta.
    */
   const escolhidoPeloAluno = !admin && cliente.acompanhado_equipe && !confirmado;
   /** Outro cliente do ambiente já é a estrela (confirmado ou só escolhido). */
   const outroNome = outroConfirmadoNome ?? outroFavoritoNome;
   /**
-   * A estrela só aparece quando ela pode funcionar. O que a trava de verdade
-   * é a CONFIRMAÇÃO da equipe (`acompanhamento_confirmado_em`), não a escolha
-   * do parceiro.
-   *
-   * 🔴 Era `!confirmado && !escolhidoPeloAluno && ...` (corrigido em
-   * 10/09/2026): o parceiro marcava a estrela e no mesmo instante perdia o
-   * botão de desmarcar, mesmo sem a equipe ter olhado o cliente. A trigger
-   * bloqueava junto, então o único caminho era abrir chamado — e foi o que
-   * 5 pessoas fizeram no primeiro dia de uso.
-   *
-   * Agora: quem escolheu e ainda não foi confirmado VÊ o botão e desmarca
-   * sozinho. `outroConfirmadoNome` continua escondendo (aí o 42501 seria
-   * real: já existe um cliente assumido pela equipe neste ambiente).
+   * A estrela só aparece quando ela pode funcionar. O que a trava de verdade é
+   * a CONFIRMAÇÃO da equipe, não a escolha do parceiro (corrigido em
+   * 10/09/2026: o parceiro marcava a estrela e no mesmo instante perdia o
+   * botão de desmarcar — 5 pessoas abriram chamado no primeiro dia).
    */
   const mostraEstrela = !confirmado && outroConfirmadoNome == null;
 
+  const cnpjDigitos = soDigitos(cnpj);
+
   /**
-   * Há edição pendente na tela?
-   *
-   * 🔑 A ficha tem 1.000 px de rolagem e o "Salvar" morava no fim dela, sem
-   * barra fixa e sem nenhum sinal de que algo tinha mudado: dava para digitar
-   * um campo, rolar para cima, trocar de aba e perder tudo em silêncio. A
-   * comparação é contra o `cliente` que veio do servidor — a mesma origem
-   * dos `useState` iniciais —, campo a campo e na MESMA normalização que
-   * `salvar()` envia (`trim`, `|| null`, máscara de telefone). Se divergir,
-   * a barra mente nos dois sentidos.
+   * Quais campos divergem do servidor — a fonte da barra E da marca da aba.
+   * A conta inteira (22 comparações, cada uma com a normalização que
+   * `salvar()` usa) vive em `ficha-abas-estado.ts`, pura e sem React.
    */
-  const alterado =
-    nome.trim() !== (cliente.nome ?? "").trim() ||
-    (telefone.trim() || null) !==
-      (cliente.telefone ? mascaraTelefone(cliente.telefone) : null) ||
-    (grau || null) !== (cliente.grau_relacao ?? null) ||
-    problemas.length !== (cliente.problemas ?? []).length ||
-    problemas.some((p) => !(cliente.problemas ?? []).includes(p)) ||
-    fase !== (cliente.fase ?? "prospeccao") ||
-    (dataReuniao || null) !== (cliente.data_reuniao_preliminar ?? null) ||
-    (disc || null) !== (cliente.perfil_disc ?? null) ||
-    // MESMA normalização de `salvar()` (`trim` + `|| null`). Divergir aqui
-    // faria a barra dizer "alterações não salvas" para sempre em quem só
-    // encostou num campo e apagou de novo.
-    (discConsciencia.trim() || null) !== (cliente.disc_consciencia ?? null) ||
-    (discGatilhos.trim() || null) !== (cliente.disc_gatilhos ?? null) ||
-    (discRelacionamento.trim() || null) !==
-      (cliente.disc_relacionamento ?? null) ||
-    aderiu !== cliente.aderiu_reuniao ||
-    msgPadrao !== cliente.mensagem_padrao_enviada ||
-    estudoCaso !== cliente.estudo_caso_enviado ||
-    ligacao !== cliente.ligacao_realizada ||
-    (registro.trim() || null) !== (cliente.registro_contato ?? null) ||
-    honorarios !== numeroParaMoeda(cliente.valor_honorarios) ||
-    (contratoLimpo || null) !== (cliente.contrato_url ?? null);
+  const camposAlterados = camposAlteradosDaFicha(
+    {
+      nome,
+      telefone,
+      grau,
+      razaoSocial,
+      cnpj,
+      ramo,
+      regime,
+      problemas,
+      fase,
+      dataReuniao,
+      disc,
+      discConsciencia,
+      discGatilhos,
+      discRelacionamento,
+      aderiu,
+      msgPadrao,
+      estudoCaso,
+      ligacao,
+      registro,
+      honorarios,
+      contratoLimpo,
+      cnpjDigitos,
+    },
+    cliente,
+  );
+
+  const abasAlteradas = alteradoPorAba(camposAlterados);
 
   /** Salvar já foi tentado e o grupo de problemas continua vazio. */
   const problemasEmFalta = tentouSalvar && problemas.length === 0;
@@ -301,37 +364,22 @@ export function ClienteFicha({
   // ═══════════════════════════════════════════════════════════════════════
   // 🔑 FICHA RECÉM-CRIADA (decisões do Marcio, 10/09/2026)
   // ═══════════════════════════════════════════════════════════════════════
-  //
-  // *"Andamento do contato vai ficar inabilitado quando ele fizer o cadastro
-  // do cliente pela primeira vez, sem ser uma alteração"* e *"contrato fica
-  // desabilitado na hora de cadastrar o cliente, isso fica disponível somente
-  // quando ele tiver em execução"*.
-  //
   // O diálogo de criação grava nome + fase + grau e abre a ficha em seguida —
-  // então "primeira vez" é a ficha que ainda não tem TELEFONE, o campo que a
-  // pessoa preenche logo ao chegar aqui. Assim que ela salva com telefone, os
-  // campos abrem: a partir daí toda visita é alteração.
+  // então "primeira vez" é a ficha que ainda não tem TELEFONE. Assim que ela
+  // salva com telefone, os campos abrem: a partir daí toda visita é alteração.
   const fichaNova = !cliente.telefone;
 
-  // ✅ O CONTRATO JÁ ESTAVA CERTO: `FichaContrato` recebe `contratado` e só
-  // deixa editar quando a fase é "contratado" — que é exatamente "quando ele
-  // tiver em execução" (pedido do Marcio, 10/09/2026). Nada a mudar aqui.
-
   // 🔑 O BOTÃO NÃO OFERECE O QUE NÃO VAI DAR CERTO (Marcio, 10/09/2026):
-  // *"se não cadastrar tudo, o botão de salvar ficha fica em branco"*.
-  //
-  // O essencial é NOME + TELEFONE — é o que faz a ficha contar para os 30 da
-  // Etapa 01. Sem eles, salvar produz uma ficha que não conta, e a pessoa não
-  // tem como saber disso olhando a tela.
+  // *"se não cadastrar tudo, o botão de salvar ficha fica em branco"*. O
+  // essencial é NOME + TELEFONE — é o que faz a ficha contar para os 30.
   //
   // ⚠️ Os PROBLEMAS ficam de fora desta trava, de propósito: 355 dos 879
-  // clientes estão sem nenhum marcado (medido em 10/09), e travar o salvar
-  // por causa deles prenderia 39 ambientes. Eles seguem como aviso âmbar
-  // (`problemasEmFalta`), que avisa sem impedir.
+  // clientes estão sem nenhum marcado (medido em 10/09), e travar o salvar por
+  // causa deles prenderia 39 ambientes. Eles seguem como aviso âmbar.
   const faltaEssencial = !nome.trim() || !telefone.trim();
   const honorariosValor = moedaParaNumero(honorarios);
-  // Mesma regra do CHECK no banco (migração ...090): https, sem espaço, de 12 a
-  // 2000 caracteres. Aqui é conveniência — a garantia é a do banco.
+  // Mesma regra do CHECK no banco (migração ...090): https, sem espaço, de 12
+  // a 2000 caracteres. Aqui é conveniência — a garantia é a do banco.
   const contratoInvalido =
     contratoLimpo !== "" &&
     (!/^https:\/\/[^\s]+$/.test(contratoLimpo) ||
@@ -339,16 +387,17 @@ export function ClienteFicha({
       contratoLimpo.length > 2000);
 
   /**
-   * O piso de 3 caracteres dos campos ricos do DISC.
-   *
-   * Aqui é CONVENIÊNCIA — a garantia é o CHECK do banco (3..2000 sobre
-   * `btrim`, `null` permitido). Existe porque um campo com 1 ou 2 caracteres
-   * derrubaria o salvamento da ficha INTEIRA com 23514, e a pessoa não teria
-   * como adivinhar qual dos três campos era o culpado.
-   *
-   * ⚠️ O caso do campo VAZIO não aparece aqui de propósito: vazio é válido
-   * (vira `null` em `salvar()`), e é o estado de 34 de 34 favoritos no dia do
-   * deploy. Só o "quase vazio" é recusado.
+   * CNPJ digitado pela metade. O CHECK é `^[0-9]{14}$` com `null` permitido:
+   * vazio é válido (vira `null`), 14 dígitos é válido, **qualquer coisa entre
+   * 1 e 13 derruba a ficha inteira com 23514** — e a pessoa não teria como
+   * adivinhar que o culpado foi o CNPJ, porque o update é um só.
+   */
+  const cnpjInvalido = cnpjDigitos.length > 0 && cnpjDigitos.length !== 14;
+
+  /**
+   * O piso de 3 caracteres dos campos ricos do DISC — CONVENIÊNCIA; a
+   * garantia é o CHECK do banco. O caso do campo VAZIO não aparece aqui de
+   * propósito: vazio é válido (vira `null`). Só o "quase vazio" é recusado.
    */
   const discRicoCurto = [
     { rotulo: "Consciência", valor: discConsciencia },
@@ -360,15 +409,28 @@ export function ClienteFicha({
   });
 
   /**
+   * 🔴 **A PENDÊNCIA PUXA A FOLHA.** Troca a aba e põe o foco no campo que
+   * está barrando. Sem isto, quem estivesse no Fechamento veria o botão
+   * "Salvar ficha" desabilitado, leria uma frase sobre nome e telefone e não
+   * teria como saber que os dois campos vivem em outra folha.
+   *
+   * `requestAnimationFrame`: com `keepMounted` o campo já está no DOM, mas
+   * focar antes do render da troca deixaria o foco num elemento com
+   * `hidden` — o navegador ignora e o cursor some. Um frame depois a folha
+   * já está visível.
+   */
+  function puxarParaCampo(destino: AbaFicha, idCampo: string) {
+    irParaAba(destino);
+    requestAnimationFrame(() => {
+      const el = document.getElementById(idCampo);
+      if (el instanceof HTMLElement) el.focus();
+    });
+  }
+
+  /**
    * 🔴 Para o ALUNO, marcar a estrela pergunta antes, com a consequência
    * escrita. DESMARCAR, o parceiro faz sozinho enquanto a equipe não assumiu.
-   *
-   * 🔴 Era `if (!admin) return` para qualquer favorito (corrigido em
-   * 11/09/2026): depois que o botão voltou a aparecer para o não-confirmado,
-   * esta linha o deixava MUDO — clique sem efeito, sem erro, sem toast. Pior
-   * que o bug original, que ao menos dava uma mensagem.
-   *
-   * A trava real é `confirmado` (= `estrelaTravada`, desde 23/09/2026), a mesma do banco.
+   * A trava real é `confirmado` (= `estrelaTravada`), a mesma do banco.
    */
   function toggleEquipe() {
     if (acompanhado) {
@@ -393,9 +455,8 @@ export function ClienteFicha({
       if (res.erro) {
         // Desfaz o otimismo: sem isto a estrela ficaria mentindo na tela.
         setAcompanhado(!ativar);
-        // A frase vem TRADUZIDA da action (`traduzirErroBanco` + as entradas
-        // de `FRASES_DO_BANCO`): trocá-la por "Erro ao mudar o cliente da
-        // equipe" apagaria justamente o que explica a trava e o que fazer.
+        // A frase vem TRADUZIDA da action: trocá-la apagaria justamente o que
+        // explica a trava e o que fazer.
         setErroDialogo(res.erro);
         setErroEstrela(res.erro);
         return;
@@ -414,10 +475,28 @@ export function ClienteFicha({
   function salvar() {
     setTentouSalvar(true);
     setErroSalvar(null);
+    // 🔴 A ordem das guardas segue a ordem das FOLHAS: a pendência da aba 1
+    // é conferida primeiro, porque é a que bloqueia o botão. Cada uma leva a
+    // pessoa até o campo.
+    if (faltaEssencial) {
+      setErroSalvar(
+        `Preencha o nome e o telefone em ${ROTULO_DA_ABA.dados} — são eles que fazem a ficha contar para os 30.`,
+      );
+      puxarParaCampo("dados", !nome.trim() ? "f-nome" : "f-tel");
+      return;
+    }
+    if (cnpjInvalido) {
+      setErroSalvar(
+        `O CNPJ em ${ROTULO_DA_ABA.dados} está incompleto (${cnpjDigitos.length} de 14 dígitos). Complete ou deixe em branco.`,
+      );
+      puxarParaCampo("dados", "f-cnpj");
+      return;
+    }
     if (contratoInvalido) {
       setErroSalvar(
         "O link do contrato precisa começar com https:// e não pode ter espaços.",
       );
+      irParaAba("fechamento");
       return;
     }
     if (discRicoCurto) {
@@ -426,22 +505,13 @@ export function ClienteFicha({
       setErroSalvar(
         `O campo "${discRicoCurto.rotulo}" do DISC precisa de pelo menos 3 caracteres — ou deixe em branco.`,
       );
+      irParaAba("preliminar");
       return;
     }
-    // 🔑 A exigência do rótulo passou a ser real. A tarefa 1 da Etapa 01 é
-    // "listar 30 clientes potenciais com ao menos 1 dos 7 problemas": o
-    // problema é o que qualifica a pessoa como cliente de holding, e a legenda
-    // já pedia "marque ao menos um" havia meses sem nada conferir — rótulo que
-    // não vale é rótulo que ensina a ignorar rótulo. Custa um clique, e o
-    // aviso diz qual campo é. Não mexe em métrica nenhuma: `comDados` é nome +
-    // telefone + nível, e `problemas` não entra nela.
-    //
-    // ⚠️ Medido em 10/09 (Fable, war-room): 355 dos 879 clientes (39
-    // ambientes) estão com ZERO problema marcado — dado legado de meses. Travar
-    // o salvamento inteiro por isso deixaria 40% das fichas sem poder corrigir
-    // telefone ou fase. Então: o grupo fica marcado e explicado
-    // (`problemasEmFalta`), mas a ficha SALVA. A cobrança do problema é da
-    // tarefa 1.1, não do botão Salvar.
+    // 🔑 A exigência do rótulo dos problemas AVISA, não trava: 355 dos 879
+    // clientes (39 ambientes) estão com ZERO problema marcado, dado legado de
+    // meses. Travar o salvamento deixaria 40% das fichas sem poder corrigir
+    // telefone ou fase. A cobrança é da tarefa 1.1, não do botão Salvar.
     startTransition(async () => {
       const res = await atualizarCliente(cliente.id, alunoId, {
         nome: nome.trim(),
@@ -449,6 +519,13 @@ export function ClienteFicha({
         // `""` (campo esvaziado) vira `null` = NÃO INFORMADO. A action repete
         // esta normalização — aqui é para o `alterado` acima não mentir.
         grau_relacao: (grau as GrauRelacao) || null,
+        // 🔴 PJ: `null` quando vazio (o CHECK recusa string vazia) e o CNPJ em
+        // DÍGITOS PUROS — a máscara é só da tela.
+        razao_social: razaoSocial.trim() || null,
+        cnpj: cnpjDigitos || null,
+        ramo_atividade: ramo.trim() || null,
+        regime_tributario:
+          (regime as ClienteEtapa1["regime_tributario"]) || null,
         problemas,
         // `status` congelou na migração 20260909000060 (é o caminho de volta):
         // nenhum caminho de escrita da aplicação pode tocar nele.
@@ -456,8 +533,7 @@ export function ClienteFicha({
         data_reuniao_preliminar: dataReuniao || null,
         perfil_disc: (disc as ClienteEtapa1["perfil_disc"]) || null,
         // 🔴 `""` NUNCA vai ao banco: o CHECK é 3..2000 sobre `btrim` com
-        // `null` permitido, então string vazia derrubaria o salvamento da
-        // ficha inteira com 23514. Campo limpo = NÃO INFORMADO = `null`.
+        // `null` permitido.
         disc_consciencia: discConsciencia.trim() || null,
         disc_gatilhos: discGatilhos.trim() || null,
         disc_relacionamento: discRelacionamento.trim() || null,
@@ -466,9 +542,9 @@ export function ClienteFicha({
         estudo_caso_enviado: estudoCaso,
         ligacao_realizada: ligacao,
         registro_contato: registro.trim() || null,
-        // Enviados sempre, inclusive fora de "contratado": o valor não some
-        // ao mover o cliente de volta (B9-b). `null` continua `null` — nunca
-        // vira R$ 0,00.
+        // Enviados sempre, inclusive fora de "contratado": o valor não some ao
+        // mover o cliente de volta (B9-b). `null` continua `null` — nunca vira
+        // R$ 0,00.
         valor_honorarios: honorariosValor,
         contrato_url: contratoLimpo || null,
       });
@@ -477,20 +553,29 @@ export function ClienteFicha({
         return;
       }
       setTentouSalvar(false);
-      // Salvar sem telefone dizia "Ficha salva." — sucesso absoluto para algo
-      // que não conta para os 30. Mesmo padrão do aviso âmbar de problemas:
-      // avisa sem travar.
-      toast.success(
-        telefone.trim()
-          ? "Ficha salva."
-          : "Ficha salva — falta o telefone para ela contar para os 30.",
-      );
-      // 🔑 `fichaNova` vem de `cliente.telefone`, que é prop do servidor:
-      // sem o refresh, quem acabou de salvar o telefone continuaria vendo
-      // "Registro do contato" desabilitado até navegar para outra tela.
+      toast.success("Ficha salva.");
+      // 🔑 `fichaNova` vem de `cliente.telefone`, que é prop do servidor: sem o
+      // refresh, quem acabou de salvar o telefone continuaria vendo "Registro
+      // do contato" desabilitado até navegar para outra tela. E os contadores
+      // das abas leem `cliente`, não o estado local — sem `router.refresh()` o
+      // rótulo continuaria mostrando o número velho depois de salvar.
       router.refresh();
     });
   }
+
+  /** O texto do badge de cada folha. Ver `ficha-abas-estado.ts`. */
+  const contadores = Object.fromEntries(
+    ABAS_FICHA.map((id) => [
+      id,
+      contadorDaAba(id, { cliente, minutas, croquis }),
+    ]),
+  ) as Record<AbaFicha, string>;
+
+  /**
+   * A folha que BLOQUEIA o salvar, ou `null`. Quem transforma isto (e as abas
+   * alteradas) na frase da barra é `frasePendenciaDaFicha`.
+   */
+  const abaPendente = abaDaPendencia({ faltaEssencial });
 
   return (
     <div className="grid gap-6">
@@ -499,9 +584,7 @@ export function ClienteFicha({
         alunoId={alunoId}
         admin={admin}
         /* 🔴 O link "abra um chamado" precisa do contexto: absoluto, ele
-           ejetava o admin do ambiente do aluno (`/chamados` manda admin
-           para `/admin/chamados`). Derivado de `admin` + `alunoId`, que
-           esta ficha já conhece. */
+           ejetava o admin do ambiente do aluno. */
         basePath={admin ? `/admin/aluno/${alunoId}` : ""}
         fase={faseAtual}
         wpp={wpp}
@@ -517,490 +600,109 @@ export function ClienteFicha({
         aoMudarAcompanhamento={() => router.refresh()}
       />
 
-      {/* TRÊS SEÇÕES, não três caixas aninhadas.
-          A ficha era um formulário de 1.000 px dentro de um card só, com
-          "Problemas" (borda cinza), "Andamento do contato" (borda cinza) e
-          "Contrato" (fundo verde) como card-dentro-de-card-dentro-de-card —
-          três tratamentos diferentes, um deles com uma cor sem explicação
-          sistêmica. `Secao` é a MESMA cabeça de "Seu caminho" e "Meus
-          clientes": marcador, título e régua. Sem `numero`: preencher a ficha
-          não é uma sequência de passos. */}
-      <Card>
-        <CardContent className="grid gap-8">
-        <Secao
-          icone={<IdCard />}
-          titulo="Dados do cliente"
-          nivel="h3"
-          classeConteudo="grid gap-5"
-        >
-          <div className="grid gap-2">
-            <Label htmlFor="f-nome">Nome</Label>
-            <div className="relative">
-              <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="f-nome"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Nome do cliente"
-                className="pl-9"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="f-tel">Telefone</Label>
-            <div className="relative">
-              <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="f-tel"
-                inputMode="tel"
-                value={telefone}
-                onChange={(e) => setTelefone(mascaraTelefone(e.target.value))}
-                placeholder="(00) 00000-0000"
-                className="pl-9"
-                aria-describedby="f-tel-ajuda"
-              />
-            </div>
-            {/* 🔴 MEDIDO EM 10/09/2026: 17 fichas estavam paradas só por falta
-                de telefone — a pessoa digitou o nome, a ficha não conta para
-                os 30 e ela não tinha como saber por quê. O campo vizinho (grau
-                de relação), que NÃO conta, tinha texto de apoio; este, que
-                decide a Etapa 01, não tinha nenhum. */}
-            <p id="f-tel-ajuda" className="corpo-sm text-muted-foreground">
-              {telefone.trim()
-                ? "Com nome e telefone, esta ficha conta para os 30 da Etapa 01."
-                : "Sem o telefone, esta ficha ainda não conta para os 30 da Etapa 01."}
-            </p>
-          </div>
-
-          {/* GRAU DE RELAÇÃO — o campo "Nível de relacionamento" (quente/
-              morno/frio) que existia ao lado deste foi REMOVIDO por decisão
-              do Marcio (10/09/2026); grau é TIPO DE VÍNCULO e continua. */}
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="f-grau">Grau de relação</Label>
-              <Select value={grau} onValueChange={(v) => setGrau(v ?? "")}>
-                <SelectTrigger id="f-grau" aria-describedby="f-grau-ajuda">
-                  {/* Sem função de render o Base UI imprime o VALOR do banco
-                      (`cliente_atual`). E `""` mostra o placeholder, que diz
-                      "Não informado" — NUNCA "Lead": a ausência de resposta
-                      sobre um terceiro não vira palpite sobre a vida dele. */}
-                  <SelectValue placeholder="Não informado">
-                    {(v: string) =>
-                      GRAUS_RELACAO_UI.find((g) => g.id === v)?.rotulo ??
-                      "Não informado"
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {GRAUS_RELACAO_UI.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.rotulo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p
-                id="f-grau-ajuda"
-                className="text-xs leading-snug text-muted-foreground"
-              >
-                {GRAUS_RELACAO_UI.find((g) => g.id === grau)?.ajuda ??
-                  "Como você conhece esta pessoa. Não informado enquanto você não escolher."}
-              </p>
-            </div>
-          </div>
-
-          {/* UX5 — grupo de checkboxes não tem um controle único para
-              apontar: o rótulo vira legenda de um `fieldset`, que é a forma
-              correta de nomear o conjunto (WCAG 1.3.1). */}
-          {/* O `fieldset` já É o grupo (o `legend` o nomeia): a explicação da
-              recusa entra por `aria-describedby` NELE, não numa `div` com
-              `role="group"` — que não aceita `aria-invalid`. */}
-          <fieldset
-            className="grid gap-2"
-            aria-describedby={problemasEmFalta ? "f-problemas-erro" : undefined}
-          >
-            <legend className="mb-2 text-sm leading-none font-medium">
-              Problemas (marque ao menos um)
-            </legend>
-            <div
-              className={cn(
-                "grid gap-2 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2",
-                problemasEmFalta && "outline-2 outline-atencao-foreground",
-              )}
-            >
-              {PROBLEMAS_7.map((p) => (
-                <label
-                  key={p.id}
-                  className="flex items-start gap-2 text-sm leading-tight"
-                >
-                  <Checkbox
-                    checked={problemas.includes(p.id)}
-                    onCheckedChange={() => toggleProblema(p.id)}
-                    className="mt-0.5"
-                  />
-                  <span>{p.rotulo}</span>
-                </label>
-              ))}
-            </div>
-            {problemasEmFalta ? (
-              // Sem `role="alert"`: a barra de salvar já anuncia. Aqui é a
-              // marca visual ao lado do campo, para o olho achar onde voltar.
-              <p id="f-problemas-erro" className="corpo-sm text-atencao-foreground">
-                Nenhum problema marcado — é o que qualifica um cliente de
-                holding (tarefa 1). A ficha salva mesmo assim; marque quando
-                souber.
-              </p>
-            ) : null}
-          </fieldset>
-
-          {/* "Perda pela inércia" (campo + coluna do grid) REMOVIDO por
-              decisão do Marcio (10/09/2026); grid passou de 3 para 2 col. */}
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="f-fase">Fase</Label>
-              <Select
-                value={fase}
-                onValueChange={(v) => setFase((v as FaseCliente) || "prospeccao")}
-              >
-                <SelectTrigger id="f-fase" aria-describedby="f-fase-ajuda">
-                  {/* Sem função de render o Base UI imprime o VALOR do
-                      banco: a ficha mostrava `quente`, `contratado` e `D`. */}
-                  <SelectValue>
-                    {(v: FaseCliente) =>
-                      FASES_CLIENTE.find((f) => f.id === v)?.rotulo ?? v
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Cliente confirmado não oferece "Prospecção": o banco
-                      recusa a volta com 42501. Opção que só serve para falhar
-                      não é opção. */}
-                  {fasesDaFicha.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {f.rotulo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p
-                id="f-fase-ajuda"
-                className="text-xs leading-snug text-muted-foreground"
-              >
-                {faseAtual?.ajuda}
-                {confirmado && cliente.fase !== "prospeccao"
-                  ? " A equipe está acompanhando este cliente, então a fase não volta para Prospecção."
-                  : null}
-              </p>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="f-data">Data da reunião preliminar</Label>
-              {/* 🔴 `flex h-8 items-center` NÃO é decoração — é a correção do
-                  "ícone quebrado, caindo para baixo".
-                  Duas coisas somadas: (a) a coluna do lado ("Fase") tem texto
-                  de ajuda, então a linha do grid ESTICA e o `div.relative`
-                  ficava com 44,3 px em vez dos 32 do campo; (b) o
-                  `input[type=date]` do Chrome é inline-block e assenta na
-                  BASELINE, o que sozinho já deixava o wrapper mais alto que o
-                  campo. Como o ícone é `absolute top-1/2`, ele se centralizava
-                  na caixa esticada e saía **6,1 px abaixo** do centro do campo,
-                  encostando na borda de baixo (medido no Chromium em 1366 e
-                  390; depois da correção o desvio é 0,0).
-                  `h-8` trava a altura na do `Input` e o `flex` elimina a caixa
-                  de linha. Os campos de texto (nome, telefone) não sofrem disso
-                  — por isso a correção é aqui, e não em `ui/input.tsx`. */}
-              <div className="relative flex h-8 items-center">
-                <Calendar className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="f-data"
-                  type="date"
-                  value={dataReuniao}
-                  onChange={(e) => setDataReuniao(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-          </div>
-
-        </Secao>
-
-        <Secao
-          icone={<ListChecks />}
-          titulo="Andamento do contato"
-          nivel="h3"
-        >
-          <div className="grid gap-2 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2">
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={msgPadrao}
-                  onCheckedChange={(v) => setMsgPadrao(Boolean(v))}
-                />
-                Mensagem padrão enviada
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={estudoCaso}
-                  onCheckedChange={(v) => setEstudoCaso(Boolean(v))}
-                />
-                Estudo de caso enviado
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={ligacao}
-                  onCheckedChange={(v) => setLigacao(Boolean(v))}
-                />
-                Ligação realizada
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={aderiu}
-                  onCheckedChange={(v) => setAderiu(Boolean(v))}
-                />
-                Aderiu à reunião (grupo de WhatsApp)
-              </label>
-          </div>
-        </Secao>
-
-        <FichaContrato
-          contratado={contratado}
-          honorarios={honorarios}
-          onHonorarios={setHonorarios}
-          honorariosValor={honorariosValor}
-          contratoUrl={contratoUrl}
-          onContratoUrl={setContratoUrl}
-          contratoLimpo={contratoLimpo}
-          contratoInvalido={contratoInvalido}
-          faseRotulo={faseAtual?.rotulo}
-          clienteId={cliente.id}
-          // Vem do SERVIDOR, sempre: a escrita do anexo é por RPC e não passa
-          // pelo "Salvar ficha" — manter um espelho local só criaria duas
-          // verdades sobre o mesmo arquivo.
-          contratoAnexo={
-            cliente.contrato_path
-              ? {
-                  nome: cliente.contrato_nome,
-                  mime: cliente.contrato_mime,
-                  tamanho: cliente.contrato_tamanho,
-                  anexadoEm: cliente.contrato_anexado_em,
-                }
-              : null
-          }
-          // 🔴 Só o aluno anexa: `gps.pode_anexar_onboarding` exige que o
-          // ambiente do prefixo seja o de quem chama, e o admin não tem
-          // ambiente. A equipe baixa e remove.
-          podeAnexar={!admin}
-          anexoDesabilitado={pending}
-          aoMudarAnexo={() => router.refresh()}
-        />
-
-        {/* Minutas — perto do contrato assinado, decisão do Marcio (15/09).
-            Mesma regra do anexo acima: dado do SERVIDOR, sem espelho local.
-            🔑 Diferente do contrato: aqui a EQUIPE TAMBÉM anexa, com o MESMO
-            formulário (decisão do Marcio, 17/09) — `podeAnexar` não depende
-            de `admin`. */}
-        <Secao
-          icone={<FileText />}
-          titulo="Minutas"
-          nivel="h3"
-          classeConteudo="grid gap-5"
-        >
-          <MinutasAnexo
+      <FichaAbas
+        aba={aba}
+        onAba={irParaAba}
+        contadores={contadores}
+        abasAlteradas={abasAlteradas}
+        dados={
+          <FichaAbaDados
+            nome={nome}
+            onNome={setNome}
+            telefone={telefone}
+            onTelefone={setTelefone}
+            grau={grau}
+            onGrau={setGrau}
+            razaoSocial={razaoSocial}
+            onRazaoSocial={setRazaoSocial}
+            cnpj={cnpj}
+            onCnpj={setCnpj}
+            ramo={ramo}
+            onRamo={setRamo}
+            regime={regime}
+            onRegime={setRegime}
+            cnpjInvalido={tentouSalvar && cnpjInvalido}
+            mascaraTelefone={mascaraTelefone}
+          />
+        }
+        preliminar={
+          <FichaAbaPreliminar
+            fase={fase}
+            onFase={setFase}
+            fasesDaFicha={fasesDaFicha}
+            faseAtual={faseAtual}
+            confirmado={confirmado}
+            faseNoServidor={cliente.fase ?? null}
+            dataReuniao={dataReuniao}
+            onDataReuniao={setDataReuniao}
+            msgPadrao={msgPadrao}
+            onMsgPadrao={setMsgPadrao}
+            estudoCaso={estudoCaso}
+            onEstudoCaso={setEstudoCaso}
+            ligacao={ligacao}
+            onLigacao={setLigacao}
+            aderiu={aderiu}
+            onAderiu={setAderiu}
+            problemas={problemas}
+            onToggleProblema={toggleProblema}
+            problemasEmFalta={problemasEmFalta}
+            disc={disc}
+            setDisc={setDisc}
+            discConsciencia={discConsciencia}
+            setDiscConsciencia={setDiscConsciencia}
+            discGatilhos={discGatilhos}
+            setDiscGatilhos={setDiscGatilhos}
+            discRelacionamento={discRelacionamento}
+            setDiscRelacionamento={setDiscRelacionamento}
+            painelEntrevista={painelEntrevista}
+            qtdDecisores={qtdDecisores}
+            admin={admin}
+            temEntrevistaConcluida={temEntrevistaConcluida}
+            registro={registro}
+            onRegistro={setRegistro}
+            fichaNova={fichaNova}
+          />
+        }
+        /* ⚠️ SLOT da fatia 5 — ver o cabeçalho de `ficha-croqui.tsx`. */
+        croqui={
+          <FichaCroqui
             clienteId={cliente.id}
-            minutas={minutas}
+            croquis={croquis}
             podeAnexar
-            contextoObrigatorio={contextoObrigatorio}
             desabilitado={pending}
             aoMudar={() => router.refresh()}
           />
-        </Secao>
+        }
+        fechamento={
+          <FichaAbaFechamento
+            cliente={cliente}
+            admin={admin}
+            contratado={contratado}
+            honorarios={honorarios}
+            onHonorarios={setHonorarios}
+            honorariosValor={honorariosValor}
+            contratoUrl={contratoUrl}
+            onContratoUrl={setContratoUrl}
+            contratoLimpo={contratoLimpo}
+            contratoInvalido={contratoInvalido}
+            faseRotulo={faseAtual?.rotulo}
+            minutas={minutas}
+            contextoObrigatorio={contextoObrigatorio}
+            pending={pending}
+            aoMudar={() => router.refresh()}
+          />
+        }
+      />
 
-        <Secao icone={<NotebookPen />} titulo="Registro e perfil" nivel="h3" classeConteudo="grid gap-5">
-
-          {/* ═══════════════════════════════════════════════════════════════
-              O PERFIL DISC — UMA LINHA NA FICHA, A EDIÇÃO NO POP-UP
-              ═══════════════════════════════════════════════════════════════
-
-              Antes, esta `Secao` empilhava aqui: o painel da entrevista, o
-              Select do DISC e três Textareas de 3 linhas. Eram ~700 px que
-              empurravam "Registro do contato" — o campo do dia a dia — para
-              fora da tela. Agora a ficha mostra o RESULTADO em duas linhas e
-              o resto mora no `DiscDialogo`.
-
-              Denso e chapado: hierarquia por POSIÇÃO (rótulo à esquerda,
-              valor ao lado, ação à direita). Sem card, sem ícone, sem fonte
-              grande.
-
-              🔑 A ENTREVISTA PRÉVIA CONTINUA SENDO UMA ROTA, NÃO UM DIÁLOGO
-              (decisão de 23/09/2026: a conversa dura 15-20 min ao vivo e um
-              modal que fecha no Esc perderia tudo). O que entrou no pop-up é
-              o BOTÃO que leva à rota `/clientes/[id]/entrevista`; o
-              formulário segue em página própria, com URL própria. Quem ler
-              "agora é diálogo" e trouxer o formulário para dentro estará
-              revogando uma decisão que NÃO foi revogada.
-
-              🔑 `painelEntrevista` vem PRONTO da página (Server Component):
-              o painel lê decisores e histórico, e esta ficha é
-              `"use client"`. Ele só atravessa o `DiscDialogo` como
-              `ReactNode` — continua sendo markup do servidor, não vira
-              componente cliente e não custa consulta nenhuma ao abrir. O
-              preço é ~1 KB de markup no payload inicial com o diálogo
-              fechado; buscar no clique custaria uma ida ao banco por
-              abertura, na tela mais usada do produto.
-
-              🔑 O rótulo do DISC sai de `PERFIS_DISC`; valor fora da lista
-              aparece CRU, que é o que o `SelectValue` do diálogo já faz.
-              Nunca inventar rótulo para código desconhecido. */}
-          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-            <div className="grid gap-0.5">
-              <div className="flex flex-wrap items-baseline gap-x-3">
-                <span className="rotulo text-muted-foreground">Perfil DISC</span>
-                <span className="corpo-sm">
-                  {disc
-                    ? (PERFIS_DISC.find((d) => d.id === disc)?.rotulo ?? disc)
-                    : "— não definido"}
-                </span>
-              </div>
-              {/* 🔴 O SINAL DE PENDÊNCIA — texto, não badge, não ícone.
-                  Regra do Marcio: *"para realizar a reunião preliminar, todos
-                  os decisores precisam"*. Aparece SÓ com mais de um decisor:
-                  com um só não há trava a avisar.
-
-                  🔴 `qtdDecisores == null` (modo assistência, sem a RPC) não
-                  mostra nada. Ausência de dado não vira afirmação de que não
-                  há decisor. */}
-              {qtdDecisores != null && qtdDecisores > 1 ? (
-                <p className="corpo-sm text-accent-foreground">
-                  {qtdDecisores} decisores · a Preliminar exige todos presentes
-                </p>
-              ) : null}
-            </div>
-
-            <DiscDialogo
-              // 🔴 VALOR + SETTER, nunca cópia. Os quatro estados continuam
-              // morando aqui: é deles que `alterado` (a barra sticky) e
-              // `salvar()` leem. Cópia local dentro do diálogo seria a
-              // segunda fonte de verdade — o texto digitado sumiria do
-              // "Salvar ficha" e a barra nunca acusaria pendência.
-              // Efeito colateral bom: fechar no Esc não perde nada, porque
-              // nada mora lá dentro.
-              disc={disc}
-              setDisc={setDisc}
-              discConsciencia={discConsciencia}
-              setDiscConsciencia={setDiscConsciencia}
-              discGatilhos={discGatilhos}
-              setDiscGatilhos={setDiscGatilhos}
-              discRelacionamento={discRelacionamento}
-              setDiscRelacionamento={setDiscRelacionamento}
-              painelEntrevista={painelEntrevista}
-            />
-          </div>
-
-          {/* ═══════════════════════════════════════════════════════════════
-              O PRÓXIMO PASSO — UMA LINHA, FORA DO POP-UP
-              ═══════════════════════════════════════════════════════════════
-
-              Pedido do Marcio (23/09/2026): *"a gente tem que prosseguir
-              depois da entrevista prévia para lá [a sessão]. Esse é o buraco
-              na parte do sistema. A gente precisa ter algo que guie a pessoa
-              para lá, com uma sugestão"*.
-
-              🔴 FICA NA FICHA, NUNCA DENTRO DO `DiscDialogo`. É justamente o
-              sinal que precisa ser visto SEM clicar — dentro do pop-up ele só
-              apareceria para quem já abriu a janela, que é quem menos precisa
-              da dica.
-
-              🔴 DENSO E CHAPADO: rótulo à esquerda, frase ao lado, link no
-              fim — a MESMA gramática das duas linhas do DISC logo acima. Sem
-              card, sem ícone, sem fonte grande, sem cor de alerta. O Marcio
-              acabou de pedir MENOS enfeite nesta ficha; hierarquia aqui é por
-              POSIÇÃO (vem logo depois do resultado da entrevista, que é o que
-              acabou de ser produzido).
-
-              🔴 `admin` é condição, não só `temEntrevistaConcluida`: a rota
-              `/sessoes` existe SÓ para o aluno (`nav.ts`, filtro
-              `basePath === ""`). No modo assistência isto some — ver a doc da
-              prop. As duas travas são redundantes de propósito: a page do
-              admin já não passa a prop, e mesmo que um dia passe, o link não
-              nasce aqui.
-
-              ⚠️ O aviso de decisores continua ACIMA, na linha do DISC, e não
-              é repetido aqui: dois textos dizendo a mesma trava em 40 px de
-              distância viram ruído. Quem tem mais de um decisor lê a linha do
-              DISC e depois esta. */}
-          {!admin && temEntrevistaConcluida ? (
-            <p className="corpo-sm flex flex-wrap items-baseline gap-x-2">
-              <span className="rotulo text-muted-foreground">Próximo passo</span>
-              <span>
-                Entrevista feita.{" "}
-                <Link
-                  href="/sessoes"
-                  className="foco-visivel rounded-xs font-medium underline underline-offset-2 hover:text-accent-foreground"
-                >
-                  Marque a sessão com a equipe jurídica
-                </Link>
-                {qtdDecisores != null && qtdDecisores > 1
-                  ? " — com todos os decisores presentes."
-                  : "."}
-              </span>
-            </p>
-          ) : null}
-
-          <div className="grid gap-2">
-            <Label htmlFor="f-reg">Registro do contato</Label>
-            <Textarea
-              id="f-reg"
-              value={registro}
-              onChange={(e) => setRegistro(e.target.value)}
-              disabled={fichaNova}
-              aria-describedby={fichaNova ? "f-reg-ajuda" : undefined}
-              placeholder="Anotações sobre as conversas, ligações e combinados."
-              rows={4}
-            />
-            {fichaNova ? (
-              <p id="f-reg-ajuda" className="corpo-sm text-muted-foreground">
-                {/* Dizia "quando voltar a esta ficha", e quem acabou de
-                    digitar o telefone via o campo ainda cinza e achava que
-                    precisava sair e entrar de novo. */}
-                Salve o telefone e este campo abre.
-              </p>
-            ) : null}
-          </div>
-        </Secao>
-        </CardContent>
-      </Card>
-
-      {/* BARRA DE SALVAR FIXA. `sticky bottom-0` fora do `Card` — o `Card` é
-          `overflow-hidden` e recortaria qualquer coisa grudada nele. O aviso
-          de alteração não salva é `aria-live="polite"`: quem não vê a barra
-          precisa ouvir que há algo pendente antes de sair da tela. */}
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-end gap-3 border-t bg-card/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-4 sm:shadow-(--shadow-raised)">
-        {erroSalvar ? (
-          <p role="alert" className="mr-auto corpo-sm text-destructive">
-            {erroSalvar}
-          </p>
-        ) : (
-          <p
-            aria-live="polite"
-            className="mr-auto corpo-sm text-muted-foreground"
-          >
-            {faltaEssencial
-              ? "Preencha o nome e o telefone para salvar — são eles que fazem a ficha contar para os 30."
-              : alterado
-                ? "Você tem alterações não salvas nesta ficha."
-                : "Tudo salvo."}
-          </p>
-        )}
-        {/* O botão NUNCA é desabilitado por `alterado`: se a comparação
-            errar por um campo, o aluno fica preso sem conseguir salvar a
-            ficha. O sinal é informativo; salvar de novo é inofensivo. */}
-        <Button onClick={salvar} disabled={pending || faltaEssencial}>
-          {pending ? "Salvando..." : "Salvar ficha"}
-        </Button>
-      </div>
+      <FichaBarraSalvar
+        erroSalvar={erroSalvar}
+        aviso={frasePendenciaDaFicha({ abaPendente, abasAlteradas })}
+        pending={pending}
+        onSalvar={salvar}
+      />
 
       {/* PL11 — o botão da estrela continua montado acima: é para lá que o
-          foco volta quando o aluno desiste. O nome vem do campo em edição,
-          que é o que ele está lendo na tela. */}
+          foco volta quando o aluno desiste. */}
       {desfavoritando ? (
         <DialogoDesfavoritar
           desfavoritando={{ ...cliente, nome: nome.trim() || cliente.nome }}
@@ -1014,8 +716,7 @@ export function ClienteFicha({
         />
       ) : null}
 
-      {/* 🔴 Escolha ÚNICA do aluno (migração ...215). Mesmo cuidado do irmão
-          acima: o botão da estrela fica montado, para o foco voltar a ele. */}
+      {/* 🔴 Escolha ÚNICA do aluno (migração ...215). */}
       {escolhendo ? (
         <DialogoEscolherFavorito
           cliente={{ ...cliente, nome: nome.trim() || cliente.nome }}

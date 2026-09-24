@@ -487,6 +487,20 @@ export async function getAnexosParaExpurgo(): Promise<AnexoParaExpurgo[]> {
  *
  * `download=` sempre, mesmo para imagem: PDF renderizado inline abriria no
  * domínio do Supabase, e baixar é a opção que não depende disso.
+ *
+ * ⚠️ O CHAMADO CONTINUA ASSIM — não copiar daqui a exceção descrita abaixo.
+ * Desde 24/09/2026 existe UMA rota no repo que serve documento INLINE:
+ * `/clientes/[clienteId]/documento/[tipo]/[id]`
+ * (`src/app/clientes/[clienteId]/documento/[tipo]/[id]/route.ts`), para a
+ * equipe pré-visualizar minuta/contrato da ficha sem baixar.
+ *
+ * Ela só pode servir inline porque NÃO confia no MIME do Storage: o byte
+ * passa pelo SERVIDOR, o `Content-Type` sai de `detectarTipoPorMagicBytes`
+ * (`src/lib/documento-inline.ts`) lendo a assinatura real em offset 0, e a
+ * resposta vai com `nosniff` + `Content-Security-Policy: sandbox`. Aqui nada
+ * disso existe — a URL assinada entrega o byte direto do domínio do Supabase,
+ * com o MIME que o cliente declarou no PUT. Trocar este `download=` por
+ * inline sem replicar aquelas quatro camadas reabre o vetor.
  */
 export async function urlAssinadaDoAnexo(
   path: string,

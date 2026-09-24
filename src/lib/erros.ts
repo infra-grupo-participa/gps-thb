@@ -451,6 +451,24 @@ const FRASES_DO_BANCO: Record<string, string> = {
     "Informe o que foi alterado em relação à minuta anterior.",
 
   // ══════════════════════════════════════════════════════════════════════
+  // Croquis da ficha do cliente (migração ...309, 24/09/2026)
+  // ══════════════════════════════════════════════════════════════════════
+  //
+  // Mesmo raciocínio do bloco das minutas: as frases de anexo (caminho
+  // inválido, objeto inexistente, MIME, tamanho, nome) já estão mapeadas
+  // acima — `gps.cliente_croqui_anexar` é cópia do esqueleto da minuta e
+  // levanta EXATAMENTE os mesmos textos. Só as 3 exclusivas entram aqui.
+  //
+  // 🔑 O croqui NÃO tem as 4 frases de contexto obrigatório: aquela regra é
+  // da minuta (...273) e não foi replicada — ver o desvio 2 no cabeçalho da
+  // migração ...309.
+  "croqui nao informado":
+    "Não foi possível identificar o croqui. Recarregue a página e tente de novo.",
+  "Croqui não encontrado.": "Croqui não encontrado.",
+  "As observações do croqui estão muito longas.":
+    "As observações do croqui estão muito longas.",
+
+  // ══════════════════════════════════════════════════════════════════════
   // PLANTÃO DE DÚVIDAS (migrações ...180 a ...183)
   // ══════════════════════════════════════════════════════════════════════
   //

@@ -220,6 +220,25 @@ export const GRAUS_RELACAO = [
 ] as const;
 export type GrauRelacao = (typeof GRAUS_RELACAO)[number];
 
+/**
+ * Regime tributário do cliente PESSOA JURÍDICA (migração `…308`, 24/09/2026).
+ *
+ * Catálogo FECHADO, espelho exato do CHECK
+ * `chk_etapa1_clientes_regime_tributario` em `gps.etapa1_clientes`. Acrescentar
+ * valor aqui SEM reescrever o CHECK faz a tela oferecer uma opção que o banco
+ * recusa com `23514` — a lista tem de mudar nos dois lados, na mesma feature.
+ *
+ * O RÓTULO mora aqui e só aqui: o banco guarda a chave (`simples`), nunca o
+ * texto de tela. Traduzir no banco espalharia copy por migração.
+ */
+export const REGIMES_TRIBUTARIOS = [
+  { valor: "simples", rotulo: "Simples Nacional" },
+  { valor: "presumido", rotulo: "Lucro Presumido" },
+  { valor: "real", rotulo: "Lucro Real" },
+] as const;
+
+export type RegimeTributario = (typeof REGIMES_TRIBUTARIOS)[number]["valor"];
+
 export interface ClienteEtapa1 {
   id: string;
   aluno_id: string;
@@ -321,6 +340,38 @@ export interface ClienteEtapa1 {
    * reabriria a tarefa 1 de quem já a concluiu.
    */
   grau_relacao: GrauRelacao | null;
+  /**
+   * Os 4 campos de PESSOA JURÍDICA (migração `…308`, 24/09/2026). Todos
+   * `null` nas 1.710 fichas existentes — `null` = NÃO INFORMADO, e a tela
+   * nunca pode exibir isso como "não é PJ": ninguém perguntou.
+   *
+   * 🔴 São 4 colunas que SÓ a FICHA lê. A lista de clientes usa
+   * `COLUNAS_CLIENTE_LISTA` (`src/lib/data/clientes.ts`) e não as traz — a
+   * lista de 1.710 linhas não paga egress por coluna que só a ficha mostra.
+   * Quem as lê é `COLUNAS_CLIENTE_FICHA`, em `getClienteById`.
+   *
+   * ⚠️ Escrita normal pelo PostgREST, via `PatchCliente` — não são
+   * `contrato_*` (aquelas prometem que um arquivo existe e têm trigger
+   * própria). Estas são texto digitado, como `registro_contato`.
+   *
+   * Razão social do cliente PJ. NÃO é `nome` (o nome é como o parceiro chama
+   * o cliente; este é o registrado na Receita). CHECK: 1..200, string vazia
+   * RECUSADA — campo esvaziado na tela tem de virar `null` na action.
+   */
+  razao_social: string | null;
+  /**
+   * CNPJ **só dígitos** (14), sem pontuação — a máscara `00.000.000/0000-00`
+   * é da TELA (`mascaraCpfCnpj`, `src/lib/masks.ts`). O CHECK do banco é
+   * `^[0-9]{14}$`: guarda a FORMA, **não** o dígito verificador (decisão do
+   * Marcio, 24/09/2026 — ficha de prospect não trava por um dígito trocado,
+   * mesmo com `cnpjValido` existindo em `masks.ts`). SEM UNIQUE: dois
+   * parceiros podem ter o mesmo CNPJ na carteira.
+   */
+  cnpj: string | null;
+  /** Ramo de atividade, texto livre curto (CHECK 1..120). Não é CNAE — não há catálogo. */
+  ramo_atividade: string | null;
+  /** Catálogo FECHADO (`REGIMES_TRIBUTARIOS`), espelho do CHECK do banco. */
+  regime_tributario: RegimeTributario | null;
   /**
    * `null` = o ALUNO é dono da estrela (comportamento de sempre). PREENCHIDO =
    * a EQUIPE confirmou que está acompanhando este cliente, e o banco passa a
@@ -571,6 +622,14 @@ export const TIPOS_EVENTO = [
   "reuniao_preliminar_proposta",
   "reuniao_preliminar_aceita",
   "reuniao_preliminar_contestada",
+  // Entrevista prévia sem contato e croqui (…309) — os 3 estavam no CHECK do
+  // banco e faltavam aqui (medido em 24/09/2026: TS 35 × banco 38);
+  // `cliente_documento_lido` nasce na …311 (trilha LGPD da pré-visualização,
+  // gravado só por `gps.cliente_documento_registrar_leitura`, só para admin).
+  "cliente_entrevista_sem_contato",
+  "cliente_croqui_anexado",
+  "cliente_croqui_removido",
+  "cliente_documento_lido",
 ] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 
@@ -704,6 +763,16 @@ export interface OnboardingAnexo {
    * `<ambiente_aluno_id>/<uuid>.<ext>` no bucket privado `gps-onboarding`.
    * 🔴 Todo link montado a partir disto sai com `download=`, NUNCA inline: o
    * MIME vem do que o cliente declarou no PUT, e servir inline é o vetor.
+   *
+   * ⚠️ EXCEÇÃO ÚNICA (24/09/2026), e ela NÃO afrouxa esta regra: a rota de
+   * PRÉ-VISUALIZAÇÃO `src/app/clientes/[clienteId]/documento/…` serve o
+   * arquivo para ser exibido na tela. Ela só pode fazer isso porque **lê os
+   * magic bytes** do conteúdo e responde com o `Content-Type` FORÇADO pelo
+   * que os bytes provam ser (mais `Content-Disposition`/CSP próprios) — ou
+   * seja, o MIME que ela usa não é o declarado no PUT, que é exatamente a
+   * premissa que torna o inline perigoso. Fora dessa rota, `download=`
+   * continua obrigatório em TODO link assinado do produto (contrato,
+   * chamado, questionário, minuta, croqui).
    */
   path: string;
   criadoEm: string;

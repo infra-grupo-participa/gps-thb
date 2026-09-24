@@ -115,13 +115,27 @@ export function DashboardExecutivo({
           grade passou a ser desta página — assim os 13 cards fluem em duas
           bandas contínuas, sem sobra por seção.
 
-          Por que 3 no `xl` e 4 no `2xl`, e não mais: cada card carrega texto
+          🔴 **3 colunas é o teto, e o `2xl:grid-cols-4` foi REMOVIDO** —
+          medido no Chromium em 23/09/2026. O `<main>` de `/admin` é
+          `max-w-6xl` (1152px fixos), mas os breakpoints do Tailwind leem a
+          VIEWPORT, não o container: em 1920px o `2xl:` disparava e repartia
+          1120px em 4 → **271px por coluna**, abaixo do piso de ~300px descrito
+          abaixo. Resultado medido: **17 rótulos quebrando em duas linhas em
+          1920px contra 4 em 1366px** — mais quebra na tela MAIOR, e 7 dos 9
+          degraus da Jornada entre eles. Com 3 colunas dá 365px, e a quebra
+          some. Breakpoint de viewport dentro de container fixo mente sobre a
+          largura disponível; o teto tem de vir do container.
+
+          Por que 3 e não mais: cada card carrega texto
           corrido (denominador escrito, ressalva de leitura) e barras com
           rótulo nominal de 16–22 caracteres ("Com login, nunca entraram",
           "Fechou os 30 (ficha completa)"). Abaixo de ~300 px de coluna esses
           rótulos passam a quebrar em duas linhas e o card volta a crescer em
           altura — mais colunas devolveria a rolagem que elas vieram cortar.
-          Em 1920 px, 4 colunas dão ~440 px cada.
+          Medido: 3 colunas dentro de `max-w-6xl` dão **365 px** cada, em
+          qualquer viewport a partir de `xl`. (A previsão anterior de "4
+          colunas dão ~440 px" só valeria com container fluido — era leitura de
+          caixa, não medição, e a medição a desmentiu.)
 
           `items-start` + `auto-rows-min`: sem eles a grade estica todo card ao
           tamanho do mais alto da FILEIRA, e "Onboarding" (3 números) ficaria
@@ -133,7 +147,7 @@ export function DashboardExecutivo({
           o PARCEIRO (jornada, evolução) → o CLIENTE dele (passos, marcos,
           fases). Nenhum card mudou de banda; o que mudou foi quantos cabem
           lado a lado. */}
-      <div className="grid auto-rows-min items-start gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid auto-rows-min items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
         <GraficosDoPrograma dados={dados} trilha={trilha} />
 
         {/* A jornada é ONDE cada parceiro está (retrato de hoje); a evolução é
@@ -162,7 +176,7 @@ export function DashboardExecutivo({
           cards de leitura tiraria dela a posição de fim-de-tela, que é a
           hierarquia que o Marcio aprovou. São 3 ou 4 cards: cabem numa
           fileira só, sem sobra. */}
-      <div className="grid auto-rows-min items-start gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid auto-rows-min items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
         <FilaEBase
           dados={dados}
           atendimento={atendimento}

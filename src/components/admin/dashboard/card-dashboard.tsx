@@ -176,7 +176,18 @@ export function CardDashboard({
       elevacao="raised"
       interativo={Boolean(link) && !valorHref}
       className={cn(
-        "h-full",
+        /* 🔴 SEM `h-full` (medido em 23/09/2026).
+​
+           O `h-full` anulava o `items-start` da grade da página: a célula
+           parava de esticar, mas o CARD dentro dela pedia 100% da altura da
+           célula — e a célula continua tão alta quanto a fileira. Medido no
+           Chromium em 1920px: "Onboarding" (3 números), "Evolução semanal" e
+           "Passos marcados" ficavam todos em 802px, a altura da "Jornada do
+           parceiro" (9 degraus), com ~400px de vazio abaixo do conteúdo.
+​
+           Sem ele cada card tem a altura do próprio conteúdo. A fileira passa
+           a ter cards de alturas diferentes — é a aparência correta quando o
+           conteúdo é diferente, e é o que elimina o buraco. */
         link && !valorHref && "relative",
         // A faixa vem ANTES do `className` de quem chama, para o card poder
         // sobrescrever se precisar. `neutro` contribui com string vazia — o
@@ -190,7 +201,7 @@ export function CardDashboard({
           13 cards × 8 px devolvidos somam ~100 px de página. O `IconeChip`
           caiu de 32 px para 24: ele é DECORATIVO (`aria-hidden`) e, em 32 px,
           era ele quem mandava na altura da linha do rótulo. */}
-      <CardContent className="flex h-full flex-col gap-1.5 py-3">
+      <CardContent className="flex flex-col gap-1.5 py-3">
         <div className="flex items-start justify-between gap-2">
           <span className="rotulo min-w-0 text-muted-foreground">{rotulo}</span>
           <IconeChip

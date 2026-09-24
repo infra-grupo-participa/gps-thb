@@ -24,13 +24,14 @@ import Link from "next/link";
 import { Calendar } from "lucide-react";
 
 import type { FaseCliente } from "@/lib/types";
-import { FASES_CLIENTE, PERFIS_DISC, PROBLEMAS_7 } from "@/lib/etapa1";
+import { FASES_CLIENTE, PROBLEMAS_7 } from "@/lib/etapa1";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DiscDialogo } from "@/components/clientes/disc-dialogo";
+import { DiscFicha } from "@/components/clientes/disc-ficha";
 import {
   Select,
   SelectContent,
@@ -263,11 +264,24 @@ export function FichaAbaPreliminar({
       </fieldset>
 
       {/* ═══════════════════════════════════════════════════════════════
-          O PERFIL DISC — UMA LINHA NA FICHA, A EDIÇÃO NO POP-UP
+          O PERFIL DISC — A FOLHA DE PAPEL, A EDIÇÃO NO POP-UP
           ═══════════════════════════════════════════════════════════════
 
-          Denso e chapado: hierarquia por POSIÇÃO (rótulo à esquerda, valor ao
-          lado, ação à direita). Sem card, sem ícone, sem fonte grande.
+          Pedido do Marcio (24/09/2026): *"deixar um pouco mais com cara de
+          ficha mesmo… botar o C, um C grandão… como se fosse um papel com os
+          documentos ali bem definidos"*. A linha densa virou `DiscFicha` — o
+          MESMO componente que `/sessoes` monta, para as duas telas não
+          divergirem no primeiro ajuste. A regra geral (denso, chapado,
+          hierarquia por POSIÇÃO) segue valendo: a letra é o ÚNICO elemento
+          grande, e foi pedida nominalmente. Ver o cabeçalho de `disc-ficha`.
+
+          🔑 O POP-UP FICA — ele não é leitura, é EDIÇÃO: `Select` da letra,
+          três `Textarea` de 2000 caracteres e o painel da Entrevista Prévia.
+          A folha mostra; o diálogo escreve. Retirá-lo tiraria do parceiro o
+          único jeito de corrigir o DISC à mão, e `e2e/entrevista-previa.spec`
+          ancora no botão "Ver perfil" como PORTA DE ENTRADA da entrevista.
+          Ele deixou de ser a única forma de VER o perfil — passou a ser o
+          botão de editar, no canto da folha.
 
           🔑 A ENTREVISTA PRÉVIA CONTINUA SENDO UMA ROTA, NÃO UM DIÁLOGO
           (decisão de 23/09/2026: a conversa dura 15-20 min ao vivo e um modal
@@ -283,53 +297,52 @@ export function FichaAbaPreliminar({
           servidor, não vira componente cliente e **não custa consulta nenhuma
           ao abrir, nem ao trocar de aba**.
 
-          🔑 O rótulo do DISC sai de `PERFIS_DISC`; valor fora da lista aparece
-          CRU, que é o que o `SelectValue` do diálogo já faz. Nunca inventar
-          rótulo para código desconhecido. */}
+          🔑 O rótulo do DISC sai de `PERFIS_DISC` (dentro de `DiscFicha`);
+          valor fora da lista aparece CRU, que é o que o `SelectValue` do
+          diálogo já faz. Nunca inventar rótulo para código desconhecido. */}
       <div className="grid gap-5">
-        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-          <div className="grid gap-0.5">
-            <div className="flex flex-wrap items-baseline gap-x-3">
-              <span className="rotulo text-muted-foreground">Perfil DISC</span>
-              <span className="corpo-sm">
-                {disc
-                  ? (PERFIS_DISC.find((d) => d.id === disc)?.rotulo ?? disc)
-                  : "— não definido"}
-              </span>
-            </div>
-            {/* 🔴 O SINAL DE PENDÊNCIA — texto, não badge, não ícone. Regra do
-                Marcio: *"para realizar a reunião preliminar, todos os
-                decisores precisam"*. Aparece SÓ com mais de um decisor: com um
-                só não há trava a avisar.
+        {/* 🔴 A FOLHA LÊ OS `useState` DO `ClienteFicha`, não o `cliente` do
+            servidor. É de propósito: o parceiro digita no pop-up e vê a folha
+            acompanhar na hora, ainda antes de "Salvar ficha". Ler o valor
+            salvo aqui deixaria a folha mentindo enquanto há alteração
+            pendente — o mesmo defeito de "salvo com o botão inalterado".
 
-                🔴 `qtdDecisores == null` (modo assistência, sem a RPC) não
-                mostra nada. Ausência de dado não vira afirmação de que não há
-                decisor. */}
-            {qtdDecisores != null && qtdDecisores > 1 ? (
-              <p className="corpo-sm text-accent-foreground">
-                {qtdDecisores} decisores · a Preliminar exige todos presentes
-              </p>
-            ) : null}
-          </div>
+            🔴 `exigeTodos` sai de `qtdDecisores > 1` porque é o único sinal
+            que ESTA tela recebe (a page passa a contagem, não a flag da RPC).
+            `null` = modo assistência sem a RPC: não mostra nada, porque
+            ausência de dado não vira afirmação de que não há decisor.
 
-          <DiscDialogo
-            // 🔴 VALOR + SETTER, nunca cópia. Os quatro estados continuam
-            // morando no `ClienteFicha`: é deles que `alterado`/`alteradoPorAba`
-            // (a barra sticky e a marca da aba) e `salvar()` leem. Cópia local
-            // dentro do diálogo seria a segunda fonte de verdade — o texto
-            // digitado sumiria do "Salvar ficha" e a barra nunca acusaria
-            // pendência. Efeito colateral bom: fechar no Esc não perde nada.
-            disc={disc}
-            setDisc={setDisc}
-            discConsciencia={discConsciencia}
-            setDiscConsciencia={setDiscConsciencia}
-            discGatilhos={discGatilhos}
-            setDiscGatilhos={setDiscGatilhos}
-            discRelacionamento={discRelacionamento}
-            setDiscRelacionamento={setDiscRelacionamento}
-            painelEntrevista={painelEntrevista}
-          />
-        </div>
+            ⚠️ `atualizadoEm`/`nomesDecisores` NÃO são passados: esta folha é
+            `"use client"` e recebe só o que `ClienteFicha` já tem em prop.
+            Inventar a data ou os nomes aqui seria afirmar o que ninguém leu. */}
+        <DiscFicha
+          perfilDisc={disc || null}
+          consciencia={discConsciencia}
+          gatilhos={discGatilhos}
+          relacionamento={discRelacionamento}
+          qtdDecisores={qtdDecisores}
+          exigeTodos={qtdDecisores != null && qtdDecisores > 1}
+          acoes={
+            <DiscDialogo
+              // 🔴 VALOR + SETTER, nunca cópia. Os quatro estados continuam
+              // morando no `ClienteFicha`: é deles que `alterado`/
+              // `alteradoPorAba` (a barra sticky e a marca da aba) e
+              // `salvar()` leem. Cópia local dentro do diálogo seria a segunda
+              // fonte de verdade — o texto digitado sumiria do "Salvar ficha"
+              // e a barra nunca acusaria pendência. Efeito colateral bom:
+              // fechar no Esc não perde nada.
+              disc={disc}
+              setDisc={setDisc}
+              discConsciencia={discConsciencia}
+              setDiscConsciencia={setDiscConsciencia}
+              discGatilhos={discGatilhos}
+              setDiscGatilhos={setDiscGatilhos}
+              discRelacionamento={discRelacionamento}
+              setDiscRelacionamento={setDiscRelacionamento}
+              painelEntrevista={painelEntrevista}
+            />
+          }
+        />
 
         {/* ═══════════════════════════════════════════════════════════════
             O PRÓXIMO PASSO — UMA LINHA, FORA DO POP-UP

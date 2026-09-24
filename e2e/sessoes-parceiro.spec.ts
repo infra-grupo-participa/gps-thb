@@ -62,8 +62,9 @@ test.describe("Parceiro · /sessoes", () => {
     const console_ = vigiarConsole(page);
     await page.goto("/sessoes");
 
-    await expect(page.getByRole("heading", { name: /sess(õ|o)es com a equipe/i }))
-      .toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /suas reuni(õ|o)es com a equipe jur(í|i)dica/i }),
+    ).toBeVisible();
 
     await semRolagemHorizontal(page);
     await registrarTela(page, info, `sessoes-${test.info().project.name}.png`);
@@ -94,13 +95,25 @@ test.describe("Parceiro · /sessoes", () => {
     // o `loading.tsx` e o `page.tsx` coexistem no DOM, cada um com o seu
     // `id="conteudo"` — o último é o da página já montada. Não é id duplicado
     // no produto: o padrão do repo é um por página, e foi conferido.
-    const corpo = (await page.locator("#conteudo").last().innerText()).toLowerCase();
+    // 🔴 ESCOPADO À ZONA 2 (24/09): a Zona 1 (pré-requisitos) imprime
+    // "Entrevista Prévia" para TODO parceiro com favorito, dentro do mesmo
+    // `#conteudo`. Medir a página inteira deixava este teste incapaz de
+    // falhar no caso comum — verde que não prova nada (nota de 17/09). A
+    // zona da reunião é a única que tem horário OU o motivo da ausência.
+    const zona2 = page
+      .locator("#conteudo")
+      .last()
+      .locator('section[aria-labelledby="zona-reuniao"]');
+    await expect(zona2).toBeVisible();
+    const corpo = (await zona2.innerText()).toLowerCase();
 
     // Um dos dois tem de ser verdade. O que NÃO pode é a tela ficar muda —
     // o estado vazio é o caso comum e precisa dizer o porquê, não sumir.
     const temHorario = /\d{1,2}:\d{2}/.test(corpo);
     const explicaAusencia =
-      /não tem|nenhum hor|sem hor|nada dispon|próximas \d+ semanas|avisaremos|fale com/.test(corpo);
+      /não tem|nenhum hor|sem hor|nada dispon|próximas \d+ semanas|avisaremos|fale com|escolh(a|eu) o cliente|abre quando a equipe liberar|não abriu nenhuma reuni/.test(
+        corpo,
+      );
 
     expect(
       temHorario || explicaAusencia,

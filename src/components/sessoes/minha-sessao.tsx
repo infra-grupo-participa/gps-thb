@@ -12,11 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
-import {
-  DiscDoCliente,
-  LinhaDaFicha as Linha,
-} from "@/components/sessoes/disc-do-cliente";
-import { DesfechoDaSessao } from "@/components/sessoes/desfecho-da-sessao";
+import { LinhaDaFicha as Linha } from "@/components/sessoes/disc-do-cliente";
 import {
   formatarDuracao,
   horaDeTime,
@@ -27,15 +23,33 @@ import {
 import type { SessaoAgendamento } from "@/lib/sessoes-tipos";
 
 /**
- * A sessão que o ambiente JÁ tem marcada de um tipo — o DISC do cliente, o
- * link da sala e o cancelamento.
+ * A sessão que o ambiente JÁ tem marcada — data/hora, com quem, cliente, link
+ * da sala e o cancelamento. **Um card único**, o mais alto da Zona 2.
  *
  * Denso e chapado: um bloco de linhas rotuladas, sem card com sombra e sem
  * ícone. A hierarquia é posicional (dia e horário em cima, o resto abaixo).
- * O DISC entra como MAIS LINHAS da mesma lista (FATIA E do PRD
- * `docs/specs/2026-09-23-sessoes-disc-link-resumo-PRD.md`), nunca como card
- * novo — é a razão de `DiscDoCliente` devolver `<LinhaDaFicha>` solta em vez
- * de um contêiner próprio.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 DUAS COISAS SAÍRAM DAQUI EM 24/09 — e os motivos são diferentes
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 1. **O DISC subiu para a Zona 1** (`pre-requisitos.tsx`). Ele é atributo do
+ *    CLIENTE, não da sessão: com as duas sessões vivas do mesmo cliente
+ *    (Entrevista Prévia + Reunião Preliminar), a mesma folha era montada duas
+ *    vezes na mesma página, sobre a mesma pessoa. Lá em cima ela existe uma
+ *    vez só, ao lado das pendências que explica. Por isso este componente já
+ *    não recebe `disc`.
+ *
+ * 2. **O desfecho desceu para a Zona 3** (`DesfechoDaSessao`, "O que acontece
+ *    depois"). Ele responde a uma pergunta de tempo diferente — "como
+ *    terminou" — e no estado `agendado`, que é o único que esta rota lista
+ *    hoje, não renderizava nada de qualquer forma.
+ *
+ * 🔴 "COM QUEM" É LINHA DE PRIMEIRA CLASSE (PRD §9 D5). `responsavel_nome`
+ * NÃO existe em `sessao_agendamentos` — a tabela só tem o uuid, e o aluno não
+ * alcança `public.perfis` (`gps_block_aluno`). O nome chega por prop, do mapa
+ * de `gps.sessao_responsaveis()` que a página busca UMA vez. Sem o nome a
+ * linha diz "equipe jurídica"; **nunca** imprime uuid e nunca inventa rótulo.
  *
  * 🔴 O PRAZO DE 24h É DECIDIDO NO BANCO. `podeCancelarComoAluno` só decide se
  * o BOTÃO aparece — oferecer uma ação que vai falhar é pior que não oferecer.
@@ -52,27 +66,22 @@ export function MinhaSessao({
   sessao,
   tipoNome,
   clienteNome,
-  disc,
+  responsavelNome,
   linkPorEquipe,
 }: {
   sessao: SessaoAgendamento;
   tipoNome: string;
   clienteNome: string | null;
   /**
-   * O DISC do cliente desta sessão, lido AO VIVO de `gps.etapa1_clientes` pela
-   * página (o `briefing_snapshot` congelaria a resposta de "quem é essa
-   * pessoa", que é atributo estável e não evento datado — PRD §2.2).
+   * O nome de quem atende, de `gps.sessao_responsaveis()` (mapa
+   * `responsavel_id → nome`, buscado UMA vez pela página).
    *
-   * `null` = a leitura do cliente falhou. Nesse caso o bloco inteiro não
-   * aparece: afirmar "ainda não informado" quando a consulta é que caiu seria
-   * a mesma mentira que este portal já pagou caro em 16/09.
+   * 🔴 `null` = a RPC falhou, ou a doutora não tem linha em `public.perfis`
+   * (o `left join` da `…292` devolve nome nulo de propósito, para ela não
+   * sumir da lista). Nos dois casos a linha diz "equipe jurídica" — o uuid
+   * não é rótulo, e um nome inventado é pior que um genérico honesto.
    */
-  disc: {
-    perfil_disc: string | null;
-    disc_consciencia: string | null;
-    disc_gatilhos: string | null;
-    disc_relacionamento: string | null;
-  } | null;
+  responsavelNome: string | null;
   /**
    * `gps.sessao_agendamentos.link_por_equipe` — o PAPEL de quem colou o link
    * vigente, congelado no instante da escrita: `true` = equipe (admin ou a
@@ -138,6 +147,14 @@ export function MinhaSessao({
             ({formatarDuracao(sessao.duracao_min)}, bloco inteiro)
           </span>
         </Linha>
+        {/* 🔴 "COM QUEM" — PRD §9 D5, *"a tela mostra o nome"*. Vem logo abaixo
+            do horário porque é a segunda coisa que o parceiro procura ao abrir
+            um compromisso de 2h30: quando, e com quem. */}
+        <Linha rotulo="Com quem">
+          {responsavelNome ?? (
+            <span className="text-muted-foreground">Equipe jurídica</span>
+          )}
+        </Linha>
         <Linha rotulo="Cliente">
           {/* `null` não vira texto inventado: o cliente pode ter sido trocado
               pela equipe depois do agendamento. Melhor dizer que não dá para
@@ -149,27 +166,11 @@ export function MinhaSessao({
           )}
         </Linha>
 
-        {/* Mais linhas da MESMA lista — não um bloco novo. Some por inteiro
-            quando a leitura do cliente falhou (`disc === null`): "ainda não
-            informado" seria afirmar sobre o banco o que a consulta não soube
-            responder. */}
-        {disc ? (
-          <DiscDoCliente
-            perfilDisc={disc.perfil_disc}
-            consciencia={disc.disc_consciencia}
-            gatilhos={disc.disc_gatilhos}
-            relacionamento={disc.disc_relacionamento}
-            clienteId={sessao.cliente_id}
-          />
-        ) : null}
-
         <BlocoDoLink
           sessao={sessao}
           linkPorEquipe={linkPorEquipe}
           desabilitado={cancelando}
         />
-
-        <DesfechoDaSessao sessao={sessao} />
       </dl>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-borda-fina px-3 py-2">

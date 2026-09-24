@@ -39,7 +39,7 @@ import {
   type converterTitularEmSocio,
 } from "@/app/admin/central-actions";
 import type { PreviaConversaoSocio } from "@/lib/data/conversao-socio";
-import type { AlunoBusca } from "@/app/admin/actions";
+import type { AlunoBusca } from "@/lib/admin-acesso-tipos";
 import {
   Dialog,
   DialogContent,

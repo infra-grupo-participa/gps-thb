@@ -16,7 +16,8 @@
 
 import { useId, useState } from "react";
 import { Search } from "lucide-react";
-import { buscarAlunos, type AlunoBusca } from "@/app/admin/actions";
+import { buscarAlunos } from "@/app/admin/actions";
+import type { AlunoBusca } from "@/lib/admin-acesso-tipos";
 import {
   Dialog,
   DialogContent,

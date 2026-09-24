@@ -40,7 +40,7 @@ import type {
   MembroDiagnostico,
   VerificacaoDiagnostico,
 } from "@/lib/data/central";
-import type { AlunoBusca } from "@/app/admin/actions";
+import type { AlunoBusca } from "@/lib/admin-acesso-tipos";
 import { converterTitularEmSocio } from "@/app/admin/central-actions";
 import type { ProximoPasso } from "@/lib/etapas";
 import { formatarDataHora } from "@/lib/datas";

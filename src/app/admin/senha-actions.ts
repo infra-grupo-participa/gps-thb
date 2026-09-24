@@ -12,17 +12,16 @@ import { logErro } from "@/lib/log";
 import { mapearStatusAcesso } from "@/lib/data/central";
 import { MSG_SENHA_MINIMO, SENHA_MINIMO } from "@/lib/senha-regras";
 import type { PapelMembro } from "@/lib/types";
-import type { MembroAcesso, StatusAcesso } from "@/lib/acesso-tipos";
+import type { StatusAcesso } from "@/lib/acesso-tipos";
 
 // `MembroAcesso`/`StatusAcesso` moraram aqui como `export interface` até
 // 11/09/2026 (feature "trocar e-mail do login pela tela do admin") — bomba
-// armada num módulo `"use server"`, que só pode exportar função async. Os
-// tipos agora vivem em `@/lib/acesso-tipos`; os componentes cliente que só
-// precisavam do tipo (dialogos.tsx, membros-view.tsx, painel.tsx,
-// senha-de-membro.tsx) importam de lá com `import type`. Reexportado aqui
-// só para não quebrar quem ainda importa `type { MembroAcesso } from
-// "@/app/admin/senha-actions"` — preferir sempre `@/lib/acesso-tipos`.
-export type { MembroAcesso, StatusAcesso };
+// armada num módulo `"use server"`, que só pode exportar função async
+// (achado real: `ReferenceError: MembroAcesso is not defined` em produção,
+// 24/09/2026, matando TODAS as actions deste arquivo na avaliação do
+// módulo). Os tipos vivem em `@/lib/acesso-tipos`; todo consumidor
+// (dialogos.tsx, membros-view.tsx, painel.tsx, senha-de-membro.tsx) já
+// importa de lá com `import type`. Não reexportar tipo daqui — nunca.
 
 /**
  * Gestão do acesso do aluno pelo painel — sem depender de e-mail e sem

@@ -23,7 +23,8 @@ import {
 // Importada direto do módulo de origem: reexportar de outro módulo
 // `"use server"` tira o export do build (o caso está registrado em
 // `admin/plantao/actions.ts`).
-import { atualizarEmailAluno, type AlunoBusca } from "@/app/admin/actions";
+import { atualizarEmailAluno } from "@/app/admin/actions";
+import type { AlunoBusca } from "@/lib/admin-acesso-tipos";
 import { rotuloEtapa, type AcaoPendente } from "./tipos";
 
 /**

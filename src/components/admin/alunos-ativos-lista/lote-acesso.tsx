@@ -38,7 +38,7 @@ import { criarAcessosEmLote } from "@/app/admin/actions";
 // 500). O TIPO pode vir do módulo de actions porque `import type` é apagado
 // antes do bundler.
 import { LOTE_ACESSOS_MAXIMO } from "@/lib/acessos-lote";
-import type { ResultadoAcessoEmLote } from "@/app/admin/actions";
+import type { ResultadoAcessoEmLote } from "@/lib/admin-acesso-tipos";
 import { mensagemAcesso } from "@/components/admin/credenciais-view";
 import { Button } from "@/components/ui/button";
 import {

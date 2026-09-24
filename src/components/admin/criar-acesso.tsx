@@ -9,10 +9,12 @@ import {
   criarAcessoAluno,
   adicionarAlunoGps,
   diagnosticarLoginAluno,
-  type AlunoBusca,
-  type AlunoDuplicado,
-  type DiagnosticoLogin,
 } from "@/app/admin/actions";
+import type {
+  AlunoBusca,
+  AlunoDuplicado,
+  DiagnosticoLogin,
+} from "@/lib/admin-acesso-tipos";
 import { CadastrarAlunoForm } from "@/components/admin/cadastrar-aluno-form";
 import {
   CredenciaisView,

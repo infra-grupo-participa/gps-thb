@@ -11,12 +11,8 @@ import {
   UserRound,
   UserRoundPlus,
 } from "lucide-react";
-import {
-  cadastrarAluno,
-  listarTurmas,
-  type AlunoBusca,
-  type AlunoDuplicado,
-} from "@/app/admin/actions";
+import { cadastrarAluno, listarTurmas } from "@/app/admin/actions";
+import type { AlunoBusca, AlunoDuplicado } from "@/lib/admin-acesso-tipos";
 import { PLANOS_ALUNO, type Turma } from "@/lib/types";
 import {
   mascaraCep,

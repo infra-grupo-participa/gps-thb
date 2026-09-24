@@ -1,4 +1,4 @@
-import type { AlunoBusca } from "@/app/admin/actions";
+import type { AlunoBusca } from "@/lib/admin-acesso-tipos";
 import type {
   CandidatoFinanceiro,
   EtapaDiagnostico,

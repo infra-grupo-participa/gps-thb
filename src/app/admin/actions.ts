@@ -20,15 +20,20 @@ import {
 } from "@/lib/masks";
 import { PLANOS_ALUNO } from "@/lib/types";
 import type { Aluno, NovoAlunoInput, PlanoAluno, Turma } from "@/lib/types";
+import type {
+  AlunoBusca,
+  AlunoDuplicado,
+  DiagnosticoLogin,
+  ResultadoAcessoEmLote,
+} from "@/lib/admin-acesso-tipos";
 
 // A senha temporária vem de `@/lib/senha-temporaria` (`Thb-7f3a-2b9c`). O
 // gerador local produzia `Gps-3f9a2b` e ia por e-mail e WhatsApp ao aluno —
 // "GPS" é nome interno e não aparece para o usuário desde 09/07/2026.
 
-export interface AlunoBusca extends Aluno {
-  documento: string | null;
-  jaNoGps: boolean;
-}
+// `AlunoBusca`, `AlunoDuplicado`, `ProgramaDoLogin`, `DiagnosticoLogin` e
+// `ResultadoAcessoEmLote` moram em `@/lib/admin-acesso-tipos` — este módulo
+// é `"use server"` e só pode exportar função async (ver o comentário lá).
 
 /** Normaliza para comparação: minúsculas e sem acentos. */
 function norm(s: string | null | undefined): string {
@@ -212,14 +217,6 @@ export async function listarTurmas(): Promise<Turma[]> {
     .order("atual", { ascending: false, nullsFirst: false })
     .order("id", { ascending: false });
   return (data ?? []) as Turma[];
-}
-
-export interface AlunoDuplicado {
-  id: string;
-  nome: string | null;
-  email: string | null;
-  documento: string | null;
-  motivo: "documento" | "email";
 }
 
 /**
@@ -497,22 +494,6 @@ export async function atualizarEmailAluno(alunoId: string, email: string) {
   if (error) return { erro: traduzirErroBanco("atualizarEmailAluno", error) };
   revalidatePath("/admin");
   return { email: novo };
-}
-
-export interface ProgramaDoLogin {
-  programa: string;
-  detalhe: string | null;
-}
-
-export interface DiagnosticoLogin {
-  temLogin: boolean;
-  email: string | null;
-  origem: string | null;
-  ultimoAcesso: string | null;
-  eEquipe: boolean;
-  programas: ProgramaDoLogin[];
-  temDireito: boolean;
-  motivoDireito: string | null;
 }
 
 /**
@@ -850,19 +831,10 @@ export async function salvarPastaDriveUrl(alunoId: string, url: string) {
  * async: com `export const LOTE_ACESSOS_MAXIMO = 20` nesta linha, o módulo
  * inteiro deixava de expor exports para o cliente e `/admin` respondia 500
  * ("Export criarAcessosEmLote doesn't exist in target module"). `tsc --noEmit`
- * passa limpo nesse estado — quem acusa é o bundler.
+ * passa limpo nesse estado — quem acusa é o bundler. `ResultadoAcessoEmLote`
+ * (o tipo do resultado deste lote) mora pelo mesmo motivo em
+ * `@/lib/admin-acesso-tipos`.
  */
-export interface ResultadoAcessoEmLote {
-  alunoId: string;
-  ok: boolean;
-  erro?: string;
-  email?: string;
-  senha?: string;
-  emailEnviado?: boolean;
-  /** Login já existe em outro portal: exige decisão nomeada, uma a uma. */
-  precisaDecisao?: boolean;
-  programas?: string[];
-}
 
 /**
  * 🔑 `adotarLoginsExistentes`: resolve o lote INTEIRO, sem parar em cada um.

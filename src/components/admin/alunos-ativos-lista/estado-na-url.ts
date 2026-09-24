@@ -115,6 +115,46 @@ export type SubAbaVisao = (typeof SUBABAS_VISAO)[number];
 export const SUBABA_VISAO_PADRAO: SubAbaVisao = "programa";
 
 /**
+ * `?foco=` — o estágio da jornada do parceiro que a régua da sub-aba
+ * "O programa" marca, e que recorta o gráfico e a tabela abaixo dela
+ * (23/09/2026, redesenho master-detail).
+ *
+ * 🔑 **Seis estágios, não nove.** A régua tem 1152 px de largura útil
+ * (`max-w-6xl` do `/admin`): nove números dariam ~128 px cada, e um rótulo
+ * de três palavras não cabe — a régua quebraria em duas linhas e deixaria de
+ * ser régua. Os três estágios que ficaram de fora (`no programa`, `fechou os
+ * 30`, `reuniao`) continuam na RPC; `no programa` é o denominador (148) e
+ * aparece uma vez, escrito, não como item.
+ *
+ * 🔑 **Um escritor só: `dashboard/regua.tsx`.** Mesma regra de `?vis=` (cujo
+ * único escritor é `abas-painel.tsx`). Ninguém mais grava `foco` na URL.
+ *
+ * Lida no NAVEGADOR, não no servidor: as variantes do gráfico e da tabela
+ * vêm pré-renderizadas na página e a régua só alterna qual aparece — igual
+ * às sub-abas. Clique instantâneo, zero RPC a mais (medido: a RPC custa
+ * 60 ms, e re-executá-la a cada clique de exploração transformaria 1 chamada
+ * em 6).
+ *
+ * `?foco=` fora desta lista → `null` → régua sem marcação, gráfico e tabela
+ * no recorte "todos". Nunca quebra, nunca deixa a zona vazia.
+ */
+export const FOCOS = [
+  "entrou",
+  "onboarding",
+  "cadastrou",
+  "mensagem",
+  "favorito",
+  "contrato",
+] as const;
+export type Foco = (typeof FOCOS)[number];
+
+export function lerFoco(bruto: string | null | undefined): Foco | null {
+  return (FOCOS as readonly string[]).includes(bruto ?? "")
+    ? (bruto as Foco)
+    : null;
+}
+
+/**
  * As 5 classes do programa — os cards do desenho do Marcio (10/09/2026).
  *
  * A regra é DERIVADA (`gps.admin_classes_dos_alunos`), não um campo que

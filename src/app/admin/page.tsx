@@ -26,7 +26,7 @@ import { AlunosAtivosLista } from "@/components/admin/alunos-ativos-lista";
 import { AbasPainel } from "@/components/admin/abas-painel";
 import { DashboardExecutivo } from "@/components/admin/dashboard";
 import { PrecisaDeAtencao } from "@/components/admin/dashboard/atencao";
-import { RankingDeParceiros } from "@/components/admin/dashboard/parceiros";
+import { SubAbaParceiros } from "@/components/admin/dashboard/base";
 import { RegistrarUrlDoPainel } from "@/components/admin/voltar-ao-painel";
 import { AvisoInline } from "@/components/ui/aviso-inline";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -110,6 +110,16 @@ export default async function AdminPage({
   // dizem os mesmos números **com variação do mês e com clique**, e o badge da
   // aba Solicitações já mostra a fila. Manter os dois seria dois lugares
   // dizendo o mesmo número — a tela substitui, não acumula.
+
+  // 🔑 As três funções PURAS sobre o lote já carregado, calculadas UMA vez
+  // cada e descidas por prop. Com o redesenho de 23/09 elas passaram a ser
+  // lidas por DUAS sub-abas ("Atenção" e "Parceiros"); chamá-las no JSX de
+  // cada uma varreria a lista de novo por sub-aba e criaria dois lugares para
+  // o mesmo número divergir. Zero consulta: nenhuma delas faz I/O.
+  const trilha = faixasDeTrilha(alunos);
+  const clientes30 = resumoClientes30(alunos);
+  const atendimento = resumoAtendimento(alunos, atendimentoDiario);
+
   const parcial = alunos.length < totalAlunos;
   const proximoLimite = limiteDoPainel(String(rodadasPedidas + 1));
   // Quantos ambientes o próximo clique acrescenta DE FATO (nunca prometer
@@ -147,13 +157,13 @@ export default async function AdminPage({
           apuradoEm={dashboard ? formatarDataHora(dashboard.geradoEm) : null}
           visaoPrograma={
             dashboard ? (
-              <DashboardExecutivo
-                dados={dashboard}
-                trilha={faixasDeTrilha(alunos)}
-                atendimento={resumoAtendimento(alunos, atendimentoDiario)}
-                clientes30={resumoClientes30(alunos)}
-                ambientesCarregados={alunos.length}
-              />
+              // 🔑 23/09/2026 — as 3 zonas. A sub-aba "O programa" passou a
+              // ser régua + gráfico + ranking, e as três saem TODAS de
+              // `dados`. `trilha`/`atendimento`/`clientes30` desceram para as
+              // sub-abas que ficaram com os números migrados ("Atenção" e
+              // "Parceiros") — continuam sendo as MESMAS funções puras sobre o
+              // lote já carregado, calculadas uma vez cada.
+              <DashboardExecutivo dados={dashboard} />
             ) : (
               // `getDashboard()` devolve `null` em falha — e a tela diz isso
               // em vez de desenhar nove cards zerados. Um dashboard todo em
@@ -172,7 +182,12 @@ export default async function AdminPage({
           // leitura em folha que desmonta por aba.
           visaoAtencao={
             dashboard ? (
-              <PrecisaDeAtencao dados={dashboard} />
+              <PrecisaDeAtencao
+                dados={dashboard}
+                atendimento={atendimento}
+                clientes30={clientes30}
+                ambientesCarregados={alunos.length}
+              />
             ) : (
               <AvisoInline>
                 Não foi possível carregar a visão do programa agora.
@@ -181,7 +196,12 @@ export default async function AdminPage({
           }
           visaoParceiros={
             dashboard ? (
-              <RankingDeParceiros parceiros={dashboard.parceiros} />
+              <SubAbaParceiros
+                dados={dashboard}
+                trilha={trilha}
+                clientes30={clientes30}
+                ambientesCarregados={alunos.length}
+              />
             ) : (
               <AvisoInline>
                 Não foi possível carregar a visão do programa agora.

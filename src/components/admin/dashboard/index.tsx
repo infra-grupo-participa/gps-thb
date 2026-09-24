@@ -1,200 +1,277 @@
-import type {
-  Dashboard,
-  FaixaDeTrilha,
-  ResumoAtendimento,
-  ResumoClientes30,
-} from "@/lib/data/dashboard";
-import { FaixaKpis } from "./faixa-kpis";
-import { GraficosDoPrograma } from "./graficos";
-import { FilaEBase } from "./fila";
-import { CaminhoDoCliente } from "./caminho";
-import { JornadaDoParceiro } from "./jornada";
-import { EvolucaoSemanal } from "./evolucao";
+import Link from "next/link";
+
+import type { Dashboard } from "@/lib/data/dashboard";
+import type { Foco } from "@/components/admin/alunos-ativos-lista/estado-na-url";
+import { Regua, type EstagioRegua } from "./regua";
+import { Cruzamento, type ParDoCruzamento } from "./cruzamento";
+import { RankingDeParceiros } from "./parceiros";
+import { LINK_LISTA } from "./tipos";
 
 /**
- * A sub-aba **"O programa"** (`?vis=programa`, a padrão) da Visão geral —
- * macro → forma → caminho → fila.
+ * A sub-aba **"O programa"** (`?vis=programa`, a padrão) — **três zonas**,
+ * não mais vinte cards (23/09/2026).
  *
- * 🔑 **23/09/2026: a Visão geral virou três sub-abas** (`abas-painel.tsx`),
- * e este componente é a primeira delas. As outras duas ("Precisa de atenção",
- * `atencao.tsx`; "Parceiros", o ranking) são irmãs, não filhas: o que está
- * aqui continua sendo o dashboard de sempre, com o caminho do cliente somado.
+ * 🔑 **O que foi desfeito, e por quê.** A tela tinha 20 cards de peso igual
+ * espalhados em três seções (`faixa-kpis` · `graficos` · `caminho` · `fila`),
+ * cada uma dona da própria grade. Queixa do Marcio: *"os cards empilhados
+ * assim fica mt ruim"*. A 2ª rodada tentou consertar a GRADE; o problema era
+ * a QUANTIDADE — vinte molduras para responder três perguntas.
  *
- * Cinco seções, e a ordem é a leitura:
+ * As três zonas, e a leitura é de cima para baixo:
  *
- *   A. **faixa de KPIs** (`faixa-kpis.tsx`) — seis números, sem desenho.
- *   B. **gráficos, grandes** (`graficos.tsx`) — a forma dos mesmos dados.
- *   E. **caminho do cliente** (`caminho.tsx`) — um nível abaixo: os clientes
- *      dos parceiros. 🔴 Os 4 passos da ficha são barras PARALELAS, nunca
- *      funil — a razão está no cabeçalho daquele arquivo.
- *   C. **fila e base** (`fila.tsx`) — o que a equipe deve atacar.
- *   D. rodapé — só o escopo do lote. A hora da apuração subiu para
- *      `abas-painel.tsx` em 23/09/2026: ela vale para as três sub-abas, e
- *      aqui alcançava apenas esta.
+ *   **Zona 1 — a régua** (`regua.tsx`). Os 6 estágios da jornada do parceiro
+ *   como números em linha, sobre um denominador escrito uma vez. É o índice
+ *   da tela: clicar num estágio recorta as zonas 2 e 3.
  *
- * 🔑 **O redesign de 11/09.** Pedido do João: "a visualização está muito crua;
- * quero gráficos, barras, linhas e pizzas, foco em KPIs e em números". Os
- * quatro defeitos medidos e o que cada um virou:
+ *   **Zona 2 — o cruzamento** (`cruzamento.tsx`). Cadastros por semana em
+ *   barra, com a segunda série em linha no mesmo eixo.
  *
- * 1. *gráfico minúsculo dentro de card grande* — a altura era a razão de um
- *    `viewBox` × a largura de uma coluna de grade 3×3, e dava colunas de 60 px.
- *    Agora é **pixel, prop do card** (190, medido em 242/190/156 de altura
- *    útil), a grade dos gráficos é de 2 colunas a partir do `lg`, e os desenhos
- *    viraram HTML onde dava — o texto parou de encolher com a largura da
- *    coluna (a razão está em `ui/graficos/tipos.ts`).
- * 2. *estado vazio como protagonista* — três caixas âmbar grandes gritavam
- *    mais alto do que os números que existem. Vazio continua sendo resultado,
- *    mas dito em número ("0 de 136 · 0%" com o trilho vazio) e em UMA linha.
- * 3. *KPI sem "de quanto"* — todo tile da faixa A leva o percentual do próprio
- *    universo ao lado do número, e `acesso.ativos30d`/`semAcesso30d` (que a
- *    RPC já devolvia e ninguém mostrava) viraram o terceiro tile.
- * 4. *nove cards de peso igual* — a faixa é a primeira leitura, o gráfico é a
- *    segunda, a fila é a terceira.
+ *   **Zona 3 — o ranking** (`parceiros.tsx`), recortado pelo estágio ativo.
  *
- * 🔑 As regras que **não** mudaram, e que valem para todo card daqui:
- * número, não frase · um card, um destino · todo `href` com valor da allowlist
- * de `alunos-ativos-lista/estado-na-url.ts` e com `aba=ativos` · vazio é
- * resultado com instrução curta · nenhum número inventado (nada de 136 × 150
- * mil) · comparação só onde a RPC dá o par · **nenhuma tela escreve valor de
- * saldo do programa** (BLOQUEIO B-S1) · Server Component, 0 KB de JS.
+ * 🔴 **As zonas 2 e 3 são uma VARIANTE por estágio, pré-renderizada no
+ * servidor.** As sete (`todos` + os 6 focos) são montadas aqui, e a régua só
+ * escolhe qual entra no DOM — nenhuma fica escondida com `hidden`, porque
+ * elemento invisível continua contando na área rolável do ancestral e sete
+ * tabelas empilhadas dariam rolagem sobre o vazio.
  *
- * Recebe TUDO pronto: `dados` vem de UMA RPC agregada (`gps.admin_dashboard()`)
- * e `trilha`/`atendimento` vêm de duas funções PURAS sobre o que `/admin` já
- * carregou (`getAlunosGps` e `getAtendimentoPorAluno`) — **zero consulta
- * nova**, que é o crédito de otimização desta frente.
+ * 🔴 **Zero fetch ao trocar de estágio.** `regua.tsx` escreve `?foco=` pela
+ * History API nativa (`replaceState`), não por `router.replace` — este
+ * componente NÃO é re-executado no clique, e a RPC não roda de novo. É o
+ * motivo de as sete variantes serem montadas de uma vez: elas custam
+ * renderização de HTML já em memória, não consulta.
+ *
+ * 🔑 **O denominador da régua vem de `jornada.ambientes`, não de
+ * `programa.total`.** São o mesmo 148 hoje, e é justamente por isso que a
+ * troca passaria despercebida: a régua fala da JORNADA, e numerador e
+ * denominador têm de sair da mesma consulta. Dois totais de fontes diferentes
+ * divergem no dia em que um dos dois ganhar um recorte.
+ *
+ * 🔴 **Três estágios da RPC NÃO viram item da régua**, e não sumiram:
+ * `jornada.ambientes` é o denominador (escrito, não item); `fecharam os 30` e
+ * a reunião preliminar migraram para `base.tsx` e `atencao.tsx`. Ver o
+ * cabeçalho de `FOCOS` em `alunos-ativos-lista/estado-na-url.ts` para a
+ * geometria que fechou a régua em seis.
+ *
+ * ⚠️ **Nenhuma taxa de passagem, em zona nenhuma.** Os 6 estágios NÃO são
+ * subconjuntos encadeados: `escolheuFavorito` (37) é maior que `mandouMsg`
+ * (22), então "passam de mensagem para favorito" daria 168%. A régua é
+ * contagem paralela sobre um denominador comum — o mesmo motivo que fez
+ * `caminho.tsx` recusar o `Funil` (medido: 5200% de entrevista para reunião).
+ * Esta é a trava que os cards "não é funil" carregavam, e ela sobreviveu a
+ * eles: o e2e cobra a ausência de `passam de`, `%` entre itens e `→`.
+ *
+ * Os 20 cards não evaporaram — cada número tem destino declarado. Os que não
+ * couberam nas 3 zonas foram para `atencao.tsx` (fila da equipe: ativos 30
+ * dias, sem login, onboarding parado, atividade, em fechamento, passos,
+ * marcos, fases) e para `base.tsx` (composição da base: fecharam os 30,
+ * entradas por mês, Etapa 01, titulares e sócios, grau de relação).
+ *
+ * Server Component, 0 KB de JS. Recebe TUDO pronto de UMA RPC agregada
+ * (`gps.admin_dashboard()`) — zero consulta nova.
  */
-export function DashboardExecutivo({
-  dados,
-  trilha,
-  atendimento,
-  clientes30,
-  ambientesCarregados,
-}: {
-  dados: Dashboard;
-  /** `faixasDeTrilha(alunos)`, pura, sobre o lote carregado. */
-  trilha: FaixaDeTrilha[];
-  /** `resumoAtendimento(alunos, atendimento)`, pura, sobre o lote. */
-  atendimento: ResumoAtendimento;
+/**
+ * Quantas linhas do ranking a sub-aba PADRÃO desenha.
+ *
+ * 🔴 15 × ~37 px = ~555 px de tabela — o ranking cabe abaixo do gráfico sem
+ * empurrar a página além do desenho que ele substitui. Subir este número é
+ * decisão de ALTURA DE PÁGINA, não de "mostrar mais": cada linha a mais custa
+ * 37 px medidos em 1920.
+ */
+const LINHAS_NA_SUBABA_PADRAO = 15;
+
+export function DashboardExecutivo({ dados }: { dados: Dashboard }) {
+  const { jornada } = dados;
+
   /**
-   * `resumoClientes30(alunos)`, pura, sobre o lote (15/09/2026) — os 3
-   * números que só existiam no painel removido ("sem nenhum cliente" · "no
-   * meio dos 30" · "fecharam os 30"), agora submétricas do card "Clientes
-   * cadastrados". Mesma Leitura A do resto da Visão geral.
+   * Os 6 estágios, **na ordem de `FOCOS`** — a ordem da jornada, e a ordem em
+   * que a régua os desenha.
+   *
+   * 🔴 O rótulo é de UMA palavra, minúscula. A régua tem ~192 px por item em
+   * 1152 px; rótulo mais longo quebra em duas linhas e a fita deixa de ser
+   * fita (ver `EstagioRegua` em `regua.tsx`).
+   *
+   * 🔴 A cobertura dos 6 é garantida do outro lado: `ReguaProps.variantes` é
+   * um `Record<"todos" | Foco, …>` COMPLETO, então um estágio novo em `FOCOS`
+   * quebra `tsc` na chamada abaixo. O que esta lista controla é a ORDEM e o
+   * rótulo — um item esquecido aqui sumiria da fita sem erro, e é por isso que
+   * a ordem de `FOCOS` está escrita no tipo de `estagios`.
    */
-  clientes30: ResumoClientes30;
-  /**
-   * Quantos ambientes o lote trouxe. O progresso e a fila valem **sobre o
-   * lote** (mesma Leitura A da busca e dos filtros); quando ele não cobre a
-   * base inteira, a linha de rodapé diz isso — número parcial apresentado como
-   * total é a mesma classe de erro do "R$ 0,00" em campo que nasceu vazio.
-   */
-  ambientesCarregados: number;
-}) {
-  const parcial = ambientesCarregados < dados.programa.total;
+  const estagios: EstagioRegua[] = [
+    { foco: "entrou", rotulo: "entrou", valor: jornada.entraram },
+    { foco: "onboarding", rotulo: "onboarding", valor: jornada.onboardingOk },
+    { foco: "cadastrou", rotulo: "cadastrou", valor: jornada.cadastrou },
+    { foco: "mensagem", rotulo: "mensagem", valor: jornada.mandouMsg },
+    { foco: "favorito", rotulo: "favorito", valor: jornada.escolheuFavorito },
+    { foco: "contrato", rotulo: "contrato", valor: jornada.fechouContrato },
+  ];
 
   return (
     <section aria-labelledby="visao-do-programa" className="grid gap-3">
-      {/* O título da aba já nomeia a seção na tela; o `h2` fica para a
+      {/* O título da sub-aba já nomeia a seção na tela; o `h2` fica para a
           estrutura do documento e para quem navega por cabeçalho. */}
       <h2 id="visao-do-programa" className="sr-only">
         Visão do programa
       </h2>
 
-      <FaixaKpis dados={dados} clientes30={clientes30} />
-
-      {/* 🔑 23/09/2026 (2ª rodada) — A GRADE, não o card, era o problema.
-          Queixa do Marcio: *"os cards empilhados assim fica mt ruim"*.
-          Medido em 1920 px: **nove faixas horizontais**, nunca mais de 2
-          colunas, e DUAS delas com um card só, esticado sobre metade da tela
-          ("Onboarding" e "Fase dos clientes"). Card sozinho numa faixa é meia
-          tela de vazio.
-
-          A causa: cada seção (`graficos`, `caminho`, `fila`) era dona da
-          PRÓPRIA `grid-cols-2`, então toda seção fechava uma faixa e o número
-          ímpar de cards dela sobrava. As três viraram FRAGMENTO de cards, e a
-          grade passou a ser desta página — assim os 13 cards fluem em duas
-          bandas contínuas, sem sobra por seção.
-
-          🔴 **3 colunas é o teto, e o `2xl:grid-cols-4` foi REMOVIDO** —
-          medido no Chromium em 23/09/2026. O `<main>` de `/admin` é
-          `max-w-6xl` (1152px fixos), mas os breakpoints do Tailwind leem a
-          VIEWPORT, não o container: em 1920px o `2xl:` disparava e repartia
-          1120px em 4 → **271px por coluna**, abaixo do piso de ~300px descrito
-          abaixo. Resultado medido: **17 rótulos quebrando em duas linhas em
-          1920px contra 4 em 1366px** — mais quebra na tela MAIOR, e 7 dos 9
-          degraus da Jornada entre eles. Com 3 colunas dá 365px, e a quebra
-          some. Breakpoint de viewport dentro de container fixo mente sobre a
-          largura disponível; o teto tem de vir do container.
-
-          Por que 3 e não mais: cada card carrega texto
-          corrido (denominador escrito, ressalva de leitura) e barras com
-          rótulo nominal de 16–22 caracteres ("Com login, nunca entraram",
-          "Fechou os 30 (ficha completa)"). Abaixo de ~300 px de coluna esses
-          rótulos passam a quebrar em duas linhas e o card volta a crescer em
-          altura — mais colunas devolveria a rolagem que elas vieram cortar.
-          Medido: 3 colunas dentro de `max-w-6xl` dão **365 px** cada, em
-          qualquer viewport a partir de `xl`. (A previsão anterior de "4
-          colunas dão ~440 px" só valeria com container fluido — era leitura de
-          caixa, não medição, e a medição a desmentiu.)
-
-          `items-start` + `auto-rows-min`: sem eles a grade estica todo card ao
-          tamanho do mais alto da FILEIRA, e "Onboarding" (3 números) ficaria
-          da altura de "Jornada do parceiro" (9 degraus) só por serem vizinhos.
-          É exatamente o buraco que o diagnóstico mediu.
-
-          ⚠️ A ORDEM DE LEITURA É A MESMA de antes, e ela é a hierarquia:
-          macro do PROGRAMA (entradas, atividade, etapa, acesso, onboarding) →
-          o PARCEIRO (jornada, evolução) → o CLIENTE dele (passos, marcos,
-          fases). Nenhum card mudou de banda; o que mudou foi quantos cabem
-          lado a lado. */}
-      <div className="grid auto-rows-min items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <GraficosDoPrograma dados={dados} trilha={trilha} />
-
-        {/* A jornada é ONDE cada parceiro está (retrato de hoje); a evolução é
-            PARA ONDE isso anda (movimento no tempo). Todo o resto da Visão
-            geral é retrato — sem a evolução, ninguém vê que o cadastro
-            disparou na semana de 14/09 enquanto a mensagem ficou rente ao
-            chão.
-
-            🔴 Nenhuma das duas vira funil, e pela mesma razão do caminho do
-            cliente: contagem paralela sobre um denominador escrito. A jornada
-            usa `EscadaAlcance`; nenhuma calcula taxa de passagem.
-
-            ⚠️ Os denominadores são DIFERENTES e cada card escreve o seu: a
-            jornada é sobre os 148 PARCEIROS no programa (o mesmo universo de
-            `programa.total`), o caminho é sobre os ~1.700 CLIENTES. Ler o
-            percentual de um com o denominador do outro é o erro que os
-            rodapés existem para impedir. */}
-        <JornadaDoParceiro dados={dados} />
-        <EvolucaoSemanal dados={dados} />
-
-        <CaminhoDoCliente dados={dados} />
-      </div>
-
-      {/* A fila fica em BANDA PRÓPRIA de propósito — é a única seção que pede
-          AÇÃO ("Esperando a equipe" abre lista filtrada), e misturá-la aos
-          cards de leitura tiraria dela a posição de fim-de-tela, que é a
-          hierarquia que o Marcio aprovou. São 3 ou 4 cards: cabem numa
-          fileira só, sem sobra. */}
-      <div className="grid auto-rows-min items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <FilaEBase
-          dados={dados}
-          atendimento={atendimento}
-          ambientesCarregados={ambientesCarregados}
-        />
-      </div>
-
-      {/* O "Apurado …" subiu para `AbasPainel`, ao lado do seletor de
-          sub-abas: o carimbo vale para as TRÊS e aqui só alcançava esta.
-          Fica aqui apenas o aviso de lote parcial, que é específico desta
-          sub-aba — `faixasDeTrilha` e `resumoAtendimento` são puras sobre os
-          ambientes JÁ carregados, não sobre o programa inteiro. */}
-      {parcial ? (
-        <p className="text-xs text-muted-foreground">
-          Progresso e fila sobre {ambientesCarregados} de{" "}
-          {dados.programa.total} ambientes carregados.
-        </p>
-      ) : null}
+      <Regua
+        denominador={jornada.ambientes}
+        estagios={estagios}
+        variantes={{
+          todos: <Variante dados={dados} par="mensagem" foco={null} />,
+          entrou: <Variante dados={dados} par="mensagem" foco="entrou" />,
+          onboarding: <Variante dados={dados} par="mensagem" foco="onboarding" />,
+          // 🔑 O ÚNICO com o outro par. "cadastrou" pergunta *quantos
+          // parceiros estão produzindo*, e a série tem exatamente essa resposta
+          // (`parceirosAtivos` = ambientes distintos que cadastraram na
+          // semana). Nos outros cinco a pergunta é sobre o CLIENTE, e a linha
+          // é `comMsg`.
+          cadastrou: <Variante dados={dados} par="parceiros" foco="cadastrou" />,
+          mensagem: <Variante dados={dados} par="mensagem" foco="mensagem" />,
+          favorito: <Variante dados={dados} par="mensagem" foco="favorito" />,
+          contrato: <Variante dados={dados} par="mensagem" foco="contrato" />,
+        }}
+      />
     </section>
+  );
+}
+
+/**
+ * Uma variante: **zona 2 em cima, zona 3 embaixo**.
+ *
+ * 🔑 Só existem DOIS desenhos distintos de gráfico entre as sete variantes, e
+ * está certo assim: a série da RPC tem duas segundas colunas (`comMsg` e
+ * `parceirosAtivos`), e inventar um terceiro desenho exigiria dado que não
+ * existe. O que muda de variante para variante é sobretudo o RECORTE DA
+ * TABELA — que é onde a pergunta do estágio se responde.
+ *
+ * 🔴 `entrou` e `onboarding` chegam com `foco` mesmo sem o ranking saber
+ * filtrar por eles: a tabela mostra tudo e escreve `sem recorte por este
+ * estágio` no cabeçalho (`parceiros.tsx`). Passar `null` aqui esconderia o
+ * token e a tela fingiria um recorte que não fez.
+ *
+ * 🔴 **23/09/2026 (achado do João): `entrou` e `onboarding` eram clique
+ * morto.** O princípio 3 do Marcio — "submétricas que podem ser consultadas
+ * clicando na métrica maior" — valia para `cadastrou`/`mensagem`/`favorito`/
+ * `contrato` (o ranking recorta), mas não para estes dois: o dado para
+ * responder já estava em `dados`, zero query, e a tela não mostrava nada.
+ * Uma linha de submétricas entre o gráfico e a Zona 3 fecha o buraco:
+ *   · `entrou` → "Sem login" (`acesso.semLogin`, `f=sem_login`). Só ESTA:
+ *     `acesso.semAcesso30d` (a régua "Parados há 30+ dias") foi REMOVIDA de
+ *     `atencao.tsx` no mesmo achado — divergia do filtro `inativos` que o
+ *     link abre (exclui quem nunca entrou; o filtro inclui). Repeti-la aqui
+ *     seria reintroduzir o mesmo erro num segundo lugar. A 2ª submétrica
+ *     natural (`atendimento.semAcesso30d`, a que SOBREVIVEU em `atencao.tsx`)
+ *     não está em `dados` — é `ResumoAtendimento`, prop separada que só
+ *     `atencao.tsx` recebe (`page.tsx` não passa `atendimento` para
+ *     `DashboardExecutivo`). Acrescentá-la aqui obrigaria mexer em
+ *     `page.tsx`, fora do escopo desta correção — decisão registrada no
+ *     relatório: 1 submétrica em vez de 2, sem tocar arquivo alheio.
+ *   · `onboarding` → "Parados 7d" (`onboarding.parados7d`, SEM link: não há
+ *     `?f=` na allowlist de `estado-na-url.ts` cuja definição case — os três
+ *     filtros de onboarding são estado (`onb_nao`/`onb_andamento`/`onb_ok`),
+ *     nenhum é "em andamento há 7+ dias sem tocar") e "Não responderam"
+ *     (`onboarding.naoIniciados`, `f=onb_nao` — aproximado: a RPC conta
+ *     PESSOAS e o filtro é sobre AMBIENTES/titulares, mas é o único filtro
+ *     cuja definição de estado bate: "não iniciou").
+ *
+ * 🔴 **`limite={15}` no ranking, e é aqui que ele vive — não em `parceiros.tsx`
+ * nem em `base.tsx`.** Medido em Chromium (23/09/2026): a tabela custa 37 px
+ * por linha, e os 86 parceiros de produção dariam ~4.399 px de página em 1920
+ * — MAIS que os 3.326 px dos 20 cards que este redesenho substitui. Esta é a
+ * sub-aba PADRÃO: o ranking aqui é evidência do estágio marcado na régua, e
+ * quinze linhas respondem isso. Quem quer os 86 segue o link para
+ * `?vis=parceiros`, onde a tabela é a razão da tela e vai inteira.
+ */
+/** Uma submétrica da régua: `rótulo · valor · link` — nunca parágrafo. */
+interface Submetrica {
+  rotulo: string;
+  valor: number;
+  href: string | null;
+}
+
+/**
+ * As submétricas de `entrou` e `onboarding` — ver o comentário de `Variante`
+ * para a origem de cada uma e por que `onboarding` tem uma sem link.
+ */
+function submetricasDoFoco(dados: Dashboard, foco: Foco | null): Submetrica[] {
+  if (foco === "entrou") {
+    return [
+      {
+        rotulo: "Sem login",
+        valor: dados.acesso.semLogin,
+        href: `${LINK_LISTA}&f=sem_login`,
+      },
+    ];
+  }
+  if (foco === "onboarding") {
+    return [
+      { rotulo: "Parados 7d", valor: dados.onboarding.parados7d, href: null },
+      {
+        rotulo: "Não responderam",
+        valor: dados.onboarding.naoIniciados,
+        href: `${LINK_LISTA}&f=onb_nao`,
+      },
+    ];
+  }
+  return [];
+}
+
+function Variante({
+  dados,
+  par,
+  foco,
+}: {
+  dados: Dashboard;
+  par: ParDoCruzamento;
+  foco: Foco | null;
+}) {
+  const submetricas = submetricasDoFoco(dados, foco);
+
+  return (
+    <div className="grid gap-3">
+      {/* `Cruzamento` devolve `null` com a série vazia — o estado vazio é
+          desta camada. Uma linha, sem caixa de alerta: sem semana no período é
+          RESULTADO (a RPC olhou e não achou), não erro. */}
+      {dados.serie.itens.length === 0 ? (
+        <p className="corpo-sm text-muted-foreground">sem semanas no período</p>
+      ) : (
+        <Cruzamento serie={dados.serie} par={par} altura={220} />
+      )}
+
+      {/* Submétricas de `entrou`/`onboarding` — entre o gráfico e o ranking.
+          Sem parágrafo, sem card: `rótulo · valor · link`, mesmo padrão denso
+          de `BlocoAtencao`. Número sem `href` fica SEM `<a>`, sem sublinhado,
+          sem cor de link — não pode parecer clicável e não ser. */}
+      {submetricas.length > 0 ? (
+        <ul className="flex flex-wrap gap-x-6 gap-y-1">
+          {submetricas.map((s) => (
+            <li key={s.rotulo} className="flex items-baseline gap-2">
+              <span className="corpo-sm text-muted-foreground">{s.rotulo}</span>
+              <span className="numero font-semibold tabular-nums">{s.valor}</span>
+              {s.href ? (
+                <Link
+                  href={s.href}
+                  prefetch={false}
+                  aria-label={`Ver ${s.rotulo.toLowerCase()}: ${s.valor}`}
+                  className="foco-visivel rounded-md px-1 corpo-sm font-medium text-accent-foreground hover:bg-superficie-afundada hover:underline"
+                >
+                  Ver
+                </Link>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {/* As SETE variantes passam por aqui — o limite é um só, e é por isso
+          que ele mora na constante acima em vez de repetido sete vezes na
+          chamada da régua. `base.tsx` NÃO passa `limite`: lá o default do
+          `RankingDeParceiros` ("tudo") é o comportamento certo. */}
+      <RankingDeParceiros
+        parceiros={dados.parceiros}
+        foco={foco}
+        limite={LINHAS_NA_SUBABA_PADRAO}
+      />
+    </div>
   );
 }

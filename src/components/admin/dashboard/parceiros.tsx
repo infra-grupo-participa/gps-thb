@@ -22,6 +22,25 @@
  * propósito: a tela já tem OUTROS dois cortes de tempo (7 dias para cliente
  * parado, 30 nos filtros antigos) — "parado", sozinho, faria os três
  * parecerem a mesma régua.
+ *
+ * 🔴 **`limite` (23/09/2026, medido em Chromium): a tabela INTEIRA na sub-aba
+ * padrão deixava a página MAIOR que os 20 cards que ela substitui.** 37 px por
+ * linha × 86 parceiros de produção = ~4.399 px em 1920, contra os 3.326 px do
+ * desenho antigo. Na sub-aba padrão (`index.tsx`, as 7 variantes) o ranking vai
+ * com `limite={15}`; na sub-aba Parceiros (`base.tsx`) vai SEM `limite` — lá a
+ * tabela é a razão da tela existir, e o default é "tudo". Quando o corte
+ * acontece, o cabeçalho continua dizendo o TOTAL real e um link leva à sub-aba
+ * que mostra todos.
+ *
+ * 🔴 **Zona 3 (23/09/2026): filtro por `foco` sobre `itens`, em memória.**
+ * `itens` já está no servidor (`gps.admin_dashboard()` já rodou); recortar é
+ * `.filter()` sobre um array que já existe — não é query nova, não precisa de
+ * RPC nova. `entrou` e `onboarding` **não filtram**: o dado desses dois
+ * estágios não está por linha de parceiro (seria 2 subqueries extras POR
+ * PARCEIRO na RPC mais lida do admin, e ninguém pediu esse custo ainda) — a
+ * tabela mostra tudo e o cabeçalho avisa com o token "sem recorte por este
+ * estágio". Filtrar mantém a ORDEM que o banco mandou (`clientes desc,
+ * nome`) — nunca reordenar depois do filtro.
  */
 
 import Link from "next/link";
@@ -36,10 +55,42 @@ import {
 } from "@/components/ui/table";
 import { brlOuTraco } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
-import type { DashboardParceiros } from "@/lib/data/dashboard";
+import type { DashboardParceiros, DashboardParceiroItem } from "@/lib/data/dashboard";
+import type { Foco } from "@/components/admin/alunos-ativos-lista/estado-na-url";
 
 /** O prazo de "parceiro sumiu", dito uma vez — nunca a palavra nua "parado". */
 const PRAZO_SEM_ABRIR_DIAS = 14;
+
+/**
+ * O predicado de cada `foco`, aplicado sobre uma linha já carregada.
+ *
+ * `null`/`undefined` e `cadastrou` não filtram por desenho: todo item de
+ * `itens` já é um parceiro com pelo menos 1 cliente (é assim que ele aparece
+ * no ranking), então `cadastrou` (`clientes >= 1`) já vale para os 86.
+ * `entrou`/`onboarding` também não filtram, mas por FALTA de dado por linha
+ * — ver o comentário no topo do arquivo. Exportado para o teste em Node
+ * (sem navegador) provar o recorte sem duplicar a regra.
+ */
+export function passaNoFoco(item: DashboardParceiroItem, foco?: Foco | null) {
+  switch (foco) {
+    case "mensagem":
+      return item.mensagens > 0;
+    case "favorito":
+      return item.favoritos > 0;
+    case "contrato":
+      return item.contratados > 0;
+    case "cadastrou":
+    case "entrou":
+    case "onboarding":
+    case null:
+    case undefined:
+    default:
+      return true;
+  }
+}
+
+/** Os dois focos que a tabela não sabe recortar — vira o token no cabeçalho. */
+const FOCOS_SEM_RECORTE = new Set<Foco>(["entrou", "onboarding"]);
 
 function celulaDiasSemAbrir(dias: number) {
   // `dias <= 0` cobre o negativo (data futura) e o "abriu agora": nenhum dos
@@ -61,8 +112,21 @@ function celulaDiasSemAbrir(dias: number) {
 
 export function RankingDeParceiros({
   parceiros,
+  foco,
+  limite,
 }: {
   parceiros: DashboardParceiros;
+  foco?: Foco | null;
+  /**
+   * Quantas linhas a tabela desenha. **Ausente = todas** — é o contrato que a
+   * sub-aba Parceiros (`base.tsx`) herda sem precisar declarar nada.
+   *
+   * 🔴 O corte é `.slice(0, limite)` sobre a lista JÁ ordenada pelo banco:
+   * corta o fim, nunca reordena. E ele é só de DESENHO — os 7 agregados do
+   * cabeçalho continuam vindo do banco sobre todos os parceiros, e o
+   * denominador da tabela continua sendo o total real.
+   */
+  limite?: number;
 }) {
   const {
     itens,
@@ -74,6 +138,48 @@ export function RankingDeParceiros({
     comContratado,
     semAbrir14d,
   } = parceiros;
+
+  // `.filter()` preserva a ordem relativa dos itens que sobram — o `Array`
+  // nativo não reordena, só remove. A ordem continua sendo a do banco.
+  const itensFiltrados = foco ? itens.filter((p) => passaNoFoco(p, foco)) : itens;
+  const semRecorte = foco != null && FOCOS_SEM_RECORTE.has(foco);
+  const filtrado = foco != null && !semRecorte;
+
+  // 🔴 `.slice` corta o FIM de uma lista já ordenada pelo banco — não reordena
+  // nada. `limite` ausente (ou maior que o que sobrou) devolve tudo, e aí não
+  // há link: a tabela não está escondendo ninguém.
+  const itensNaTela =
+    limite != null && itensFiltrados.length > limite
+      ? itensFiltrados.slice(0, limite)
+      : itensFiltrados;
+  const cortou = itensNaTela.length < itensFiltrados.length;
+
+  // 🔴 Requisito dormente: no dia em que `totalParceiros > 200`, `itens` é o
+  // TOPO 200 (teto documentado no cabeçalho do arquivo), não a base inteira
+  // — o denominador tem de dizer "dos 200 primeiros", nunca `totalParceiros`
+  // (que seria a base real, maior que o que `itens` de fato contém). Hoje
+  // `totalParceiros` é 86, então este ramo nunca dispara — mas o dia em que
+  // disparar, o texto já está certo sem precisar lembrar de mudar aqui.
+  // 🔑 O endereço da sub-aba que mostra TODOS, montado igual ao `trocarVis` de
+  // `abas-painel.tsx`: `?vis=parceiros` e o `foco` atual preservado, para quem
+  // clica não perder o estágio que estava marcado. É `<Link>` — navegação, não
+  // `replaceState`: esta peça é Server Component e não escreve endereço nenhum
+  // (o dono de `foco` continua sendo `regua.tsx`, o dono de `vis` continua
+  // sendo `abas-painel.tsx`).
+  //
+  // 🔴 `aba` fica de fora de propósito: `visao` é o `ABA_PADRAO` e sai do
+  // endereço por contrato — `/admin?aba=visao` seria a forma que o próprio
+  // `trocar()` apaga.
+  const hrefTodos = `/admin?vis=parceiros${foco ? `&foco=${foco}` : ""}`;
+
+  const acimaDoTeto = totalParceiros > 200;
+  const cabecalhoTabela = filtrado
+    ? acimaDoTeto
+      ? `${itensFiltrados.length} dos 200 primeiros`
+      : `${itensFiltrados.length} de ${totalParceiros}`
+    : acimaDoTeto
+      ? `dos 200 primeiros`
+      : `${totalParceiros} parceiros`;
 
   return (
     <section aria-labelledby="ranking-parceiros" className="grid gap-3">
@@ -120,11 +226,23 @@ export function RankingDeParceiros({
         </div>
       </dl>
 
+      {/* Cabeçalho da tabela: contagem + denominador (regra 2), e o token
+          "sem recorte" nos dois focos sem dado por linha — nada de parágrafo
+          explicando o motivo aqui, isso mora no comentário do topo. */}
+      <div className="flex items-center justify-between gap-2">
+        <span id="ranking-parceiros-tabela" className="corpo-sm text-muted-foreground tabular-nums">
+          {cabecalhoTabela}
+        </span>
+        {semRecorte && (
+          <span className="corpo-sm text-muted-foreground">sem recorte por este estágio</span>
+        )}
+      </div>
+
       {/* `overflow-x-auto` só nesta caixa (celular 390px) — o `<main>` do
           portal nunca rola na horizontal. Mesmo padrão de
           `clientes-programa/tabela.tsx`. */}
       <div className="scrollbar-none -mx-(--card-spacing) overflow-x-auto rounded-xl border bg-card px-(--card-spacing)">
-        <Table className="min-w-[52rem]">
+        <Table className="min-w-[52rem]" aria-describedby="ranking-parceiros-tabela">
           <TableHeader>
             <TableRow>
               <TableHead className="w-10 text-right">#</TableHead>
@@ -141,7 +259,7 @@ export function RankingDeParceiros({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {itens.map((p, i) => (
+            {itensNaTela.map((p, i) => (
               // `relative`: a `TableRow` vira o retângulo do `after:inset-0`
               // do link na primeira célula — linha inteira clicável sem
               // aninhar `<a>` dentro de `<tr>` (HTML inválido).
@@ -152,6 +270,13 @@ export function RankingDeParceiros({
                 <TableCell className="font-medium">
                   <Link
                     href={`/admin/aluno/${p.alunoId}`}
+                    // 🔴 `prefetch={false}`: o padrão do Next dispara
+                    // `GET /admin/aluno/<id>?_rsc=` para TODA linha que entra
+                    // na viewport, sem clique. Medido em Chromium (23/09/2026):
+                    // 20 requisições ao rolar 20 linhas. Na sub-aba Parceiros
+                    // (86 linhas) seriam 86 fichas renderizadas no servidor só
+                    // por abrir a tela.
+                    prefetch={false}
                     className="foco-visivel after:absolute after:inset-0 after:content-['']"
                   >
                     {p.nome || "Sem nome"}
@@ -186,6 +311,25 @@ export function RankingDeParceiros({
           </TableBody>
         </Table>
       </div>
+
+      {/* 🔑 A porta de saída do corte: rótulo com VERBO, não frase — "zero
+          parágrafo no DOM" continua valendo. O número é o que sobrou de fora
+          mais o que está na tela, ou seja, o conjunto inteiro que a sub-aba
+          Parceiros mostra.
+
+          🔴 `prefetch={false}`: a sub-aba Parceiros é a tela mais cara do
+          admin (o ranking inteiro + 5 blocos de composição da base), e este
+          link fica visível no fim de toda variante — prefetch aqui renderiza
+          essa tela no servidor só por rolar até o rodapé da tabela. */}
+      {cortou && (
+        <Link
+          href={hrefTodos}
+          prefetch={false}
+          className="foco-visivel corpo-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        >
+          ver os {itensFiltrados.length} →
+        </Link>
+      )}
     </section>
   );
 }

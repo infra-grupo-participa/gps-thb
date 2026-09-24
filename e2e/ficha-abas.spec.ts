@@ -152,9 +152,12 @@ const CONTADOR: Record<Aba, RegExp> = {
  * A aba da ficha, pelo rótulo.
  *
  * 🔑 Os rótulos das 4 folhas são únicos na página — nenhum deles colide com
- * as abas do header (`Início`, `Clientes`, `Sessões`…) nem com as do painel
- * do admin. Por isso o locator não precisa ser escopado a um `tablist`
- * nomeado, e não fica preso a um `aria-label` que a casca não declara.
+ * as abas do header, nos DOIS NÍVEIS (24/09/2026: 1º nível do parceiro —
+ * `Início`, `Clientes`, `Sessões`… — e os 5 grupos do admin — `Parceiros`,
+ * `Agenda`, `Atendimento`, `Conteúdo`, `Configurações` — nem com as sub-abas
+ * de 2º nível dentro deles, ex. `Visão geral`/`Etapas` do grupo Parceiros).
+ * Por isso o locator não precisa ser escopado a um `tablist` nomeado, e não
+ * fica preso a um `aria-label` que a casca não declara.
  */
 function aba(page: Page, id: Aba) {
   return page.getByRole("tab", { name: ROTULO[id] });

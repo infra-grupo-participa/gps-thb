@@ -39,7 +39,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut, UserRound, Repeat2, X } from "lucide-react";
+import { ChevronDown, LogOut, UserRound, UsersRound, Repeat2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   esquecerContaDoMenu,
@@ -66,12 +66,21 @@ export function MenuDeContas({
   email,
   papelRotulo,
   outrasContas,
+  itensExtras,
 }: {
   nome: string | null;
   email: string | null;
   papelRotulo: string;
   /** As demais contas guardadas neste navegador. Sem a atual. */
   outrasContas: ContaDoMenu[];
+  /**
+   * Itens de `NavItem` marcados `noMenuDeContas: true` (24/09/2026) — hoje só
+   * "Equipe" do aluno, quando `basePath === ""`. `app-header.tsx` monta a
+   * lista a partir de `navItems` e passa aqui; o nome da prop é o contrato com
+   * quem chama, não mudar sem avisar. Renderizado logo abaixo de "Seu perfil",
+   * dentro do mesmo bloco — vazio/undefined não desenha nada.
+   */
+  itensExtras?: { href: string; label: string }[];
 }) {
   const [aberto, setAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -194,6 +203,24 @@ export function MenuDeContas({
               Seu perfil
             </Link>
           )}
+
+          {itensExtras?.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              role="menuitem"
+              className={itemBase}
+              prefetch={false}
+              onClick={() => setAberto(false)}
+            >
+              {item.href === "/equipe" ? (
+                <UsersRound aria-hidden className="size-4" />
+              ) : (
+                <UserRound aria-hidden className="size-4" />
+              )}
+              {item.label}
+            </Link>
+          ))}
 
           {outrasContas.length > 0 ? (
             <>

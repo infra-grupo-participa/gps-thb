@@ -32,10 +32,18 @@ export function alunoNavItems(
   opts: {
     financeiro: boolean;
     financeiroEmBreve?: boolean;
+    // 🔴 Navegação em 2 níveis (24/09/2026, pedido do Marcio: "abas reunidas
+    // dentro de uma aba"). MESMO MOLDE de `financeiroEmBreve`: "Pasta" nasce
+    // "em breve" por padrão (`opts.pastaEmBreve !== false`) — a assistência
+    // (`assistenciaNavItems`) passa `false` porque a equipe usa a Pasta para
+    // atender; `navDoAluno` (o aluno de verdade) passa `true` porque a tela
+    // ainda não conta a história certa para ele. Copiado literalmente do
+    // comentário do Financeiro logo abaixo — não inverter a polaridade.
+    pastaEmBreve?: boolean;
     equipe: boolean;
   },
 ): NavItem[] {
-  return [
+  const itens: NavItem[] = [
     { href: basePath || "/", label: "Início", icon: "inicio", exact: true },
     { href: `${basePath}/clientes`, label: "Clientes", icon: "clientes" },
     // 🔴 SUPORTE EM 3º, NÃO EM 7º (10/09/2026).
@@ -100,7 +108,14 @@ export function alunoNavItems(
     ...(basePath === ""
       ? [{ href: "/sessoes", label: "Sessões", icon: "sessoes" as const }]
       : []),
-    { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta" },
+    // 🔴 PASTA "EM BREVE" (24/09/2026, navegação em 2 níveis): MESMO MOLDE do
+    // Financeiro logo abaixo — a aba continua aparecendo, apagada e sem link,
+    // em vez de sumir. `opts.pastaEmBreve` é obrigatório na assinatura de
+    // `opts`, mas aceita `undefined` só através de `navDoAluno`/
+    // `assistenciaNavItems`, que sempre o preenchem; ver o comentário de cada
+    // uma. `!== false` é a MESMA polaridade do `financeiroEmBreve`: por
+    // padrão em breve, `false` explícito é que libera o link.
+    { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta", emBreve: opts.pastaEmBreve !== false },
     { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" },
     // 🎧 Plantão de Dúvidas — aba do aluno do PROGRAMA dentro do sistema
     // (decisão do Marcio, 10/09/2026). Não confundir com a rota pública
@@ -161,11 +176,45 @@ export function alunoNavItems(
     // 🔴 Feature "Equipe" (11/09/2026): atrás de flag OBRIGATÓRIA, igual ao
     // Financeiro — ver o comentário no topo do arquivo. Posição: logo antes
     // de "Perfil" (decisão do plano da feature).
+    //
+    // 🔴 Navegação em 2 níveis (24/09/2026): quando `basePath === ""` (o
+    // aluno de verdade, nunca a assistência) o item passa a morar no menu
+    // "Sua conta" (`noMenuDeContas: true`), não no trilho — `NavTabs` não o
+    // desenha; `app-header.tsx` o filtra e entrega ao `MenuDeContas` via
+    // `itensExtras`. Na assistência (`basePath !== ""`) Equipe continua aba
+    // normal do trilho: é onde a equipe resolve chamado olhando a mesma tela
+    // do aluno (ver `assistenciaNavItems`), e o menu "Sua conta" ali é o DO
+    // ADMIN, não do aluno assistido.
     ...(opts.equipe
-      ? [{ href: `${basePath}/equipe`, label: "Equipe", icon: "equipe" as const }]
+      ? [
+          basePath === ""
+            ? {
+                href: "/equipe",
+                label: "Equipe",
+                icon: "equipe" as const,
+                noMenuDeContas: true,
+              }
+            : { href: `${basePath}/equipe`, label: "Equipe", icon: "equipe" as const },
+        ]
       : []),
-    { href: `${basePath}/perfil`, label: "Perfil", icon: "perfil" },
+    // 🔴 Navegação em 2 níveis (24/09/2026): "Perfil" SAI quando
+    // `basePath === ""` — já está acessível pelo menu "Sua conta" ("Seu
+    // perfil", em `menu-de-contas.tsx`), e repeti-lo no trilho seria a mesma
+    // rota em dois lugares. Na assistência (`basePath !== ""`) o item
+    // continua: o admin edita o perfil do aluno numa aba própria, e o menu
+    // "Sua conta" ali é o do ADMIN — não leva a `/admin/aluno/<id>/perfil`.
+    ...(basePath === ""
+      ? []
+      : [{ href: `${basePath}/perfil`, label: "Perfil", icon: "perfil" as const }]),
+    // 🔴 Ordem `emBreve` ao fim (24/09/2026, navegação em 2 níveis): "em breve
+    // fica na lista, não na frente" (pedido do Marcio). `.sort()` do array é
+    // ESTÁVEL (spec ECMAScript desde 2019, V8/Node cumprem) — dois itens que
+    // empatam no critério (ambos `emBreve` ou ambos não) mantêm a ordem
+    // relativa em que entraram acima. Não reordenar item por item: a lista já
+    // muda de posição conforme as flags (`financeiro`, `pastaEmBreve`), e um
+    // reposicionamento manual quebraria na primeira combinação nova.
   ];
+  return itens.sort((a, b) => Number(!!a.emBreve) - Number(!!b.emBreve));
 }
 
 /**
@@ -189,6 +238,10 @@ export function alunoNavItems(
 export function navDoAluno(ctx: ContextoSessao, basePath = ""): NavItem[] {
   return alunoNavItems(basePath, {
     financeiro: ctx.papelMembro === "titular",
+    // Navegação em 2 níveis (24/09/2026): a Pasta continua "em breve" para o
+    // aluno de verdade — mesmo padrão do Financeiro, ver o comentário em
+    // `alunoNavItems`.
+    pastaEmBreve: true,
     // Equipe é dos DOIS papéis (ao contrário do Financeiro): titular convida
     // e gerencia, sócio só vê a lista — a página `/equipe` decide o que
     // renderizar a partir de `ctx.papelMembro`, a aba não escolhe por ele.
@@ -232,6 +285,9 @@ export function assistenciaNavItems(
       financeiro: true,
       // A equipe entra no Financeiro do aluno; só o aluno vê "em breve".
       financeiroEmBreve: false,
+      // Navegação em 2 níveis (24/09/2026): a equipe usa a Pasta para
+      // atender — mesmo padrão do Financeiro logo acima, o link fica ativo.
+      pastaEmBreve: false,
       // A equipe também enxerga a aba Equipe no modo assistência — é onde ela
       // resolve chamado sobre convite/sócio olhando a mesma tela do aluno.
       equipe: true,
@@ -240,25 +296,32 @@ export function assistenciaNavItems(
         ? { ...item, adminOnly: true }
         : item,
     ),
+    // 🔴 Navegação em 2 níveis (24/09/2026): Diário e Resolver deixam de ser
+    // dois itens soltos do 1º nível e viram `filhos` do grupo
+    // "Acompanhamento". `href` do grupo é o do Diário (o clique direto no
+    // grupo abre a mesma tela de sempre); `adminOnly` no grupo E nos dois
+    // filhos — a prévia "como o aluno vê" tem de esconder o grupo inteiro,
+    // não só os itens de dentro, senão sobraria uma aba vazia na prévia.
     {
       href: `${base}/diario`,
-      label: "Diário",
+      label: "Acompanhamento",
       icon: "diario",
       adminOnly: true,
-    },
-    // Central de resolução (09/09): diagnóstico do ambiente + ações guardadas
-    // (acesso, pessoas, financeiro, trilha). `adminOnly`: some na prévia "como
-    // o aluno vê" — o aluno nunca tem essa tela.
-    {
-      href: `${base}/resolver`,
-      label: "Resolver",
-      icon: "resolver",
-      adminOnly: true,
+      filhos: [
+        { href: `${base}/diario`, label: "Diário", adminOnly: true },
+        // Central de resolução (09/09): diagnóstico do ambiente + ações
+        // guardadas (acesso, pessoas, financeiro, trilha).
+        { href: `${base}/resolver`, label: "Resolver", adminOnly: true },
+      ],
     },
   ];
 }
 
 /**
+ * 🔴 24/09/2026 — pedido do Marcio: "abas reunidas dentro de uma aba; Clientes
+ * vira sub-aba de Alunos; em breve fica na lista, não na frente". É o que
+ * organiza as 10 abas soltas do ramo `souAdmin` em 5 grupos com `filhos`.
+ *
  * Abas do painel do admin (nível topo, não o modo assistência do aluno).
  *
  * `chamadosAbertos` é OPCIONAL de propósito e só deve ser passado por quem já
@@ -267,6 +330,11 @@ export function assistenciaNavItems(
  * pílula: `contarChamadosAbertosPorAluno()` e `getAtendimentoPorAluno()` batem
  * na MESMA RPC (`gps.admin_painel_atendimento`), e chamar as duas na mesma
  * página seria uma ida ao banco pelo mesmo dado (ver `chamados-data.ts`).
+ *
+ * `solicitacoesPendentes` segue a MESMA regra de `chamadosAbertos`: OPCIONAL,
+ * só quem já tem o número em mãos passa — hoje, `/admin`, que carrega a fila
+ * de solicitações de qualquer jeito para desenhar a aba "Solicitações". Não
+ * gasta consulta extra: nenhuma outra página do admin busca esse número.
  *
  * `souAdmin` é OBRIGATÓRIO e SEM valor padrão — mesmo motivo do comentário no
  * topo do arquivo (`alunoNavItems`): esta função hoje é chamada só por telas
@@ -280,7 +348,11 @@ export function assistenciaNavItems(
  * em RPC ou guarda de página, e o operador cairia num redirect ao clicar.
  */
 export function adminNavItems(
-  opts: { chamadosAbertos?: number; souAdmin: boolean },
+  opts: {
+    chamadosAbertos?: number;
+    solicitacoesPendentes?: number;
+    souAdmin: boolean;
+  },
 ): NavItem[] {
   // Operador não-admin: só o que a Fatia 5 liberou para ele. Nada de
   // Chamados, Vídeos, Clientes (lista de todos os ambientes), Tutoriais ou
@@ -298,49 +370,87 @@ export function adminNavItems(
   }
 
   return [
-    // `restauraPainel`: o clique leva à ÚLTIMA URL do painel (aba, busca,
-    // ordem, filtros, lote), não a `/admin` pelado. Sem isso, a aba do header
-    // desfazia exatamente o estado que a URL do painel existe para guardar —
-    // era a segunda porta de volta, e ela apagava tudo.
+    // 🔴 NAVEGAÇÃO EM 2 NÍVEIS (24/09/2026, pedido do Marcio): "abas reunidas
+    // dentro de uma aba; Clientes vira sub-aba de Alunos; em breve fica na
+    // lista, não na frente". As 10 abas soltas viram 5 GRUPOS com `filhos`
+    // (2º nível, renderizado pela 3ª linha do header quando o grupo está
+    // ativo — ver `NavItem["filhos"]` em `nav-tabs.tsx`). Cada grupo mantém
+    // `href` próprio (a rota do clique direto no rótulo do grupo).
+    //
+    // Grupo "Parceiros": `restauraPainel` continua no GRUPO — o clique leva à
+    // ÚLTIMA URL do painel (aba, busca, ordem, filtros, lote), não a `/admin`
+    // pelado. Sem isso, a aba do header desfazia exatamente o estado que a
+    // URL do painel existe para guardar — era a segunda porta de volta, e ela
+    // apagava tudo.
+    //
+    // 🔑 Rótulo "Parceiros", não "Alunos": é o rótulo que `abas-painel.tsx`
+    // já usa hoje na `TabsTrigger` de 1º nível (`AbasPainel`) — confira lá e
+    // em `alunos-ativos-lista/estado-na-url.ts` antes de mudar; os dois
+    // lugares têm de dizer a mesma palavra para a mesma coisa.
+    //
+    // 🔴 Sub-aba `abaDoPainel: "ativos"` chama-se "Ativos", NÃO "Parceiros"
+    // (24/09/2026, 2ª rodada): com o grupo já rotulado "Parceiros", repetir a
+    // mesma palavra na sub-aba ("Parceiros" dentro de "Parceiros") confundia
+    // qual das duas era o rótulo clicado. "Ativos" descreve o recorte (quem
+    // já está na base, oposto de "em breve"/pendente) sem repetir o nome do
+    // grupo. Ver o mesmo cuidado em `abas-painel.tsx`/`estado-na-url.ts` —
+    // aquele rótulo de UI é de outra fatia (iromar); aqui é só o mapa.
+    //
+    // Sub-abas: `abaDoPainel` casa com a allowlist `ABAS` de
+    // `estado-na-url.ts` ("visao"/"ativos"/"solicitacoes"/"etapas") — só as 4
+    // que a URL do painel aceita. "Clientes" NÃO é uma delas: é a lista de
+    // TODOS os ambientes, rota própria (`/admin/clientes`), por isso entra
+    // como sub-aba de `href` puro, sem `abaDoPainel`.
     {
       href: "/admin",
-      label: "Alunos",
+      label: "Parceiros",
       icon: "alunos",
       exact: true,
       restauraPainel: true,
+      // Badge de solicitações pendentes: o mecanismo é o mesmo do grupo
+      // "Atendimento" com `chamadosAbertos` (`nav-tabs.tsx` suprime o badge
+      // do grupo ativo e o mostra na sub-aba "Solicitações").
+      // ⚠️ HOJE só `/admin/page.tsx` passa `solicitacoesPendentes`, e em
+      // `/admin` este grupo está sempre ATIVO — ou seja, o número aparece na
+      // sub-aba, e o badge no grupo fechado NÃO acontece em nenhuma tela
+      // real (as outras 11 chamadas de `adminNavItems` não têm o número, e
+      // buscá-lo custaria uma consulta por tela). Se um dia outra página
+      // passar o número, o badge do grupo passa a existir sem mais código.
+      badge: opts.solicitacoesPendentes,
+      filhos: [
+        // 🔴 "Visão geral" com `href: "/admin"` + `exact: true` (2ª rodada,
+        // veredito do João), NÃO `href: "/admin?aba=visao"`: a regra "padrão
+        // (`visao`) = URL limpa" passa a morar AQUI, no mapa, em vez de em
+        // `SubNavTabs` (`nav-tabs.tsx`) — o iromar apaga a normalização que
+        // fazia essa troca no componente. `SubNavTabs` decide "ativa" por
+        // `abaDoPainel === abaAtual` (dentro de `/admin`) e por `casaSozinho`
+        // (fora, via `href`/`exact`) — os dois continuam funcionando com
+        // `href` limpo, sem depender de reescrever `?aba=` em lugar nenhum.
+        { href: "/admin", exact: true, label: "Visão geral", abaDoPainel: "visao" },
+        { href: "/admin?aba=ativos", label: "Ativos", abaDoPainel: "ativos" },
+        {
+          href: "/admin?aba=solicitacoes",
+          label: "Solicitações",
+          abaDoPainel: "solicitacoes",
+          badge: opts.solicitacoesPendentes,
+        },
+        { href: "/admin?aba=etapas", label: "Etapas", abaDoPainel: "etapas" },
+        // Lista consolidada de clientes do programa (item 3 dos 9,
+        // 14/09/2026) — ícone "clientes", o MESMO que `alunoNavItems` usa
+        // para a aba Clientes do parceiro (mesmo assunto, vocabulário de
+        // ícone já existente).
+        //
+        // 🔴 SÓ AQUI, NUNCA em `alunoNavItems`: aquela função também é
+        // chamada pelo ALUNO (basePath=""), e qualquer item nela vaza para o
+        // menu dele — esta lista é de TODOS os ambientes, dado de terceiro
+        // que o parceiro não pode ver fora da própria ficha.
+        { href: "/admin/clientes", label: "Clientes", icon: "clientes" },
+      ],
     },
-    // Ícone "materiais" (BookOpen) reaproveitado: não há chave dedicada a
-    // calendário/atendimento em NavItem["icon"] (nav-tabs.tsx) e a regra do
-    // projeto é não inventar chave nova de ícone.
-    { href: "/admin/plantao", label: "Plantão", icon: "materiais" },
-    {
-      href: "/admin/chamados",
-      label: "Chamados",
-      icon: "suporte",
-      badge: opts.chamadosAbertos,
-    },
-    // Fila de ligações da entrevista prévia (Fatia 3 da esteira, 15/09/2026):
-    // a equipe liga para os 5 clientes que cada parceiro selecionou e
-    // registra resultado + DISC + decisores. Ícone "suporte" (LifeBuoy)
-    // reaproveitado — é a mesma família de "fila de atendimento" de
-    // Chamados, e a regra do projeto é não inventar chave nova de ícone.
+    // Grupo "Agenda": Sessões (a tela DA EQUIPE) + Plantão. As duas eram abas
+    // soltas de calendário/atendimento; juntas sob um rótulo que diz do que
+    // se trata sem abrir nada.
     //
-    // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela, `/admin/fila`
-    // existiria completa e só seria alcançável digitando a URL (o mesmo
-    // defeito já pago com a tela de respostas do onboarding).
-    { href: "/admin/fila", label: "Fila de ligações", icon: "suporte" },
-    // Gestão do papel "equipe da esteira" (Fatia 5, ÚLTIMA, 15/09/2026):
-    // quem entra aqui vê a fila de ligações E o dossiê do cliente — a tela
-    // ativa/desativa esse papel para um login existente. Guarda `gp_is_admin()`
-    // na RPC (`gps.operador_definir`): operador não promove operador, então
-    // este item SÓ aparece no ramo `souAdmin` acima, nunca no ramo do
-    // operador puro. Ícone "equipe" reaproveitado da aba do aluno — mesmo
-    // assunto (quem faz parte de um grupo de pessoas), regra de não inventar
-    // chave nova de ícone.
-    //
-    // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela, `/admin/operadores`
-    // existiria completa e só seria alcançável digitando a URL.
-    { href: "/admin/operadores", label: "Operadores", icon: "equipe" },
     // 📅 Sessões com a equipe jurídica (22/09/2026) — a tela DELAS: próximas
     // sessões, briefing do cliente, cancelar. A tela do parceiro é `/sessoes`
     // (em `alunoNavItems`); esta é a contraparte da equipe.
@@ -351,7 +461,7 @@ export function adminNavItems(
     // arquivo ficam ambos verdes e o build quebra; pior, commitar o arquivo
     // inteiro publica o trabalho não revisado do outro.
     //
-    // ⚠️ ESTE ITEM FICA NO RAMO `souAdmin`, e é uma decisão, não descuido: a
+    // ⚠️ ESTE GRUPO FICA NO RAMO `souAdmin`, e é uma decisão, não descuido: a
     // RLS da `…291` dá à doutora `responsavel_id = auth.uid()` e ao admin
     // `gp_is_admin()` — o OPERADOR puro (`gps.eh_equipe()`, papel "equipe da
     // esteira") NÃO lê sessão nenhuma e não tem por que ver o link. As duas
@@ -359,45 +469,84 @@ export function adminNavItems(
     // admin, elaine@advmais.com dev), então elas caem neste ramo. Link que dá
     // erro é pior que link ausente.
     //
-    // Ícone "materiais" (BookOpen), o MESMO do Plantão — não há chave de
-    // calendário/agenda em `NavItem["icon"]` e a regra é não inventar uma.
-    // ✅ FATIA 5 (22/09/2026): `src/app/admin/sessoes/page.tsx` existe —
-    // `emBreve: true` removido. A rota, o rótulo e o ícone eram os já
-    // decididos pela fatia 4; nada mais mudou aqui.
-    { href: "/admin/sessoes", label: "Sessões", icon: "materiais" },
-    // Biblioteca de vídeos (demanda 5, 11/09/2026): mesmo ícone "materiais"
-    // (BookOpen) do Plantão acima — não é o mesmo assunto, mas é o ícone mais
-    // próximo do catálogo existente, e a regra do projeto é não inventar
-    // chave nova.
-    { href: "/admin/videos", label: "Vídeos", icon: "materiais" },
-    // Lista consolidada de clientes do programa (item 3 dos 9, 14/09/2026) —
-    // ícone "clientes", o MESMO que `alunoNavItems` usa para a aba Clientes
-    // do parceiro (mesmo assunto, vocabulário de ícone já existente).
-    //
-    // 🔴 SÓ AQUI, NUNCA em `alunoNavItems`: aquela função também é chamada
-    // pelo ALUNO (basePath=""), e qualquer item nela vaza para o menu dele —
-    // esta lista é de TODOS os ambientes, dado de terceiro que o parceiro não
-    // pode ver fora da própria ficha.
-    { href: "/admin/clientes", label: "Clientes", icon: "clientes" },
-    // Cadastro dos tutoriais (15/09/2026). Ícone "tutoriais" (GraduationCap),
-    // o MESMO da aba fixa do parceiro — é a tela que alimenta aquela aba, e
-    // repetir o vocabulário é o que deixa a equipe achar o caminho.
-    //
-    // 🔴 Esta linha é a PORTA DE ENTRADA da tela. Sem ela, `/admin/tutoriais`
-    // existiria completa e só seria alcançável digitando a URL — que é
-    // exatamente o defeito já pago aqui: a tela de respostas do onboarding
-    // ficou escondida com 77 questionários preenchidos dentro dela.
-    { href: "/admin/tutoriais", label: "Tutoriais", icon: "tutoriais" },
-    // Interruptores de `gps.config` (15/09/2026) — os botões de pânico que só
-    // se ligavam por SQL direto no banco. Ícone "resolver" (Stethoscope)
-    // reaproveitado: não há chave dedicada a "painel de controle" em
-    // `NavItem["icon"]` (nav-tabs.tsx) e a regra do projeto é não inventar
-    // chave nova; é o ícone mais próximo (destravar/consertar o sistema), já
-    // em uso na Central de resolução do admin no mesmo espírito.
-    //
-    // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela, `/admin/configuracoes`
-    // existiria completa e só seria alcançável digitando a URL.
-    { href: "/admin/configuracoes", label: "Interruptores", icon: "resolver" },
+    // Ícone "sessoes" no grupo (a mesma família de agenda que a aba do
+    // parceiro usa desde 23/09); Plantão mantém "materiais" (BookOpen) — não
+    // há chave dedicada e a regra do projeto é não inventar uma nova.
+    {
+      href: "/admin/sessoes",
+      label: "Agenda",
+      icon: "sessoes",
+      filhos: [
+        { href: "/admin/sessoes", label: "Sessões" },
+        { href: "/admin/plantao", label: "Plantão", icon: "materiais" },
+      ],
+    },
+    // Grupo "Atendimento": Chamados (com o badge, que sobe também para o
+    // GRUPO — some na régua de 1º nível se o admin não abrir o grupo) e a
+    // Fila de ligações da entrevista prévia (Fatia 3 da esteira, 15/09/2026):
+    // a equipe liga para os 5 clientes que cada parceiro selecionou e
+    // registra resultado + DISC + decisores.
+    {
+      href: "/admin/chamados",
+      label: "Atendimento",
+      icon: "suporte",
+      badge: opts.chamadosAbertos,
+      filhos: [
+        {
+          href: "/admin/chamados",
+          label: "Chamados",
+          badge: opts.chamadosAbertos,
+        },
+        // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela, `/admin/fila`
+        // existiria completa e só seria alcançável digitando a URL (o mesmo
+        // defeito já pago com a tela de respostas do onboarding).
+        { href: "/admin/fila", label: "Fila de ligações" },
+      ],
+    },
+    // Grupo "Conteúdo": Vídeos (demanda 5, 11/09/2026) + Tutoriais
+    // (15/09/2026, a tela que alimenta a aba fixa do parceiro). Ícone
+    // "materiais" (BookOpen) no grupo — mesmo catálogo, mesmo vocabulário.
+    {
+      href: "/admin/videos",
+      label: "Conteúdo",
+      icon: "materiais",
+      filhos: [
+        { href: "/admin/videos", label: "Vídeos" },
+        // 🔴 Esta linha é a PORTA DE ENTRADA da tela. Sem ela, `/admin/tutoriais`
+        // existiria completa e só seria alcançável digitando a URL — que é
+        // exatamente o defeito já pago aqui: a tela de respostas do
+        // onboarding ficou escondida com 77 questionários preenchidos dentro
+        // dela.
+        { href: "/admin/tutoriais", label: "Tutoriais" },
+      ],
+    },
+    // Grupo "Configurações": Interruptores de `gps.config` (15/09/2026) — os
+    // botões de pânico que só se ligavam por SQL direto no banco — e
+    // Operadores (Fatia 5, ÚLTIMA, 15/09/2026): quem entra aqui vê a fila de
+    // ligações E o dossiê do cliente; a tela ativa/desativa o papel "equipe
+    // da esteira" para um login existente. Guarda `gp_is_admin()` na RPC
+    // (`gps.operador_definir`): operador não promove operador, então este
+    // item SÓ aparece no ramo `souAdmin` acima, nunca no ramo do operador
+    // puro. Ícone "resolver" (Stethoscope) no grupo — não há chave dedicada a
+    // "painel de controle" em `NavItem["icon"]` e a regra do projeto é não
+    // inventar chave nova; é o ícone mais próximo (destravar/consertar o
+    // sistema), já em uso na Central de resolução do admin no mesmo
+    // espírito.
+    {
+      href: "/admin/configuracoes",
+      label: "Configurações",
+      icon: "resolver",
+      filhos: [
+        // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela,
+        // `/admin/configuracoes` existiria completa e só seria alcançável
+        // digitando a URL.
+        { href: "/admin/configuracoes", label: "Interruptores" },
+        // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela,
+        // `/admin/operadores` existiria completa e só seria alcançável
+        // digitando a URL.
+        { href: "/admin/operadores", label: "Operadores" },
+      ],
+    },
   ];
 }
 

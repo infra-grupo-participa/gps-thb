@@ -41,6 +41,56 @@ import { INTERRUPTORES_CONFIG } from "../src/lib/config-tipos";
 
 const cred = exigeAdmin();
 
+test.describe("Admin · navegação até Interruptores (2 níveis, 24/09/2026)", () => {
+  test.skip(!cred, "Sem QA_ADMIN_EMAIL/SENHA no .env.qa.");
+
+  test("o grupo 'Configurações' está no trilho e a sub-aba 'Interruptores' fica ativa", async ({
+    page,
+  }) => {
+    await entrar(page, cred!, "/admin/configuracoes");
+
+    // 🔑 Ancorado por TEXTO + `aria-current`, não por `role`: o mecanismo de 2
+    // níveis é do iromar (`nav-tabs.tsx`/`app-header.tsx`) e `NavTabLink` hoje
+    // renderiza `<Link>`/`<span>` com `aria-current="page"`, não `role="tab"`.
+    // Não presumir um contrato ARIA que o componente ainda não declara.
+    //
+    // 🔴 CORREÇÃO (2ª rodada, veredito do João): o grupo ATIVO com FILHOS
+    // NUNCA leva `aria-current` — é por construção em `nav-tabs.tsx`
+    // (`marcaPagina = ativo && !temFilhos`; a "página" é a sub-aba da 3ª
+    // linha, não o grupo). O assert anterior (`[aria-current="page"]` com
+    // hasText "Configurações", esperando count 1) media algo que o
+    // componente nunca produz para um grupo com filhos — teste verde sem
+    // provar nada, ou reprovando por natureza. A prova correta do grupo é
+    // presença no `nav` PRINCIPAL (1º nível), pelo rótulo.
+    const principal = page.getByRole("navigation", { name: /^Navega(ç|c)(ã|a)o principal$/i });
+    const grupo = principal.getByText(/^Configura(ç|c)(õ|o)es$/, { exact: true });
+    await expect(grupo.first()).toBeVisible();
+    // Nenhum `aria-current` no grupo — confirma que ele não usurpa a marca
+    // de página atual da sub-aba (regressão que a correção acima previne).
+    await expect(
+      principal.locator('[aria-current="page"]', {
+        hasText: /^Configura(ç|c)(õ|o)es$/,
+      }),
+    ).toHaveCount(0);
+
+    // A 3ª linha (sub-abas do grupo ativo) é OUTRO `<nav>`, rotulado
+    // `aria-label={\`Seções de ${grupoLabel}\`}` (`SubNavTabs`, `nav-tabs.tsx`)
+    // — aqui `grupoLabel` é "Configurações", o grupo ativo em
+    // `/admin/configuracoes`.
+    const secoes = page.getByRole("navigation", {
+      name: /^Se(ç|c)(õ|o)es de Configura(ç|c)(õ|o)es$/i,
+    });
+    await expect(secoes).toBeVisible();
+
+    // "Interruptores" é o ÚNICO `[aria-current="page"]` dentro dela —
+    // `abaDoPainel` não se aplica aqui (não é sub-aba de `?aba=` do painel);
+    // é `href` puro, então a prova é a rota + `aria-current`.
+    const atuais = secoes.locator('[aria-current="page"]');
+    await expect(atuais).toHaveCount(1);
+    await expect(atuais).toHaveText(/^Interruptores$/);
+  });
+});
+
 /** Clica no switch e confirma o diálogo. Devolve o `aria-checked` final. */
 async function alternar(page: Page, chave: string): Promise<string | null> {
   const sw = page.getByRole("switch", { name: new RegExp(`\\(${chave}\\)`) });

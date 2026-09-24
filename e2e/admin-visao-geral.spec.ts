@@ -86,10 +86,18 @@ test.describe("Admin · Visão geral · régua + cruzamento + ranking", () => {
 
     await expect(page).toHaveURL(/\/admin(\?|$)/);
 
-    // A aba de cima continua sendo "Visão geral" (não mudou de lugar).
-    const visaoGeral = page.getByRole("tab", { name: /vis(ã|a)o geral/i });
+    // 🔴 Navegação em 2 níveis (24/09/2026): "Visão geral" deixou de ser a
+    // `TabsTrigger` de 1º nível de `AbasPainel` e virou SUB-ABA (filho,
+    // `abaDoPainel: "visao"`) do grupo "Parceiros" na 3ª linha do header
+    // (`src/lib/nav.ts`). O mecanismo (`nav-tabs.tsx`/`app-header.tsx`) é do
+    // iromar — aqui ancoro por TEXTO + `aria-current`, o mesmo contrato que
+    // `NavTabLink` já usa para o trilho, não por `role="tab"`/`aria-selected`
+    // (que era o contrato da `TabsList` do `AbasPainel`, ainda válido para o
+    // `?vis=` interno abaixo, não para esta sub-aba).
+    const visaoGeral = page.locator('[aria-current="page"]', {
+      hasText: /^Vis(ã|a)o geral$/,
+    });
     await expect(visaoGeral).toBeVisible();
-    await expect(visaoGeral).toHaveAttribute("aria-selected", "true");
 
     // A sub-aba padrão é Programa — e chegou lá SEM `?vis=` na URL.
     const programa = page.getByRole("tab", { name: /^o programa$/i });

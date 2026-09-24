@@ -135,7 +135,22 @@ export default async function AdminPage({
         email={ctx.user.email ?? null}
         papelRotulo="Admin"
         homeHref="/admin"
-        navItems={adminNavItems({ chamadosAbertos, souAdmin: true })}
+        // 🔴 `solicitacoesPendentes` restaura o contador que a `TabsList` de
+        // `AbasPainel` desenhava até 24/09 (ela saiu do DOM; o número não
+        // podia sair junto — é a fila de gente esperando acesso ao portal).
+        // Hoje o badge é pintado pelo mecanismo de `NavItem.badge`: nesta
+        // página o grupo "Parceiros" está sempre ativo, então o número
+        // aparece na SUB-ABA "Solicitações" da 3ª linha. Só esta página
+        // passa o número — em outra tela do admin o grupo fica sem badge.
+        //
+        // 🔑 ZERO consulta nova: `pendentes` já foi carregado acima, no mesmo
+        // `Promise.all`, para montar a aba. A regra de `NavItem.badge` é essa
+        // — a página só passa o número que já tem em mãos.
+        navItems={adminNavItems({
+          chamadosAbertos,
+          solicitacoesPendentes: pendentes.length,
+          souAdmin: true,
+        })}
       />
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
@@ -150,8 +165,11 @@ export default async function AdminPage({
         <RegistrarUrlDoPainel />
 
         <AbasPainel
-          totalAlunos={totalAlunos}
-          pendentes={pendentes.length}
+          // 🔑 `totalAlunos`/`pendentes` NÃO descem mais para cá: `AbasPainel`
+          // é só o SELETOR de conteúdo desde 24/09, e os dois números são
+          // badge de aba — que hoje mora no `NavItem` (ver `navItems` acima).
+          // Prop que ninguém desenha some da chamada junto com a assinatura.
+          //
           // Formatado AQUI (servidor) e não dentro do componente: o fuso do
           // navegador mudaria a hora para quem estivesse fora de São Paulo.
           apuradoEm={dashboard ? formatarDataHora(dashboard.geradoEm) : null}

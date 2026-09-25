@@ -7,6 +7,7 @@ import { mesAtualSaoPaulo } from "@/lib/plantao";
 import {
   buscarCalendarioLogado,
   buscarMinhaInscricaoLogado,
+  buscarMinhaSituacaoLogado,
   inscreverLogado,
   cancelarLogado,
   revelarLinkLogado,
@@ -15,6 +16,8 @@ import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { CalendarioMes } from "@/components/plantao/calendario-mes";
 import { MinhaInscricaoCard } from "@/components/plantao/minha-inscricao-card";
+import { SituacaoIntervaloCard } from "@/components/plantao/situacao-intervalo";
+import { RegrasPlantao } from "@/components/plantao/regras-plantao";
 
 /**
  * `/plantao` — aba do Plantão de Dúvidas DENTRO do sistema, exclusiva do
@@ -59,10 +62,11 @@ export default async function PlantaoLogadoPage({
   const { ano, mes } = parseMes(m);
 
   const pessoaAlunoId = ctx.membroAlunoId ?? ctx.alunoId;
-  const [aluno, calendario, minhaInscricao, tutoriaisAtivo] = await Promise.all([
+  const [aluno, calendario, minhaInscricao, situacao, tutoriaisAtivo] = await Promise.all([
     getAlunoById(pessoaAlunoId),
     buscarCalendarioLogado(ano, mes),
     buscarMinhaInscricaoLogado(),
+    buscarMinhaSituacaoLogado(),
     getTutoriaisAtivo(),
   ]);
 
@@ -104,6 +108,12 @@ export default async function PlantaoLogadoPage({
               aoRevelarLink={revelarLinkLogado}
             />
           ) : null}
+
+          {situacao && !(minhaInscricao && !minhaInscricao.encerrado) ? (
+            <SituacaoIntervaloCard situacao={situacao} />
+          ) : null}
+
+          <RegrasPlantao />
 
           {calendario.ok ? (
             <CalendarioMes

@@ -28,6 +28,21 @@ import type {
 const LIMITE_ALUNOS = 2000;
 const LIMITE_INSCRITOS = 500;
 
+/**
+ * Cut-off de 12:00 da véspera, no fuso de São Paulo — mesma regra de
+ * `plantao_inscrever` e de `plantao_calendario`, derivada aqui porque esta
+ * query lê a tabela direto (é admin, tem policy), sem passar pela RPC.
+ */
+function prazoEncerrado(inicioEmIso: string): boolean {
+  const inicio = new Date(inicioEmIso);
+  // Véspera às 12:00 em São Paulo = 15:00 UTC (o Brasil não usa mais
+  // horário de verão, então o offset é fixo em -03:00).
+  const vespera = new Date(inicio);
+  vespera.setUTCDate(vespera.getUTCDate() - 1);
+  vespera.setUTCHours(15, 0, 0, 0);
+  return new Date() >= vespera;
+}
+
 /** Slots do mês (todos — publicados ou não), para o painel de gestão. */
 export async function getSlotsDoMesAdmin(
   ano: number,
@@ -77,18 +92,14 @@ export async function getSlotsDoMesAdmin(
       // saber se ainda entra gente. Mesma regra de `plantao_inscrever` e de
       // `plantao_calendario`; aqui é derivada no servidor porque esta query
       // lê a tabela direto (é admin, tem policy), sem passar pela RPC.
-      inscricaoEncerrada: (() => {
-        const inicio = new Date(s.inicio_em as string);
-        // Véspera às 12:00 em São Paulo = 15:00 UTC (o Brasil não usa mais
-        // horário de verão, então o offset é fixo em -03:00).
-        const vespera = new Date(inicio);
-        vespera.setUTCDate(vespera.getUTCDate() - 1);
-        vespera.setUTCHours(15, 0, 0, 0);
-        return new Date() >= vespera;
-      })(),
-      // O teto de 1 plantão/semana é por aluno; a visão do admin lista os
+      inscricaoEncerrada: prazoEncerrado(s.inicio_em as string),
+      // O intervalo pós-plantão é por aluno; a visão do admin lista os
       // slots, não a agenda de uma pessoa. Nunca bloqueia aqui.
-      bloqueioSemana: false,
+      bloqueioIntervalo: false,
+      prazoEncerrado: prazoEncerrado(s.inicio_em as string),
+      prazoEm: null,
+      intervaloLiberaData: null,
+      intervaloLiberaHora: null,
       zoomUrl: (s.zoom_url as string) ?? null,
       publicado: s.publicado as boolean,
       gravacaoUrl: (s.gravacao_url as string) ?? null,

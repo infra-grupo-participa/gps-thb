@@ -32,6 +32,7 @@ import type {
   ResultadoAcao,
   SlotPublico,
   MinhaInscricao,
+  SituacaoIntervalo,
 } from "@/lib/plantao-tipos";
 
 /**
@@ -146,7 +147,11 @@ export async function buscarCalendario(
     minha_inscricao: boolean;
     encerrado: boolean;
     inscricao_encerrada: boolean;
-    bloqueio_semana: boolean;
+    bloqueio_intervalo: boolean;
+    prazo_encerrado: boolean;
+    prazo_em: string | null;
+    intervalo_libera_data: string | null;
+    intervalo_libera_hora: string | null;
   }>).map((r) => ({
     slotId: r.slot_id,
     data: r.data,
@@ -157,10 +162,48 @@ export async function buscarCalendario(
     minhaInscricao: r.minha_inscricao,
     encerrado: r.encerrado,
     inscricaoEncerrada: r.inscricao_encerrada,
-    bloqueioSemana: r.bloqueio_semana,
+    bloqueioIntervalo: r.bloqueio_intervalo,
+    prazoEncerrado: r.prazo_encerrado,
+    prazoEm: r.prazo_em,
+    intervaloLiberaData: r.intervalo_libera_data,
+    intervaloLiberaHora: r.intervalo_libera_hora ? r.intervalo_libera_hora.slice(0, 5) : null,
   }));
 
   return { ok: true, slots };
+}
+
+/** Situação de intervalo do aluno identificado por e-mail (rota pública), ou `null` quando não há intervalo ativo. */
+export async function buscarMinhaSituacao(
+  email: string,
+): Promise<SituacaoIntervalo | null> {
+  const emailNormalizado = normalizarEmail(email);
+  if (!emailNormalizado) return null;
+
+  const supabase = clientePublico();
+  const { data, error } = await supabase.rpc("plantao_minha_situacao", {
+    p_email: emailNormalizado,
+  });
+  if (error || !data || !Array.isArray(data) || !data.length) return null;
+
+  const row = data[0] as {
+    causa_data: string;
+    causa_hora: string;
+    causa_presente: boolean;
+    bloqueado_data: string;
+    bloqueado_hora: string;
+    libera_data: string | null;
+    libera_hora: string | null;
+  };
+
+  return {
+    causaData: row.causa_data,
+    causaHora: row.causa_hora.slice(0, 5),
+    causaPresente: row.causa_presente,
+    bloqueadoData: row.bloqueado_data,
+    bloqueadoHora: row.bloqueado_hora.slice(0, 5),
+    liberaData: row.libera_data,
+    liberaHora: row.libera_hora ? row.libera_hora.slice(0, 5) : null,
+  };
 }
 
 /** A inscrição ativa de quem informou o e-mail (ou null). */

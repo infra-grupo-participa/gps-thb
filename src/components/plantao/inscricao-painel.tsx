@@ -28,7 +28,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { UserRoundIcon, UsersIcon, ClockIcon } from "lucide-react";
 import type { SlotPublico, MinhaInscricao, ResultadoAcao } from "@/lib/plantao-tipos";
-import { faixaHorario, rotuloData, segundaSeguinte } from "@/lib/plantao";
+import { faixaHorario, rotuloData } from "@/lib/plantao";
 import { inscrever as inscreverPublico } from "@/app/p/plantao/actions";
 import { Button } from "@/components/ui/button";
 
@@ -148,17 +148,18 @@ export function InscricaoPainel({
       ) : (
         <div className="space-y-2">
           {/*
-            Regras que recusam inscrição, ditas ANTES do clique. Prazo vive em
-            `gps.plantao_prazo_inscricao` (cut-off de 12h da véspera desde
-            14/09); o teto em `gps.plantao_conflito_semana` (semana ISO,
-            conta plantão já realizado). Se uma regra mudar no banco, este
-            texto muda junto — foi o texto velho ("nesta semana, até 1h
-            antes") que gerou chamado em 25/09.
+            Regras que recusam inscrição, ditas ANTES do clique. O intervalo
+            vive em `gps.plantao_intervalo` (aluno com inscrição não cancelada
+            pula o plantão SEGUINTE publicado, libera do outro em diante); o
+            prazo em `gps.plantao_prazo_inscricao` (cut-off de 12h da
+            véspera). Se uma regra mudar no banco, este texto muda junto —
+            foi o texto velho ("nesta semana, até 1h antes") que gerou
+            chamado em 25/09.
           */}
           <p className="rounded-lg border border-primary/30 bg-primary/[0.06] p-2.5 text-xs text-foreground">
-            <strong>Um plantão por semana</strong> (de segunda a domingo),
-            contando o que você já participou. As inscrições se encerram às{" "}
-            <strong>12h do dia anterior</strong> ao plantão. Horários em{" "}
+            <strong>Depois de cada plantão, o seguinte fica de fora</strong>{" "}
+            — você volta a partir do outro. Inscrições até{" "}
+            <strong>12h do dia anterior</strong>. Horários em{" "}
             <strong>horário de Brasília</strong>.
           </p>
           <p className="rounded-lg border border-dashed bg-muted/40 p-2.5 text-xs text-muted-foreground">
@@ -205,36 +206,35 @@ export function InscricaoPainel({
               <span className="shrink-0 text-xs text-muted-foreground">
                 Encerrado
               </span>
-            ) : slot.bloqueioSemana ? (
+            ) : slot.bloqueioIntervalo ? (
               /*
-                O slot está aberto — quem já tem plantão nesta semana é esta
-                pessoa. Dizer "inscrições encerradas" aqui seria mentira e
-                vira chamado, então o motivo vem separado do banco
-                (`bloqueio_semana`) e ganha frase própria.
+                O slot está aberto — quem caiu no intervalo pós-plantão é
+                esta pessoa. Dizer "inscrições encerradas" aqui seria mentira
+                e vira chamado, então o motivo vem separado do banco
+                (`bloqueio_intervalo`) e ganha frase própria.
               */
               <span className="shrink-0 text-right text-xs text-muted-foreground">
-                Já tem plantão nesta semana
+                Intervalo
                 <br />
                 <strong className="text-foreground">
-                  Libera em {segundaSeguinte(slot.data)}
+                  {slot.intervaloLiberaData && slot.intervaloLiberaHora
+                    ? `Libera em ${rotuloData(slot.intervaloLiberaData)} às ${slot.intervaloLiberaHora}`
+                    : "Libera no plantão seguinte"}
                 </strong>
               </span>
-            ) : slot.inscricaoEncerrada ? (
+            ) : slot.prazoEncerrado ? (
               /*
-                Inscrições fechadas. Desde 08/09/2026 isso é o mesmo que "já
-                começou" — o cut-off de 12:00 da véspera saiu (decisão do
-                Marcio: dá para agendar até o início).
+                Inscrições fechadas pelo cut-off de 12:00 da véspera.
 
-                O ramo continua aqui de propósito: `inscricao_encerrada` é
-                calculado por `plantao_calendario` espelhando exatamente a
-                trava de `plantao_inscrever`. Se um prazo voltar (o calendário
-                oficial do Acelera ainda o prevê), muda só a expressão no
-                banco — esta tela não precisa ser tocada.
+                O ramo continua espelhando `prazo_encerrado` do banco
+                (`plantao_calendario`/`plantao_inscrever`) — se o cut-off
+                mudar, muda só a expressão no banco, esta tela não precisa
+                ser tocada.
               */
               <span className="shrink-0 text-right text-xs text-muted-foreground">
-                Inscrições
+                Inscrições encerradas
                 <br />
-                encerradas
+                (12h da véspera)
               </span>
             ) : (
               <Button

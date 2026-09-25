@@ -22,11 +22,14 @@ import Link from "next/link";
 import {
   buscarCalendario,
   buscarMinhaInscricao,
+  buscarMinhaSituacao,
   registrarCliqueDeEmail,
 } from "@/app/p/plantao/actions";
 import { mesAtualSaoPaulo, normalizarEmail, emailValido } from "@/lib/plantao";
 import { CalendarioMes } from "@/components/plantao/calendario-mes";
 import { MinhaInscricaoCard } from "@/components/plantao/minha-inscricao-card";
+import { SituacaoIntervaloCard } from "@/components/plantao/situacao-intervalo";
+import { RegrasPlantao } from "@/components/plantao/regras-plantao";
 import { NpsForm } from "@/components/plantao/nps-form";
 import { IdentificacaoForm } from "@/components/plantao/identificacao-form";
 
@@ -69,9 +72,10 @@ export default async function PlantaoPage({
   // (recebeu → clicou → entrou) é o que dá o funil do plantão.
   const veioDeEmail = Boolean(email && o && slotDoEmail);
 
-  const [calendario, minhaInscricao] = await Promise.all([
+  const [calendario, minhaInscricao, situacao] = await Promise.all([
     buscarCalendario(ano, mes, email ?? undefined),
     email ? buscarMinhaInscricao(email) : Promise.resolve(null),
+    email ? buscarMinhaSituacao(email) : Promise.resolve(null),
     veioDeEmail
       ? registrarCliqueDeEmail(email!, slotDoEmail!, o!)
       : Promise.resolve(),
@@ -120,6 +124,10 @@ export default async function PlantaoPage({
         <MinhaInscricaoCard inscricao={minhaInscricao} email={email} />
       ) : null}
 
+      {situacao && !(minhaInscricao && !minhaInscricao.encerrado) ? (
+        <SituacaoIntervaloCard situacao={situacao} />
+      ) : null}
+
       {/* NPS: só quando o aluno esteve presente e o plantão já terminou. */}
       {email &&
       minhaInscricao &&
@@ -128,6 +136,8 @@ export default async function PlantaoPage({
       !minhaInscricao.npsEm ? (
         <NpsForm inscricaoId={minhaInscricao.inscricaoId} email={email} />
       ) : null}
+
+      <RegrasPlantao />
 
       {calendario.ok ? (
         <CalendarioMes

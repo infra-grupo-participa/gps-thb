@@ -610,6 +610,57 @@ presença**; NPS depois da sessão.
   regras dependem da MESMA condição de propósito.
 - **Sessões de 120 min** (o sistema usava 60 até 08/09).
 
+### ⏳ Plantão: INTERVALO no lugar do teto semanal (2026-09-25, migração `…315`)
+
+Decisão do João, 25/09, depois do chamado do Wagner (só Acelera; ficou a semana
+inteira vendo "Você já tem plantão nesta semana" sem data):
+> *"se tiver plantão segunda, terça e quarta, e ele foi no de segunda, ele só pode
+> ir no de quarta em diante"* — e a inscrição fecha às **12h do dia anterior**.
+
+- **Regra única: `gps.plantao_intervalo(aluno, slot)`.** Depois de cada inscrição
+  **não cancelada** (com ou sem presença — decisão do João: quem reserva e falta não
+  fura a fila), o **próximo slot publicado e não cancelado** fica de fora; do outro em
+  diante libera. Calculado ao vivo: publicar/cancelar slot no meio move o intervalo.
+- **O teto de 1 por semana SAIU**: `plantao_conflito_semana` dropada, índice
+  `uq_plantao_inscricoes_aluno_semana` dropado (ele recusaria segunda + quarta),
+  `teto_semanal_ativo='false'`. A coluna `semana` ficou como legado.
+- **Corrida**: `pg_advisory_xact_lock` por aluno nas 3 portas de inscrição (pública,
+  logada, equipe) — substitui o índice único como serialização.
+- **Tela**: o calendário devolve `bloqueio_intervalo`, `prazo_encerrado`, `prazo_em`,
+  `intervalo_causa_data`, `intervalo_libera_data/hora` (`bloqueio_semana` ficou no
+  contrato = intervalo, só para o front antigo não quebrar na janela do deploy); o
+  cartão "Você está em intervalo" lê `plantao_minha_situacao(email)` /
+  `plantao_minha_situacao_logado()`.
+- **Log (pedido do João: "entender o comportamento deles")** em `gps.plantao_eventos`,
+  coluna nova `detalhe jsonb`:
+  - toda recusa de inscrição: `plantao_recusa_{intervalo,prazo,ja_inscrito,encerrado,indisponivel}`
+    com `detalhe.origem` (publico/logado/equipe), `causa_slot_id`, `causa_presente`,
+    `libera_slot_id`. Antes só o teto gravava, e a tela nem chamava a RPC: **0 recusas
+    registradas desde sempre** — a recusa era invisível para a equipe.
+  - `plantao_bloqueio_exibido`: o calendário grava quando MOSTRA a um aluno identificado
+    um slot que ele não pode pegar (`detalhe.motivo` intervalo/prazo), 1 por aluno×slot×24h.
+  ```sql
+  select acao, detalhe->>'origem' origem, detalhe->>'motivo' motivo, count(*), count(distinct aluno_plantao_id)
+    from gps.plantao_eventos
+   where acao like 'plantao_recusa_%' or acao = 'plantao_bloqueio_exibido'
+   group by 1,2,3 order by 4 desc;
+  ```
+- 🔴 **Regressão da `…312` corrigida junto**: o corpo aplicado no banco em 24/09 ≠ o
+  arquivo do repo — `plantao_inscrever` perdeu a checagem AO VIVO de "está no
+  Programa". Medido: 0 pessoas expostas, 0 inscrições indevidas. **Recriar função parte
+  do corpo VIGENTE (`pg_get_functiondef`), nunca do arquivo.**
+- **`…316`**: o rate limit de `plantao_inscrever` (10/IP/15 min) passou a contar
+  também `plantao_recusa_*` — sem isso um e-mail válido enchia o log sem teto (Fable).
+- ⚠️ **Decisão aberta com o João:** dois slots no MESMO dia (mentoras diferentes) —
+  só o de menor horário é "o seguinte"; quem foi na segunda pode pegar o 2º slot da
+  terça. Se a regra for "o dia seguinte inteiro", muda só `gps.plantao_intervalo`.
+- Tela provada no Chromium com aluno de QA (slot passado **não publicado**, apagado
+  depois): cartão "Você está em intervalo" e selo "Intervalo · Libera em ter., 29/09 às
+  10:00" em 1366 e 390, 0 erro de console, 0 overflow.
+- ⚠️ O texto antigo desta página dizendo que o cut-off de 12h foi removido (…046) está
+  superado: desde 14/09 vale 12h da véspera (`gps.plantao_prazo_inscricao`), e o João
+  confirmou em 25/09.
+
 ### ⚠️ `/p/plantao` virou rota PÚBLICA sem login (2026-09-08)
 
 **Mudança de arquitetura.** O modelo anterior (identidade própria com senha,

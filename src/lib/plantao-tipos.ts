@@ -33,13 +33,41 @@ export interface SlotPublico {
    */
   inscricaoEncerrada: boolean;
   /**
-   * true quando quem está vendo já tem plantão nesta mesma semana (seg→dom).
-   * É um plantão por semana; o slot em si continua aberto para os outros.
+   * true quando quem está vendo caiu no intervalo pós-plantão: participou (ou
+   * teve inscrição não cancelada) no plantão anterior e este é o SEGUINTE
+   * publicado — fica de fora; do outro em diante libera. O slot em si
+   * continua aberto para os outros.
    *
    * Vem junto de `inscricaoEncerrada: true` — este campo diz o MOTIVO, para
    * a tela não anunciar "inscrições encerradas" num slot que está aberto.
    */
-  bloqueioSemana: boolean;
+  bloqueioIntervalo: boolean;
+  /** true quando passou do cut-off (12:00 do dia anterior) — motivo separado de `bloqueioIntervalo`. */
+  prazoEncerrado: boolean;
+  /** Instante (ISO) do cut-off deste slot, ou `null` quando não se aplica. */
+  prazoEm: string | null;
+  /** Data em que o intervalo libera para este aluno ("YYYY-MM-DD"), ou `null` = libera no próximo plantão que abrir. */
+  intervaloLiberaData: string | null;
+  /** Hora ("HH:MM") em que o intervalo libera, junto de `intervaloLiberaData`. */
+  intervaloLiberaHora: string | null;
+}
+
+/** Situação de intervalo do aluno logado/identificado — 0 ou 1 linha, vinda de `plantao_minha_situacao(_logado)`. */
+export interface SituacaoIntervalo {
+  /** Data do plantão que causou o intervalo (o que o aluno participou/se inscreveu). */
+  causaData: string;
+  /** Hora do plantão-causa. */
+  causaHora: string;
+  /** true = o aluno esteve PRESENTE no plantão-causa; false = só teve inscrição não cancelada. */
+  causaPresente: boolean;
+  /** Data do plantão que fica de fora por causa do intervalo. */
+  bloqueadoData: string;
+  /** Hora do plantão bloqueado. */
+  bloqueadoHora: string;
+  /** Data em que o intervalo libera, ou `null` = libera no próximo plantão que abrir depois do bloqueado. */
+  liberaData: string | null;
+  /** Hora em que o intervalo libera, junto de `liberaData`. */
+  liberaHora: string | null;
 }
 
 /** A inscrição ativa (ou mais recente) do aluno logado. */

@@ -28,7 +28,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { UserRoundIcon, UsersIcon, ClockIcon } from "lucide-react";
 import type { SlotPublico, MinhaInscricao, ResultadoAcao } from "@/lib/plantao-tipos";
-import { faixaHorario, rotuloData } from "@/lib/plantao";
+import { faixaHorario, rotuloData, segundaSeguinte } from "@/lib/plantao";
 import { inscrever as inscreverPublico } from "@/app/p/plantao/actions";
 import { Button } from "@/components/ui/button";
 
@@ -148,18 +148,18 @@ export function InscricaoPainel({
       ) : (
         <div className="space-y-2">
           {/*
-            Prazo de inscrição. A regra vive no banco
-            (`gps.plantao_prazo_inscricao`), e a data da virada em
-            `gps.config.plantao_cutoff_vespera_desde` — este texto precisa
-            acompanhar se a data mudar. Decisão do Marcio em 10/09/2026:
-            esta semana continua valendo até 1h antes; a partir de 14/09
-            volta o cut-off do calendário oficial do Acelera.
+            Regras que recusam inscrição, ditas ANTES do clique. Prazo vive em
+            `gps.plantao_prazo_inscricao` (cut-off de 12h da véspera desde
+            14/09); o teto em `gps.plantao_conflito_semana` (semana ISO,
+            conta plantão já realizado). Se uma regra mudar no banco, este
+            texto muda junto — foi o texto velho ("nesta semana, até 1h
+            antes") que gerou chamado em 25/09.
           */}
           <p className="rounded-lg border border-primary/30 bg-primary/[0.06] p-2.5 text-xs text-foreground">
-            <strong>Prazo de inscrição:</strong> a partir de{" "}
-            <strong>14 de setembro</strong>, as inscrições se encerram às{" "}
-            <strong>12h do dia anterior</strong> ao plantão. Nesta semana, você
-            ainda pode se inscrever até 1 hora antes do início.
+            <strong>Um plantão por semana</strong> (de segunda a domingo),
+            contando o que você já participou. As inscrições se encerram às{" "}
+            <strong>12h do dia anterior</strong> ao plantão. Horários em{" "}
+            <strong>horário de Brasília</strong>.
           </p>
           <p className="rounded-lg border border-dashed bg-muted/40 p-2.5 text-xs text-muted-foreground">
             Você pode cancelar a qualquer momento até 1 hora antes do início — a
@@ -213,9 +213,11 @@ export function InscricaoPainel({
                 (`bloqueio_semana`) e ganha frase própria.
               */
               <span className="shrink-0 text-right text-xs text-muted-foreground">
-                Você já tem
+                Já tem plantão nesta semana
                 <br />
-                plantão nesta semana
+                <strong className="text-foreground">
+                  Libera em {segundaSeguinte(slot.data)}
+                </strong>
               </span>
             ) : slot.inscricaoEncerrada ? (
               /*

@@ -51,6 +51,22 @@ export function rotuloData(iso: string): string {
   });
 }
 
+/**
+ * Segunda-feira da semana SEGUINTE à da data, em "DD/MM" — o dia em que o
+ * teto de 1 plantão/semana libera de novo. Espelha `gps.plantao_semana(data)
+ * + 7` (semana ISO, segunda a domingo) usado na mensagem da RPC.
+ */
+export function segundaSeguinte(iso: string): string {
+  const d = dataUTC(iso);
+  const desdeSegunda = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - desdeSegunda + 7);
+  return d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "UTC",
+  });
+}
+
 /** Ano e mês corrente no fuso de São Paulo (para o calendário abrir no mês certo). */
 export function mesAtualSaoPaulo(): { ano: number; mes: number } {
   const hoje = hojeSaoPaulo();

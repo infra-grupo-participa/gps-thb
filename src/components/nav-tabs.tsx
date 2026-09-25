@@ -127,6 +127,22 @@ export interface NavItem {
    * o filtra do array e entrega ao `MenuDeContas`. Hoje: "Equipe" do aluno.
    */
   noMenuDeContas?: boolean;
+  /**
+   * O clique abre o destino em NOVA aba do navegador. Hoje: só a "Pasta" do
+   * aluno, cujo `href` é `/pasta/abrir` — um redirect para o Drive (25/09/2026,
+   * pedido do João). O GPS fica aberto na aba de origem.
+   *
+   * ⚠️ Só `NavTabLink` honra a flag. `SubNavTabs` e o `MenuDeContas` usam
+   * `<Link>` cru: um item `novaAba` que ganhe `filhos` ou `noMenuDeContas`
+   * perde o `target` em silêncio.
+   */
+  novaAba?: boolean;
+  /**
+   * Rota que também acende a aba, além do `href`. Existe para a "Pasta" do
+   * aluno: o `href` é `/pasta/abrir` (redirect), mas a tela onde o aluno
+   * PARA quando não tem link é `/pasta`.
+   */
+  ativoEm?: string;
 }
 
 const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
@@ -154,6 +170,7 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
  * sem a barra, `/admin` casaria `/administrativo`.
  */
 function casaSozinho(item: NavItem, pathname: string): boolean {
+  if (item.ativoEm && pathname === item.ativoEm) return true;
   return item.exact
     ? pathname === item.href
     : pathname === item.href || pathname.startsWith(item.href + "/");
@@ -247,6 +264,8 @@ function NavTabLink({
       // a home sozinha dispara ~10 queries. Medido nos logs do Supabase.
       // Nada muda para o usuário: a rota carrega ao clicar.
       prefetch={false}
+      target={item.novaAba ? "_blank" : undefined}
+      rel={item.novaAba ? "noopener noreferrer" : undefined}
       className={cn(
         // RÉGUA de 2 px, não pílula. A pílula `bg-accent` passava no
         // contraste mas a aba ativa e a inativa tinham quase o mesmo
@@ -261,6 +280,7 @@ function NavTabLink({
     >
       {Icon ? <Icon className="size-4" aria-hidden /> : null}
       {item.label}
+      {item.novaAba ? <span className="sr-only"> (abre em nova aba)</span> : null}
       {mostraBadge ? (
         <Badge
           variant="danger"

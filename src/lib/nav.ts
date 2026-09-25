@@ -36,9 +36,9 @@ export function alunoNavItems(
     // dentro de uma aba"). MESMO MOLDE de `financeiroEmBreve`: "Pasta" nasce
     // "em breve" por padrão (`opts.pastaEmBreve !== false`) — a assistência
     // (`assistenciaNavItems`) passa `false` porque a equipe usa a Pasta para
-    // atender; `navDoAluno` (o aluno de verdade) passa `true` porque a tela
-    // ainda não conta a história certa para ele. Copiado literalmente do
-    // comentário do Financeiro logo abaixo — não inverter a polaridade.
+    // atender; `navDoAluno` também passa `false` desde 25/09/2026 (a aba do
+    // aluno vira atalho para o Drive). Copiado literalmente do comentário do
+    // Financeiro logo abaixo — não inverter a polaridade.
     pastaEmBreve?: boolean;
     equipe: boolean;
   },
@@ -115,7 +115,14 @@ export function alunoNavItems(
     // `assistenciaNavItems`, que sempre o preenchem; ver o comentário de cada
     // uma. `!== false` é a MESMA polaridade do `financeiroEmBreve`: por
     // padrão em breve, `false` explícito é que libera o link.
-    { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta", emBreve: opts.pastaEmBreve !== false },
+    //
+    // 📁 Para o ALUNO (basePath ""), a aba abre o Drive direto, em nova aba
+    // (25/09/2026, pedido do João): `/pasta/abrir` redireciona para a pasta
+    // do ambiente, ou para `/pasta` com o aviso de preparo se não houver link.
+    // Na assistência a aba segue indo para a tela onde a equipe cola o link.
+    basePath === ""
+      ? { href: "/pasta/abrir", ativoEm: "/pasta", label: "Pasta", icon: "pasta", novaAba: true, emBreve: opts.pastaEmBreve !== false }
+      : { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta", emBreve: opts.pastaEmBreve !== false },
     { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" },
     // 🎧 Plantão de Dúvidas — aba do aluno do PROGRAMA dentro do sistema
     // (decisão do Marcio, 10/09/2026). Não confundir com a rota pública
@@ -238,10 +245,9 @@ export function alunoNavItems(
 export function navDoAluno(ctx: ContextoSessao, basePath = ""): NavItem[] {
   return alunoNavItems(basePath, {
     financeiro: ctx.papelMembro === "titular",
-    // Navegação em 2 níveis (24/09/2026): a Pasta continua "em breve" para o
-    // aluno de verdade — mesmo padrão do Financeiro, ver o comentário em
-    // `alunoNavItems`.
-    pastaEmBreve: true,
+    // Pasta liberada para o aluno em 25/09/2026 (estava "em breve" desde
+    // 24/09): o clique vai direto para o Drive — ver `alunoNavItems`.
+    pastaEmBreve: false,
     // Equipe é dos DOIS papéis (ao contrário do Financeiro): titular convida
     // e gerencia, sócio só vê a lista — a página `/equipe` decide o que
     // renderizar a partir de `ctx.papelMembro`, a aba não escolhe por ele.

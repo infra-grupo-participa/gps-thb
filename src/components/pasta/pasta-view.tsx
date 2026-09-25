@@ -1,11 +1,14 @@
 import { FolderOpen, ExternalLink } from "lucide-react";
-import { embedPastaDrive } from "@/lib/pasta";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 
 /**
- * O que o ALUNO vê da pasta: o link, a pré-visualização e o estado vazio.
+ * O que o ALUNO vê da pasta: o link e o estado vazio.
+ *
+ * 25/09/2026 — a pré-visualização embutida saiu (ver `src/lib/pasta.ts`). A aba
+ * do aluno abre o Drive direto por `/pasta/abrir`; esta tela é o destino de
+ * quem ainda não tem link e o que a equipe vê na assistência.
  *
  * PF4 (09/09/2026) — este arquivo era um único client component que também
  * trazia o formulário de admin, renderizado sob `isAdmin`. O ramo nunca
@@ -25,8 +28,6 @@ export function PastaView({
   pastaUrl: string | null;
   isAdmin: boolean;
 }) {
-  const embedUrl = embedPastaDrive(pastaUrl);
-
   if (!pastaUrl) {
     // UX6 — o vazio era um `Card` à mão, com `py-10` somando ao padding que
     // o `Card` já paga e fora do `EmptyState` do design system.
@@ -36,12 +37,12 @@ export function PastaView({
         titulo={
           isAdmin
             ? "Nenhuma pasta configurada para este parceiro"
-            : "Sua pasta ainda não foi configurada"
+            : "Sua pasta está sendo preparada pela equipe"
         }
         descricao={
           isAdmin
             ? "Cole o link da pasta do Drive no campo acima para disponibilizá-la ao parceiro."
-            : "A equipe cria e compartilha a pasta durante a implementação. Assim que ela existir, aparece aqui — não é preciso fazer nada."
+            : "Nela ficam os modelos de contrato e os documentos do seu processo. Assim que estiver pronta, a aba Pasta abre direto no Drive — não é preciso fazer nada."
         }
       />
     );
@@ -73,20 +74,10 @@ export function PastaView({
           Abrir no Drive <ExternalLink aria-hidden />
         </a>
       </CardHeader>
-      <CardContent className="grid gap-3">
-        {embedUrl ? (
-          <iframe
-            src={embedUrl}
-            title="Pasta do parceiro no Google Drive"
-            className="h-[520px] w-full rounded-lg border bg-muted/20"
-            loading="lazy"
-          />
-        ) : null}
+      <CardContent>
         <p className="text-sm text-muted-foreground">
-          A pré-visualização acima é somente leitura. Para enviar, renomear ou
-          apagar arquivos, use &ldquo;Abrir no Drive&rdquo;. Se a
-          pré-visualização aparecer vazia, a pasta não está compartilhada por
-          link — peça à equipe para ajustar.
+          A pasta abre no Google Drive, em outra aba. Lá dá para ver e baixar
+          os documentos.
         </p>
       </CardContent>
     </Card>

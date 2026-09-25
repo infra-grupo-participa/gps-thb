@@ -152,10 +152,9 @@ const nextConfig: NextConfig = {
       // origem — frouxo para um campo de URL que o admin digita. Em
       // allowlist, não `*`.
       //
-      // ⚠️ `https://drive.google.com` é OBRIGATÓRIO aqui: a aba "Pasta" já
-      // embeda o Drive (`embeddedfolderview`, `src/lib/pasta.ts`) fora de
-      // `/p/*` — sem esta entrada, este `frame-src` novo QUEBRARIA uma
-      // feature no ar. Confirmado antes de escrever esta política.
+      // `https://drive.google.com` saiu em 25/09/2026: o único consumidor era
+      // a prévia embutida da aba "Pasta" (`embeddedfolderview`), removida
+      // quando a aba passou a abrir o Drive direto (`/pasta/abrir`).
       //
       // Este é o inverso de `frame-ancestors` (que continua intocado): aqui é
       // o GPS embedando terceiro; lá é terceiro embedando o GPS.
@@ -166,7 +165,7 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "frame-ancestors 'none'; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://drive.google.com",
+              "frame-ancestors 'none'; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com",
           },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],

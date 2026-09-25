@@ -36,7 +36,7 @@ test.describe("Header · parceiro · trilho de 1º nível + fixa + em breve", ()
     "Sem QA_PARCEIRO_EMAIL/SENHA — defina-os em .env.qa (aponte QA_ENV_FILE).",
   );
 
-  test("a) trilho com os 6 links + Tutoriais fixa (se ligada) + Pasta/Financeiro 'em breve' depois de todos", async ({
+  test("a) trilho com os 6 links + Tutoriais fixa (se ligada) + Pasta como link de nova aba + Financeiro 'em breve' depois de todos", async ({
     page,
   }) => {
     await entrar(page, parceiro!, "/");
@@ -73,36 +73,23 @@ test.describe("Header · parceiro · trilho de 1º nível + fixa + em breve", ()
     // decisão do Marcio, não é "em breve". Nada a afirmar sobre ausência de
     // uma feature opcional.)
 
-    // Pasta e Financeiro (quando existe) são `aria-disabled="true"` com "em
-    // breve" — e, depois do `.sort()` de `alunoNavItems`, ficam POSICIONADOS
-    // DEPOIS de todos os links normais. Provar com `boundingBox().x`.
-    const emBreve = page.locator('[aria-disabled="true"]', { hasText: /em breve/i });
-    const totalEmBreve = await emBreve.count();
-    expect(
-      totalEmBreve,
-      "Pasta é sempre 'em breve' para o aluno (navDoAluno passa pastaEmBreve:true) — " +
-        "esperava pelo menos 1 item 'em breve' no trilho.",
-    ).toBeGreaterThanOrEqual(1);
-
-    const pasta = page.locator('[aria-disabled="true"]', { hasText: /^Pasta/ });
+    // Pasta (25/09/2026) deixou de ser "em breve": é LINK para `/pasta/abrir`,
+    // em nova aba (o route handler redireciona para o Drive ou para `/pasta`).
+    // O `sr-only` " (abre em nova aba)" entra no nome acessível — daí `^Pasta`.
+    const pasta = page.getByRole("link", { name: /^Pasta/ });
     await expect(pasta).toBeVisible();
-    await expect(pasta).toHaveAttribute("aria-disabled", "true");
-    await expect(pasta).toContainText(/em breve/i);
+    await expect(pasta).toHaveAttribute("href", "/pasta/abrir");
+    await expect(pasta).toHaveAttribute("target", "_blank");
+    await expect(
+      page.locator('[aria-disabled="true"]', { hasText: /^Pasta/ }),
+    ).toHaveCount(0);
 
+    // Financeiro só existe quando `opts.financeiro` é true (titular). É o
+    // único "em breve" que sobrou e vem DEPOIS de todos os links clicáveis.
     const xUltimoLink = await page
       .getByRole("link", { name: /^Plant(ã|a)o$/i })
       .first()
       .boundingBox();
-    const xPasta = await pasta.boundingBox();
-    expect(xUltimoLink).not.toBeNull();
-    expect(xPasta).not.toBeNull();
-    expect(
-      xPasta!.x,
-      "'Pasta' (em breve) precisa vir DEPOIS de todos os links clicáveis do trilho (posição, não decoração).",
-    ).toBeGreaterThan(xUltimoLink!.x);
-
-    // Financeiro só existe quando `opts.financeiro` é true (titular). Mesma
-    // prova, condicionada à presença.
     const financeiro = page.locator('[aria-disabled="true"]', {
       hasText: /^Financeiro/,
     });
@@ -113,6 +100,21 @@ test.describe("Header · parceiro · trilho de 1º nível + fixa + em breve", ()
       expect(xFinanceiro).not.toBeNull();
       expect(xFinanceiro!.x).toBeGreaterThan(xUltimoLink!.x);
     }
+  });
+
+  test("a2) /pasta/abrir redireciona para o Drive ou para /pasta — nunca para fora", async ({
+    page,
+  }) => {
+    await entrar(page, parceiro!, "/");
+    // Só leitura: um GET com a sessão do parceiro, sem seguir o redirect.
+    const resp = await page.request.get("/pasta/abrir", { maxRedirects: 0 });
+    expect(resp.status()).toBe(307);
+    const destino = resp.headers()["location"] ?? "";
+    expect(
+      /^https:\/\/(drive|docs)\.google\.com\//.test(destino) ||
+        new URL(destino, page.url()).pathname === "/pasta",
+      `destino inesperado: ${destino}`,
+    ).toBe(true);
   });
 
   test("b) 'Perfil' e 'Equipe' NÃO estão no trilho do header, e ESTÃO no menu 'Sua conta'", async ({

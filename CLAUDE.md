@@ -2371,13 +2371,14 @@ rodada, 4 de 4 falhas eram (overlay do onboarding, skip link de 1×1px,
 ## Pasta do aluno (Google Drive)
 
 Cada aluno tem uma **pasta individual no Drive** (cópia da "PASTA PADRÃO", compartilhada
-equipe↔aluno). Guardamos só **1 campo**: `gps.membros.pasta_drive_url` (sem sobrecarregar o banco).
-Aba **`/pasta`** (e admin `.../pasta`): **pré-visualização embutida** (iframe
-`embeddedfolderview`, via `embedPastaDrive()` em `src/lib/pasta.ts`) + botão "Abrir no Drive".
-Admin define/edita o link (`salvarPastaDriveUrl`). Item "Pasta" no nav.
-⚠️ O `embeddedfolderview` **só renderiza se a pasta estiver compartilhada por link** ("qualquer
-pessoa com o link"); em pasta restrita a contas específicas o iframe vem vazio, mesmo para quem
-tem acesso. (O antigo card "Como sua pasta é organizada" / mapa da estrutura padrão segue
+equipe↔aluno). Guardamos só **1 campo**: `gps.ambientes.pasta_drive_url` (um por ambiente,
+titular e sócio veem o mesmo).
+**Desde 25/09/2026** a aba "Pasta" do aluno aponta para **`/pasta/abrir`** (route handler) e abre em
+**nova aba**: 307 para o Drive, ou para `/pasta` ("sua pasta está sendo preparada") se não houver
+link. A URL é reconferida com `ehUrlDoDrive()` (`src/lib/pasta.ts`, só `https://drive|docs.google.com/`)
+na gravação (`salvarPastaDriveUrl`) e antes do redirect. A **prévia embutida** (`embeddedfolderview`)
+foi **removida**, e `drive.google.com` saiu do `frame-src` da CSP. Admin define o link em
+`/admin/aluno/[id]/pasta`. (O antigo card "Como sua pasta é organizada" / mapa da estrutura padrão segue
 **removido** da UI; a constante `ESTRUTURA_PASTA` de `pasta.ts` **não existe mais** — saiu com o
 código morto na rodada final de 09/09.)
 

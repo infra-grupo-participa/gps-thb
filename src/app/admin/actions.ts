@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
+import { ehUrlDoDrive } from "@/lib/pasta";
 import { traduzirErroBanco } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import { enviarCredenciaisAcesso, enviarAcessoLiberado } from "@/lib/email";
@@ -773,7 +774,7 @@ export async function criarAcessoAluno(
 export async function salvarPastaDriveUrl(alunoId: string, url: string) {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
   const valor = url.trim();
-  if (valor && !/^https?:\/\/(drive|docs)\.google\.com\//.test(valor)) {
+  if (valor && !ehUrlDoDrive(valor)) {
     return { erro: "Informe um link válido do Google Drive." };
   }
   const supabase = await createClient();

@@ -11,9 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
  * (`SkeletonTexto`). A descrição é estática. `max-w-6xl` é a largura real.
  *
  * Dois blocos, na ordem real: o formulário de configuração do link do Drive
- * (só admin) e a prévia embutida — um retângulo alto, na proporção do
- * `embeddedfolderview` real, em vez de um card raso que encolheria a tela
- * na chegada.
+ * (só admin) e o card com o botão "Abrir no Drive" (a prévia embutida saiu
+ * em 25/09/2026).
  */
 export default function AdminAlunoPastaLoading() {
   return (
@@ -41,8 +40,8 @@ export default function AdminAlunoPastaLoading() {
             </CardContent>
           </Card>
 
-          {/* Prévia embutida da pasta. */}
-          <Skeleton aria-hidden className="h-[480px] w-full rounded-lg" />
+          {/* Card com o link da pasta. */}
+          <Skeleton aria-hidden className="h-28 w-full rounded-lg" />
         </div>
       </main>
     </>

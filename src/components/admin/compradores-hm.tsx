@@ -37,6 +37,7 @@ const METODO: Record<string, string> = {
   PIX: "PIX",
   BILLET: "Boleto",
   HYBRID: "Cartão + PIX",
+  HOTMART_INSTALLMENTS: "Parcelado Hotmart (valor da parcela)",
 };
 
 export function CompradoresHm({

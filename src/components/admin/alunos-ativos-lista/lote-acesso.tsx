@@ -38,7 +38,10 @@ import { criarAcessosEmLote } from "@/app/admin/actions";
 // 500). O TIPO pode vir do módulo de actions porque `import type` é apagado
 // antes do bundler.
 import { LOTE_ACESSOS_MAXIMO } from "@/lib/acessos-lote";
-import type { ResultadoAcessoEmLote } from "@/lib/admin-acesso-tipos";
+import type {
+  CandidatoAoLote,
+  ResultadoAcessoEmLote,
+} from "@/lib/admin-acesso-tipos";
 import { mensagemAcesso } from "@/components/admin/credenciais-view";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,7 +52,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
-import type { AlunoGps } from "@/lib/data";
 
 /** Como chamar e como falar com uma pessoa do lote, no instante do clique. */
 interface PessoaDoLote {
@@ -69,7 +71,7 @@ interface RelatorioCongelado {
  * NUNCA no render: o que a tela tem depois do `router.refresh()` já é outra
  * lista.
  */
-function congelarPessoas(lista: AlunoGps[]): Map<string, PessoaDoLote> {
+function congelarPessoas(lista: CandidatoAoLote[]): Map<string, PessoaDoLote> {
   const mapa = new Map<string, PessoaDoLote>();
   for (const a of lista) {
     if (mapa.has(a.alunoId)) continue;
@@ -87,14 +89,19 @@ export function LoteDeAcesso({
   candidatos,
   onLimpar,
   onSelecionarAte,
+  rotuloCandidatos = "sem login nesta lista",
+  rotuloBotao = "Criar acesso para os selecionados",
 }: {
   /** Os ambientes marcados, na ordem em que aparecem na lista. */
-  selecionados: AlunoGps[];
+  selecionados: CandidatoAoLote[];
   /** Todos os que o filtro "sem login" trouxe — a base do "selecionar tudo". */
-  candidatos: AlunoGps[];
+  candidatos: CandidatoAoLote[];
   onLimpar: () => void;
   /** Marca os N primeiros da lista visível (N = o teto). */
   onSelecionarAte: (n: number) => void;
+  /** Como a barra chama a lista de onde saem os candidatos. */
+  rotuloCandidatos?: string;
+  rotuloBotao?: string;
 }) {
   const router = useRouter();
   const [confirmando, setConfirmando] = useState(false);
@@ -153,7 +160,7 @@ export function LoteDeAcesso({
           </span>
           <span className="text-muted-foreground">
             {" "}
-            · {candidatos.length} sem login nesta lista · até{" "}
+            · {candidatos.length} {rotuloCandidatos} · até{" "}
             {LOTE_ACESSOS_MAXIMO} por vez
           </span>
         </p>
@@ -186,7 +193,7 @@ export function LoteDeAcesso({
           }}
         >
           <KeyRound aria-hidden />
-          Criar acesso para os selecionados
+          {rotuloBotao}
         </Button>
       </div>
 

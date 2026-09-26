@@ -14,6 +14,7 @@ import {
   LIMITE_PAINEL_ALUNOS_MAX,
 } from "@/lib/data";
 import { contarChamadosDoBadge } from "@/lib/chamados-data";
+import { getCompradoresHmAguardando } from "@/lib/data/compradores-hm";
 import { formatarDataHora } from "@/lib/datas";
 import { Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
@@ -21,6 +22,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { adminNavItems } from "@/lib/nav";
 import { CriarAcesso } from "@/components/admin/criar-acesso-botao";
 import { SolicitacaoCard } from "@/components/admin/solicitacao-card";
+import { CompradoresHm } from "@/components/admin/compradores-hm";
 import { EtapasControle } from "@/components/admin/etapas-controle";
 import { AlunosAtivosLista } from "@/components/admin/alunos-ativos-lista";
 import { AbasPainel } from "@/components/admin/abas-painel";
@@ -70,19 +72,30 @@ export default async function AdminPage({
   // com as outras leituras, em vez de esperar o `Promise.all` inteiro.
   // Antes: um `acharAlunoPorEmail` POR solicitação, em série, depois de tudo.
   const pendentesPromise = getSolicitacoes("pendente");
-  const [pagina, pendentes, etapas, atendimentoDiario, alunosPorEmail, dashboard] =
-    await Promise.all([
-      getAlunosGps({ limite }),
-      pendentesPromise,
-      getEtapas(),
-      getAtendimentoPorAluno(),
-      pendentesPromise.then((ps) => acharAlunosPorEmails(ps.map((s) => s.email))),
-      // UMA ida ao banco para os 7 blocos agregados do dashboard
-      // (`gps.admin_dashboard()`). Os cards 6 e 7 NÃO consultam nada: saem de
-      // `faixasDeTrilha` e `resumoAtendimento`, funções puras sobre o que as
-      // duas leituras acima já trouxeram.
-      getDashboard(),
-    ]);
+  const [
+    pagina,
+    pendentes,
+    etapas,
+    atendimentoDiario,
+    alunosPorEmail,
+    dashboard,
+    filaHm,
+  ] = await Promise.all([
+    getAlunosGps({ limite }),
+    pendentesPromise,
+    getEtapas(),
+    getAtendimentoPorAluno(),
+    pendentesPromise.then((ps) => acharAlunosPorEmails(ps.map((s) => s.email))),
+    // UMA ida ao banco para os 7 blocos agregados do dashboard
+    // (`gps.admin_dashboard()`). Os cards 6 e 7 NÃO consultam nada: saem de
+    // `faixasDeTrilha` e `resumoAtendimento`, funções puras sobre o que as
+    // duas leituras acima já trouxeram.
+    getDashboard(),
+    // Compradores do HM cheio que o webhook já pôs na base e ainda não têm
+    // ambiente (`gps.admin_compradores_hm_aguardando`, …317). Só leitura:
+    // liberar é clique da equipe, na aba Solicitações.
+    getCompradoresHmAguardando(),
+  ]);
   const { alunos, total: totalAlunos } = pagina;
   // Map -> objeto simples porque `Map` não atravessa a fronteira Server ->
   // Client Component. Ambiente sem nota nenhuma não tem chave aqui.
@@ -148,7 +161,9 @@ export default async function AdminPage({
         // — a página só passa o número que já tem em mãos.
         navItems={adminNavItems({
           chamadosAbertos,
-          solicitacoesPendentes: pendentes.length,
+          // Compradores do HM aguardando acesso somam ao badge: é a mesma
+          // fila de "gente esperando acesso ao portal", na mesma aba.
+          solicitacoesPendentes: pendentes.length + filaHm.compradores.length,
           souAdmin: true,
         })}
       />
@@ -249,23 +264,31 @@ export default async function AdminPage({
             />
           }
           solicitacoes={
-            solicitacoesComMatch.length === 0 ? (
-              <EmptyState
-                icone={<Inbox />}
-                titulo="Nenhuma solicitação pendente."
-                descricao="Quando alguém pedir acesso ao portal, o pedido aparece aqui para você aprovar ou recusar."
+            <>
+              <CompradoresHm
+                compradores={filaHm.compradores}
+                falhou={filaHm.falhou}
               />
-            ) : (
-              <div className="grid gap-3">
-                {solicitacoesComMatch.map(({ solicitacao, alunoSugerido }) => (
-                  <SolicitacaoCard
-                    key={solicitacao.id}
-                    solicitacao={solicitacao}
-                    alunoSugerido={alunoSugerido}
-                  />
-                ))}
-              </div>
-            )
+              {solicitacoesComMatch.length === 0 ? (
+                <EmptyState
+                  icone={<Inbox />}
+                  titulo="Nenhuma solicitação pendente."
+                  descricao="Quando alguém pedir acesso ao portal, o pedido aparece aqui para você aprovar ou recusar."
+                />
+              ) : (
+                <div className="grid gap-3">
+                  {solicitacoesComMatch.map(
+                    ({ solicitacao, alunoSugerido }) => (
+                      <SolicitacaoCard
+                        key={solicitacao.id}
+                        solicitacao={solicitacao}
+                        alunoSugerido={alunoSugerido}
+                      />
+                    ),
+                  )}
+                </div>
+              )}
+            </>
           }
           etapas={
             <EtapasControle etapasIniciais={etapas} totalAmbientes={totalAlunos} />

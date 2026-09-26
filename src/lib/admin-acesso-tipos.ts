@@ -16,6 +16,30 @@ import type { Aluno } from "@/lib/types";
  *   cliente que só precisam do tipo importam daqui com `import type`.
  */
 
+/**
+ * O mínimo que o lote de acesso (`LoteDeAcesso`) precisa de cada pessoa: o id
+ * do cadastro e como chamá-la/falar com ela. `AlunoGps` (painel) e
+ * `CompradorHmAguardando` (fila do HM, 26/09/2026) satisfazem por estrutura —
+ * um componente só para os dois caminhos, nenhuma segunda porta de criação.
+ */
+export interface CandidatoAoLote {
+  alunoId: string;
+  aluno: Pick<Aluno, "nome" | "email" | "telefone"> | null;
+}
+
+/**
+ * Comprador do HM cheio aguardando acesso ao Programa
+ * (`gps.admin_compradores_hm_aguardando`, migração `…317`).
+ */
+export interface CompradorHmAguardando extends CandidatoAoLote {
+  compradoEm: string;
+  ofertaCodigo: string;
+  valor: number | null;
+  metodoPagamento: string | null;
+  /** O e-mail já tem login em outro portal do grupo — autorizar pede decisão. */
+  temLogin: boolean;
+}
+
 export interface AlunoBusca extends Aluno {
   documento: string | null;
   jaNoGps: boolean;

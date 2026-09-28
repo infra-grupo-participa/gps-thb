@@ -303,43 +303,51 @@ function FaixaKpisReuniao({
 
   if (!kpis) return null;
 
+  // 🔑 (28/09/2026, Marcio) "A ordem de visualização e de metrificação
+  // sempre vai ser os favoritados." O número GRANDE de cada tile é o dos
+  // clientes com estrela; os sem estrela entram só no detalhe, como
+  // complemento. O tom (urgência) também segue o número dos com estrela —
+  // "0 vencidas com estrela" é neutro mesmo havendo vencidas sem estrela.
+  const fav = kpis.favoritos;
+  const semEstrela = (total: number, comEstrela: number) =>
+    `+${Math.max(total - comEstrela, 0)} sem estrela`;
+
   return (
     <FaixaMetricas
-      titulo="Reunião preliminar"
-      // Sem `resumo`: o primeiro tile JÁ é o total (42, "Com reunião"), e
-      // repetir o mesmo número na mesma linha é ruído, não reforço.
+      titulo="Reunião preliminar — clientes com estrela"
+      resumo={`${fav.totalComReuniao} com estrela · ${kpis.totalComReuniao} no total`}
       ativo={estado.reuniao}
       metricas={[
         {
           id: "com_reuniao",
           rotulo: "Com reunião",
-          valor: kpis.totalComReuniao,
+          valor: fav.totalComReuniao,
           // Âncora de navegação, não estado: neutro de propósito.
           href: hrefClientes({ reuniao: "com_reuniao", pagina: 1 }, estado),
-          detalhe: "qualquer prazo",
+          detalhe: `qualquer prazo · ${semEstrela(kpis.totalComReuniao, fav.totalComReuniao)}`,
         },
         {
           id: "marcada",
           rotulo: "Marcadas",
-          valor: kpis.marcadas,
+          valor: fav.marcadas,
           href: hrefClientes({ reuniao: "marcada", pagina: 1 }, estado),
-          detalhe: "em mais de 7 dias",
+          detalhe: `em mais de 7 dias · ${semEstrela(kpis.marcadas, fav.marcadas)}`,
         },
         {
           id: "para_vencer",
           rotulo: "Para vencer",
-          valor: kpis.paraVencer,
+          valor: fav.paraVencer,
           tom: "atencao",
           href: hrefClientes({ reuniao: "para_vencer", pagina: 1 }, estado),
-          detalhe: "nos próximos 7 dias",
+          detalhe: `nos próximos 7 dias · ${semEstrela(kpis.paraVencer, fav.paraVencer)}`,
         },
         {
           id: "vencida",
           rotulo: "Vencidas",
-          valor: kpis.vencidas,
+          valor: fav.vencidas,
           tom: "risco",
           href: hrefClientes({ reuniao: "vencida", pagina: 1 }, estado),
-          detalhe: "data já passou",
+          detalhe: `data já passou · ${semEstrela(kpis.vencidas, fav.vencidas)}`,
         },
       ]}
     />

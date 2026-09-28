@@ -11,6 +11,7 @@
  * Server Component: a tela não escreve nada, só lê.
  */
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { Star, TriangleAlert } from "lucide-react";
 import type { ClienteDoPrograma } from "@/lib/data/clientes-admin";
@@ -57,7 +58,20 @@ export function TabelaClientesPrograma({
               uma vez fora do loop — é o mesmo dia para as 100 linhas. */}
           {(() => {
             const hoje = hojeSaoPaulo();
-            return linhas.map((c) => {
+            // 🔑 (28/09/2026, Marcio) Estrela primeiro — a RPC já devolve os
+            // com estrela no topo (`…318`). Aqui só se marca a FRONTEIRA:
+            // uma faixa antes de cada grupo, e só quando os dois grupos
+            // aparecem na mesma página (senão é rótulo sem contraste).
+            const temFav = linhas.some((l) => l.acompanhadoEquipe);
+            const temSem = linhas.some((l) => !l.acompanhadoEquipe);
+            const comFaixas = temFav && temSem;
+            return linhas.map((c, i) => {
+              const faixa =
+                comFaixas && (i === 0 || linhas[i - 1].acompanhadoEquipe !== c.acompanhadoEquipe)
+                  ? c.acompanhadoEquipe
+                    ? "Com estrela — prioridade da equipe"
+                    : "Sem estrela — menor prioridade"
+                  : null;
               const fase = FASES_CLIENTE.find((f) => f.id === c.fase);
               const grau = c.grauRelacao
                 ? GRAUS_RELACAO_UI.find((g) => g.id === c.grauRelacao)?.rotulo
@@ -67,8 +81,33 @@ export function TabelaClientesPrograma({
                 c.dataReuniaoPreliminar && c.dataReuniaoPreliminar < hoje,
               );
               return (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">
+                <Fragment key={c.id}>
+                {faixa ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell
+                      colSpan={7}
+                      className="rotulo bg-superficie-afundada py-1.5 text-muted-foreground"
+                    >
+                      {faixa}
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                {/* Com estrela: fundo de marca + filete à esquerda + nome em
+                    negrito. Sem estrela: texto no tom apagado (token
+                    `muted-foreground`, contraste AA medido — nunca `opacity`,
+                    que derruba o contraste abaixo do mínimo). */}
+                <TableRow
+                  className={cn(
+                    c.acompanhadoEquipe
+                      ? "bg-primary/5 shadow-[inset_3px_0_0_var(--color-primary)] hover:bg-primary/10"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  <TableCell
+                    className={cn(
+                      c.acompanhadoEquipe ? "font-semibold text-foreground" : "font-normal",
+                    )}
+                  >
                     <div className="flex min-w-0 items-center gap-1.5">
                       {/* Cliente acompanhado pela equipe: mesmo desenho do
                           card do parceiro (`aluno-card.tsx`) — estrela
@@ -144,6 +183,7 @@ export function TabelaClientesPrograma({
                     )}
                   </TableCell>
                 </TableRow>
+                </Fragment>
               );
             });
           })()}

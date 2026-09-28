@@ -104,6 +104,17 @@ export interface ReuniaoKpis {
   marcadas: number;
   paraVencer: number;
   vencidas: number;
+  /**
+   * Os mesmos 4 números, só dos clientes com ESTRELA (`acompanhado_equipe`),
+   * migração `…318` (28/09/2026). Pedido do Marcio: a métrica que manda na
+   * tela é a dos favoritados; os sem estrela aparecem como complemento.
+   */
+  favoritos: {
+    totalComReuniao: number;
+    marcadas: number;
+    paraVencer: number;
+    vencidas: number;
+  };
 }
 
 const KPIS_ZERADOS: ReuniaoKpis = {
@@ -111,6 +122,7 @@ const KPIS_ZERADOS: ReuniaoKpis = {
   marcadas: 0,
   paraVencer: 0,
   vencidas: 0,
+  favoritos: { totalComReuniao: 0, marcadas: 0, paraVencer: 0, vencidas: 0 },
 };
 
 /**
@@ -152,12 +164,27 @@ export async function getClientesReuniaoKpis(): Promise<{
     };
   }
 
+  // 🔴 Mesma regra: coluna de favoritos ausente (banco sem a `…318`) não
+  // vira "0 com estrela" — seria afirmar que ninguém favoritado tem reunião.
+  if (!("fav_total_com_reuniao" in linha)) {
+    return {
+      kpis: KPIS_ZERADOS,
+      erro: "Não foi possível apurar os números dos clientes com estrela agora.",
+    };
+  }
+
   return {
     kpis: {
       totalComReuniao: Number(linha.total_com_reuniao ?? 0),
       marcadas: Number(linha.marcadas ?? 0),
       paraVencer: Number(linha.para_vencer ?? 0),
       vencidas: Number(linha.vencidas ?? 0),
+      favoritos: {
+        totalComReuniao: Number(linha.fav_total_com_reuniao ?? 0),
+        marcadas: Number(linha.fav_marcadas ?? 0),
+        paraVencer: Number(linha.fav_para_vencer ?? 0),
+        vencidas: Number(linha.fav_vencidas ?? 0),
+      },
     },
   };
 }

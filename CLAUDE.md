@@ -992,7 +992,9 @@ Rotas `/chamados` e `/chamados/[id]` (aluno), `/admin/chamados` e `/admin/chamad
   aqui"** — nunca "no lugar do e-mail".
 - **`gps.chamados` + `gps.chamado_mensagens`, append-only:** só RPC escreve, `authenticated` só
   lê, `anon` não tem nada. O **papel do autor é derivado no servidor**. Tetos: 5 abertos por
-  ambiente, 20 mensagens por chamado, reabrir em até 7 dias, e-mail só quando o **status muda**.
+  ambiente, 20 mensagens por chamado, reabrir em até 7 dias; e-mail para a equipe só quando o **status muda**, e para o
+  parceiro a **cada resposta da equipe** (desde a `…319`, 28/09/2026 — a resposta depois de um
+  "aguarde" ficava sem e-mail).
 - **Anexo:** bucket **NOVO `gps-chamados`** (privado, 5 MB, `png/jpeg/webp/pdf`), path
   `<aluno_id>/<uuid>.<ext>`, policies por prefixo; tamanho e MIME conferidos em
   `storage.objects.metadata` pela RPC. Bucket novo em vez do `gps-documentos` órfão, que está

@@ -1248,6 +1248,41 @@ function suiteDaFicha(opts: {
         await expect(painel).toHaveAttribute("aria-labelledby", idAba!);
       }
     });
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 9 · A data da preliminar diz o que NÃO faz (28/09/2026)
+    // ─────────────────────────────────────────────────────────────────────
+    //
+    // 🔴 Quatro chamados em poucos dias nasceram de ler "Data da reunião
+    // preliminar" como "reservei o horário com a equipe". A ajuda sob o campo
+    // é a porta de entrada da correção — se ela some, o chamado volta.
+    // Parceiro: frase + link para `/sessoes`. Admin: frase SEM link
+    // (`/sessoes` só existe para o parceiro, `nav.ts`). SÓ LEITURA.
+    test("9 · a data da preliminar avisa que não reserva horário com a equipe", async ({
+      page,
+    }) => {
+      const base = await abrir(page);
+      test.skip(!base, "Cliente de teste não alcançável nesta conta.");
+
+      await page.goto(`${base!}?aba=preliminar`);
+      const campo = page.locator("#f-data");
+      await expect(campo).toBeVisible({ timeout: 12_000 });
+      await expect(campo).toHaveAttribute("aria-describedby", "f-data-ajuda");
+
+      const ajuda = page.locator("#f-data-ajuda");
+      await expect(ajuda).toBeVisible();
+      await expect(ajuda).toContainText(/n(ã|a)o reserva hor(á|a)rio/i);
+
+      const link = ajuda.getByRole("link", { name: /marque em sess(õ|o)es/i });
+      if (papel === "parceiro") {
+        await expect(link).toHaveAttribute("href", "/sessoes");
+      } else {
+        await expect(
+          link,
+          "No admin o link para /sessoes não pode existir — a rota é só do parceiro.",
+        ).toHaveCount(0);
+      }
+    });
   });
 }
 

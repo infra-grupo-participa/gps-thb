@@ -12,10 +12,14 @@ import "server-only";
  * em caixa de entrada compartilhada, em backup, em encaminhamento) e a mensagem
  * de suporte pode conter dado pessoal do aluno ou de cliente dele.
  *
- * 🔑 QUANDO SAI: só na MUDANÇA DE STATUS do chamado, e quem decide isso é o
- * banco — as RPCs `gps.chamado_abrir`/`gps.chamado_responder` devolvem `avisar`
- * preenchido apenas na transição. Cinco mensagens seguidas do aluno geram UM
- * e-mail. A trava anti-flood é o modelo, não um contador aqui.
+ * 🔑 QUANDO SAI — quem decide é o banco (`gps.chamado_abrir`/
+ * `gps.chamado_responder` devolvem `avisar` preenchido ou nulo):
+ *   - para a EQUIPE: só na MUDANÇA DE STATUS (aluno escreve num chamado que
+ *     não estava `aberto`). Cinco mensagens seguidas do aluno geram UM e-mail
+ *     — a trava anti-flood é o modelo, não um contador aqui.
+ *   - para o PARCEIRO: a CADA resposta da equipe (`…319`, 28/09/2026). A
+ *     resposta que vinha depois de um "aguarde" ficava sem e-mail e o parceiro
+ *     só a via dias depois. Quem escreve é a equipe: não há vetor de rajada.
  */
 
 import { enviar, esc, layout, botao, type ResultadoEmail } from "@/lib/email";

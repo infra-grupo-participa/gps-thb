@@ -177,9 +177,34 @@ export function FichaAbaPreliminar({
               type="date"
               value={dataReuniao}
               onChange={(e) => onDataReuniao(e.target.value)}
+              aria-describedby="f-data-ajuda"
               className="pl-9"
             />
           </div>
+          {/* 🔴 (28/09/2026) Dizer o que a data NÃO faz. Três chamados do
+              mesmo parceiro em 3 dias (e um de outra parceira) nasceram de
+              ler esta data como "reservei o horário com a equipe": ele
+              preencheu 02/10 09:30 aqui e cobrou o link da sala. A data é a
+              agenda DELE com o cliente; a equipe participa só pelo que foi
+              marcado em `/sessoes`. No admin o texto muda de pessoa e perde
+              o link (`/sessoes` só existe para o parceiro, ver `nav.ts`). */}
+          <p id="f-data-ajuda" className="text-xs leading-snug text-muted-foreground">
+            {admin ? (
+              "Data que o parceiro combinou com o cliente. Não reserva horário na agenda da equipe."
+            ) : (
+              <>
+                A data que você combinou com o cliente. Ela não reserva horário
+                com a equipe — para a equipe participar,{" "}
+                <Link
+                  href="/sessoes"
+                  className="foco-visivel rounded-xs font-medium underline underline-offset-2 hover:text-accent-foreground"
+                >
+                  marque em Sessões
+                </Link>
+                .
+              </>
+            )}
+          </p>
         </div>
       </div>
 

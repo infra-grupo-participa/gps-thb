@@ -6,7 +6,7 @@
  * Responder e fechar NÃO estão aqui: são as MESMAS actions do aluno
  * (`src/app/chamados/actions.ts`), porque quem decide o papel é o banco
  * (`gp_is_admin()` → 'equipe'). Duplicar aqui criaria um segundo lugar para a
- * regra de transição de status e de e-mail.
+ * regra de status e de e-mail (que mora no banco, em `gps.chamado_responder`).
  *
  * O que é só-admin: o interruptor, a lista de e-mails da equipe e o EXPURGO.
  *

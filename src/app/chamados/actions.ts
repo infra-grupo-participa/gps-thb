@@ -15,8 +15,9 @@
  * pedir a URL assinada.
  *
  * 🔑 E-MAIL DEPOIS DO COMMIT, e falha de e-mail NÃO desfaz o chamado. As RPCs
- * devolvem `avisar`/`avisar_equipe` já preenchido só quando o status MUDOU;
- * aqui só se envia o que veio. Resend fora do ar vira `logErro` com contexto
+ * devolvem `avisar`/`avisar_equipe` já preenchido quando há alguém a avisar
+ * (equipe: na transição de status; parceiro: a cada resposta da equipe, desde
+ * a `…319`); aqui só se envia o que veio. Resend fora do ar vira `logErro` com contexto
  * (uma linha JSON, `src/lib/log.ts`) — o chamado continua de pé.
  */
 
@@ -325,8 +326,12 @@ export async function responderChamado(input: {
 
   const linha = ((data ?? []) as { status_novo: string; avisar: string | null }[])[0];
 
-  // `avisar` só vem preenchido na TRANSIÇÃO de status. Sem ele, ninguém é
-  // avisado — é a trava anti-flood, e ela mora no banco.
+  // Quem decide se avisa é o banco (`gps.chamado_responder`):
+  //   - aluno escreveu → avisa a equipe só na TRANSIÇÃO de status (trava
+  //     anti-flood; a equipe trabalha pela fila de `/admin/chamados`);
+  //   - equipe escreveu → avisa o parceiro SEMPRE (`…319`, 28/09): a resposta
+  //     que vinha depois de um "aguarde" ficava sem e-mail, e o parceiro só
+  //     via dias depois.
   if (linha?.avisar) {
     const { data: chamado } = await supabase
       .schema("gps")

@@ -38,7 +38,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Star, Users } from "lucide-react";
+import { Users } from "lucide-react";
 
 const TETO = 5;
 
@@ -57,18 +57,13 @@ function ContadorSelecao({ total }: { total: number }) {
 function LinhaCliente({
   cliente,
   marcado,
-  travado,
   cheio,
-  motivoTravado,
   onToggle,
 }: {
   cliente: ClienteEtapa1;
   marcado: boolean;
-  /** `true` quando marcar/desmarcar este cliente falharia — a caixa não aparece. */
-  travado: boolean;
   /** Teto de 5 atingido e este cliente NÃO está marcado — caixa desabilitada, com motivo visível. */
   cheio: boolean;
-  motivoTravado: string | null;
   onToggle: () => void;
 }) {
   const id = useId();
@@ -79,19 +74,7 @@ function LinhaCliente({
 
   return (
     <li className="flex items-center gap-3 border-b border-borda-fina px-1 py-2 last:border-b-0">
-      {travado ? (
-        // 🔴 O favorito não pode sair dos 5 selecionados (CHECK do banco) —
-        // a tela NÃO oferece a caixa desmarcável: padrão da casa é não
-        // oferecer o botão que falharia, e não desabilitar em silêncio.
-        <span
-          title={motivoTravado ?? undefined}
-          className="flex size-4 shrink-0 items-center justify-center"
-        >
-          <Star className="size-4 fill-accent-foreground text-accent-foreground" aria-hidden />
-          <span className="sr-only">{motivoTravado}</span>
-        </span>
-      ) : (
-        <Checkbox
+      <Checkbox
           id={id}
           checked={marcado}
           disabled={cheio}
@@ -105,12 +88,11 @@ function LinhaCliente({
                 : `Selecionar ${rotulo} para a entrevista`
           }
         />
-      )}
       <label
-        htmlFor={travado ? undefined : id}
+        htmlFor={id}
         className={
           "flex min-w-0 flex-1 items-center gap-2 corpo-sm " +
-          (travado || cheio ? "" : "cursor-pointer") +
+          (cheio ? "" : "cursor-pointer") +
           (cheio ? " text-muted-foreground" : "")
         }
       >
@@ -200,8 +182,7 @@ export function DialogoSelecaoEntrevista({
     [clientes, busca],
   );
 
-  // Favorito sempre no topo — é o único que a tela impede de desmarcar, e
-  // ver antes explica a caixa ausente antes de rolar a lista inteira.
+  // Favorito sempre no topo — é o cliente que a equipe acompanha.
   const ordenados = useMemo(() => {
     if (!favorito) return filtrados;
     const resto = filtrados.filter((c) => c.id !== favorito.id);
@@ -222,9 +203,8 @@ export function DialogoSelecaoEntrevista({
           <DialogTitle>Escolher os 5 da entrevista</DialogTitle>
           <DialogDescription>
             A equipe faz uma entrevista prévia por telefone com até 5
-            clientes. O favorito da equipe (com a estrela) entra
-            automaticamente e não pode ser removido daqui — para trocá-lo,
-            abra um chamado no Suporte.
+            clientes. A escolha é opcional e não interfere na estrela do
+            cliente da equipe.
           </DialogDescription>
         </DialogHeader>
 
@@ -246,21 +226,14 @@ export function DialogoSelecaoEntrevista({
         ) : (
           <ul className="max-h-80 overflow-y-auto rounded-lg border border-borda-fina">
             {ordenados.map((c) => {
-              const ehFavorito = favorito !== null && c.id === favorito.id;
               const marcado = selecionados.has(c.id);
               const cheio = selecionados.size >= TETO && !marcado;
               return (
                 <LinhaCliente
                   key={c.id}
                   cliente={c}
-                  marcado={marcado || ehFavorito}
-                  travado={ehFavorito}
+                  marcado={marcado}
                   cheio={cheio}
-                  motivoTravado={
-                    ehFavorito
-                      ? "O cliente favorito da equipe precisa continuar entre os 5 selecionados. Para trocar o favorito, abra um chamado no Suporte."
-                      : null
-                  }
                   onToggle={() => {
                     if (cheio) return;
                     toggle(c);

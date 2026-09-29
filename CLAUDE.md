@@ -2275,6 +2275,22 @@ em `src/lib/minutas-tipos.ts`) — a **obrigatoriedade** não é replicada no
 TypeScript: a fronteira é a RPC, para as duas verdades não divergirem no dia
 em que o interruptor mudar.
 
+### ⭐ Estrela SEM pré-requisito dos 5 da Entrevista Prévia (29/09/2026, migração `…322`)
+
+Pedido da operação (29/09): *"a ficha do aluno precisa ser completamente opcional,
+estamos tendo problemas demais com isso"*. Caso que disparou: parceira com cliente
+**contratado** e reunião marcada não conseguia dar a estrela porque tinha 0 de 31
+clientes nos 5 (em 23/09 isso atingia 49 de 86 parceiros).
+**Revoga a decisão de 23/09 ("a regra fica").** Estrela e seleção dos 5 são
+independentes: caiu o CHECK `chk_etapa1_clientes_favorito_e_selecionado`, e
+`selecao_entrevista_definir` não obriga mais o favorito a ficar entre os 5.
+Saíram as guardas em `definirClienteEquipe`, na lista (`clientes-manager`), o motivo
+morto da `FichaCabecalho`, `src/lib/clientes-textos.ts` e o E2E
+`estrela-pre-requisito.spec.ts`. **Fica:** 1 estrela por ambiente (índice único),
+trava de troca depois que o caso anda (trigger `…305`), teto de 5 da seleção.
+Provado no banco: estrela em cliente fora dos 5 grava (transação desfeita).
+Reverter: ver cabeçalho da migração.
+
 ### 🎙️ Entrevista Prévia 3.0 — roteiro curto e agendamento no fim (29/09/2026)
 
 Plano aprovado: `plano-entrevista-previa-3.md` (arthur). **Decisões do Marcio

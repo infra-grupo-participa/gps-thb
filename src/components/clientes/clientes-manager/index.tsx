@@ -71,7 +71,6 @@ import {
   estrelaTravada,
 } from "./ordenacao";
 import { ROTULO_ORDENACAO, type FiltroGrau, type Ordenacao } from "./tipos";
-import { textoListaNaoSelecionado } from "@/lib/clientes-textos";
 
 export function ClientesManager({
   alunoId,
@@ -241,18 +240,6 @@ export function ClientesManager({
       if (!admin && estrelaTravada(cliente)) return;
       setErroDialogo(null);
       setDesfavoritando(cliente);
-      return;
-    }
-    // 🔴 O CHECK `chk_etapa1_clientes_favorito_e_selecionado` exige que o
-    // cliente já esteja entre os 5 da Entrevista Prévia. Sem isto, o parceiro
-    // confirmava "tenho certeza" no diálogo e a escrita falhava no banco DEPOIS
-    // — o pior dos mundos. Barra ANTES de abrir qualquer diálogo, com o nome e
-    // o caminho (23/09/2026).
-    // `!cliente.acompanhado_equipe` é essencial: DESMARCAR quem já é a estrela
-    // não passa pelo CHECK e não pode ser travado por engano — mas esse caso
-    // já retornou no ramo acima, então aqui só sobra "ainda não é a estrela".
-    if (!cliente.selecionado_entrevista) {
-      setErroLista(textoListaNaoSelecionado(cliente.nome || "Este cliente"));
       return;
     }
     if (!admin) {

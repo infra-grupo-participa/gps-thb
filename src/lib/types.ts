@@ -387,9 +387,8 @@ export interface ClienteEtapa1 {
   acompanhamento_confirmado_por: string | null;
   /**
    * Um dos até 5 clientes selecionados para a entrevista prévia (migração
-   * 20260915000261, decisão Marcio 14/09/2026). O FAVORITO
-   * (`acompanhado_equipe`) é sempre um dos 5 — garantido pelo CHECK
-   * `chk_etapa1_clientes_favorito_e_selecionado` no banco.
+   * 20260915000261, decisão Marcio 14/09/2026). Independente da estrela
+   * (`acompanhado_equipe`) desde a migração …322 (29/09/2026).
    *
    * Teto de 5 NÃO é regra de tipo nem de coluna: é a RPC
    * `gps.selecao_entrevista_definir`, que recebe o conjunto inteiro de uma

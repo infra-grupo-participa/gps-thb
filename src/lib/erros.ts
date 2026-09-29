@@ -215,16 +215,11 @@ const FRASES_DO_BANCO: Record<string, string> = {
     "Só a equipe confirma ou libera o acompanhamento deste cliente.",
 
   // gps.selecao_entrevista_definir (migração 20260915000261) — os 5 clientes
-  // da entrevista prévia. As duas primeiras são regra de negócio (teto e
-  // pertencimento ao ambiente); a terceira é a invariante "o favorito é um
-  // dos 5", com a mesma copy de "abra um chamado" usada acima para trocar o
-  // favorito — para o aluno é o mesmo caminho.
+  // da entrevista prévia: teto e pertencimento ao ambiente.
   "Selecione no máximo 5 clientes para a entrevista.":
     "Selecione no máximo 5 clientes para a entrevista.",
   "Um dos clientes selecionados não pertence a este ambiente.":
     "Um dos clientes selecionados não pertence a este ambiente. Recarregue a lista e tente de novo.",
-  "O cliente favorito da equipe precisa continuar entre os 5 selecionados. Para trocar o favorito, abra um chamado no Suporte.":
-    "O cliente favorito da equipe precisa continuar entre os 5 selecionados. Para trocar o favorito, abra um chamado no Suporte.",
 
   // 🔴 A frase que a trigger levanta HOJE (a de cima tem travessão e é a
   // versão antiga). O match é por igualdade exata, então sem esta linha a
@@ -752,25 +747,16 @@ const POR_CODIGO: Record<string, string> = {
  * CONSTRAINT, esse sim é estável, e por isso o casamento aqui é por
  * SUBSTRING do nome, não da frase inteira.
  *
- * ⚠️ Isto NÃO ensina `erros.ts` a regra de negócio "quem pode ser estrela".
- * A verdade continua só no CHECK (`chk_etapa1_clientes_favorito_e_selecionado`
- * em `gps.etapa1_clientes`, migração 20260915000261: só vira estrela quem já
- * está entre os 5 selecionados da Entrevista Prévia). Este mapa só TRADUZ o
- * nome que o banco já devolve — se o CHECK mudar de regra sem mudar de nome,
- * a frase abaixo é que fica desatualizada, não o inverso.
+ * ⚠️ Este mapa só TRADUZ o nome que o banco já devolve, não ensina regra.
+ * A única entrada (`chk_etapa1_clientes_favorito_e_selecionado`) saiu em
+ * 29/09/2026 junto com o CHECK (migração …322); o mecanismo fica.
  *
  * Consultado ANTES de `POR_CODIGO["23514"]`: sem esta entrada, a recusa caía
  * no genérico "Algum campo está fora do formato aceito. Revise e tente de
  * novo." — que não existe campo errado nenhum, e o parceiro não tinha como
  * saber o que fazer.
  */
-const POR_CONSTRAINT: Array<{ contem: string; frase: string }> = [
-  {
-    contem: "chk_etapa1_clientes_favorito_e_selecionado",
-    frase:
-      "Este cliente precisa estar entre os 5 escolhidos para a Entrevista Prévia antes de ser marcado como cliente da equipe.",
-  },
-];
+const POR_CONSTRAINT: Array<{ contem: string; frase: string }> = [];
 
 const GENERICA = "Não foi possível concluir agora. Tente de novo em instantes.";
 

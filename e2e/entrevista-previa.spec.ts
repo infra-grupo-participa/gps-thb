@@ -11,13 +11,21 @@ import {
 } from "./apoio";
 
 /**
- * Entrevista Prévia 2.0 — o formulário guiado que gera o DISC sozinho.
+ * Entrevista Prévia 3.0 — roteiro curto (até 15 perguntas) que termina
+ * marcando a Reunião Preliminar.
  *
- * Regras do Marcio (23/09) que estes testes guardam:
+ * Regras do Marcio (23/09, revistas em 29/09) que estes testes guardam:
  *   • botão na ficha do cliente que leva à entrevista
- *   • 20-30 perguntas, TODAS fechadas (nenhum campo de texto livre)
- *   • o DISC é gerado no fim, sem ninguém informar nem anexar
- *   • mais de um decisor ⇒ a Reunião Preliminar exige todos presentes
+ *   • no máximo 15 perguntas (caminho curto: 11), UMA por vez, com o
+ *     progressbar "Pergunta X de Y" (Y recalculado pelas condições)
+ *   • escolha única AVANÇA sozinha; múltipla tem o botão "Continuar"
+ *   • nenhum campo de texto nas perguntas, salvo os nomes de quem decide
+ *     junto; na validação, até 3 frases exatas do cliente (opcionais, ≤150)
+ *   • validação "Deixa eu confirmar…" antes de concluir
+ *   • na validação o parceiro ESCOLHE a Reunião Preliminar ("Marcar agora" ou
+ *     "Não agendei agora"); concluir fica desabilitado até a escolha
+ *   • "Marcar agora" leva a /clientes/<id>/entrevista/agendar?e=…; "Não agendei"
+ *     volta à ficha com o aviso "Reunião Preliminar: não agendada"
  *   • entrevistas ILIMITADAS por cliente
  *
  * 🔴 ESCREVE EM PRODUÇÃO: a conclusão grava DISC e decisores na ficha de um
@@ -26,17 +34,27 @@ import {
  *
  * ── 🔴 EFEITO DE ESCRITA DECLARADO (23/09/2026) ────────────────────────────
  *
- * O último describe deste arquivo ("a ponte para a sessão") tem UM teste que
- * conclui uma entrevista de verdade: a RPC `gps.entrevista_previa_concluir`
- * **grava o perfil DISC e o relatório** na ficha do CLIENTE DE TESTE,
- * sobrescrevendo o que estiver lá. Ele fica atrás de `QA_PERMITE_ESCRITA=1`,
- * no molde de `QA_PERMITE_EMAIL=1` em `sessoes-fluxo.spec.ts`, e se pula com
- * a razão escrita quando a variável não está ligada.
+ * Dois testes ficam atrás de `QA_PERMITE_ESCRITA=1` (molde de
+ * `QA_PERMITE_EMAIL=1` em `sessoes-fluxo.spec.ts`) e se pulam com a razão
+ * escrita quando a variável não está ligada:
  *
- * **Não dispara e-mail** — conferido no código, não presumido:
- * `concluirEntrevistaPrevia` chama a RPC e dois `revalidatePath`, e a RPC não
- * usa `net.http_post` nem enfileira aviso. Os outros testes deste arquivo não
- * concluem nada: leem a tela e descartam o que digitam.
+ *   • "caminho longo": responde as 15 perguntas e PARA na validação. Grava só
+ *     o RASCUNHO (`salvarProgressoEntrevista`), nunca conclui.
+ *   • "caminho curto": responde as 11 e CONCLUI. A RPC
+ *     `gps.entrevista_previa_concluir` **grava o perfil DISC e o relatório**
+ *     na ficha do CLIENTE DE TESTE, sobrescrevendo o que estiver lá. O
+ *     roteiro do teste marca "decide sozinho" de propósito: nenhum decisor "dj"
+ *     ⇒ nada em `gps.cliente_decisores`, e nenhuma trava na Preliminar.
+ *
+ * **Não agenda nada**: o teste termina na tela "Marque a Reunião Preliminar",
+ * sem clicar em horário. Não dispara e-mail.
+ *
+ * Os demais testes leem a tela (e só clicam "Anterior"/"Começar"); a rota
+ * `/entrevista` cria ou retoma a linha em aberto, como sempre.
+ *
+ * 🔑 A entrevista em aberto pode vir RETOMADA (respostas de uma rodada
+ * anterior). Por isso todo fluxo começa voltando ao início por "Anterior" e
+ * REMARCA cada pergunta — o resultado não depende do que ficou no rascunho.
  */
 
 const cred = exigeLogin();
@@ -103,7 +121,191 @@ async function abrirPerfilDoCliente(page: import("@playwright/test").Page) {
   await expect(page.getByRole("dialog")).toBeVisible({ timeout: 12_000 });
 }
 
-test.describe("Entrevista Prévia 2.0", () => {
+type Pagina = import("@playwright/test").Page;
+
+/** Qualquer dos dois rótulos do botão de concluir (só um existe por vez). */
+const BOTAO_CONFIRMOU = /^confirmou — concluir/i;
+/** Sem escolha, ou "Não agendei agora". */
+const BOTAO_CONCLUIR = /^confirmou — concluir$/i;
+/** Só depois de "Marcar agora". */
+const BOTAO_CONCLUIR_E_MARCAR = /^confirmou — concluir e marcar a reunião$/i;
+const BOTAO_AJUSTAR = /^ajustar motivo, critério ou decisores$/i;
+const TEXTO_ABERTURA = /são perguntas rápidas, uns 8 minutos, para a doutora chegar preparada/i;
+
+/** Perguntas que aceitam texto: só os nomes de quem decide junto. */
+const CAMPO_DE_TEXTO = 'input[type="text"], input:not([type]), textarea';
+
+/**
+ * A ficha → Ver perfil → "Iniciar/Nova entrevista" → formulário montado.
+ * Devolve `false` (e o teste se pula) quando o cliente de teste não está na
+ * lista desta conta.
+ */
+async function abrirEntrevista(page: Pagina): Promise<boolean> {
+  await entrar(page, cred!, "/clientes");
+  await page.goto("/clientes");
+  const link = page.getByRole("link", { name: CLIENTE_TESTE }).first();
+  const achou = await link
+    .waitFor({ state: "visible", timeout: 12_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!achou) return false;
+  await link.click();
+  await page.waitForURL(/\/clientes\/[0-9a-f-]+$/i, { timeout: 15_000 });
+  await abrirPerfilDoCliente(page);
+  await page
+    .getByRole("dialog")
+    .getByRole("link", { name: /iniciar entrevista|nova entrevista/i })
+    .first()
+    .click();
+  await page.waitForURL(/\/entrevista$/, { timeout: 15_000 });
+  return true;
+}
+
+/**
+ * Atravessa a abertura ("Começar") se ela estiver na tela. Entrevista NOVA
+ * abre nela; entrevista retomada cai direto numa pergunta ou na validação.
+ * Devolve `true` se a abertura apareceu (o chamador decide o que afirmar).
+ */
+async function passarDaAbertura(page: Pagina): Promise<boolean> {
+  const comecar = page.getByRole("button", { name: /^começar$/i });
+  await expect(
+    comecar
+      .or(page.getByRole("progressbar"))
+      .or(page.getByRole("button", { name: BOTAO_CONFIRMOU })),
+    "O formulário não montou: nem abertura, nem pergunta, nem validação.",
+  ).toBeVisible({ timeout: 12_000 });
+  if (!(await comecar.isVisible())) return false;
+  await expect(page.getByText(TEXTO_ABERTURA)).toBeVisible();
+  await comecar.click();
+  return true;
+}
+
+/** O título da tela atual (pergunta ou frase de validação). */
+function titulo(page: Pagina) {
+  return page.locator("main h2").first();
+}
+
+/** Volta por "Anterior" até a 1ª pergunta (Anterior desabilitado). */
+async function voltarAoInicio(page: Pagina) {
+  const anterior = page.getByRole("button", { name: /^anterior$/i });
+  for (let i = 0; i < 20; i++) {
+    if (await anterior.isDisabled()) return;
+    const antes = (await titulo(page).textContent()) ?? "";
+    await anterior.click();
+    await expect(titulo(page)).not.toHaveText(antes);
+  }
+  throw new Error("Anterior nunca chegou à 1ª pergunta em 20 cliques.");
+}
+
+/**
+ * O que cada pergunta do roteiro diz (enunciado) e o que se marca nela. Os
+ * rótulos são os do catálogo `entrevista-previa-perguntas.ts`. O caminho é
+ * decidido por 3 respostas: `bens`, `decide_sozinho` e `filhos_participam`.
+ */
+interface Roteiro {
+  bens: string[];
+  decide: string;
+  filhos: string;
+}
+
+/** 11 perguntas: sem imóvel, sem empresa, sem filhos, decide sozinho. */
+const CAMINHO_CURTO: Roteiro = {
+  bens: ["Investimentos financeiros"],
+  decide: "Decide sozinho",
+  filhos: "Não tem filhos",
+};
+
+/** 15 perguntas: imóvel + empresa, decide a dois, filhos opinam. */
+const CAMINHO_LONGO: Roteiro = {
+  bens: ["Imóvel onde mora", "Empresa / participação em negócio"],
+  decide: "Precisa ser a dois — decidem juntos",
+  filhos: "Opinam, mas não decidem",
+};
+
+interface Passo {
+  enunciado: RegExp;
+  marcar: string[];
+  /** Caixas de marcar (`bens`, `obs_comportamento`): tem "Continuar" e ✓. */
+  multipla?: boolean;
+}
+
+function passos(r: Roteiro): Passo[] {
+  return [
+    { enunciado: /o que aconteceu, ou o que você começou a perceber/i, marcar: ["Tem um problema acontecendo agora"] },
+    { enunciado: /já pesquisou, ouviu ou conversou/i, marcar: ["Nunca tratou do assunto"] },
+    { enunciado: /o patrimônio está em quê/i, marcar: r.bens, multipla: true },
+    { enunciado: /quantos imóveis/i, marcar: ["1 ou 2"] },
+    { enunciado: /no seu nome mesmo, de pessoa física/i, marcar: ["Tudo em pessoa física"] },
+    { enunciado: /alguma coisa formal para o dia em que você faltar/i, marcar: ["Nada"] },
+    { enunciado: /decisão importante do patrimônio/i, marcar: [r.decide] },
+    { enunciado: /seus filhos — entram nessa decisão/i, marcar: [r.filhos] },
+    { enunciado: /na empresa: mudança de estrutura/i, marcar: ["Sócio da própria família"] },
+    { enunciado: /quem decide junto precisa estar lá/i, marcar: ["Sim, todos conseguem participar"] },
+    { enunciado: /o que precisa ter ficado claro/i, marcar: ["Saber exatamente o que fazer"] },
+    { enunciado: /divisão entre seus filhos/i, marcar: ["Tranquila, todos se entendem"] },
+    { enunciado: /preparar a conversa do seu jeito/i, marcar: ["Ver primeiro onde vai chegar"] },
+    { enunciado: /como a pessoa respondeu/i, marcar: ["Direto, quis saber logo do que se trata"] },
+    { enunciado: /marque o que percebeu/i, marcar: ["Mostrou entusiasmo", "Perguntou de preço"], multipla: true },
+  ];
+}
+
+/**
+ * Responde o roteiro desde a 1ª pergunta até a VALIDAÇÃO, afirmando em cada
+ * passo o que a tela promete: "Pergunta N de Y" na posição certa, avanço
+ * sozinho na escolha única, "Continuar" na múltipla. Devolve o `Y` da última
+ * pergunta (o total do caminho).
+ */
+async function responderAteAValidacao(page: Pagina, roteiro: Roteiro): Promise<number> {
+  const lista = passos(roteiro);
+  const progresso = page.getByRole("progressbar");
+  const continuar = page.getByRole("button", { name: /^continuar$/i });
+  const confirmar = page.getByRole("button", { name: BOTAO_CONFIRMOU });
+  let total = 0;
+
+  for (let posicao = 1; posicao <= 15; posicao++) {
+    const texto = (await titulo(page).textContent()) ?? "";
+    const passo = lista.find((p) => p.enunciado.test(texto));
+    if (!passo) throw new Error(`Pergunta ${posicao} fora do roteiro conhecido: "${texto}"`);
+
+    await expect(
+      progresso,
+      `O progressbar não está em "Pergunta ${posicao} de Y" na pergunta "${texto}".`,
+    ).toHaveAttribute("aria-label", new RegExp(`^Pergunta ${posicao} de \\d+$`));
+    await expect(progresso).toHaveAttribute("aria-valuenow", String(posicao));
+    total = Number(await progresso.getAttribute("aria-valuemax"));
+    expect(total, "Y do progressbar acima do teto de 15.").toBeLessThanOrEqual(15);
+
+    if (passo.multipla) {
+      await expect(continuar, `"${texto}" é de marcar várias: falta o botão Continuar.`).toBeVisible();
+      // Deixa marcadas EXATAMENTE as opções do roteiro (um rascunho retomado
+      // pode ter sobras), lendo o texto sem o ✓ aria-hidden.
+      const botoes = page.locator("main button[aria-pressed]");
+      const n = await botoes.count();
+      for (let i = 0; i < n; i++) {
+        const b = botoes.nth(i);
+        const t = ((await b.textContent()) ?? "").replace("✓", "").trim();
+        const marcado = (await b.getAttribute("aria-pressed")) === "true";
+        if (marcado !== passo.marcar.includes(t)) await b.click();
+      }
+      await continuar.click();
+    } else {
+      await page.getByRole("button", { name: passo.marcar[0], exact: true }).click();
+      // Só a tela dos nomes de decisores tem campo de texto e "Continuar";
+      // nas demais a escolha única avança sozinha.
+      if (await continuar.isVisible()) await continuar.click();
+    }
+
+    // Avançou: a próxima pergunta OU a validação têm título diferente.
+    await expect(
+      titulo(page),
+      `A tela não avançou depois de responder "${texto}".`,
+    ).not.toHaveText(texto);
+    if (await confirmar.isVisible()) return total;
+  }
+  throw new Error("Passou de 15 perguntas sem chegar à validação.");
+}
+
+test.describe("Entrevista Prévia 3.0", () => {
   test.skip(!cred, "Sem QA_PARCEIRO_EMAIL/SENHA no .env.qa.");
 
   test("a ficha do cliente oferece a Entrevista Prévia", async ({ page }, info) => {
@@ -227,52 +429,50 @@ test.describe("Entrevista Prévia 2.0", () => {
     await page.keyboard.press("Escape");
   });
 
-  test("o formulário abre, mostra o progresso e NÃO tem pergunta aberta", async ({
+  test("o formulário abre no roteiro curto: 'Pergunta X de Y', sem pergunta aberta", async ({
     page,
   }, info) => {
     const console_ = vigiarConsole(page);
-    await entrar(page, cred!, "/clientes");
-    await page.goto("/clientes");
+    test.skip(!(await abrirEntrevista(page)), "Cliente de teste não está na lista.");
 
-    const link = page.getByRole("link", { name: CLIENTE_TESTE }).first();
-    test.skip(
-      !(await link.waitFor({ state: "visible", timeout: 12_000 }).then(() => true).catch(() => false)),
-      "Cliente de teste não está na lista.",
-    );
-    await link.click();
-    await page.waitForURL(/\/clientes\/[0-9a-f-]+$/i, { timeout: 15_000 });
-    // 🔴 O link mora no pop-up desde 23/09 — clicar direto aqui falharia.
-    await abrirPerfilDoCliente(page);
-    await page
-      .getByRole("dialog")
-      .getByRole("link", { name: /iniciar entrevista|nova entrevista/i })
-      .first()
-      .click();
-    await page.waitForURL(/\/entrevista$/, { timeout: 15_000 });
+    // Só cliques de leitura: atravessa a abertura e volta à 1ª pergunta.
+    await passarDaAbertura(page);
+    await voltarAoInicio(page);
 
-    // Progresso visível: o parceiro precisa saber quanto falta para
-    // administrar o tempo da conversa.
+    // Progresso: "Pergunta 1 de Y", com Y entre o caminho curto (11) e o
+    // longo (15). O total é recalculado pelas respostas, então só a faixa é fixa.
     const progresso = page.getByRole("progressbar");
     await expect(progresso).toBeVisible({ timeout: 12_000 });
-
+    await expect(progresso).toHaveAttribute("aria-label", /^Pergunta 1 de \d+$/);
+    await expect(progresso).toHaveAttribute("aria-valuenow", "1");
     const total = Number(await progresso.getAttribute("aria-valuemax"));
     expect(
-      total >= 20 && total <= 30,
-      `O roteiro tem ${total} perguntas. O pedido foi "algo em torno de 20/30".`,
+      total >= 11 && total <= 15,
+      `O roteiro tem ${total} perguntas. A decisão de 29/09: entre 11 e 15.`,
     ).toBe(true);
 
-    // 🔴 NENHUMA PERGUNTA ABERTA — a regra que governa a feature inteira.
-    // Um campo de texto aqui quebraria o cálculo do DISC e a contagem de
-    // decisores, que dependem de resposta estruturada.
+    // Enunciado grande da 1ª pergunta, dica sob ele, instrução e tempo.
+    await expect(titulo(page)).toContainText("O que aconteceu, ou o que você começou a perceber");
+    await expect(page.getByText(/e por que justo agora/i)).toBeVisible();
+    await expect(page.getByText(/marque o que mais se aproxima — não leia as opções/i)).toBeVisible();
+    await expect(page.getByText(/min restantes/i)).toBeVisible();
+    // Nada de DISC parcial nem selo "Não pergunte" na pergunta falada.
+    await expect(page.getByText(/parcial/i)).toHaveCount(0);
+    await expect(page.getByText("Não pergunte", { exact: true })).toHaveCount(0);
+
+    // 🔴 NENHUM CAMPO DE TEXTO nas perguntas (os nomes de decisores só
+    // aparecem na tela de presença, e as frases só na validação).
     await expect(
-      page.locator('input[type="text"], input:not([type]), textarea'),
-      "Apareceu campo de texto livre no meio das perguntas. A regra é " +
-        "'nao tem pergunta aberta' — é da resposta fechada que saem o DISC " +
-        "e a contagem de decisores.",
+      page.locator("main").locator(CAMPO_DE_TEXTO),
+      "Apareceu campo de texto na 1ª pergunta. As perguntas são fechadas: é " +
+        "da resposta estruturada que saem o DISC e a contagem de decisores.",
     ).toHaveCount(0);
 
-    // As opções são botões grandes, marcáveis.
-    await expect(page.locator("button[aria-pressed]").first()).toBeVisible();
+    // Opções são botões marcáveis; escolha única não tem "Continuar".
+    await expect(page.locator("main button[aria-pressed]").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /^continuar$/i })).toHaveCount(0);
+    // Sem pergunta anterior na 1ª.
+    await expect(page.getByRole("button", { name: /^anterior$/i })).toBeDisabled();
 
     await semRolagemHorizontal(page);
     await registrarTela(page, info, `entrevista-${test.info().project.name}.png`);
@@ -280,23 +480,9 @@ test.describe("Entrevista Prévia 2.0", () => {
   });
 
   test("contraste WCAG AA no formulário", async ({ page }) => {
-    await entrar(page, cred!, "/clientes");
-    await page.goto("/clientes");
-    const link = page.getByRole("link", { name: CLIENTE_TESTE }).first();
-    test.skip(
-      !(await link.waitFor({ state: "visible", timeout: 12_000 }).then(() => true).catch(() => false)),
-      "Cliente de teste não está na lista.",
-    );
-    await link.click();
-    await page.waitForURL(/\/clientes\/[0-9a-f-]+$/i, { timeout: 15_000 });
-    // 🔴 Mesma mudança de 23/09: o link só existe depois de "Ver perfil".
-    await abrirPerfilDoCliente(page);
-    await page
-      .getByRole("dialog")
-      .getByRole("link", { name: /iniciar entrevista|nova entrevista/i })
-      .first()
-      .click();
-    await page.waitForURL(/\/entrevista$/, { timeout: 15_000 });
+    test.skip(!(await abrirEntrevista(page)), "Cliente de teste não está na lista.");
+    await passarDaAbertura(page);
+    await voltarAoInicio(page);
     await page.getByRole("progressbar").waitFor({ state: "visible", timeout: 12_000 });
 
     await contrasteAprovado(page, "a Entrevista Prévia");
@@ -317,16 +503,17 @@ test.describe("Entrevista Prévia 2.0", () => {
  * diálogo → link → /entrevista" e provava `/sessoes` isolada
  * (`sessoes-parceiro.spec.ts`). **Ninguém provava o ENCONTRO das duas.** Uma
  * regressão em `!admin && temEntrevistaConcluida` (`cliente-ficha.tsx`) ou no
- * `router.push("/sessoes")` (`entrevista-previa/formulario.tsx`) passaria
+ * `router.push` do formulário (`entrevista-previa/formulario/index.tsx`) passaria
  * verde: as duas pontas continuariam de pé, e o caminho entre elas, morto.
  *
  * São DOIS lugares de produção, com custo de prova muito diferente:
  *
  *   (1) a LINHA na ficha — leitura pura, provável aqui;
- *   (2) o BOTÃO na tela de resultado da entrevista — ver o cabeçalho do
- *       segundo teste: ele NÃO é alcançável sem escrever em produção.
+ *   (2) o `router.push` do fim da entrevista para a rota de agendar (desde
+ *       29/09 o parceiro não passa mais por uma tela de resultado): ver o
+ *       cabeçalho dos dois últimos testes — NÃO é alcançável sem escrever.
  */
-test.describe("Entrevista Prévia 2.0 · a ponte para a sessão", () => {
+test.describe("Entrevista Prévia 3.0 · a ponte para a sessão", () => {
   test.skip(!cred, "Sem QA_PARCEIRO_EMAIL/SENHA no .env.qa.");
 
   test("a ficha guia da entrevista concluída para /sessoes", async ({ page }, info) => {
@@ -402,111 +589,247 @@ test.describe("Entrevista Prévia 2.0 · a ponte para a sessão", () => {
 
   /**
    * ═══════════════════════════════════════════════════════════════════════
-   * ASSERÇÃO 2 — o BOTÃO na tela de resultado da entrevista
+   * A PONTE DO FORMULÁRIO PARA A REUNIÃO PRELIMINAR (29/09/2026)
    * ═══════════════════════════════════════════════════════════════════════
    *
-   * 🔴 ESTE TESTE ESCREVE EM PRODUÇÃO, E POR ISSO NASCE DESLIGADO.
+   * 🔴 OS QUATRO TESTES ABAIXO ESCREVEM EM PRODUÇÃO E NASCEM DESLIGADOS
+   * (`QA_PERMITE_ESCRITA=1`). Desligados, PULAM com a razão — nunca passam
+   * verdes fingindo ter olhado.
    *
-   * Medido no código antes de escrever, não suposto: a tela de resultado
-   * (`formulario.tsx`, bloco `if (resultado)`) é renderizada a partir do
-   * estado `resultado`, que **só** é preenchido dentro de `concluir()`, com o
-   * retorno de `concluirEntrevistaPrevia` → RPC
-   * `gps.entrevista_previa_concluir`. Não há rota, query string, prop nem
-   * estado inicial que pinte essa tela sem passar por ali:
-   * `/clientes/[clienteId]/entrevista` sempre monta o formulário na primeira
-   * pergunta não respondida.
+   * Medido no código: a validação e o `router.push` para a rota de agendar só
+   * existem depois de o parceiro responder as perguntas; não há rota nem
+   * query string que pinte essas telas sem passar pelo formulário. O custo:
    *
-   * Ou seja: **não dá para provar o botão sem concluir uma entrevista de
-   * verdade**, e concluir tem efeito de dado — a RPC captura o perfil DISC e
-   * o relatório no cliente real (`gps.etapa1_clientes`). Não é lixo que sai
-   * com um delete: é sobrescrever o perfil de uma pessoa.
-   *
-   * O que este teste NÃO faz (conferido no código, não presumido): não
-   * dispara e-mail. `concluirEntrevistaPrevia` chama a RPC e dois
-   * `revalidatePath`; a RPC não usa `net.http_post` nem enfileira aviso. O
-   * efeito externo do spec de sessões (7 e-mails reais à Dra. Cristiane em
-   * 22/09) **não se repete aqui** — o que existe é escrita de dado, que é
-   * menos grave e ainda assim não se faz sem autorização.
-   *
-   * Por isso a trava é `QA_PERMITE_ESCRITA=1`, no molde de
-   * `QA_PERMITE_EMAIL=1` em `sessoes-fluxo.spec.ts`. Desligado, o teste PULA
-   * com a razão na tela — nunca passa verde fingindo ter olhado.
+   *   • CAMINHO LONGO e "concluir só habilita depois da escolha" — só
+   *     RASCUNHO (`salvarProgressoEntrevista`). Param na validação.
+   *   • CAMINHO CURTO ×2 ("Não agendei agora" e "Marcar agora") — CONCLUEM: a
+   *     RPC `gps.entrevista_previa_concluir` grava DISC e relatório no CLIENTE
+   *     DE TESTE. "Decide sozinho" ⇒ nenhum decisor `dj` ⇒ nada em
+   *     `gps.cliente_decisores`. Não agenda, não dispara e-mail.
    */
-  test("a tela de resultado leva a /sessoes pelo botão", async ({ page }, info) => {
-    test.skip(
-      test.info().project.name !== "desktop",
-      "Fluxo de dado roda uma vez só, no desktop — duas execuções concluiriam " +
-        "duas entrevistas no mesmo cliente.",
-    );
-    test.skip(
-      process.env.QA_PERMITE_ESCRITA !== "1",
-      "Este teste CONCLUI uma entrevista de verdade: a RPC " +
-        "`gps.entrevista_previa_concluir` grava o perfil DISC e o relatório na " +
-        "ficha do CLIENTE DE TESTE. Não há como renderizar a tela de resultado " +
-        "sem isso (o estado `resultado` só nasce da conclusão). Rode com " +
-        "QA_PERMITE_ESCRITA=1 quando sobrescrever o DISC do cliente de QA for " +
-        "aceitável. Não dispara e-mail.",
-    );
+  const RAZAO_ESCRITA =
+    "Este teste responde a entrevista de verdade (grava rascunho e, no " +
+    "caminho curto, CONCLUI: `gps.entrevista_previa_concluir` grava o DISC " +
+    "e o relatório na ficha do CLIENTE DE TESTE). Rode com " +
+    "QA_PERMITE_ESCRITA=1 quando isso for aceitável. Não dispara e-mail.";
 
-    await entrar(page, cred!, "/clientes");
-    await page.goto("/clientes");
+  test("caminho longo: 15 perguntas, avanço sozinho e nomes de quem decide", async ({
+    page,
+  }, info) => {
+    test.skip(test.info().project.name !== "desktop", "Fluxo de dado roda uma vez, no desktop.");
+    test.skip(process.env.QA_PERMITE_ESCRITA !== "1", RAZAO_ESCRITA);
+    test.setTimeout(120_000);
 
-    const link = page.getByRole("link", { name: CLIENTE_TESTE }).first();
-    test.skip(
-      !(await link.waitFor({ state: "visible", timeout: 12_000 }).then(() => true).catch(() => false)),
-      "Cliente de teste não está na lista desta conta.",
-    );
-    await link.click();
-    await page.waitForURL(/\/clientes\/[0-9a-f-]+$/i, { timeout: 15_000 });
+    test.skip(!(await abrirEntrevista(page)), "Cliente de teste não está na lista desta conta.");
+    await passarDaAbertura(page);
+    await voltarAoInicio(page);
 
-    await abrirPerfilDoCliente(page);
-    await page
-      .getByRole("dialog")
-      .getByRole("link", { name: /iniciar entrevista|nova entrevista/i })
-      .first()
-      .click();
-    await page.waitForURL(/\/entrevista$/, { timeout: 15_000 });
+    // 1ª pergunta: nenhum "Parcial", escolha única SEM "Continuar".
+    await expect(
+      page.getByText(/parcial/i),
+      "A tela mostra DISC parcial no meio da conversa — removido em 29/09.",
+    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^continuar$/i })).toHaveCount(0);
 
-    const progresso = page.getByRole("progressbar");
-    await expect(progresso).toBeVisible({ timeout: 12_000 });
-    const total = Number(await progresso.getAttribute("aria-valuemax"));
+    const total = await responderAteAValidacao(page, CAMINHO_LONGO);
+    expect(total, "Imóvel + empresa + decide a dois + filhos opinam = 15 perguntas.").toBe(15);
 
-    // Responde a PRIMEIRA opção de cada pergunta. O conteúdo da resposta não é
-    // o que este teste afirma — ele afirma a PONTE. O DISC que sair daqui é o
-    // custo declarado no gate acima. O teto `total + 5` evita laço infinito se
-    // a tela parar de avançar; a asserção seguinte é quem julga.
-    for (let i = 0; i < total + 5; i++) {
-      const opcao = page.locator("button[aria-pressed]").first();
-      if (!(await opcao.isVisible().catch(() => false))) break;
-      await opcao.click();
-      await page.waitForTimeout(250);
+    // Validação com 2 decisores "dj" (cônjuge e sócio) + filhos que só opinam.
+    await expect(titulo(page)).toContainText("Deixa eu confirmar: você chegou até nós por");
+    await expect(titulo(page)).toContainText("o cônjuge");
+    await expect(titulo(page)).toContainText("o sócio");
+    await expect(titulo(page)).toContainText("ouvindo os filhos");
+    await expect(titulo(page)).toContainText("É isso?");
+    await expect(titulo(page)).not.toContainText("undefined");
+    await expect(page.getByRole("button", { name: BOTAO_CONFIRMOU })).toBeVisible();
+    await expect(page.getByRole("button", { name: BOTAO_AJUSTAR })).toBeVisible();
+
+    // "Anterior" da validação volta à ÚLTIMA pergunta (15 de 15), a de
+    // observação, com o selo "Não pergunte" e SEM o texto de instrução falada.
+    await page.getByRole("button", { name: /^anterior$/i }).click();
+    await expect(page.getByRole("progressbar")).toHaveAttribute("aria-label", "Pergunta 15 de 15");
+    await expect(page.getByText("Não pergunte", { exact: true })).toBeVisible();
+    await expect(page.getByText(/não leia as opções/i)).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Jeito" })).toBeVisible();
+    await expect(page.getByRole("group", { name: "Pontos de atenção" })).toBeVisible();
+    await registrarTela(page, info, "entrevista-15-de-15-nao-pergunte.png");
+
+    // A tela "quem decide junto precisa estar lá" (10 de 15): um campo de
+    // nome por decisor dj — cônjuge e sócio — e "Continuar" em vez de avanço.
+    // De 15 para 10: 5 × Anterior (14 ritmo, 13 processamento, 12 conflito,
+    // 11 critério, 10 presença).
+    for (let i = 0; i < 5; i++) {
+      const antes = (await titulo(page).textContent()) ?? "";
+      await page.getByRole("button", { name: /^anterior$/i }).click();
+      await expect(titulo(page)).not.toHaveText(antes);
     }
+    await expect(titulo(page)).toContainText("quem decide junto precisa estar lá");
+    await expect(
+      page.locator("main").locator(CAMPO_DE_TEXTO),
+      "A tela de presença deve ter UM campo de nome por decisor dj (cônjuge e sócio).",
+    ).toHaveCount(2);
+    await expect(page.getByRole("button", { name: /^continuar$/i })).toBeVisible();
+    await registrarTela(page, info, "entrevista-presenca-nomes.png");
+    // NÃO conclui: fica só o rascunho, e a entrevista segue em aberto.
+  });
 
-    // Pode cair na tela de nomes dos decisores antes do fim: ela tem campo de
-    // texto e um botão de avançar. Seguir sem nomear é permitido (os nomes não
-    // entram em cálculo nenhum).
-    const concluir = page.getByRole("button", { name: /concluir|finalizar/i }).first();
-    if (await concluir.isVisible().catch(() => false)) {
-      await concluir.click();
+  /**
+   * Abre a entrevista, volta ao início e responde o caminho CURTO até a
+   * validação (sem concluir). Pula o teste se o parceiro não puder "Marcar
+   * agora" — caso em que já existe Reunião Preliminar viva deste cliente e a
+   * tela oferece "Já está marcada para…" no lugar (índice de sessão viva).
+   */
+  async function ateAValidacaoCurta(page: Pagina) {
+    test.skip(!(await abrirEntrevista(page)), "Cliente de teste não está na lista desta conta.");
+    await passarDaAbertura(page);
+    await voltarAoInicio(page);
+    const total = await responderAteAValidacao(page, CAMINHO_CURTO);
+    expect(
+      total,
+      "Sem imóvel, sem empresa, sem filhos e decidindo sozinho o roteiro tem 11 perguntas.",
+    ).toBe(11);
+    test.skip(
+      (await page.getByRole("button", { name: "Marcar agora", exact: true }).count()) === 0,
+      "O cliente de teste já tem Reunião Preliminar marcada: a tela oferece " +
+        "'Já está marcada para…' e não 'Marcar agora'. Cancele a sessão de QA em /sessoes.",
+    );
+  }
+
+  test("validação: concluir só habilita depois de escolher a Reunião Preliminar", async ({
+    page,
+  }, info) => {
+    test.skip(test.info().project.name !== "desktop", "Fluxo de dado roda uma vez, no desktop.");
+    test.skip(process.env.QA_PERMITE_ESCRITA !== "1", RAZAO_ESCRITA);
+    test.setTimeout(120_000);
+    await ateAValidacaoCurta(page);
+
+    const grupo = page.getByRole("group", { name: "Reunião Preliminar", exact: true });
+    const marcarAgora = grupo.getByRole("button", { name: "Marcar agora", exact: true });
+    const naoAgendei = grupo.getByRole("button", { name: "Não agendei agora", exact: true });
+    await expect(marcarAgora).toHaveAttribute("aria-pressed", "false");
+    await expect(naoAgendei).toHaveAttribute("aria-pressed", "false");
+
+    // Antes da escolha: o botão diz só "concluir", está desabilitado e a tela
+    // explica por quê.
+    const concluir = page.getByRole("button", { name: BOTAO_CONCLUIR });
+    await expect(concluir, "Sem escolha, o botão de concluir deve estar desabilitado.").toBeDisabled();
+    await expect(page.getByText(/para concluir, diga acima se a reunião preliminar/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: BOTAO_CONCLUIR_E_MARCAR })).toHaveCount(0);
+    await registrarTela(page, info, "entrevista-validacao-sem-escolha.png");
+
+    // "Marcar agora": habilita e o rótulo passa a prometer a marcação.
+    await marcarAgora.click();
+    await expect(marcarAgora).toHaveAttribute("aria-pressed", "true");
+    const concluirEMarcar = page.getByRole("button", { name: BOTAO_CONCLUIR_E_MARCAR });
+    await expect(concluirEMarcar).toBeEnabled();
+    await expect(page.getByRole("button", { name: BOTAO_CONCLUIR })).toHaveCount(0);
+
+    // "Não agendei agora": continua habilitado, volta ao rótulo curto e mostra
+    // os motivos opcionais em chips.
+    await naoAgendei.click();
+    await expect(naoAgendei).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: BOTAO_CONCLUIR })).toBeEnabled();
+    const motivos = page.getByRole("group", { name: "Por que não agendou (opcional)" });
+    await expect(motivos.getByRole("button")).toHaveCount(4);
+    await expect(motivos.getByRole("button", { name: "Cliente vai ver a agenda", exact: true })).toBeVisible();
+    // NÃO conclui: fica só o rascunho.
+  });
+
+  test("caminho curto: 'Não agendei agora' conclui e volta à ficha", async ({ page }, info) => {
+    test.skip(test.info().project.name !== "desktop", "Fluxo de dado roda uma vez, no desktop.");
+    test.skip(process.env.QA_PERMITE_ESCRITA !== "1", RAZAO_ESCRITA);
+    test.setTimeout(120_000);
+    await ateAValidacaoCurta(page);
+
+    // A frase de validação, palavra por palavra (`montarValidacao`).
+    await expect(titulo(page)).toHaveText(
+      "Deixa eu confirmar: você chegou até nós por um problema que está " +
+        "acontecendo agora. O que precisa ficar claro é exatamente o que " +
+        "fazer. E a decisão envolve só você. É isso?",
+    );
+    await registrarTela(page, info, "entrevista-validacao.png");
+
+    // "Ajustar": leva à pergunta e oferece o caminho de volta.
+    await page.getByRole("button", { name: BOTAO_AJUSTAR }).click();
+    await page.getByRole("button", { name: /^motivo$/i }).click();
+    await expect(titulo(page)).toContainText("O que aconteceu, ou o que você começou a perceber");
+    await page.getByRole("button", { name: /^voltar à confirmação$/i }).click();
+    await expect(page.getByRole("button", { name: BOTAO_CONFIRMOU })).toBeVisible();
+
+    // Até 3 frases exatas, opcionais, ≤150 caracteres.
+    const campos = page.locator("main fieldset").locator(CAMPO_DE_TEXTO);
+    await expect(campos, "São 3 campos de frase, nem mais nem menos.").toHaveCount(3);
+    for (let i = 0; i < 3; i++) {
+      await expect(campos.nth(i)).toHaveAttribute("maxlength", "150");
     }
+    await campos.nth(0).fill('"Quero que meus filhos não briguem" <b>QA</b>');
+    await campos.nth(1).fill("Não quero depender de inventário demorado");
+    // A 3ª fica vazia: opcional.
 
-    // A prova: o botão da ponte, na tela de resultado.
-    const botao = page.getByRole("button", {
-      name: /marcar a sessão com a equipe jurídica/i,
+    // Escolha da Reunião Preliminar: "Não agendei agora" + um motivo (opcional).
+    const grupo = page.getByRole("group", { name: "Reunião Preliminar", exact: true });
+    await grupo.getByRole("button", { name: "Não agendei agora", exact: true }).click();
+    const motivo = page
+      .getByRole("group", { name: "Por que não agendou (opcional)" })
+      .getByRole("button", { name: "Cliente vai ver a agenda", exact: true });
+    await motivo.click();
+    await expect(motivo).toHaveAttribute("aria-pressed", "true");
+
+    const concluir = page.getByRole("button", { name: BOTAO_CONCLUIR });
+    await expect(concluir).toBeEnabled();
+    await concluir.click();
+
+    // Volta à ficha (rota da entrevista → `/clientes/<id>`), com o aviso do
+    // que ficou registrado. NÃO vai para /agendar.
+    await page.waitForURL(/\/clientes\/[0-9a-f-]+$/i, { timeout: 20_000 });
+    await expect(
+      page.getByText("Entrevista salva. Reunião Preliminar: não agendada."),
+      "Faltou o aviso do que ficou registrado sobre a Reunião Preliminar.",
+    ).toBeVisible({ timeout: 12_000 });
+    await expect(page).not.toHaveURL(/\/agendar/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Marque a Reunião Preliminar" }),
+    ).toHaveCount(0);
+    await registrarTela(page, info, "entrevista-nao-agendou-ficha.png");
+  });
+
+  /**
+   * "Marcar agora" → /agendar. 🔴 Conclui uma entrevista de verdade, como o
+   * teste anterior. Escolhi o CAMINHO CURTO (e não o longo) porque ele não tem
+   * decisor "decide junto": o longo gravaria cônjuge e sócio em
+   * `gps.cliente_decisores` do cliente de teste e passaria a travar a
+   * Preliminar dele (a trava fica até alguém apagar). O longo continua
+   * provando as 15 perguntas, só sem concluir.
+   */
+  test("caminho curto: 'Marcar agora' conclui e leva a 'Marque a Reunião Preliminar'", async ({
+    page,
+  }, info) => {
+    test.skip(test.info().project.name !== "desktop", "Fluxo de dado roda uma vez, no desktop.");
+    test.skip(process.env.QA_PERMITE_ESCRITA !== "1", RAZAO_ESCRITA);
+    test.setTimeout(120_000);
+    await ateAValidacaoCurta(page);
+
+    const grupo = page.getByRole("group", { name: "Reunião Preliminar", exact: true });
+    await grupo.getByRole("button", { name: "Marcar agora", exact: true }).click();
+    const concluir = page.getByRole("button", { name: BOTAO_CONCLUIR_E_MARCAR });
+    await expect(concluir).toBeEnabled();
+    await concluir.click();
+
+    // A ponte: rota de agendar do parceiro, com o `e` da entrevista concluída.
+    await page.waitForURL(/\/clientes\/[0-9a-f-]+\/entrevista\/agendar\?e=[0-9a-f-]{36}$/i, {
+      timeout: 20_000,
     });
     await expect(
-      botao,
-      "A entrevista foi concluída e a tela de resultado NÃO oferece o botão " +
-        "para marcar a sessão. É o buraco do sistema reaberto no ponto exato " +
-        "em que o parceiro acabou de mapear os decisores.",
-    ).toBeVisible({ timeout: 20_000 });
+      page.getByRole("heading", { level: 1, name: "Marque a Reunião Preliminar" }),
+    ).toBeVisible({ timeout: 12_000 });
+    await expect(
+      page.getByRole("link", { name: /voltar para a ficha/i }).first(),
+      "Todo estado da tela de agendar oferece 'Voltar para a ficha'.",
+    ).toBeVisible();
 
-    await registrarTela(page, info, "ponte-resultado-para-sessoes.png");
-
-    // E leva a /sessoes. É `router.push`, não `<a href>` — só o clique prova.
-    await botao.click();
-    await page.waitForURL(/\/sessoes/, { timeout: 15_000 });
-    await expect(page).toHaveURL(/\/sessoes/);
+    await semRolagemHorizontal(page);
+    await registrarTela(page, info, "entrevista-agendar.png");
+    // 🔴 Não clica em horário: agendar criaria sessão e e-mail reais.
   });
 });
 
@@ -538,7 +861,7 @@ test.describe("Entrevista Prévia 2.0 · a ponte para a sessão", () => {
  * gate de `QA_PERMITE_ESCRITA` nos testes de "o formulário abre" e "contraste
  * WCAG AA" — mesmo custo, mesma trava (a régua não muda por ser admin).
  */
-test.describe("Entrevista Prévia 2.0 · modo assistência (admin)", () => {
+test.describe("Entrevista Prévia 3.0 · modo assistência (admin)", () => {
   const admin = exigeAdmin();
   test.skip(!admin, "Sem QA_ADMIN_EMAIL/SENHA no .env.qa.");
 
@@ -649,8 +972,15 @@ test.describe("Entrevista Prévia 2.0 · modo assistência (admin)", () => {
         "na tela de erro da RPC (`abertura.erro`) em vez do formulário.",
     ).toBeVisible({ timeout: 12_000 });
 
-    // O formulário montou: reusa os mesmos seletores do describe do parceiro
-    // (progresso ou a 1ª pergunta como botões marcáveis). Não responde nada.
+    // A descrição do modo assistência diz que a equipe NÃO marca a Reunião
+    // Preliminar: o horário se combina com o parceiro (decisão (d), 29/09).
+    await expect(page.getByText(/perguntas rápidas \(até 15\), cerca de 8 minutos/i)).toBeVisible();
+    await expect(page.getByText(/o horário se combina com o parceiro/i)).toBeVisible();
+
+    // O formulário montou: reusa os helpers do describe do parceiro (atravessa
+    // a abertura, se houver; progresso e 1ª pergunta como botões marcáveis).
+    // Só clica em "Começar" — não responde nada.
+    await passarDaAbertura(page);
     const progresso = page.getByRole("progressbar");
     await expect(
       progresso,

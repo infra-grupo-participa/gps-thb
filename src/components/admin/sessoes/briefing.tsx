@@ -242,6 +242,16 @@ const ROTULO_CURTO: Record<string, string> = {
   quem_bate_martelo: "Quem bate o martelo",
   disposicao_reuniao: "Disposição para a reunião",
   temperatura: "Temperatura",
+  // Entrevista Prévia 3.0 (29/09/2026). `obs_comportamento` aparece na Parte 06
+  // só com o grupo "atenção" (`somenteGrupo`), então o rótulo é o do grupo.
+  bens: "Patrimônio",
+  presenca_decisores: "Presença dos decisores",
+  criterio_valor: "Critério de valor",
+  processamento: "Jeito de processar",
+  obs_comportamento: "Pontos de atenção",
+  // Campo de fechamento (não é pergunta): aparece na Parte 06 só quando o
+  // parceiro NÃO agendou a Reunião Preliminar ao concluir.
+  agendamento_preliminar: "Reunião Preliminar",
 };
 
 /**
@@ -317,7 +327,7 @@ function PartesDoScript({
 }
 
 function ParteSecao({ montada, idBase }: { montada: ParteMontada; idBase: string }) {
-  const { parte, itens, gatilho, cobertura } = montada;
+  const { parte, itens, frasesCliente, gatilho, cobertura } = montada;
   const idTitulo = `${idBase}-${parte.id}`;
   const numero = String(parte.numero).padStart(2, "0");
 
@@ -343,6 +353,22 @@ function ParteSecao({ montada, idBase }: { montada: ParteMontada; idBase: string
           ))}
         </dl>
       )}
+
+      {/* Frases exatas do cliente (Parte 06). 🔴 Texto livre de TERCEIRO:
+          entra como filho de texto do React (escapado), NUNCA como HTML. */}
+      {frasesCliente.length > 0 ? (
+        <div className="grid gap-0.5">
+          <p className="corpo-sm text-muted-foreground">Frases do cliente</p>
+          {frasesCliente.map((frase, i) => (
+            <blockquote
+              key={i}
+              className="border-l-2 border-borda-forte pl-3 corpo-sm whitespace-pre-wrap break-words"
+            >
+              “{frase}”
+            </blockquote>
+          ))}
+        </div>
+      ) : null}
 
       {/* Parte 05: os dois caminhos, TÍTULO apenas — a doutora escolhe um na
           hora. Aparecem mesmo sem entrevista: são estrutura do script, não

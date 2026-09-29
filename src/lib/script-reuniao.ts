@@ -1,8 +1,18 @@
 import {
+  CHAVE_AGENDAMENTO_PRELIMINAR,
+  CHAVE_FRASES_CLIENTE,
   PERGUNTAS_ENTREVISTA,
+  type GrupoOpcao,
   type LetraDisc,
+  type RespostasEntrevista,
 } from "@/lib/entrevista-previa-perguntas";
-import type { RespostasEntrevista } from "@/lib/entrevista-previa-calculo";
+import {
+  frasesDoCliente,
+  lerAgendamento,
+  textoAgendamento,
+  opcoesMarcadas,
+  perguntasVisiveis,
+} from "@/lib/entrevista-previa-fluxo";
 
 /**
  * O BRIEFING da Reunião Preliminar, organizado pelas 7 partes do "Script de
@@ -37,16 +47,23 @@ import type { RespostasEntrevista } from "@/lib/entrevista-previa-calculo";
  *
  * ── O QUE FICA FORA DAS 7 PARTES ────────────────────────────────────────────
  *
- * As 4 perguntas PURAMENTE de DISC (`estilo_decisao`, `ritmo_conversa`,
- * `lidar_com_erro`, `delega` — só medem a letra, não dizem nada sobre o caso)
- * e as 4 de decisores (`decide_sozinho`, `filhos_participam`,
- * `consulta_terceiro`, `socios_negocio`) já têm bloco próprio no briefing —
- * "DISC" e "Decisores" — que não muda com este arquivo. As outras 4 de
- * `comportamento` ENTRAM nas partes de propósito: `o_que_convence`,
- * `confianca_equipe` e `mudanca` dizem como apresentar a solução (parte 04) e
- * `reacao_preco` como a pessoa recebe a oferta (parte 06) — são resposta do
- * cliente sobre o caso, não só sinal de letra. `e2e/script-reuniao.spec.ts`
- * fixa essa lista.
+ * 3.0 (29/09/2026): as perguntas que SÓ medem a letra (`ritmo_conversa`) e
+ * as de quem decide (`decide_sozinho`, `filhos_participam`,
+ * `socios_negocio`) já têm bloco próprio no briefing — "DISC" e
+ * "Decisores". `presenca_decisores` e `obs_comportamento` ENTRAM na Parte 06
+ * de propósito: presença de quem decide e pontos de atenção (preço,
+ * consulta a terceiro, desconfiança, assunto evitado) são o que a doutora
+ * precisa ver antes da oferta. Da `obs_comportamento` a Parte 06 mostra só
+ * o grupo "atenção" (`somenteGrupo`); o "jeito" já virou a letra DISC.
+ *
+ * Cada parte lista primeiro os ids da 3.0 e depois os LEGADOS (perguntas
+ * aposentadas em 29/09): entrevista antiga continua montando o briefing.
+ * `frases_cliente` (Parte 06) não é pergunta — é texto livre do cliente e
+ * sai em `frasesCliente`, separado de `itens`. `agendamento_preliminar`
+ * (Parte 06) também não é pergunta: vira um item (`perguntaId =
+ * "agendamento_preliminar"`) SÓ quando o parceiro marcou "não agendou", e
+ * não conta na cobertura.
+ * `e2e/script-reuniao.spec.ts` fixa essa lista.
  */
 
 /** Uma das 7 partes do script, com o que a alimenta e como conduzir por letra. */
@@ -55,8 +72,13 @@ export interface ParteScript {
   /** Estável — usado como key de lista e em eventual link direto. */
   id: string;
   titulo: string;
-  /** Ids de pergunta (`PERGUNTAS_ENTREVISTA`) que alimentam esta parte. */
+  /**
+   * Ids de pergunta (`PERGUNTAS_ENTREVISTA`, ativas e aposentadas) que
+   * alimentam esta parte, mais `frases_cliente` na Parte 06.
+   */
   alimentadaPor: readonly string[];
+  /** Pergunta de múltipla que só mostra um grupo de opções nesta parte. */
+  somenteGrupo?: Readonly<Record<string, GrupoOpcao>>;
   /** Uma linha curta de condução por letra DISC — não repete `COMO_CONDUZIR`. */
   gatilho: Record<LetraDisc, string>;
   /** Só a Parte 05 tem: os dois caminhos possíveis, título apenas. */
@@ -68,7 +90,7 @@ export const PARTES_SCRIPT: readonly ParteScript[] = [
     numero: 1,
     id: "abertura",
     titulo: "Abertura",
-    alimentadaPor: ["imoveis_qtd", "imoveis_heranca", "imoveis_alugados", "composicao"],
+    alimentadaPor: ["bens", "imoveis_qtd", "imoveis_heranca", "imoveis_alugados", "composicao"],
     gatilho: {
       D: "Vá ao ponto: cite o bem concreto e diga aonde a conversa vai chegar.",
       I: "Abra puxando a história por trás do bem — deixe a pessoa contar.",
@@ -104,7 +126,7 @@ export const PARTES_SCRIPT: readonly ParteScript[] = [
     numero: 4,
     id: "solucao",
     titulo: "Solução",
-    alimentadaPor: ["o_que_convence", "confianca_equipe", "mudanca"],
+    alimentadaPor: ["criterio_valor", "processamento", "o_que_convence", "confianca_equipe", "mudanca"],
     gatilho: {
       D: "Apresente a solução como controle: \"a chave que só você tem\".",
       I: "Apresente a solução pela relação — quem já confiou e passou por isso.",
@@ -116,7 +138,7 @@ export const PARTES_SCRIPT: readonly ParteScript[] = [
     numero: 5,
     id: "virada",
     titulo: "Virada",
-    alimentadaPor: ["urgencia", "ja_tentou", "motivo_busca"],
+    alimentadaPor: ["motivo_busca", "ja_tentou", "urgencia"],
     gatilho: {
       D: "Ofereça o caminho mais rápido dos dois — sem citar valor, só o próximo passo.",
       I: "Deixe ela escolher entre os dois caminhos, conversando — sem citar valor.",
@@ -130,12 +152,17 @@ export const PARTES_SCRIPT: readonly ParteScript[] = [
     id: "oferta_binaria",
     titulo: "Oferta binária",
     alimentadaPor: [
+      "presenca_decisores",
+      "obs_comportamento",
+      CHAVE_FRASES_CLIENTE,
+      CHAVE_AGENDAMENTO_PRELIMINAR,
       "decide_investimento",
       "reacao_preco",
       "objecao_principal",
       "quem_bate_martelo",
       "disposicao_reuniao",
     ],
+    somenteGrupo: { obs_comportamento: "atencao" },
     gatilho: {
       D: "Oferta binária, sem rodeio: pagamento agora ou não.",
       I: "Quem já fez, referência — e depois pergunte, sem preencher o silêncio dela.",
@@ -161,34 +188,42 @@ export const PARTES_SCRIPT: readonly ParteScript[] = [
 export interface ItemParteMontada {
   perguntaId: string;
   enunciado: string;
+  /** Rótulos marcados juntos por ", " (a múltipla tem mais de um). */
   rotuloDaOpcao: string;
+  /** Os rótulos marcados, um por item. */
+  rotulos: readonly string[];
+  /** A pergunta foi aposentada em 29/09 — resposta de entrevista antiga. */
+  legado: boolean;
 }
 
 export interface ParteMontada {
   parte: ParteScript;
   itens: readonly ItemParteMontada[];
+  /**
+   * Frases exatas do cliente (0 a 3), só na parte que lista
+   * `frases_cliente`. 🔴 Texto livre de TERCEIRO: a tela mostra como citação,
+   * nunca como HTML, e nunca fora do briefing.
+   */
+  frasesCliente: readonly string[];
   /** Ids de `alimentadaPor` que não existem (mais) em `PERGUNTAS_ENTREVISTA`. */
   idsDesconhecidos: readonly string[];
   gatilho: string | null;
+  /**
+   * Conta só o ESPERADO: pergunta ativa visível para estas respostas, ou
+   * aposentada que foi respondida. `frases_cliente` é opcional e nunca
+   * rebaixa a cobertura.
+   */
   cobertura: "completa" | "parcial" | "nenhuma";
 }
 
-/** Índice pergunta → opção, montado uma vez, igual ao padrão de `entrevista-previa-calculo.ts`. */
-const INDICE = new Map(
-  PERGUNTAS_ENTREVISTA.map((p) => [
-    p.id,
-    { enunciado: p.enunciado, opcoes: new Map(p.opcoes.map((o) => [o.id, o.rotulo])) },
-  ]),
-);
+const INDICE = new Map(PERGUNTAS_ENTREVISTA.map((p) => [p.id, p]));
 
 /**
  * Resolve uma parte do script contra as respostas de uma entrevista.
  *
  * 🔴 Id de `alimentadaPor` que não existe no catálogo NÃO quebra a função —
  * ele some de `itens` e aparece em `idsDesconhecidos`, para o chamador (ou um
- * teste) acusar o descompasso entre este arquivo e
- * `entrevista-previa-perguntas.ts` sem derrubar o briefing na frente da
- * doutora.
+ * teste) acusar o descompasso sem derrubar o briefing na frente da doutora.
  */
 export function montarParte(
   parte: ParteScript,
@@ -197,32 +232,68 @@ export function montarParte(
 ): ParteMontada {
   const itens: ItemParteMontada[] = [];
   const idsDesconhecidos: string[] = [];
-  const respostasSeguras = respostas ?? {};
+  const r: RespostasEntrevista = respostas ?? {};
+  const visiveis = new Set(perguntasVisiveis(r).map((p) => p.id));
+  let esperadas = 0;
+  let frasesCliente: string[] = [];
+  let avisoAgendamento: ItemParteMontada | null = null;
 
   for (const perguntaId of parte.alimentadaPor) {
-    const entrada = INDICE.get(perguntaId);
-    if (!entrada) {
+    if (perguntaId === CHAVE_FRASES_CLIENTE) {
+      frasesCliente = frasesDoCliente(r);
+      continue;
+    }
+    if (perguntaId === CHAVE_AGENDAMENTO_PRELIMINAR) {
+      // Só aparece quando NÃO agendou — é o aviso que a doutora precisa.
+      // Não conta na cobertura (é campo de fechamento, não pergunta).
+      const texto = lerAgendamento(r).preliminar === "nao_agendou" ? textoAgendamento(r) : null;
+      if (texto) {
+        avisoAgendamento = { perguntaId, enunciado: "Reunião Preliminar", rotuloDaOpcao: texto, rotulos: [texto], legado: false };
+      }
+      continue;
+    }
+    const p = INDICE.get(perguntaId);
+    if (!p) {
       idsDesconhecidos.push(perguntaId);
       continue;
     }
-    const opcaoId = respostasSeguras[perguntaId];
-    if (!opcaoId) continue;
-    const rotulo = entrada.opcoes.get(opcaoId);
-    if (!rotulo) continue;
-    itens.push({ perguntaId, enunciado: entrada.enunciado, rotuloDaOpcao: rotulo });
+    const marcadas = new Set(opcoesMarcadas(r[perguntaId]));
+    const respondida = p.opcoes.some((o) => marcadas.has(o.id));
+    const esperada = p.aposentada ? respondida : visiveis.has(perguntaId);
+    if (!esperada) continue;
+    esperadas += 1;
+    if (!respondida) continue;
+
+    const grupo = parte.somenteGrupo?.[perguntaId];
+    const rotulos = p.opcoes
+      .filter((o) => marcadas.has(o.id) && (!grupo || o.grupo === grupo))
+      .map((o) => o.rotulo);
+    // Respondeu, mas nada do grupo desta parte: é informação ("nenhum ponto
+    // de atenção"), não lacuna.
+    const lista = rotulos.length > 0 ? rotulos : grupo ? ["Nenhum ponto de atenção marcado"] : [];
+    if (lista.length === 0) continue;
+    itens.push({
+      perguntaId,
+      enunciado: p.enunciado,
+      rotuloDaOpcao: lista.join(", "),
+      rotulos: lista,
+      legado: p.aposentada === true,
+    });
   }
 
-  const idsValidos = parte.alimentadaPor.length - idsDesconhecidos.length;
   const cobertura: ParteMontada["cobertura"] =
-    itens.length === 0
+    itens.length === 0 && frasesCliente.length === 0
       ? "nenhuma"
-      : idsValidos > 0 && itens.length >= idsValidos
+      : itens.length >= esperadas
         ? "completa"
         : "parcial";
+  // Depois da cobertura, de propósito: o aviso não pode "completar" a parte.
+  if (avisoAgendamento) itens.push(avisoAgendamento);
 
   return {
     parte,
     itens,
+    frasesCliente,
     idsDesconhecidos,
     gatilho: letra ? parte.gatilho[letra] : null,
     cobertura,

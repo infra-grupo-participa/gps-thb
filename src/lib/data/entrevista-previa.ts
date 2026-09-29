@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { logErro } from "@/lib/log";
+import type { RespostasEntrevista } from "@/lib/entrevista-previa-perguntas";
 
 /**
  * Leituras da Entrevista Prévia 2.0.
@@ -15,7 +16,11 @@ export interface EntrevistaPreviaLinha {
   id: string;
   cliente_id: string;
   entrevistado: string | null;
-  respostas: Record<string, string>;
+  /**
+   * Como está no banco: única = id; múltipla = "a|b" (3.0); `frases_cliente`
+   * = uma frase por linha. Leia com `opcoesMarcadas()`/`frasesDoCliente()`.
+   */
+  respostas: RespostasEntrevista;
   perfil_disc: string | null;
   decisores_total: number | null;
   concluida_em: string | null;

@@ -2275,6 +2275,59 @@ em `src/lib/minutas-tipos.ts`) — a **obrigatoriedade** não é replicada no
 TypeScript: a fronteira é a RPC, para as duas verdades não divergirem no dia
 em que o interruptor mudar.
 
+### 🎙️ Entrevista Prévia 3.0 — roteiro curto e agendamento no fim (29/09/2026)
+
+Plano aprovado: `plano-entrevista-previa-3.md` (arthur). **Decisões do Marcio
+(vinculantes):** máx. **15 perguntas** no caminho longo (curto: 11), blocos
+Consciência · Quem decide · Gatilhos · Relacionamento; **frases exatas do
+cliente** opcionais (0–3, ≤150 caracteres, `respostas.frases_cliente`, fora de
+cálculo, só na Parte 06 do briefing); **preço saiu** (`decide_investimento` e
+`reacao_preco` aposentadas); **só "decide junto" (`dj`) trava** a Preliminar e
+grava em `gps.cliente_decisores` — "opina"/"só avisa"/"consulta contador" vão ao
+relatório; modo equipe não agenda. Medido em 29/09: **Etapa 02 LIBERADA**
+(`gps.etapas` id 2 `liberada=true`) — o "só a Etapa 01 está liberada" deste
+arquivo está desatualizado.
+
+**Onde mora cada regra (backend, sem migration):**
+- `src/lib/entrevista-previa-perguntas.ts` — catálogo: 15 ativas na ordem da
+  conversa + **20 aposentadas** (`aposentada: true`, legíveis para entrevista
+  antiga). Nenhum id renomeado. Opções aposentadas: `imoveis_qtd.nenhum`,
+  `filhos_participam.participam_negocio` (legado = `dj`). Teto DISC **11 por
+  letra**; peso 3 só em `ritmo_conversa` (`observacao: true`).
+- `src/lib/entrevista-previa-fluxo.ts` (novo, puro) — `perguntasVisiveis`,
+  `opcoesMarcadas`, navegação/progresso, `tempoRestante` (30 s falada, 10 s
+  observação), `normalizarRespostas` (allowlist), `podarRespostasOcultas`,
+  `validarFrases`/`frasesDoCliente`, `montarValidacao`.
+- `src/lib/entrevista-previa-calculo.ts` — `calcularDisc` (+ `secundaria`,
+  `sinais`, `margem`, `confianca` derivada), `mapearDecisores` (`decideJunto` ·
+  `influenciam` · `soAvisam`), `gerarRelatorio` (+ `NAO_FAZER`).
+- `src/lib/script-reuniao.ts` — partes com ids novos + legados; Parte 06 =
+  presença + pontos de atenção + `frasesCliente`; cobertura só do esperado.
+
+🔴 **Formato gravado só com strings**: múltipla = `"a|b"`; `frases_cliente` =
+uma frase por linha. Conferido na função VIVA em 29/09 (`pg_get_functiondef`):
+`_salvar` exige só `jsonb_typeof = object`; `_concluir` apaga e reinsere
+`cliente_decisores` a partir de `p_decisores` (pula nome nulo) e a trava
+`cliente_decisores_pendentes` é `count > 1` — por isso só `dj` é enviado.
+Toda leitura passa por `opcoesMarcadas()`/`frasesDoCliente()`.
+
+**Agendamento no fim (ajuste do Marcio, 29/09):** `respostas.agendamento_preliminar`
+∈ `agora · ja_marcada · nao_agendou` é **obrigatório** na conclusão ("Marque se a
+Reunião Preliminar foi agendada."); `agendamento_motivo` (fechado,
+`MOTIVOS_NAO_AGENDOU`) só vale com `nao_agendou`. Não é pergunta: não conta nas
+15 nem pesa no DISC. Vira uma linha no relatório de relacionamento e um item na
+Parte 06 **só quando não agendou**. A data prévia é
+`etapa1_clientes.data_reuniao_preliminar`, que `getClienteById` já devolve.
+
+**Migração `…321` — teto no BANCO (achado MÉDIO do kirad):** trigger BEFORE
+INSERT/UPDATE OF `respostas, disc_pontos` em `gps.entrevista_previa` (objeto,
+≤ 16 KB, chaves `^[a-z_]{1,40}$`, só string, ≤ 500 por valor, frases ≤ 3 × 150;
+`disc_pontos` = objeto D/I/S/C numérico 0..1000) + 3 CHECK `NOT VALID` sobre o
+texto cru dos `disc_*`. Trigger na tabela em vez de recriar as RPCs: cobre
+`_salvar`, `_concluir` e qualquer escrita futura sem tocar nos corpos. Provado
+em 29/09 num `do` desfeito por exceção: P0 = 0 linhas fora do formato; 12
+abusos recusados com 22023; 0,34 ms por update. **Aplicada em 29/09** e registrada pela versão do arquivo. Reverter: ver cabeçalho do arquivo.
+
 ## 🧪 Suíte E2E — validar no navegador, não no `tsc` (22/09/2026)
 
 Pedido do Marcio: *"preciso que tu valide visualmente, tipo no browser mesmo…

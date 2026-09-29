@@ -3,8 +3,13 @@ import { notFound, redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { FormularioEntrevistaPrevia } from "@/components/clientes/entrevista-previa/formulario";
+import {
+  dataCombinadaFutura,
+  getPreliminarViva,
+} from "@/components/clientes/entrevista-previa/preliminar-viva";
 import { PageHeader } from "@/components/ui/page-header";
 import { getContextoSessao } from "@/lib/auth";
+import { hojeSaoPaulo } from "@/lib/datas";
 import { getAlunoById, getClienteById, contarMembrosDoAmbiente } from "@/lib/data";
 import { assistenciaNavItems } from "@/lib/nav";
 import { iniciarEntrevistaPrevia } from "@/app/clientes/entrevista-previa-actions";
@@ -74,7 +79,12 @@ export default async function AdminAlunoEntrevistaPreviaPage({
   }
 
   // Retomada: se a conversa caiu no meio, as respostas já marcadas voltam.
-  const emAberto = await getEntrevistaEmAberto(abertura.entrevistaId);
+  // A Preliminar viva do ambiente vai junto, em paralelo: a validação oferece
+  // "Já está marcada" quando é deste cliente (ajuste do Marcio, 29/09).
+  const [emAberto, viva] = await Promise.all([
+    getEntrevistaEmAberto(abertura.entrevistaId),
+    getPreliminarViva(alunoId),
+  ]);
 
   return (
     <>
@@ -89,7 +99,7 @@ export default async function AdminAlunoEntrevistaPreviaPage({
       <main id="conteudo" className="mx-auto w-full max-w-2xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Entrevista Prévia"
-          descricao={`Conversa com ${cliente.nome ?? "o cliente"}. Leia as perguntas em voz alta e marque o que ele responder — o perfil DISC é gerado no final, sozinho.`}
+          descricao={`Conversa com ${cliente.nome ?? "o cliente"}. Leia as perguntas em voz alta e marque o que ele responder. São perguntas rápidas (até 15), cerca de 8 minutos. A equipe não marca a Reunião Preliminar por aqui: o horário se combina com o parceiro.`}
         />
         <FormularioEntrevistaPrevia
           entrevistaId={abertura.entrevistaId}
@@ -97,6 +107,12 @@ export default async function AdminAlunoEntrevistaPreviaPage({
           clienteNome={cliente.nome ?? "o cliente"}
           entrevistado={cliente.nome ?? null}
           respostasIniciais={(emAberto?.respostas ?? {}) as RespostasEntrevista}
+          preliminarViva={
+            viva.sessao
+              ? { inicioEm: viva.sessao.inicio_em, desteCliente: viva.sessao.cliente_id === clienteId }
+              : null
+          }
+          dataCombinada={dataCombinadaFutura(cliente.data_reuniao_preliminar, hojeSaoPaulo())}
           conduzidoPor="admin"
           voltarHref={`/admin/aluno/${alunoId}/clientes/${clienteId}`}
         />

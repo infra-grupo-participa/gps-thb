@@ -15,7 +15,7 @@
 // `import type` puro: some na compilação, então este arquivo continua sendo só
 // tipo — nenhum valor de `entrevista-previa-perguntas.ts` (que é grande) entra
 // no bundle de quem importa daqui.
-import type { LetraDisc } from "@/lib/entrevista-previa-perguntas";
+import type { LetraDisc, RespostasEntrevista } from "@/lib/entrevista-previa-perguntas";
 
 /** Estados possíveis de `gps.sessao_agendamentos.estado` (CHECK `chk_sessao_agend_estado`). */
 /**
@@ -284,8 +284,13 @@ export interface EntrevistaPreviaAoVivo {
   /** Pontuação bruta por letra, quando houve cálculo. */
   disc_pontos: Record<string, number> | null;
   decisores_total: number | null;
-  /** `perguntaId` → `opcaoId`. Chaves são ids de `PERGUNTAS_ENTREVISTA`. */
-  respostas: Record<string, string>;
+  /**
+   * `perguntaId` → valor gravado. Chaves são ids de `PERGUNTAS_ENTREVISTA`
+   * (ativas e aposentadas) + `frases_cliente`. Desde a 3.0 (29/09) a
+   * múltipla grava "a|b": leia SEMPRE com `opcoesMarcadas()` e as frases com
+   * `frasesDoCliente()` (`src/lib/entrevista-previa-fluxo.ts`).
+   */
+  respostas: RespostasEntrevista;
 }
 
 /** Retorno de `gps.sessao_agendar`. */

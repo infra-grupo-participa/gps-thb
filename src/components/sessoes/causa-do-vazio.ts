@@ -77,8 +77,13 @@ export function causaDoVazio(
     //     confirmado (`…292:287`) — nasce `'false'` (`…291:663`), hoje não
     //     filtra ninguém;
     //   • etapa do tipo não liberada (`gps.etapa_liberada_para`, `…292:322`).
-    //     A Reunião Preliminar tem `etapa_id = 2` (`…292:140`), e só a Etapa 01
-    //     está liberada (CLAUDE.md). **É este o gate de 100% dos casos hoje.**
+    //     A Reunião Preliminar tem `etapa_id = 2` (`…292:140`). ⚠️ Até 28/09
+    //     este comentário dizia que só a Etapa 01 estava liberada e que este
+    //     era o gate de 100% dos casos — DESATUALIZADO: medido em 29/09,
+    //     `gps.etapas` id 2 está `liberada = true` (e `sessao_tipos` 2 → etapa
+    //     2, ativo). Com a etapa global liberada, este gate só recusa quem
+    //     tem override travando a Etapa 02 (`gps.etapa_liberacao_aluno`,
+    //     `coalesce(override, global)`).
     // (`gps.config.sessoes_exige_disc` NÃO é gate: a `…294:402` é explícita —
     // "QUEM LÊ ESTA CHAVE HOJE: ninguém".)
     //

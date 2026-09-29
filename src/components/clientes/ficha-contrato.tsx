@@ -26,7 +26,13 @@
  *    sugere; o botão não promete.
  */
 
+import { useState } from "react";
 import { ExternalLink } from "lucide-react";
+import {
+  idDoErro,
+  type ErrosDaFicha,
+} from "@/components/clientes/ficha-abas-estado";
+import { CampoErro } from "@/components/ui/campo-erro";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { mascaraMoeda, numeroParaMoeda } from "@/lib/masks";
@@ -65,6 +71,7 @@ export function FichaContrato({
   podeAnexar,
   anexoDesabilitado = false,
   aoMudarAnexo,
+  erros,
 }: {
   /** `fase === "contratado"` — só aí os campos são editáveis. */
   contratado: boolean;
@@ -87,7 +94,25 @@ export function FichaContrato({
   podeAnexar: boolean;
   anexoDesabilitado?: boolean;
   aoMudarAnexo: () => void;
+  /** Frase de erro por campo (`mensagensPorCampo`). Contrato: `ID_DO_CAMPO`. */
+  erros?: ErrosDaFicha;
 }) {
+  const erroLink =
+    erros?.contrato_url ??
+    // O link é conferido AO VIVO (`contratoInvalido`), antes da primeira
+    // tentativa de salvar — quando `erros` ainda está vazio. Sem este texto a
+    // borda vermelha apareceria sem dizer o motivo.
+    (contratoInvalido
+      ? "O link precisa começar com https:// e não pode conter espaços."
+      : undefined);
+  const erroHonorarios = erros?.valor_honorarios;
+
+  // O `<details>` do link legado nasce fechado, mas nunca fechado sobre um
+  // erro: abre ao surgir e fica aberto (fechar sob quem corrige atrapalha).
+  // `focarQuandoVisivel` também o abre pelo DOM; `onToggle` guarda isso.
+  const [legadoAberto, setLegadoAberto] = useState(Boolean(erroLink));
+  if (erroLink && !legadoAberto) setLegadoAberto(true);
+
   // O anexo aparece SEMPRE, em qualquer fase: quem chega ao programa com o caso
   // já contratado precisa mandar a prova antes de ter mexido na fase, e o
   // arquivo é o que sustenta o sinal da equipe. Só os HONORÁRIOS seguem presos
@@ -105,12 +130,19 @@ export function FichaContrato({
   /** O link antigo, só para quem já tem um gravado. */
   const legado =
     contratoLimpo || contratoInvalido ? (
-      <details className="rounded-lg border border-borda-fina bg-superficie-afundada p-3">
+      <details
+        open={legadoAberto}
+        onToggle={(e) => setLegadoAberto(e.currentTarget.open)}
+        className="rounded-lg border border-borda-fina bg-superficie-afundada p-3"
+      >
         <summary className="cursor-pointer corpo-sm font-medium">
           Link do contrato (registro antigo)
         </summary>
         <div className="mt-3 grid gap-2">
-          <Label htmlFor="f-contrato">Link do contrato</Label>
+          <Label htmlFor="f-contrato">
+            Link do contrato{" "}
+            <span className="rotulo text-muted-foreground">(opcional)</span>
+          </Label>
           <Input
             id="f-contrato"
             type="url"
@@ -118,10 +150,10 @@ export function FichaContrato({
             value={contratoUrl}
             onChange={(e) => onContratoUrl(e.target.value)}
             placeholder="https://drive.google.com/..."
-            aria-invalid={contratoInvalido || undefined}
+            aria-invalid={erroLink ? "true" : undefined}
             aria-describedby={
-              contratoInvalido
-                ? "f-contrato-ajuda f-contrato-erro"
+              erroLink
+                ? `f-contrato-ajuda ${idDoErro("contrato_url")}`
                 : "f-contrato-ajuda"
             }
           />
@@ -133,14 +165,7 @@ export function FichaContrato({
             a receber o contrato assinado. Continua valendo; a prova que a
             equipe lê é o arquivo anexado acima. Apague o campo para removê-lo.
           </p>
-          {contratoInvalido ? (
-            <p
-              id="f-contrato-erro"
-              className="text-xs leading-snug font-medium text-destructive"
-            >
-              O link precisa começar com https:// e não pode conter espaços.
-            </p>
-          ) : null}
+          <CampoErro id={idDoErro("contrato_url")} texto={erroLink} />
           {!contratoInvalido && contratoLimpo ? (
             <LinkDoContrato url={contratoLimpo} />
           ) : null}
@@ -154,14 +179,22 @@ export function FichaContrato({
 
       {contratado ? (
         <div className="grid gap-2 sm:max-w-sm">
-          <Label htmlFor="f-honorarios">Honorários contratados</Label>
+          <Label htmlFor="f-honorarios">
+            Honorários contratados{" "}
+            <span className="rotulo text-muted-foreground">(opcional)</span>
+          </Label>
           <Input
             id="f-honorarios"
             inputMode="numeric"
             value={honorarios}
-            onChange={(e) => onHonorarios(mascaraMoeda(e.target.value))}
+            onChange={(e) => onHonorarios(mascaraMoeda(e.target.value, 12))}
             placeholder="R$ 0,00"
-            aria-describedby="f-honorarios-ajuda"
+            aria-invalid={erroHonorarios ? "true" : undefined}
+            aria-describedby={
+              erroHonorarios
+                ? `f-honorarios-ajuda ${idDoErro("valor_honorarios")}`
+                : "f-honorarios-ajuda"
+            }
           />
           <p
             id="f-honorarios-ajuda"
@@ -169,6 +202,10 @@ export function FichaContrato({
           >
             Valor contratado com este cliente — não é o que já entrou no caixa.
           </p>
+          <CampoErro
+            id={idDoErro("valor_honorarios")}
+            texto={erroHonorarios}
+          />
         </div>
       ) : honorariosValor != null ? (
         // Fora de "Contratado" o valor sobrevive, mas não conta na meta — e

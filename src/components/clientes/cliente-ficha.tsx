@@ -53,16 +53,21 @@
  * "Você tem alterações não salvas em Reunião preliminar." Com quatro folhas,
  * "nesta ficha" não diz ONDE — a pessoa alteraria o DISC, iria ao Fechamento
  * e teria de abrir as quatro para achar. A aba alterada também ganha marca
- * própria (ponto + `sr-only`), porque a barra fica no rodapé e a régua das
+ * própria (o texto "não salvo"), porque a barra fica no rodapé e a régua das
  * abas, no topo.
  *
- * 🔴 **Pendência puxa a folha.** `faltaEssencial` (nome/telefone) é da aba 1 e
- * bloqueia o salvar da ficha INTEIRA. Ao tentar salvar com outra folha aberta,
- * a ficha troca para "Dados básicos" e foca o campo vazio — botão morto numa
- * folha, motivo em outra, é o defeito que esta fatia existe para não criar.
+ * 🔴 **Pendência puxa a folha.** (29/09/2026, pedido do Marcio: *"o sistema
+ * poderia guiar ele pra aba do erro, onde está o erro"*.) `pendenciasDaFicha`
+ * (puro, em `ficha-abas-estado.ts`) devolve TODAS as pendências de uma vez —
+ * antes, 4 guardas soltas paravam na primeira, e duas delas (DISC e link do
+ * contrato) só trocavam de aba, sem foco, com o DISC dentro de um pop-up
+ * FECHADO. Agora `salvar()` recusa se houver algo que barre e `levarAoCampo`
+ * troca a aba, abre o pop-up do DISC se for o caso, abre o `<details>` do
+ * link legado, centraliza o campo (a barra sticky não o cobre) e foca. O erro
+ * do SERVIDOR com `campo` segue o mesmo caminho.
  */
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
@@ -87,16 +92,26 @@ import { FichaAbaPreliminar } from "@/components/clientes/ficha-aba-preliminar";
 import { FichaCroqui } from "@/components/clientes/ficha-croqui";
 import { FichaAbaFechamento } from "@/components/clientes/ficha-aba-fechamento";
 import { FichaBarraSalvar } from "@/components/clientes/ficha-barra-salvar";
+import { ControleDiscDialogoContexto } from "@/components/clientes/disc-dialogo";
 import {
   ABAS_FICHA,
-  ROTULO_DA_ABA,
-  abaDaPendencia,
+  CAMPOS_NO_POPUP_DISC,
   alteradoPorAba,
   camposAlteradosDaFicha,
   contadorDaAba,
-  frasePendenciaDaFicha,
+  estadoDaAba,
+  fraseDaBarra,
+  mensagensPorCampo,
+  ordenarPendencias,
+  pendenciaDoServidor,
+  pendenciasDaFicha,
+  pendenciasQueBarram,
   resolverAba,
+  valorDoCampo,
   type AbaFicha,
+  type EstadoDaAba,
+  type Pendencia,
+  type ValoresDaFicha,
 } from "@/components/clientes/ficha-abas-estado";
 import {
   fasesDisponiveis,
@@ -262,6 +277,29 @@ export function ClienteFicha({
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
   /** Já houve uma tentativa de salvar? Marca os campos inválidos só depois. */
   const [tentouSalvar, setTentouSalvar] = useState(false);
+  /**
+   * A recusa do SERVIDOR que apontou um campo (`{ erro, campo }` de
+   * `atualizarCliente`), junto com o VALOR que o campo tinha quando foi
+   * enviado (`valorDoCampo`). Entra na lista de pendências para seguir o
+   * mesmo caminho das locais: aba, foco, mensagem no campo.
+   *
+   * 🔴 Vale só enquanto o campo continuar com aquele valor (ver
+   * `recusaVigente`). Antes ela só sumia no próximo salvar: a pessoa voltava
+   * a fase recusada e a tela seguia com "1 para corrigir" e "Ir para o
+   * campo", acusando um valor que já não estava lá.
+   */
+  const [erroServidor, setErroServidor] = useState<{
+    pendencia: Pendencia;
+    valor: string | null;
+  } | null>(null);
+  /**
+   * O pop-up do DISC, controlado DAQUI para o "Salvar ficha" poder abri-lo
+   * quando o erro mora lá dentro. Atravessa a folha pelo
+   * `ControleDiscDialogoContexto` (ver `disc-dialogo.tsx`).
+   */
+  const [discAberto, setDiscAberto] = useState(false);
+  /** O campo que recebe o foco quando o pop-up abre por causa de um erro. */
+  const [discFoco, setDiscFoco] = useState<string | null>(null);
 
   const wpp = linkWhatsapp(telefone);
   const contratoLimpo = contratoUrl.trim();
@@ -326,38 +364,33 @@ export function ClienteFicha({
    * A conta inteira (22 comparações, cada uma com a normalização que
    * `salvar()` usa) vive em `ficha-abas-estado.ts`, pura e sem React.
    */
-  const camposAlterados = camposAlteradosDaFicha(
-    {
-      nome,
-      telefone,
-      grau,
-      razaoSocial,
-      cnpj,
-      ramo,
-      regime,
-      problemas,
-      fase,
-      dataReuniao,
-      disc,
-      discConsciencia,
-      discGatilhos,
-      discRelacionamento,
-      aderiu,
-      msgPadrao,
-      estudoCaso,
-      ligacao,
-      registro,
-      honorarios,
-      contratoLimpo,
-      cnpjDigitos,
-    },
-    cliente,
-  );
+  const valores: ValoresDaFicha = {
+    nome,
+    telefone,
+    grau,
+    razaoSocial,
+    cnpj,
+    ramo,
+    regime,
+    problemas,
+    fase,
+    dataReuniao,
+    disc,
+    discConsciencia,
+    discGatilhos,
+    discRelacionamento,
+    aderiu,
+    msgPadrao,
+    estudoCaso,
+    ligacao,
+    registro,
+    honorarios,
+    contratoLimpo,
+    cnpjDigitos,
+  };
+  const camposAlterados = camposAlteradosDaFicha(valores, cliente);
 
   const abasAlteradas = alteradoPorAba(camposAlterados);
-
-  /** Salvar já foi tentado e o grupo de problemas continua vazio. */
-  const problemasEmFalta = tentouSalvar && problemas.length === 0;
 
   const contratado = fase === "contratado";
 
@@ -369,62 +402,119 @@ export function ClienteFicha({
   // salva com telefone, os campos abrem: a partir daí toda visita é alteração.
   const fichaNova = !cliente.telefone;
 
-  // 🔑 O BOTÃO NÃO OFERECE O QUE NÃO VAI DAR CERTO (Marcio, 10/09/2026):
-  // *"se não cadastrar tudo, o botão de salvar ficha fica em branco"*. O
-  // essencial é NOME + TELEFONE — é o que faz a ficha contar para os 30.
-  //
-  // ⚠️ Os PROBLEMAS ficam de fora desta trava, de propósito: 355 dos 879
-  // clientes estão sem nenhum marcado (medido em 10/09), e travar o salvar por
-  // causa deles prenderia 39 ambientes. Eles seguem como aviso âmbar.
-  const faltaEssencial = !nome.trim() || !telefone.trim();
   const honorariosValor = moedaParaNumero(honorarios);
-  // Mesma regra do CHECK no banco (migração ...090): https, sem espaço, de 12
-  // a 2000 caracteres. Aqui é conveniência — a garantia é a do banco.
-  const contratoInvalido =
-    contratoLimpo !== "" &&
-    (!/^https:\/\/[^\s]+$/.test(contratoLimpo) ||
-      contratoLimpo.length < 12 ||
-      contratoLimpo.length > 2000);
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔴 AS PENDÊNCIAS — UMA lista, quatro leitores (salvar, abas, barra, campo)
+  // ═══════════════════════════════════════════════════════════════════════
+  // O essencial é NOME + TELEFONE (Marcio, 10/09 e 29/09/2026) — é o que faz
+  // a ficha contar para os 30. O resto é opcional; o que está preenchido de
+  // um jeito que o banco recusa (CNPJ, DISC, link, honorários) também barra,
+  // porque o update é um só e o CHECK derrubaria a ficha inteira.
+  //
+  // ⚠️ Os PROBLEMAS são `sugestao`, nunca barram: 355 dos 879 clientes estão
+  // sem nenhum marcado (medido em 10/09), e travar o salvar por causa deles
+  // prenderia 39 ambientes.
   /**
-   * CNPJ digitado pela metade. O CHECK é `^[0-9]{14}$` com `null` permitido:
-   * vazio é válido (vira `null`), 14 dígitos é válido, **qualquer coisa entre
-   * 1 e 13 derruba a ficha inteira com 23514** — e a pessoa não teria como
-   * adivinhar que o culpado foi o CNPJ, porque o update é um só.
-   */
-  const cnpjInvalido = cnpjDigitos.length > 0 && cnpjDigitos.length !== 14;
-
-  /**
-   * O piso de 3 caracteres dos campos ricos do DISC — CONVENIÊNCIA; a
-   * garantia é o CHECK do banco. O caso do campo VAZIO não aparece aqui de
-   * propósito: vazio é válido (vira `null`). Só o "quase vazio" é recusado.
-   */
-  const discRicoCurto = [
-    { rotulo: "Consciência", valor: discConsciencia },
-    { rotulo: "Gatilhos", valor: discGatilhos },
-    { rotulo: "Relacionamento", valor: discRelacionamento },
-  ].find((c) => {
-    const t = c.valor.trim();
-    return t !== "" && t.length < 3;
-  });
-
-  /**
-   * 🔴 **A PENDÊNCIA PUXA A FOLHA.** Troca a aba e põe o foco no campo que
-   * está barrando. Sem isto, quem estivesse no Fechamento veria o botão
-   * "Salvar ficha" desabilitado, leria uma frase sobre nome e telefone e não
-   * teria como saber que os dois campos vivem em outra folha.
+   * A recusa do servidor, SE o campo ainda tem o valor recusado; senão
+   * `null`. Derivado no render, sem efeito: a pessoa mexeu no campo, a
+   * acusação some da aba, da barra e do campo no mesmo quadro. Voltar ao
+   * mesmo valor traz a acusação de volta — o banco o recusaria de novo.
    *
-   * `requestAnimationFrame`: com `keepMounted` o campo já está no DOM, mas
-   * focar antes do render da troca deixaria o foco num elemento com
-   * `hidden` — o navegador ignora e o cursor some. Um frame depois a folha
-   * já está visível.
+   * É o próprio objeto do estado (identidade estável) ou `null`, então serve
+   * de dependência do `useMemo` abaixo sem recalcular a cada tecla.
    */
-  function puxarParaCampo(destino: AbaFicha, idCampo: string) {
-    irParaAba(destino);
-    requestAnimationFrame(() => {
-      const el = document.getElementById(idCampo);
-      if (el instanceof HTMLElement) el.focus();
+  const recusaVigente =
+    erroServidor &&
+    valorDoCampo(erroServidor.pendencia.campo, valores) === erroServidor.valor
+      ? erroServidor.pendencia
+      : null;
+
+  const pendencias = useMemo(() => {
+    const locais = pendenciasDaFicha({
+      nome,
+      telefone,
+      cnpjDigitos,
+      problemas,
+      discConsciencia,
+      discGatilhos,
+      discRelacionamento,
+      honorarios,
+      contratoLimpo,
     });
+    // A do servidor só entra se a local não já acusar o mesmo campo — senão
+    // o campo mostraria duas frases e a aba contaria duas vezes.
+    if (recusaVigente && !locais.some((p) => p.campo === recusaVigente.campo)) {
+      return ordenarPendencias([...locais, recusaVigente]);
+    }
+    return locais;
+  }, [
+    nome,
+    telefone,
+    cnpjDigitos,
+    problemas,
+    discConsciencia,
+    discGatilhos,
+    discRelacionamento,
+    honorarios,
+    contratoLimpo,
+    recusaVigente,
+  ]);
+  const barram = pendenciasQueBarram(pendencias);
+  const temPendencia = (campo: keyof ClienteEtapa1) =>
+    pendencias.some((p) => p.campo === campo);
+
+  /**
+   * Sugestão (âmbar) só aparece nas abas DEPOIS de uma tentativa de salvar —
+   * a mesma regra que o aviso dos problemas já seguia. Antes disso ela
+   * repetiria o "0 problemas" do contador em 40% das fichas, e aviso que está
+   * sempre lá deixa de ser lido. O que BARRA aparece sempre: é o que a pessoa
+   * precisa saber antes de clicar.
+   */
+  const pendenciasVisiveis = tentouSalvar ? pendencias : barram;
+
+  /**
+   * Salvar já foi tentado e o grupo de problemas continua vazio. Não é
+   * duplicata de `erros`: `problemas` é SUGESTÃO, e `mensagensPorCampo` deixa
+   * sugestão de fora (vira `aria-invalid`). É o aviso âmbar da folha 2.
+   */
+  const problemasEmFalta = tentouSalvar && temPendencia("problemas");
+  /**
+   * Link fora da regra — AO VIVO, antes de qualquer tentativa, como sempre
+   * foi em `ficha-contrato`. Não é duplicata de `erros.contrato_url`, que só
+   * existe depois da 1ª tentativa. (O CNPJ, que só marcava depois da
+   * tentativa, virou `erros.cnpj` e deixou de ter prop própria.)
+   */
+  const contratoInvalido = temPendencia("contrato_url");
+
+  /**
+   * A frase de cada campo, para as folhas (prop `erros`). Só depois da
+   * primeira tentativa: marcar campo de vermelho enquanto a pessoa ainda
+   * digita é cobrar antes da hora.
+   */
+  const erros = useMemo(
+    () => (tentouSalvar ? mensagensPorCampo(pendencias) : {}),
+    [tentouSalvar, pendencias],
+  );
+
+  /**
+   * 🔴 **A PENDÊNCIA PUXA A FOLHA — até o campo.** Troca a aba e:
+   *   · campo do DISC → abre o pop-up; o foco cai no campo lá dentro
+   *     (`initialFocus` do diálogo, via `discFoco`);
+   *   · qualquer outro → `focarQuandoVisivel` (fim do arquivo).
+   *
+   * Sem isto, quem estivesse no Fechamento veria a recusa e não teria como
+   * saber que o campo vive em outra folha — ou, no DISC, dentro de um pop-up
+   * fechado.
+   */
+  function levarAoCampo(p: Pendencia) {
+    irParaAba(p.aba);
+    if (CAMPOS_NO_POPUP_DISC.has(p.campo)) {
+      setDiscFoco(p.idCampo);
+      setDiscAberto(true);
+      return;
+    }
+    if (p.idCampo) focarQuandoVisivel(p.idCampo);
   }
 
   /**
@@ -475,37 +565,20 @@ export function ClienteFicha({
   function salvar() {
     setTentouSalvar(true);
     setErroSalvar(null);
-    // 🔴 A ordem das guardas segue a ordem das FOLHAS: a pendência da aba 1
-    // é conferida primeiro, porque é a que bloqueia o botão. Cada uma leva a
-    // pessoa até o campo.
-    if (faltaEssencial) {
-      setErroSalvar(
-        `Preencha o nome e o telefone em ${ROTULO_DA_ABA.dados} — são eles que fazem a ficha contar para os 30.`,
-      );
-      puxarParaCampo("dados", !nome.trim() ? "f-nome" : "f-tel");
-      return;
-    }
-    if (cnpjInvalido) {
-      setErroSalvar(
-        `O CNPJ em ${ROTULO_DA_ABA.dados} está incompleto (${cnpjDigitos.length} de 14 dígitos). Complete ou deixe em branco.`,
-      );
-      puxarParaCampo("dados", "f-cnpj");
-      return;
-    }
-    if (contratoInvalido) {
-      setErroSalvar(
-        "O link do contrato precisa começar com https:// e não pode ter espaços.",
-      );
-      irParaAba("fechamento");
-      return;
-    }
-    if (discRicoCurto) {
-      // A frase nomeia O CAMPO. Sem isso, o 23514 do banco chegaria como
-      // "violates check constraint" sobre uma ficha de 20 campos.
-      setErroSalvar(
-        `O campo "${discRicoCurto.rotulo}" do DISC precisa de pelo menos 3 caracteres — ou deixe em branco.`,
-      );
-      irParaAba("preliminar");
+    setErroServidor(null);
+    // 🔴 TODAS as pendências de uma vez (`pendenciasDaFicha`), na ordem das
+    // folhas — antes, 4 guardas soltas paravam na primeira. A frase da recusa
+    // NÃO vai para `erroSalvar`: ela é calculada ao vivo (`alertaLocal`) e
+    // some sozinha quando a pessoa corrige. Uma string gravada aqui
+    // continuaria dizendo "falta o telefone" com o telefone já preenchido.
+    //
+    // A do servidor (da tentativa anterior) fica de fora: acabou de ser
+    // limpa, e quem decide de novo é o banco.
+    const locais = pendenciasQueBarram(
+      pendencias.filter((p) => p !== recusaVigente),
+    );
+    if (locais.length > 0) {
+      levarAoCampo(locais[0]);
       return;
     }
     // 🔑 A exigência do rótulo dos problemas AVISA, não trava: 355 dos 879
@@ -549,7 +622,22 @@ export function ClienteFicha({
         contrato_url: contratoLimpo || null,
       });
       if (res.erro) {
-        setErroSalvar(res.erro);
+        // Contrato da action: `campo` diz QUAL campo o servidor recusou. A
+        // frase vai para o campo e a pessoa é levada até ele — o mesmo
+        // caminho da recusa local.
+        const p = res.campo ? pendenciaDoServidor(res.campo, res.erro) : null;
+        if (p) {
+          // 🔴 A frase NÃO vai para `erroSalvar`: gravada ali, ela ficaria na
+          // barra depois de a pessoa corrigir o campo. Ela mora na pendência,
+          // que morre sozinha quando o valor muda (`recusaVigente`), e a
+          // barra a mostra inteira via `fraseDaBarra`. `valores` é o do
+          // clique — o valor que o servidor recusou.
+          setErroServidor({ pendencia: p, valor: valorDoCampo(p.campo, valores) });
+          levarAoCampo(p);
+        } else {
+          // Sem campo, não há o que observar: fica até o próximo salvar.
+          setErroSalvar(res.erro);
+        }
         return;
       }
       setTentouSalvar(false);
@@ -571,13 +659,37 @@ export function ClienteFicha({
     ]),
   ) as Record<AbaFicha, string>;
 
+  /** O estado de cada folha: "N para corrigir", sugestão ou "Completa". */
+  const estados = Object.fromEntries(
+    ABAS_FICHA.map((id) => [id, estadoDaAba(id, pendenciasVisiveis)]),
+  ) as Record<AbaFicha, EstadoDaAba>;
+
   /**
-   * A folha que BLOQUEIA o salvar, ou `null`. Quem transforma isto (e as abas
-   * alteradas) na frase da barra é `frasePendenciaDaFicha`.
+   * A recusa, ao vivo: existe enquanto houver algo barrando depois de uma
+   * tentativa — inclusive a do SERVIDOR com `campo`, que entra em `barram`
+   * e sai na frase com o nome do campo e a frase dele. Vai no `role="alert"`
+   * da barra. `erroSalvar` (recusa do servidor SEM campo) vence, porque é a
+   * única pista que existe.
    */
-  const abaPendente = abaDaPendencia({ faltaEssencial });
+  const alertaLocal =
+    tentouSalvar && barram.length > 0
+      ? fraseDaBarra({ pendencias: barram, abasAlteradas })
+      : null;
+  const primeiraQueBarra = barram[0] ?? null;
 
   return (
+    <ControleDiscDialogoContexto.Provider
+      value={{
+        aberto: discAberto,
+        onAbertoChange: (v) => {
+          setDiscAberto(v);
+          // Fechou: a próxima abertura pelo botão "Ver perfil" usa o foco
+          // padrão, não o do último erro.
+          if (!v) setDiscFoco(null);
+        },
+        focoInicial: discFoco,
+      }}
+    >
     <div className="grid gap-6">
       <FichaCabecalho
         cliente={cliente}
@@ -605,6 +717,7 @@ export function ClienteFicha({
         onAba={irParaAba}
         contadores={contadores}
         abasAlteradas={abasAlteradas}
+        estados={estados}
         dados={
           <FichaAbaDados
             nome={nome}
@@ -621,8 +734,8 @@ export function ClienteFicha({
             onRamo={setRamo}
             regime={regime}
             onRegime={setRegime}
-            cnpjInvalido={tentouSalvar && cnpjInvalido}
             mascaraTelefone={mascaraTelefone}
+            erros={erros}
           />
         }
         preliminar={
@@ -661,6 +774,7 @@ export function ClienteFicha({
             registro={registro}
             onRegistro={setRegistro}
             fichaNova={fichaNova}
+            erros={erros}
           />
         }
         /* ⚠️ SLOT da fatia 5 — ver o cabeçalho de `ficha-croqui.tsx`. */
@@ -690,15 +804,19 @@ export function ClienteFicha({
             contextoObrigatorio={contextoObrigatorio}
             pending={pending}
             aoMudar={() => router.refresh()}
+            erros={erros}
           />
         }
       />
 
       <FichaBarraSalvar
-        erroSalvar={erroSalvar}
-        aviso={frasePendenciaDaFicha({ abaPendente, abasAlteradas })}
+        erroSalvar={erroSalvar ?? alertaLocal}
+        aviso={fraseDaBarra({ pendencias: barram, abasAlteradas })}
         pending={pending}
         onSalvar={salvar}
+        onIrParaCampo={
+          primeiraQueBarra ? () => levarAoCampo(primeiraQueBarra) : null
+        }
       />
 
       {/* PL11 — o botão da estrela continua montado acima: é para lá que o
@@ -730,5 +848,46 @@ export function ClienteFicha({
         />
       ) : null}
     </div>
+    </ControleDiscDialogoContexto.Provider>
   );
+}
+
+/**
+ * Foca o campo `id` assim que ele estiver VISÍVEL — e só então.
+ *
+ * 🔴 A prova de visibilidade é `offsetParent`, não "existe no DOM": com
+ * `keepMounted` o campo de outra folha já está no DOM, dentro de um painel
+ * `hidden`, e `focus()` nele é ignorado em silêncio. A troca de aba
+ * (`replaceState` → `useSearchParams`) re-renderiza num frame que não dá para
+ * prever, então tenta a cada frame, por até ~1 s. Um `requestAnimationFrame`
+ * só (o que havia até 28/09) dependia de a troca caber naquele frame.
+ *
+ * `<details>` fechado em volta do campo é aberto antes (o link legado do
+ * contrato mora num): conteúdo de `details` fechado não tem caixa, e o
+ * `offsetParent` nunca deixaria de ser `null`.
+ *
+ * `scrollIntoView({ block: "center" })`: a barra de salvar é `sticky
+ * bottom-0` — o `focus()` padrão rola o mínimo e pode deixar o campo
+ * EMBAIXO dela. `behavior: "instant"`: rolagem animada é movimento que
+ * ninguém pediu. `focus({ preventScroll })` para não rolar de novo por cima.
+ */
+function focarQuandoVisivel(id: string, frames = 60) {
+  const el = document.getElementById(id);
+  if (el instanceof HTMLElement) {
+    for (
+      let d = el.parentElement?.closest("details");
+      d;
+      d = d.parentElement?.closest("details")
+    ) {
+      if (!d.open) d.open = true;
+    }
+    if (el.offsetParent !== null) {
+      el.scrollIntoView({ block: "center", behavior: "instant" });
+      el.focus({ preventScroll: true });
+      return;
+    }
+  }
+  if (frames > 0) {
+    requestAnimationFrame(() => focarQuandoVisivel(id, frames - 1));
+  }
 }

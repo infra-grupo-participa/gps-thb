@@ -23,6 +23,7 @@
  */
 
 import { logErro, type ContextoLog } from "@/lib/log";
+import type { ClienteEtapa1 } from "@/lib/types";
 
 /** Shape comum de `PostgrestError` e do erro de `rpc()`. */
 export interface ErroDeBanco {
@@ -757,6 +758,57 @@ const POR_CODIGO: Record<string, string> = {
  * saber o que fazer.
  */
 const POR_CONSTRAINT: Array<{ contem: string; frase: string }> = [];
+
+/**
+ * Qual CAMPO da ficha do cliente causou a recusa do banco — para a tela levar
+ * o usuário até ele. Só LOCALIZA; a frase continua sendo de `traduzirErroBanco`.
+ *
+ * Casa por PREFIXO do nome da constraint dentro de `message`/`details` (o
+ * PostgREST varia onde põe o texto), mesmo critério de `POR_CONSTRAINT`. Os
+ * nomes vêm das migrações de `gps.etapa1_clientes`; `null` = não sei dizer
+ * (nunca chuta um campo). Constraints de `contrato_path/_nome/_mime/_tamanho`
+ * ficam de fora: não são campo de `PatchCliente`, o anexo é por RPC.
+ */
+const CAMPO_POR_CONSTRAINT: Array<{
+  contem: string;
+  campo: keyof ClienteEtapa1;
+}> = [
+  { contem: "chk_etapa1_clientes_cnpj", campo: "cnpj" },
+  { contem: "chk_etapa1_clientes_razao_social", campo: "razao_social" },
+  { contem: "chk_etapa1_clientes_ramo_atividade", campo: "ramo_atividade" },
+  {
+    contem: "chk_etapa1_clientes_regime_tributario",
+    campo: "regime_tributario",
+  },
+  { contem: "chk_etapa1_clientes_grau_relacao", campo: "grau_relacao" },
+  { contem: "chk_etapa1_clientes_contrato_url", campo: "contrato_url" },
+  { contem: "chk_etapa1_clientes_honorarios", campo: "valor_honorarios" },
+  { contem: "chk_etapa1_clientes_fase", campo: "fase" },
+  {
+    contem: "chk_etapa1_clientes_disc_consciencia",
+    campo: "disc_consciencia",
+  },
+  { contem: "chk_etapa1_clientes_disc_gatilhos", campo: "disc_gatilhos" },
+  {
+    contem: "chk_etapa1_clientes_disc_relacionamento",
+    campo: "disc_relacionamento",
+  },
+];
+
+/** Trecho da recusa da trigger de acompanhamento (42501) quando a fase volta. */
+const TRECHO_FASE_NAO_VOLTA = "a fase não pode voltar para Prospecção";
+
+export function campoDoErroBanco(erro: ErroDeBanco): keyof ClienteEtapa1 | null {
+  const texto = `${erro.message ?? ""} ${erro.details ?? ""}`;
+  const porConstraint = CAMPO_POR_CONSTRAINT.find((c) =>
+    texto.includes(c.contem),
+  );
+  if (porConstraint) return porConstraint.campo;
+  if (erro.code === "42501" && texto.includes(TRECHO_FASE_NAO_VOLTA)) {
+    return "fase";
+  }
+  return null;
+}
 
 const GENERICA = "Não foi possível concluir agora. Tente de novo em instantes.";
 

@@ -13,7 +13,7 @@
  * 🔴 **Esta folha é a que BLOQUEIA o salvar.** Nome e telefone são o que faz a
  * ficha contar para os 30 da Etapa 01, e o botão "Salvar ficha" fica
  * desabilitado sem eles. É por isso que a validação PUXA a pessoa para cá
- * (`abaDaPendencia`) e o foco vai para o campo — deixar o botão morto numa
+ * (`pendenciasDaFicha`, em `ficha-abas-estado.ts`) e o foco vai para o campo — deixar o botão morto numa
  * outra folha, sem dizer onde está o problema, é o defeito que a fatia inteira
  * existe para não criar.
  *
@@ -22,13 +22,17 @@
  * renomear lá deixa o foco no lugar errado, em silêncio.
  */
 
-import { Building2, Phone, User } from "lucide-react";
+import { Phone, User } from "lucide-react";
 
 import { GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Secao } from "@/components/ui/secao";
 import { FichaPj } from "@/components/clientes/ficha-pj";
+import {
+  idDoErro,
+  type ErrosDaFicha,
+} from "@/components/clientes/ficha-abas-estado";
+import { CampoErro } from "@/components/ui/campo-erro";
 import {
   Select,
   SelectContent,
@@ -52,8 +56,8 @@ export function FichaAbaDados({
   onRamo,
   regime,
   onRegime,
-  cnpjInvalido,
   mascaraTelefone,
+  erros,
 }: {
   nome: string;
   onNome: (v: string) => void;
@@ -69,15 +73,22 @@ export function FichaAbaDados({
   onRamo: (v: string) => void;
   regime: string;
   onRegime: (v: string) => void;
-  cnpjInvalido: boolean;
   /** Passada por prop para a folha não importar `masks` só por isto. */
   mascaraTelefone: (v: string) => string;
+  /**
+   * Frase de erro por campo, vinda do `ClienteFicha` (`mensagensPorCampo`).
+   * Contrato em `ID_DO_CAMPO` (`ficha-abas-estado.ts`): campo com frase aqui
+   * ganha `aria-invalid`, `aria-describedby` e o `CampoErro` logo abaixo.
+   */
+  erros?: ErrosDaFicha;
 }) {
   return (
     <div className="grid gap-8">
       <div className="grid gap-5">
         <div className="grid gap-2">
-          <Label htmlFor="f-nome">Nome</Label>
+          <Label htmlFor="f-nome">
+            Nome <span className="rotulo">(obrigatório)</span>
+          </Label>
           <div className="relative">
             <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -86,12 +97,17 @@ export function FichaAbaDados({
               onChange={(e) => onNome(e.target.value)}
               placeholder="Nome do cliente"
               className="pl-9"
+              aria-invalid={erros?.nome ? "true" : undefined}
+              aria-describedby={erros?.nome ? idDoErro("nome") : undefined}
             />
           </div>
+          <CampoErro id={idDoErro("nome")} texto={erros?.nome} />
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="f-tel">Telefone</Label>
+          <Label htmlFor="f-tel">
+            Telefone <span className="rotulo">(obrigatório)</span>
+          </Label>
           <div className="relative">
             <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -101,9 +117,15 @@ export function FichaAbaDados({
               onChange={(e) => onTelefone(mascaraTelefone(e.target.value))}
               placeholder="(00) 00000-0000"
               className="pl-9"
-              aria-describedby="f-tel-ajuda"
+              aria-invalid={erros?.telefone ? "true" : undefined}
+              aria-describedby={
+                erros?.telefone
+                  ? `f-tel-ajuda ${idDoErro("telefone")}`
+                  : "f-tel-ajuda"
+              }
             />
           </div>
+          <CampoErro id={idDoErro("telefone")} texto={erros?.telefone} />
           {/* 🔴 MEDIDO EM 10/09/2026: 17 fichas estavam paradas só por falta
               de telefone — a pessoa digitou o nome, a ficha não conta para os
               30 e ela não tinha como saber por quê. O campo vizinho (grau de
@@ -121,9 +143,20 @@ export function FichaAbaDados({
             (10/09/2026); grau é TIPO DE VÍNCULO e continua. */}
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label htmlFor="f-grau">Grau de relação</Label>
+            <Label htmlFor="f-grau">
+              Grau de relação{" "}
+              <span className="rotulo text-muted-foreground">(opcional)</span>
+            </Label>
             <Select value={grau} onValueChange={(v) => onGrau(v ?? "")}>
-              <SelectTrigger id="f-grau" aria-describedby="f-grau-ajuda">
+              <SelectTrigger
+                id="f-grau"
+                aria-invalid={erros?.grau_relacao ? "true" : undefined}
+                aria-describedby={
+                  erros?.grau_relacao
+                    ? `f-grau-ajuda ${idDoErro("grau_relacao")}`
+                    : "f-grau-ajuda"
+                }
+              >
                 {/* Sem função de render o Base UI imprime o VALOR do banco
                     (`cliente_atual`). E `""` mostra o placeholder, que diz
                     "Não informado" — NUNCA "Lead": a ausência de resposta
@@ -150,36 +183,29 @@ export function FichaAbaDados({
               {GRAUS_RELACAO_UI.find((g) => g.id === grau)?.ajuda ??
                 "Como você conhece esta pessoa. Não informado enquanto você não escolher."}
             </p>
+            <CampoErro
+              id={idDoErro("grau_relacao")}
+              texto={erros?.grau_relacao}
+            />
           </div>
         </div>
       </div>
 
-      {/* PESSOA JURÍDICA — `Secao` (marcador + título + régua) e não um card
-          dentro do corpo da aba: a folha já É a caixa. Hierarquia por POSIÇÃO,
-          o grupo opcional vem depois do que é obrigatório. */}
-      <Secao
-        /* `icone` e não `numero`: preencher a ficha não é uma sequência de
-           passos, e numeração decorativa é justamente o clichê que `Secao`
-           existe para não reintroduzir. O marcador é `size-6` — "PJ" em texto
-           estouraria a caixa. */
-        icone={<Building2 />}
-        titulo="Pessoa jurídica"
-        nivel="h3"
-        descricao="Preencha só se este cliente tem empresa. Nada aqui é obrigatório."
-        classeConteudo="grid gap-5"
-      >
-        <FichaPj
-          razaoSocial={razaoSocial}
-          onRazaoSocial={onRazaoSocial}
-          cnpj={cnpj}
-          onCnpj={onCnpj}
-          ramo={ramo}
-          onRamo={onRamo}
-          regime={regime}
-          onRegime={onRegime}
-          cnpjInvalido={cnpjInvalido}
-        />
-      </Secao>
+      {/* EMPRESA: `<details>` fechado (o `<summary>` é o cabeçalho), porque os
+          4 campos estão vazios em 100% dos 1.795 clientes. Abre sozinho com
+          valor ou erro; ver `ficha-pj.tsx`. Hierarquia por POSIÇÃO: o grupo
+          opcional vem depois do que é obrigatório. */}
+      <FichaPj
+        razaoSocial={razaoSocial}
+        onRazaoSocial={onRazaoSocial}
+        cnpj={cnpj}
+        onCnpj={onCnpj}
+        ramo={ramo}
+        onRamo={onRamo}
+        regime={regime}
+        onRegime={onRegime}
+        erros={erros}
+      />
     </div>
   );
 }

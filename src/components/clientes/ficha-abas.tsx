@@ -16,10 +16,32 @@
  * ── DENSO E CHAPADO ────────────────────────────────────────────────────────
  * Abas como APARADORES de pasta: régua laranja de 2 px na folha ativa (o
  * mesmo `TabsList variant="line"` do header e do painel do admin), uma linha
- * fina separando, corpo em `bg-card`. Sem sombra, sem gradiente, sem ícone
- * decorativo, sem fonte grande. Hierarquia por POSIÇÃO. Tipografia pelas
- * `@utility` (`rotulo`, `corpo-sm`) — **nunca** `text-*` custom, que o
- * `tailwind-merge` trata como COR e descarta.
+ * fina separando, corpo em `bg-card`. Sem sombra, sem gradiente, sem fonte
+ * grande. Hierarquia por POSIÇÃO. Tipografia pelas `@utility` (`rotulo`,
+ * `corpo-sm`) — **nunca** `text-*` custom, que o `tailwind-merge` trata como
+ * COR e descarta.
+ *
+ * ── 🔴 ÍCONES: IDENTIDADE E ESTADO, NUNCA ENFEITE (Marcio, 29/09/2026) ─────
+ * A ficha é usada por pessoas de mais idade, e o pedido foi literal:
+ * *"gatilhos visuais, orientações visuais, ícones que indicam as coisas
+ * exatamente"*. Até 28/09 este cabeçalho dizia "sem ícone decorativo" — e
+ * continua valendo: nenhum ícone aqui é decoração. São dois tipos, fixos:
+ *   · **identidade da folha** — `User` Dados · `CalendarClock` Preliminar ·
+ *     `PenTool` Croqui · `FilePenLine` Fechamento (o `FileSignature` do
+ *     pedido virou `FilePenLine` no lucide 1.x). Sempre o mesmo por folha,
+ *     para o olho achar a folha sem ler;
+ *   · **estado** (`estadoDaAba`) — `CircleAlert` "N para corrigir"
+ *     (vermelho), `TriangleAlert` sugestão (âmbar), `CircleCheck` "Completa"
+ *     (verde, só em Dados).
+ * Todo ícone é `aria-hidden` e vem SEMPRE com texto ao lado (WCAG 1.4.1:
+ * nunca só cor, nunca só forma). Cor de texto só pelos pares semânticos do
+ * `globals.css` (`risco`/`atencao`/`sucesso`-foreground, ≥5,8:1) e
+ * `accent-foreground` — nunca `text-primary` em texto.
+ *
+ * 🔴 **O texto do estado vem DEPOIS do rótulo**: o nome acessível da aba tem
+ * de continuar começando pelo rótulo — `e2e/ficha-abas.spec.ts` casa
+ * `^dados b(á|a)sicos`. Ícone antes do rótulo não atrapalha: `aria-hidden`
+ * não entra no nome.
  *
  * ── 🔴 O ESTADO MORA NA URL, ESCRITO COM `replaceState` ────────────────────
  * Precedente: `src/components/admin/abas-painel.tsx` e `dashboard/regua.tsx`
@@ -100,6 +122,16 @@
  */
 
 import { useEffect, useRef } from "react";
+import {
+  CalendarClock,
+  CircleAlert,
+  CircleCheck,
+  FilePenLine,
+  PenTool,
+  TriangleAlert,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -109,13 +141,33 @@ import {
   ROTULO_DA_ABA,
   rolarAbaAtivaParaDentro,
   type AbaFicha,
+  type EstadoDaAba,
 } from "@/components/clientes/ficha-abas-estado";
+
+/** O ícone de IDENTIDADE de cada folha — fixo. Ver o cabeçalho. */
+const ICONE_DA_ABA: Record<AbaFicha, LucideIcon> = {
+  dados: User,
+  preliminar: CalendarClock,
+  croqui: PenTool,
+  fechamento: FilePenLine,
+};
+
+/** O ícone e a cor de cada ESTADO. Cor sempre com texto junto. */
+const VISUAL_DO_ESTADO: Record<
+  NonNullable<EstadoDaAba>["tipo"],
+  { Icone: LucideIcon; cor: string }
+> = {
+  corrigir: { Icone: CircleAlert, cor: "text-risco-foreground" },
+  sugestao: { Icone: TriangleAlert, cor: "text-atencao-foreground" },
+  completa: { Icone: CircleCheck, cor: "text-sucesso-foreground" },
+};
 
 export function FichaAbas({
   aba,
   onAba,
   contadores,
   abasAlteradas,
+  estados,
   dados,
   preliminar,
   croqui,
@@ -127,8 +179,13 @@ export function FichaAbas({
   onAba: (aba: AbaFicha) => void;
   /** O texto do badge de cada aba. `""` = sem badge (só "Dados básicos"). */
   contadores: Record<AbaFicha, string>;
-  /** Abas com alteração não salva — ganham a marca ao lado do rótulo. */
+  /** Abas com alteração não salva — ganham "não salvo" ao lado do rótulo. */
   abasAlteradas: readonly AbaFicha[];
+  /**
+   * O estado de cada aba (`estadoDaAba`): "N para corrigir", sugestão ou
+   * "Completa". `null` = nada a dizer.
+   */
+  estados: Record<AbaFicha, EstadoDaAba>;
   dados: React.ReactNode;
   preliminar: React.ReactNode;
   croqui: React.ReactNode;
@@ -224,6 +281,9 @@ export function FichaAbas({
         {ABAS_FICHA.map((id) => {
           const contador = contadores[id];
           const alterada = abasAlteradas.includes(id);
+          const estado = estados[id];
+          const IconeAba = ICONE_DA_ABA[id];
+          const visual = estado ? VISUAL_DO_ESTADO[estado.tipo] : null;
           return (
             <TabsTrigger
               key={id}
@@ -235,19 +295,35 @@ export function FichaAbas({
               className="h-auto! flex-col items-start gap-0.5 py-1.5"
             >
               <span className="flex items-center gap-1.5">
+                <IconeAba aria-hidden className="size-4 shrink-0" />
                 {ROTULO_DA_ABA[id]}
-                {/* 🔴 A MARCA DE ALTERAÇÃO — ponto **e** texto para leitor de
-                    tela. Um ponto laranja sozinho é cor como único portador de
-                    significado (WCAG 1.4.1); o `sr-only` diz o que ele é, e a
-                    barra de salvar nomeia a folha em voz alta. */}
+                {/* O ESTADO — ícone + texto, depois do rótulo. O `" "` não
+                    aparece (espaço solto num flex some) mas separa as palavras
+                    no nome acessível: sem ele o leitor diria "Dados
+                    básicosCompleta". */}
+                {estado && visual ? " " : null}
+                {estado && visual ? (
+                  <span
+                    className={cn(
+                      "flex items-center gap-1 corpo-sm font-medium",
+                      visual.cor,
+                    )}
+                  >
+                    <visual.Icone aria-hidden className="size-4 shrink-0" />
+                    {estado.texto}
+                  </span>
+                ) : null}
+                {/* 🔴 A MARCA DE ALTERAÇÃO — era um ponto de 6 px; virou
+                    TEXTO, que se lê sem saber o que o ponto significa. O
+                    visível é curto ("não salvo") e fica fora da árvore de
+                    acessibilidade; o leitor de tela ouve a forma longa, a
+                    mesma que `e2e/ficha-abas.spec.ts` confere. */}
+                {alterada ? " " : null}
                 {alterada ? (
-                  <>
-                    <span
-                      aria-hidden
-                      className="size-1.5 shrink-0 rounded-full bg-accent-foreground"
-                    />
+                  <span className="corpo-sm font-medium text-accent-foreground">
+                    <span aria-hidden>não salvo</span>
                     <span className="sr-only">(alterações não salvas)</span>
-                  </>
+                  </span>
                 ) : null}
               </span>
               {/* O contador. `Badge variant="neutral"` (cinza com ícone de
@@ -258,7 +334,7 @@ export function FichaAbas({
                   icone={false}
                   className={cn(
                     "h-auto rounded-sm border-0 bg-transparent px-0 py-0",
-                    "corpo-sm text-[0.6875rem] leading-tight font-normal text-muted-foreground",
+                    "corpo-sm font-normal text-muted-foreground",
                   )}
                 >
                   {contador}

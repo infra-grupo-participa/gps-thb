@@ -1,6 +1,12 @@
 "use client";
 
+import { createContext, useContext } from "react";
 import { PERFIS_DISC } from "@/lib/etapa1";
+import {
+  idDoErro,
+  type ErrosDaFicha,
+} from "@/components/clientes/ficha-abas-estado";
+import { CampoErro } from "@/components/ui/campo-erro";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +25,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+/**
+ * Controle do pop-up vindo DE FORA — o caminho que o `ClienteFicha` usa para
+ * abri-lo quando o "Salvar ficha" encontra um campo do DISC com erro.
+ *
+ * 🔑 Por que um contexto, e não só as props `aberto`/`onAbertoChange`: o
+ * `DiscDialogo` é montado dentro de `ficha-aba-preliminar.tsx`, e aquela
+ * folha é de outro executor nesta rodada (29/09/2026). O contexto atravessa a
+ * folha sem editá-la. As props continuam existindo e VENCEM o contexto —
+ * quando a folha passar a repassá-las, este contexto pode ser apagado sem
+ * mudar mais nada.
+ *
+ * `null` (o padrão) = ninguém controla: o diálogo abre e fecha sozinho pelo
+ * botão "Ver perfil", como sempre foi.
+ */
+export interface ControleDiscDialogo {
+  aberto: boolean;
+  onAbertoChange: (aberto: boolean) => void;
+  /**
+   * `id` do campo que recebe o foco ao abrir (`ID_DO_CAMPO`). `null` = foco
+   * padrão do Base UI (primeiro tabulável).
+   */
+  focoInicial: string | null;
+}
+
+export const ControleDiscDialogoContexto =
+  createContext<ControleDiscDialogo | null>(null);
 
 /**
  * O perfil DISC do cliente — botão na ficha, edição no diálogo.
@@ -66,6 +99,10 @@ export function DiscDialogo({
   discRelacionamento,
   setDiscRelacionamento,
   painelEntrevista = null,
+  aberto,
+  onAbertoChange,
+  focoInicial,
+  erros,
 }: {
   disc: string;
   setDisc: (v: string) => void;
@@ -80,13 +117,44 @@ export function DiscDialogo({
    * assistência: quem entrevista é o parceiro, ao telefone com o lead.
    */
   painelEntrevista?: React.ReactNode;
+  /**
+   * Controlado de fora. Omitido = vale o `ControleDiscDialogoContexto`; sem
+   * contexto também, o diálogo é não controlado (o uso de sempre).
+   */
+  aberto?: boolean;
+  onAbertoChange?: (aberto: boolean) => void;
+  /** `id` do campo que recebe o foco ao abrir. Ver `ControleDiscDialogo`. */
+  focoInicial?: string | null;
+  /**
+   * Frase de erro por campo (`mensagensPorCampo`), repassada pela folha
+   * Preliminar. Contrato: `ID_DO_CAMPO` — o campo com frase ganha
+   * `aria-invalid`, `aria-describedby` e o `CampoErro` logo abaixo.
+   */
+  erros?: ErrosDaFicha;
 }) {
+  const ctx = useContext(ControleDiscDialogoContexto);
+  const controlado = aberto !== undefined;
+  const open = controlado ? aberto : ctx?.aberto;
+  const onOpenChange = controlado ? onAbertoChange : ctx?.onAbertoChange;
+  const foco = (controlado ? focoInicial : ctx?.focoInicial) ?? null;
+
   return (
-    <Dialog>
+    // `open` `undefined` = não controlado (Base UI). Com o contexto presente,
+    // o botão "Ver perfil" continua funcionando: o clique chega por
+    // `onOpenChange` e o dono do estado o grava.
+    <Dialog open={open} onOpenChange={(v) => onOpenChange?.(v)}>
       <DialogTrigger render={<Button variant="outline" size="sm" />}>
         Ver perfil
       </DialogTrigger>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent
+        className="max-h-[85vh] overflow-y-auto sm:max-w-2xl"
+        /* 🔴 Levado até aqui por um erro: o foco vai ao CAMPO com erro, não
+           ao primeiro tabulável (que seria o botão da entrevista). Sem id, ou
+           id que não existe, `true` devolve o comportamento padrão. */
+        initialFocus={() =>
+          (foco ? document.getElementById(foco) : null) ?? true
+        }
+      >
         <DialogHeader>
           <DialogTitle>Perfil do cliente</DialogTitle>
           <DialogDescription>
@@ -118,9 +186,18 @@ export function DiscDialogo({
         )}
 
         <div className="grid gap-2">
-          <Label htmlFor="f-disc">Perfil DISC</Label>
+          <Label htmlFor="f-disc">
+            Perfil DISC{" "}
+            <span className="rotulo text-muted-foreground">(opcional)</span>
+          </Label>
           <Select value={disc} onValueChange={(v) => setDisc(v ?? "")}>
-            <SelectTrigger id="f-disc">
+            <SelectTrigger
+              id="f-disc"
+              aria-invalid={erros?.perfil_disc ? "true" : undefined}
+              aria-describedby={
+                erros?.perfil_disc ? idDoErro("perfil_disc") : undefined
+              }
+            >
               <SelectValue placeholder="—">
                 {(v: string) => PERFIS_DISC.find((d) => d.id === v)?.rotulo ?? v}
               </SelectValue>
@@ -133,6 +210,7 @@ export function DiscDialogo({
               ))}
             </SelectContent>
           </Select>
+          <CampoErro id={idDoErro("perfil_disc")} texto={erros?.perfil_disc} />
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════
@@ -163,12 +241,17 @@ export function DiscDialogo({
             </Label>
             <Textarea
               id="f-disc-consc"
+              aria-invalid={erros?.disc_consciencia ? "true" : undefined}
+              aria-describedby={
+                erros?.disc_consciencia ? idDoErro("disc_consciencia") : undefined
+              }
               value={discConsciencia}
               onChange={(e) => setDiscConsciencia(e.target.value)}
               maxLength={2000}
               rows={3}
               placeholder="O quanto essa pessoa já percebe o problema que a holding resolve."
             />
+            <CampoErro id={idDoErro("disc_consciencia")} texto={erros?.disc_consciencia} />
           </div>
 
           <div className="grid gap-2">
@@ -178,12 +261,17 @@ export function DiscDialogo({
             </Label>
             <Textarea
               id="f-disc-gat"
+              aria-invalid={erros?.disc_gatilhos ? "true" : undefined}
+              aria-describedby={
+                erros?.disc_gatilhos ? idDoErro("disc_gatilhos") : undefined
+              }
               value={discGatilhos}
               onChange={(e) => setDiscGatilhos(e.target.value)}
               maxLength={2000}
               rows={3}
               placeholder="O que move e o que trava essa pessoa numa conversa de decisão."
             />
+            <CampoErro id={idDoErro("disc_gatilhos")} texto={erros?.disc_gatilhos} />
           </div>
 
           <div className="grid gap-2">
@@ -193,12 +281,17 @@ export function DiscDialogo({
             </Label>
             <Textarea
               id="f-disc-rel"
+              aria-invalid={erros?.disc_relacionamento ? "true" : undefined}
+              aria-describedby={
+                erros?.disc_relacionamento ? idDoErro("disc_relacionamento") : undefined
+              }
               value={discRelacionamento}
               onChange={(e) => setDiscRelacionamento(e.target.value)}
               maxLength={2000}
               rows={3}
               placeholder="Como conduzir a conversa com ela: ritmo, tom, o que evitar."
             />
+            <CampoErro id={idDoErro("disc_relacionamento")} texto={erros?.disc_relacionamento} />
           </div>
         </div>
       </DialogContent>

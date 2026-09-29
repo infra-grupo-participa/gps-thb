@@ -24,7 +24,7 @@
 import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import type { ClienteCroqui } from "@/lib/croquis-tipos";
-import { mascaraTelefone, numeroParaMoeda } from "@/lib/masks";
+import { mascaraTelefone, moedaParaNumero, numeroParaMoeda } from "@/lib/masks";
 
 /**
  * As quatro folhas da pasta, **na ordem em que aparecem** — a ordem é fixa e
@@ -228,7 +228,7 @@ export function contadorDaAba(
 /**
  * Quais campos pertencem a qual folha.
  *
- * 🔴 É a fonte de `alteradoPorAba` e de "pendência puxa a aba". Um campo que
+ * 🔴 É a fonte de `alteradoPorAba` e de `abaDoCampo` (a pendência puxa a aba). Um campo que
  * não estiver aqui some das duas coisas em silêncio: a barra diria "alterações
  * não salvas" sem nomear a folha, e a marca de alteração não apareceria em
  * aba nenhuma. **Campo novo na ficha = linha nova aqui.**
@@ -411,24 +411,530 @@ export function alteradoPorAba(
 }
 
 /**
- * O aviso da barra de salvar — **nomeando a folha**.
+ * ═══════════════════════════════════════════════════════════════════════
+ * PENDÊNCIAS DA FICHA — UMA fonte para o salvar, as abas, a barra e o campo
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * Pedido do Marcio (29/09/2026): a ficha é usada por pessoas idosas; *"o
+ * sistema poderia guiar ele pra aba do erro, onde está o erro"*. Até aqui
+ * `salvar()` tinha 4 guardas soltas que paravam no PRIMEIRO erro — quem
+ * tinha CNPJ pela metade E um campo do DISC curto descobria o segundo só
+ * depois de corrigir o primeiro, e as abas não diziam nada.
+ *
+ * Agora `pendenciasDaFicha` devolve TODAS de uma vez, e os quatro
+ * consumidores leem a mesma lista:
+ *
+ *   · `salvar()` — recusa se houver `bloqueia`/`formato` e leva à 1ª;
+ *   · `estadoDaAba` — o "N para corrigir" de cada aba;
+ *   · `fraseDaBarra` — a frase da barra sticky;
+ *   · `mensagensPorCampo` — a prop `erros` que desce às folhas.
+ *
+ * Os três níveis:
+ *   · `bloqueia` — obrigatório vazio. Só NOME e TELEFONE (decisão do Marcio,
+ *     29/09/2026: o resto é opcional). São eles que fazem a ficha contar
+ *     para os 30.
+ *   · `formato` — campo opcional preenchido de um jeito que o banco recusa
+ *     (CNPJ, DISC, link do contrato, honorários). Também barra o salvar:
+ *     o update é um só, e o CHECK derrubaria a ficha INTEIRA.
+ *   · `sugestao` — não trava nunca. Hoje só "nenhum problema marcado" (355
+ *     de 879 fichas estão assim, medido em 10/09 — travar prenderia 39
+ *     ambientes).
+ *
+ * 🔴 **A ordem da lista é a ordem das abas**, e dentro da aba a ordem de
+ * `CAMPOS_POR_ABA` (a de cima para baixo na tela). É ela que decide para
+ * onde `salvar()` leva a pessoa: a primeira pendência que barra.
+ *
+ * 🔴 As regras de formato ESPELHAM `validarPatch` de
+ * `src/app/clientes/actions.ts` e os CHECK do banco. Aqui é conveniência (a
+ * pessoa vê antes de clicar); a garantia continua lá.
+ */
+
+/**
+ * O `id` do controle de cada campo no DOM — é para ele que a ficha leva o
+ * foco. Os valores são os ids que as folhas JÁ usam (`<Label htmlFor>`).
+ *
+ * 🔑 **Contrato com as folhas** (`ficha-aba-dados`, `ficha-pj`,
+ * `ficha-aba-preliminar`, `disc-dialogo`, `ficha-contrato`):
+ *   · o controle do campo tem `id={ID_DO_CAMPO[campo]}`;
+ *   · a mensagem de erro do campo, quando houver, é um `<p>` com
+ *     `id={idDoErro(campo)}` (= `<id>-erro`), e o controle leva
+ *     `aria-invalid` + `aria-describedby` apontando para ele;
+ *   · o texto vem da prop `erros?: Partial<Record<keyof ClienteEtapa1,
+ *     string>>` — a folha NÃO escreve frase própria de erro.
+ *
+ * ⚠️ `problemas` NÃO está aqui, de propósito: é um grupo de checkboxes
+ * (`<fieldset>`) e é só SUGESTÃO — `mensagensPorCampo` nunca preenche
+ * `erros.problemas`, e o fieldset não tem id de foco. A pendência dele sai
+ * com `idCampo: null`: a ficha troca para a aba e não foca nada. O aviso
+ * âmbar da folha (`problemasEmFalta`) é quem mostra.
+ *
+ * Os quatro passos (`mensagem_padrao_enviada` etc.) não estão aqui: são
+ * checkboxes sem id e nunca geram pendência.
+ */
+export const ID_DO_CAMPO = {
+  nome: "f-nome",
+  telefone: "f-tel",
+  grau_relacao: "f-grau",
+  razao_social: "f-razao",
+  cnpj: "f-cnpj",
+  ramo_atividade: "f-ramo",
+  regime_tributario: "f-regime",
+  fase: "f-fase",
+  data_reuniao_preliminar: "f-data",
+  registro_contato: "f-reg",
+  perfil_disc: "f-disc",
+  disc_consciencia: "f-disc-consc",
+  disc_gatilhos: "f-disc-gat",
+  disc_relacionamento: "f-disc-rel",
+  valor_honorarios: "f-honorarios",
+  contrato_url: "f-contrato",
+} as const satisfies Partial<Record<keyof ClienteEtapa1, string>>;
+
+/**
+ * A prop `erros` das folhas: campo → frase a mostrar NO campo. Ausente =
+ * campo sem erro. Quem monta é `mensagensPorCampo`.
+ */
+export type ErrosDaFicha = Partial<Record<keyof ClienteEtapa1, string>>;
+
+/** Campo da ficha que tem controle próprio na tela (e portanto um id). */
+export type CampoDaFicha = keyof typeof ID_DO_CAMPO;
+
+export function ehCampoDaFicha(c: string): c is CampoDaFicha {
+  return Object.prototype.hasOwnProperty.call(ID_DO_CAMPO, c);
+}
+
+/** O id da mensagem de erro de um campo: `<id do controle>-erro`. */
+export function idDoErro(campo: CampoDaFicha): string {
+  return `${ID_DO_CAMPO[campo]}-erro`;
+}
+
+/**
+ * Os campos que moram DENTRO do pop-up do DISC (`disc-dialogo.tsx`). Com o
+ * pop-up fechado eles não estão no DOM — levar a pessoa até um deles exige
+ * abrir o diálogo primeiro.
+ */
+export const CAMPOS_NO_POPUP_DISC: ReadonlySet<keyof ClienteEtapa1> = new Set<
+  keyof ClienteEtapa1
+>(["perfil_disc", "disc_consciencia", "disc_gatilhos", "disc_relacionamento"]);
+
+/** A aba onde o campo mora (`CAMPOS_POR_ABA`). `null` = campo sem folha. */
+export function abaDoCampo(campo: keyof ClienteEtapa1): AbaFicha | null {
+  return ABAS_FICHA.find((aba) => CAMPOS_POR_ABA[aba].includes(campo)) ?? null;
+}
+
+export type NivelPendencia = "bloqueia" | "formato" | "sugestao";
+
+export interface Pendencia {
+  campo: keyof ClienteEtapa1;
+  aba: AbaFicha;
+  /** `ID_DO_CAMPO[campo]`, ou `null` se o campo não tem controle próprio. */
+  idCampo: string | null;
+  nivel: NivelPendencia;
+  /** A frase que aparece NO CAMPO: o que está errado e o que fazer. */
+  frase: string;
+  /**
+   * A versão curta, que cabe depois de "Para salvar:" na barra e no rótulo
+   * da aba (sugestão). Minúscula no início de propósito.
+   */
+  resumo: string;
+  /**
+   * `"servidor"` = veio da recusa de `atualizarCliente`, não da conferência
+   * local. A barra, nesse caso, mostra a FRASE do servidor (a única que diz o
+   * porquê), não o resumo — ver `fraseDaBarra`.
+   */
+  origem?: "servidor";
+}
+
+/** O teto do `numeric(12,2)` de `valor_honorarios` — o mesmo de `validarPatch`. */
+const TETO_HONORARIOS = 9_999_999_999.99;
+
+function pendencia(
+  campo: CampoDaFicha | "problemas",
+  nivel: NivelPendencia,
+  frase: string,
+  resumo: string,
+): Pendencia {
+  // `abaDoCampo` nunca é `null` para estes campos (todos estão em
+  // `CAMPOS_POR_ABA`); o `?? "dados"` só satisfaz o tipo. `problemas` não
+  // tem controle focável (ver `ID_DO_CAMPO`): `idCampo` sai `null`.
+  return {
+    campo,
+    aba: abaDoCampo(campo) ?? "dados",
+    idCampo: ehCampoDaFicha(campo) ? ID_DO_CAMPO[campo] : null,
+    nivel,
+    frase,
+    resumo,
+  };
+}
+
+/** Posição do campo na tela: aba primeiro, depois a ordem dentro da aba. */
+function ordemDoCampo(p: Pick<Pendencia, "aba" | "campo">): number {
+  const i = CAMPOS_POR_ABA[p.aba].indexOf(p.campo);
+  return ABAS_FICHA.indexOf(p.aba) * 100 + (i < 0 ? 99 : i);
+}
+
+/** Ordena na ordem da tela. Estável: empate mantém a ordem de chegada. */
+export function ordenarPendencias(lista: readonly Pendencia[]): Pendencia[] {
+  return [...lista].sort((a, b) => ordemDoCampo(a) - ordemDoCampo(b));
+}
+
+/**
+ * TODAS as pendências da ficha, na ordem das abas. Função pura: recebe os
+ * valores como moram nos `useState` (mascarados) e não consulta nada.
+ */
+export function pendenciasDaFicha(
+  v: Pick<
+    ValoresDaFicha,
+    | "nome"
+    | "telefone"
+    | "cnpjDigitos"
+    | "problemas"
+    | "discConsciencia"
+    | "discGatilhos"
+    | "discRelacionamento"
+    | "honorarios"
+    | "contratoLimpo"
+  >,
+): Pendencia[] {
+  const lista: Pendencia[] = [];
+
+  // ── Dados básicos ─────────────────────────────────────────────────────
+  if (!v.nome.trim()) {
+    lista.push(
+      pendencia("nome", "bloqueia", "Escreva o nome do cliente.", "falta o nome"),
+    );
+  }
+  if (!v.telefone.trim()) {
+    lista.push(
+      pendencia(
+        "telefone",
+        "bloqueia",
+        "Escreva o telefone. Sem ele a ficha não conta para os 30.",
+        "falta o telefone",
+      ),
+    );
+  }
+  // CHECK `^[0-9]{14}$` com `null` permitido: vazio vale, 14 vale, o resto
+  // derruba a ficha inteira com 23514.
+  const n = v.cnpjDigitos.length;
+  if (n > 0 && n !== 14) {
+    if (n === 11) {
+      lista.push(
+        pendencia(
+          "cnpj",
+          "formato",
+          "Isto parece um CPF. Este campo aceita só CNPJ, com 14 números. Corrija ou apague.",
+          "o CNPJ parece um CPF",
+        ),
+      );
+    } else if (n < 14) {
+      const faltam = 14 - n;
+      lista.push(
+        pendencia(
+          "cnpj",
+          "formato",
+          `${faltam === 1 ? "Falta 1 número" : `Faltam ${faltam} números`} no CNPJ. Complete ou apague.`,
+          "o CNPJ está incompleto",
+        ),
+      );
+    } else {
+      lista.push(
+        pendencia(
+          "cnpj",
+          "formato",
+          "O CNPJ tem números a mais. Ele tem 14 números. Confira ou apague.",
+          "o CNPJ tem números a mais",
+        ),
+      );
+    }
+  }
+
+  // ── Reunião preliminar ────────────────────────────────────────────────
+  if (v.problemas.length === 0) {
+    lista.push(
+      pendencia(
+        "problemas",
+        "sugestao",
+        "Marque ao menos um problema. A ficha salva mesmo assim.",
+        "marque um problema",
+      ),
+    );
+  }
+  // CHECK 3..2000 sobre `btrim`, `null` permitido: vazio vale (vira `null`),
+  // "ok" não. O teto de 2000 já é o `maxLength` do textarea.
+  const disc: [CampoDaFicha, string, string][] = [
+    ["disc_consciencia", "Consciência", v.discConsciencia],
+    ["disc_gatilhos", "Gatilhos", v.discGatilhos],
+    ["disc_relacionamento", "Relacionamento", v.discRelacionamento],
+  ];
+  for (const [campo, rotulo, valor] of disc) {
+    const t = valor.trim();
+    if (t !== "" && t.length < 3) {
+      lista.push(
+        pendencia(
+          campo,
+          "formato",
+          `Escreva ao menos 3 letras em "${rotulo}" ou apague o campo.`,
+          `"${rotulo}" do DISC está curto demais`,
+        ),
+      );
+    }
+  }
+
+  // ── Fechamento da Holding ─────────────────────────────────────────────
+  const honorarios = moedaParaNumero(v.honorarios);
+  if (honorarios != null && honorarios > TETO_HONORARIOS) {
+    lista.push(
+      pendencia(
+        "valor_honorarios",
+        "formato",
+        "O valor dos honorários passou do limite. Confira os números.",
+        "o valor dos honorários passou do limite",
+      ),
+    );
+  }
+  // Mesma regra do CHECK (migração ...090): https, sem espaço, 12..2000.
+  const url = v.contratoLimpo;
+  if (url !== "") {
+    let frase: string | null = null;
+    if (/\s/.test(url)) {
+      frase = "O link do contrato não pode ter espaços. Apague os espaços.";
+    } else if (!/^https:\/\//.test(url)) {
+      frase = "O link do contrato precisa começar com https://";
+    } else if (url.length < 12) {
+      frase = "O link do contrato está incompleto. Cole o endereço inteiro.";
+    } else if (url.length > 2000) {
+      frase = "O link do contrato é longo demais. Cole o endereço do arquivo.";
+    }
+    if (frase) {
+      lista.push(
+        pendencia("contrato_url", "formato", frase, "o link do contrato está errado"),
+      );
+    }
+  }
+
+  return ordenarPendencias(lista);
+}
+
+/** As que barram o salvar (`bloqueia` + `formato`), na ordem da tela. */
+export function pendenciasQueBarram(
+  lista: readonly Pendencia[],
+): Pendencia[] {
+  return lista.filter((p) => p.nivel !== "sugestao");
+}
+
+/**
+ * O nome de cada campo como a pessoa o lê na tela (o `<Label>` da folha, sem
+ * o "(obrigatório)"). Serve à frase da barra quando é o SERVIDOR que recusa:
+ * "o sistema recusou um campo" não diz qual — a pessoa teria de abrir as
+ * quatro folhas para achar.
+ */
+export const ROTULO_DO_CAMPO: Partial<Record<keyof ClienteEtapa1, string>> = {
+  nome: "Nome",
+  telefone: "Telefone",
+  grau_relacao: "Grau de relação",
+  razao_social: "Razão social",
+  cnpj: "CNPJ",
+  ramo_atividade: "Ramo de atividade",
+  regime_tributario: "Regime tributário",
+  fase: "Fase",
+  data_reuniao_preliminar: "Data da reunião preliminar",
+  problemas: "Problemas",
+  mensagem_padrao_enviada: "Mensagem padrão enviada",
+  estudo_caso_enviado: "Estudo de caso enviado",
+  ligacao_realizada: "Ligação realizada",
+  aderiu_reuniao: "Aderiu à reunião",
+  registro_contato: "Registro do contato",
+  perfil_disc: "Perfil DISC",
+  disc_consciencia: "Consciência (DISC)",
+  disc_gatilhos: "Gatilhos (DISC)",
+  disc_relacionamento: "Relacionamento (DISC)",
+  valor_honorarios: "Honorários",
+  contrato_url: "Link do contrato",
+};
+
+/**
+ * Pendência vinda do SERVIDOR (`atualizarCliente` → `{ erro, campo }`).
+ *
+ * Entra na mesma lista, com o mesmo formato, para seguir o mesmo caminho:
+ * aba, foco e mensagem no campo. `null` quando o campo não tem folha — aí
+ * a frase fica só na barra.
+ *
+ * ⚠️ Ela vale só enquanto o campo tiver o valor que foi recusado — quem
+ * descarta é a ficha, comparando `valorDoCampo` (ver `cliente-ficha.tsx`).
+ */
+export function pendenciaDoServidor(
+  campo: keyof ClienteEtapa1,
+  frase: string,
+): Pendencia | null {
+  const aba = abaDoCampo(campo);
+  if (!aba) return null;
+  const rotulo = ROTULO_DO_CAMPO[campo] ?? "um campo";
+  return {
+    campo,
+    aba,
+    idCampo: ehCampoDaFicha(campo) ? ID_DO_CAMPO[campo] : null,
+    nivel: "formato",
+    frase,
+    resumo: `o sistema não aceitou "${rotulo}"`,
+    origem: "servidor",
+  };
+}
+
+/**
+ * O valor ATUAL de um campo, em forma comparável (string), como mora nos
+ * `useState` da ficha. `null` = campo sem valor de formulário.
+ *
+ * 🔴 Existe para a recusa do servidor morrer quando a pessoa mexe no campo
+ * recusado. Caso diário: fase → Prospecção com a equipe acompanhando → 42501
+ * → a pessoa volta a fase. Sem isto a tela seguia com "1 para corrigir" e
+ * "Ir para o campo" até o próximo salvar — acusando um valor que já não
+ * estava lá. A ficha guarda este valor NO MOMENTO da recusa e descarta o
+ * erro assim que o atual diverge. Voltar ao MESMO valor recusado traz o erro
+ * de volta — e é verdade: o banco o recusaria de novo.
+ */
+export function valorDoCampo(
+  campo: keyof ClienteEtapa1,
+  v: ValoresDaFicha,
+): string | null {
+  switch (campo) {
+    case "nome":
+      return v.nome;
+    case "telefone":
+      return v.telefone;
+    case "grau_relacao":
+      return v.grau;
+    case "razao_social":
+      return v.razaoSocial;
+    case "cnpj":
+      return v.cnpjDigitos;
+    case "ramo_atividade":
+      return v.ramo;
+    case "regime_tributario":
+      return v.regime;
+    case "fase":
+      return v.fase;
+    case "data_reuniao_preliminar":
+      return v.dataReuniao;
+    case "problemas":
+      return [...v.problemas].sort().join("|");
+    case "mensagem_padrao_enviada":
+      return String(v.msgPadrao);
+    case "estudo_caso_enviado":
+      return String(v.estudoCaso);
+    case "ligacao_realizada":
+      return String(v.ligacao);
+    case "aderiu_reuniao":
+      return String(v.aderiu);
+    case "registro_contato":
+      return v.registro;
+    case "perfil_disc":
+      return v.disc;
+    case "disc_consciencia":
+      return v.discConsciencia;
+    case "disc_gatilhos":
+      return v.discGatilhos;
+    case "disc_relacionamento":
+      return v.discRelacionamento;
+    case "valor_honorarios":
+      return v.honorarios;
+    case "contrato_url":
+      return v.contratoLimpo;
+    default:
+      return null;
+  }
+}
+
+/**
+ * A mensagem de cada campo — o que desce às folhas pela prop `erros`.
+ *
+ * Só `bloqueia`/`formato`: `erros` vira `aria-invalid` na folha, e sugestão
+ * não é inválida. A primeira frase por campo vence (a lista já vem na ordem).
+ */
+export function mensagensPorCampo(lista: readonly Pendencia[]): ErrosDaFicha {
+  const saida: ErrosDaFicha = {};
+  for (const p of lista) {
+    if (p.nivel === "sugestao") continue;
+    if (saida[p.campo] === undefined) saida[p.campo] = p.frase;
+  }
+  return saida;
+}
+
+/**
+ * O estado que o rótulo da aba mostra, ao lado do contador.
+ *
+ *   · `corrigir` — "N para corrigir" (vermelho). Vence tudo.
+ *   · `sugestao` — o resumo da sugestão (âmbar), ex. "Marque um problema".
+ *   · `completa` — "Completa" (verde), **só na aba Dados**: nome e telefone
+ *     preenchidos e nada a corrigir ali. Nas outras abas "completa" não tem
+ *     critério — todo o resto é opcional —, então elas não afirmam nada.
+ *   · `null` — nada a dizer.
+ *
+ * 🔴 Sempre TEXTO. O ícone e a cor são reforço; quem informa é a palavra.
+ */
+export type EstadoDaAba =
+  | { tipo: "corrigir"; quantos: number; texto: string }
+  | { tipo: "sugestao"; texto: string }
+  | { tipo: "completa"; texto: string }
+  | null;
+
+export function estadoDaAba(
+  aba: AbaFicha,
+  pendencias: readonly Pendencia[],
+): EstadoDaAba {
+  const daAba = pendencias.filter((p) => p.aba === aba);
+  const corrigir = daAba.filter((p) => p.nivel !== "sugestao").length;
+  if (corrigir > 0) {
+    return { tipo: "corrigir", quantos: corrigir, texto: `${corrigir} para corrigir` };
+  }
+  const sugestoes = daAba.filter((p) => p.nivel === "sugestao");
+  if (sugestoes.length === 1) {
+    const r = sugestoes[0].resumo;
+    return { tipo: "sugestao", texto: r.charAt(0).toUpperCase() + r.slice(1) };
+  }
+  if (sugestoes.length > 1) {
+    return { tipo: "sugestao", texto: `${sugestoes.length} sugestões` };
+  }
+  if (aba === "dados") return { tipo: "completa", texto: "Completa" };
+  return null;
+}
+
+/**
+ * A frase da barra de salvar — **nomeando a folha**.
  *
  * Três estados, em precedência:
- *   1. pendência que bloqueia (nome/telefone) → diz o que falta E onde;
- *   2. alteração não salva → nomeia a PRIMEIRA folha alterada na ordem das
- *      abas, e conta quantas outras há;
+ *   1. algo barra o salvar → "Para salvar: falta o telefone em Dados
+ *      básicos." + quantos mais há. Se a primeira é recusa do SERVIDOR:
+ *      'Não salvou: o sistema não aceitou "Fase" em Reunião preliminar.'
+ *      + a frase que o servidor devolveu;
+ *   2. alteração não salva → nomeia a PRIMEIRA folha alterada, na ordem das
+ *      abas, e conta as outras;
  *   3. nada pendente → "Tudo salvo."
  *
- * 🔴 Por que só a primeira é nomeada: listar quatro nomes numa barra de ~32 px
- * não cabe em 390 px, e cada aba alterada já carrega a própria marca na
- * régua — o texto diz por onde começar, a régua diz o resto.
+ * 🔴 Só a primeira é nomeada: quatro nomes numa barra de ~32 px não cabem em
+ * 390 px, e cada aba já carrega o próprio "N para corrigir". O texto diz por
+ * onde começar; as abas dizem o resto.
  */
-export function frasePendenciaDaFicha(args: {
-  abaPendente: AbaFicha | null;
+export function fraseDaBarra(args: {
+  pendencias: readonly Pendencia[];
   abasAlteradas: readonly AbaFicha[];
 }): string {
-  if (args.abaPendente) {
-    return `Preencha o nome e o telefone em ${ROTULO_DA_ABA[args.abaPendente]} para salvar — são eles que fazem a ficha contar para os 30.`;
+  const barram = pendenciasQueBarram(args.pendencias);
+  const primeiraPendencia = barram[0];
+  if (primeiraPendencia) {
+    const mais = barram.length - 1;
+    const extra =
+      mais > 0 ? ` E mais ${mais} para corrigir.` : "";
+    const aba = ROTULO_DA_ABA[primeiraPendencia.aba];
+    // Recusa do SERVIDOR: a frase dele é a única que diz o PORQUÊ (ex.: a
+    // equipe acompanha este cliente e a fase não pode voltar). Vai inteira,
+    // depois do nome do campo e da folha.
+    if (primeiraPendencia.origem === "servidor") {
+      const f = primeiraPendencia.frase.trim();
+      const ponto = /[.!?]$/.test(f) ? "" : ".";
+      return `Não salvou: ${primeiraPendencia.resumo} em ${aba}. ${f}${ponto}${extra}`;
+    }
+    return `Para salvar: ${primeiraPendencia.resumo} em ${aba}.${extra}`;
   }
   const primeira = args.abasAlteradas[0];
   if (!primeira) return "Tudo salvo.";
@@ -436,23 +942,6 @@ export function frasePendenciaDaFicha(args: {
   const extra =
     outras > 0 ? ` E em mais ${outras} ${outras === 1 ? "aba" : "abas"}.` : "";
   return `Você tem alterações não salvas em ${ROTULO_DA_ABA[primeira]}.${extra}`;
-}
-
-/**
- * A aba onde mora a pendência que BLOQUEIA o salvar.
- *
- * Hoje é uma só: `faltaEssencial` (nome ou telefone vazio) é da aba 1 e
- * bloqueia a ficha INTEIRA. Fica como função — e não como constante — porque
- * a regra é "qual folha o usuário precisa abrir", e a resposta passa a
- * depender de mais de um sinal assim que a segunda trava existir.
- *
- * `null` = nada bloqueando; não mexe na aba ativa.
- */
-export function abaDaPendencia(args: {
-  /** Nome ou telefone vazio — a trava do botão "Salvar ficha". */
-  faltaEssencial: boolean;
-}): AbaFicha | null {
-  return args.faltaEssencial ? "dados" : null;
 }
 
 /**

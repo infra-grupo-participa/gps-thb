@@ -122,9 +122,13 @@ export function mascaraTelefone(v: string): string {
   return `(${ddd}) ${resto.slice(0, cut)}-${resto.slice(cut, cut + 4)}`;
 }
 
-/** Formata dígitos como moeda BRL (interpreta a entrada como centavos). */
-export function mascaraMoeda(v: string): string {
-  const d = soDigitos(v);
+/**
+ * Formata dígitos como moeda BRL (interpreta a entrada como centavos).
+ * `maxDigitos` (opcional) corta a entrada nos primeiros N dígitos: impede
+ * digitar além do teto do banco/servidor (numeric(12,2) = 12 dígitos).
+ */
+export function mascaraMoeda(v: string, maxDigitos?: number): string {
+  const d = maxDigitos ? soDigitos(v).slice(0, maxDigitos) : soDigitos(v);
   if (!d) return "";
   const num = parseInt(d, 10) / 100;
   return num.toLocaleString("pt-BR", {

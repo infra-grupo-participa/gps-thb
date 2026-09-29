@@ -58,12 +58,13 @@ import {
  *        barra — a barra acusa "alterações não salvas" sem nenhum salvar. Um
  *        `reload` descarta (o estado é `useState`, nada foi ao servidor).
  *
- *    (b) **Usar o caminho que a GUARDA RECUSA.** O teste 5 limpa o telefone
- *        e clica em Salvar. `salvar()` em `cliente-ficha.tsx` abre com
- *        `if (faltaEssencial) { setErroSalvar(...); puxarParaCampo(...);
- *        return; }` — o `return` acontece ANTES do `startTransition` que
- *        chamaria `atualizarCliente`. Nenhuma action é invocada, nada é
- *        gravado. E o teste não acredita na leitura do código: ele **conta
+ *    (b) **Usar o caminho que a GUARDA RECUSA.** Os testes 5 e 10 deixam
+ *        um campo inválido (telefone vazio; DISC com 2 letras) e clicam em
+ *        Salvar. `salvar()` em `cliente-ficha.tsx` calcula
+ *        `pendenciasQueBarram(...)` e, havendo alguma, faz
+ *        `levarAoCampo(locais[0]); return;` — o `return` acontece ANTES do
+ *        `startTransition` que chamaria `atualizarCliente`. Nenhuma action
+ *        é invocada, nada é gravado. E o teste não acredita na leitura do código: ele **conta
  *        os POSTs** durante o clique (tem de ser 0) **e** recarrega para ver
  *        o telefone intacto. Duas provas independentes, porque "eu li o
  *        código e ele retorna cedo" é exatamente o tipo de afirmação que
@@ -203,7 +204,8 @@ async function abrirFichaDeTeste(
   // 2ª conferência: o campo "Nome" DENTRO da ficha, na folha em que ele mora.
   await page.goto(`${base}?aba=dados`);
   await expect(
-    page.getByLabel(/^Nome$/),
+    // O rótulo é "Nome (obrigatório)" desde 29/09/2026.
+    page.getByLabel(/^Nome\s*\(obrigatório\)$/),
     "A ficha aberta não é a que o teste pediu — abortando antes de agir. " +
       "Esta suíte roda contra PRODUÇÃO e nunca toca ficha de cliente real.",
   ).toHaveValue(CLIENTE_DE_TESTE);
@@ -621,7 +623,7 @@ function suiteDaFicha(opts: {
         page.getByText(/alterações não salvas em Reunião preliminar/i).first(),
         "A barra não nomeia a folha. Com 4 folhas, 'alterações não salvas " +
           "nesta ficha' obriga a pessoa a abrir as quatro para achar o que " +
-          "mudou — é o defeito que `frasePendenciaDaFicha` existe para " +
+          "mudou — é o defeito que `fraseDaBarra` existe para " +
           "fechar.",
       ).toBeVisible({ timeout: 12_000 });
 
@@ -669,9 +671,10 @@ function suiteDaFicha(opts: {
        *   function salvar() {
        *     setTentouSalvar(true);
        *     setErroSalvar(null);
-       *     if (faltaEssencial) {          // ← nome OU telefone vazio
-       *       setErroSalvar(...);
-       *       puxarParaCampo("dados", ...);
+       *     setErroServidor(null);
+       *     const locais = pendenciasQueBarram(...); // ← telefone vazio = "bloqueia"
+       *     if (locais.length > 0) {
+       *       levarAoCampo(locais[0]);     // aba + foco no campo
        *       return;                      // ← 🔴 RETORNA AQUI
        *     }
        *     ...
@@ -711,7 +714,7 @@ function suiteDaFicha(opts: {
 
       // A barra já avisa, nomeando a folha, ANTES de qualquer clique.
       await expect(
-        page.getByText(/preencha o nome e o telefone em dados b(á|a)sicos/i).first(),
+        page.getByText(/para salvar: falta o telefone em dados b(á|a)sicos/i).first(),
         "Com o telefone vazio a barra tem de dizer o que falta E onde. Um " +
           "botão que recusa sem dizer a folha é o defeito que a fatia 4 " +
           "existe para não criar.",
@@ -738,10 +741,11 @@ function suiteDaFicha(opts: {
 
       // ── (b) O FOCO cai no campo que barra ──────────────────────────────
       //
-      // 🔑 `requestAnimationFrame` em `puxarParaCampo`: com `keepMounted` o
-      // campo já está no DOM, mas focar antes do render da troca deixaria o
-      // foco num nó com `hidden` — o navegador ignora e o cursor some. Só
-      // navegador de verdade prova que o frame extra resolveu.
+      // 🔑 `focarQuandoVisivel` (fim de `cliente-ficha.tsx`) tenta a cada
+      // frame até o campo ter `offsetParent`: com `keepMounted` o campo já
+      // está no DOM, mas focar antes do render da troca cairia num nó dentro
+      // de painel `hidden` — o navegador ignora e o cursor some. Só navegador
+      // de verdade prova que a espera resolveu.
       await expect(
         page.locator("#f-tel"),
         "O foco não foi para `#f-tel`. Sem isso a pessoa cai numa folha de " +
@@ -750,7 +754,7 @@ function suiteDaFicha(opts: {
 
       // ── (c) O alerta, em PORTUGUÊS e sem jargão de banco ───────────────
       const alerta = page.locator('p[role="alert"]').filter({
-        hasText: /preencha o nome e o telefone/i,
+        hasText: /para salvar: falta o telefone/i,
       });
       await expect(
         alerta.first(),
@@ -783,7 +787,7 @@ function suiteDaFicha(opts: {
       expect(
         escritas,
         "Clicar em Salvar com o telefone vazio DISPAROU escrita. A guarda " +
-          "`faltaEssencial` em `salvar()` tem de retornar ANTES do " +
+          "`pendenciasQueBarram` em `salvar()` tem de retornar ANTES do " +
           "`startTransition` que chama `atualizarCliente`. Requisições:\n" +
           escritas.map((e) => `  • ${e}`).join("\n"),
       ).toEqual([]);
@@ -1282,6 +1286,112 @@ function suiteDaFicha(opts: {
           "No admin o link para /sessoes não pode existir — a rota é só do parceiro.",
         ).toHaveCount(0);
       }
+    });
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 10 · 🔴 O erro DENTRO do pop-up do DISC: salvar da aba 4 abre o
+    //      pop-up e foca o campo — e nada é gravado
+    // ─────────────────────────────────────────────────────────────────────
+    //
+    // O caso que a reforma de 29/09 fechou: antes, o DISC curto só trocava de
+    // aba — o campo errado ficava dentro de um pop-up FECHADO, e a pessoa via
+    // a Reunião preliminar sem nenhum campo vermelho. Agora `levarAoCampo`
+    // abre o diálogo (`ControleDiscDialogoContexto`) e o `initialFocus` dele
+    // cai no textarea errado. Isso só se prova com o diálogo pintado.
+    //
+    // 🔴 MESMA TRAVA DO TESTE 5: "ok" (2 letras) é `formato` em
+    // `pendenciasDaFicha` → `salvar()` retorna ANTES do `startTransition`.
+    // Provado aqui também contando POSTs (tem de ser 0) e recarregando para
+    // ver o campo com o valor do servidor.
+    test("10 · 🔴 DISC com 2 letras e salvar da aba 4: abre o pop-up, foca #f-disc-consc com aria-invalid, ZERO escrita", async ({
+      page,
+    }, info) => {
+      const base = await abrir(page);
+      test.skip(!base, "Cliente de teste não alcançável nesta conta.");
+
+      await page.goto(`${base!}?aba=preliminar`);
+      const abrirPerfil = page.getByRole("button", { name: /^ver perfil$/i });
+      await expect(abrirPerfil).toBeVisible({ timeout: 12_000 });
+      await abrirPerfil.click();
+
+      const dialogo = page.getByRole("dialog", { name: /perfil do cliente/i });
+      await expect(dialogo).toBeVisible({ timeout: 12_000 });
+      const consc = dialogo.locator("#f-disc-consc");
+      await expect(consc).toBeVisible();
+      const original = await consc.inputValue();
+
+      // Duas letras: preenchido, mas abaixo do CHECK 3..2000 — barra o salvar.
+      await consc.fill("ok");
+      await page.keyboard.press("Escape");
+      await expect(dialogo).toBeHidden({ timeout: 12_000 });
+
+      await aba(page, "fechamento").click();
+      await expect(aba(page, "fechamento")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      const escritas: string[] = [];
+      const ouvinte = (r: import("@playwright/test").Request) => {
+        if (r.method() === "POST") escritas.push(`${r.method()} ${r.url()}`);
+      };
+      page.on("request", ouvinte);
+
+      await page.getByRole("button", { name: /^salvar ficha$/i }).click();
+
+      // ── (a) A folha 2 volta a ser a aberta ─────────────────────────────
+      await expect(aba(page, "preliminar")).toHaveAttribute(
+        "aria-selected",
+        "true",
+        { timeout: 12_000 },
+      );
+
+      // ── (b) O POP-UP abre sozinho ──────────────────────────────────────
+      await expect(
+        dialogo,
+        "Salvar com o DISC curto não abriu o pop-up do DISC. O campo errado " +
+          "fica dentro de um diálogo FECHADO e a pessoa não tem como achá-lo.",
+      ).toBeVisible({ timeout: 12_000 });
+
+      // ── (c) O foco está NO campo errado, e ele se declara inválido ─────
+      await expect(
+        dialogo.locator("#f-disc-consc"),
+        "O foco não caiu em `#f-disc-consc`. `initialFocus` do diálogo lê " +
+          "`discFoco` — sem ele o foco vai ao primeiro tabulável (o botão da " +
+          "entrevista), longe do erro.",
+      ).toBeFocused({ timeout: 12_000 });
+      await expect(dialogo.locator("#f-disc-consc")).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
+      await expect(
+        dialogo.getByText(/ao menos 3 letras em "Consci(ê|e)ncia"/i).first(),
+      ).toBeVisible();
+
+      await registrarTela(page, info, `ficha-abas-disc-popup-${papel}`);
+
+      await page.waitForTimeout(1_500);
+      page.off("request", ouvinte);
+
+      // ── (d) 🔴 PROVA 1: nenhum POST saiu ───────────────────────────────
+      expect(
+        escritas,
+        "Clicar em Salvar com o DISC curto DISPAROU escrita. A guarda " +
+          "`pendenciasQueBarram` em `salvar()` tem de retornar ANTES do " +
+          "`startTransition`. Requisições:\n" +
+          escritas.map((e) => `  • ${e}`).join("\n"),
+      ).toEqual([]);
+
+      // ── (e) 🔴 PROVA 2: o valor do servidor está intacto ───────────────
+      await page.goto(`${base!}?aba=preliminar`);
+      await page.getByRole("button", { name: /^ver perfil$/i }).click();
+      await expect(
+        page.getByRole("dialog", { name: /perfil do cliente/i }).locator(
+          "#f-disc-consc",
+        ),
+        "A anotação de Consciência do cliente de teste MUDOU no servidor — " +
+          "isto é escrita em produção, e o teste a provocou.",
+      ).toHaveValue(original, { timeout: 12_000 });
     });
   });
 }

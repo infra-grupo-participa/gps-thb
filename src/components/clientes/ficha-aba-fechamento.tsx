@@ -24,6 +24,7 @@
 import { FileText } from "lucide-react";
 
 import type { ClienteEtapa1 } from "@/lib/types";
+import type { ErrosDaFicha } from "@/components/clientes/ficha-abas-estado";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import { Secao } from "@/components/ui/secao";
 import { FichaContrato } from "@/components/clientes/ficha-contrato";
@@ -45,6 +46,7 @@ export function FichaAbaFechamento({
   contextoObrigatorio,
   pending,
   aoMudar,
+  erros,
 }: {
   cliente: ClienteEtapa1;
   admin: boolean;
@@ -63,6 +65,12 @@ export function FichaAbaFechamento({
   pending: boolean;
   /** `router.refresh()` do index — o dado do anexo vem do servidor. */
   aoMudar: () => void;
+  /**
+   * Frase de erro por campo, vinda do `ClienteFicha` (`mensagensPorCampo`).
+   * Contrato em `ID_DO_CAMPO` (`ficha-abas-estado.ts`): repassada a
+   * `FichaContrato`, que a consome em honorários e no link do contrato.
+   */
+  erros?: ErrosDaFicha;
 }) {
   return (
     <div className="grid gap-8">
@@ -76,6 +84,7 @@ export function FichaAbaFechamento({
         contratoLimpo={contratoLimpo}
         contratoInvalido={contratoInvalido}
         faseRotulo={faseRotulo}
+        erros={erros}
         clienteId={cliente.id}
         // Vem do SERVIDOR, sempre: a escrita do anexo é por RPC e não passa
         // pelo "Salvar ficha" — manter um espelho local só criaria duas

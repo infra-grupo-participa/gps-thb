@@ -24,6 +24,11 @@ import Link from "next/link";
 import { Calendar } from "lucide-react";
 
 import type { FaseCliente } from "@/lib/types";
+import {
+  idDoErro,
+  type ErrosDaFicha,
+} from "@/components/clientes/ficha-abas-estado";
+import { CampoErro } from "@/components/ui/campo-erro";
 import { FASES_CLIENTE, PROBLEMAS_7 } from "@/lib/etapa1";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -75,6 +80,7 @@ export function FichaAbaPreliminar({
   registro,
   onRegistro,
   fichaNova,
+  erros,
 }: {
   fase: FaseCliente;
   onFase: (v: FaseCliente) => void;
@@ -112,6 +118,13 @@ export function FichaAbaPreliminar({
   registro: string;
   onRegistro: (v: string) => void;
   fichaNova: boolean;
+  /**
+   * Frase de erro por campo, vinda do `ClienteFicha` (`mensagensPorCampo`).
+   * Contrato em `ID_DO_CAMPO` (`ficha-abas-estado.ts`): campo com frase aqui
+   * ganha `aria-invalid`, `aria-describedby` e o `CampoErro` logo abaixo. Os
+   * três textos do DISC moram no diálogo — `erros` desce até ele.
+   */
+  erros?: ErrosDaFicha;
 }) {
   return (
     <div className="grid gap-8">
@@ -120,12 +133,22 @@ export function FichaAbaPreliminar({
           responde "esta reunião já aconteceu?" antes de qualquer detalhe. */}
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="f-fase">Fase</Label>
+          <Label htmlFor="f-fase">
+            Fase <span className="rotulo text-muted-foreground">(opcional)</span>
+          </Label>
           <Select
             value={fase}
             onValueChange={(v) => onFase((v as FaseCliente) || "prospeccao")}
           >
-            <SelectTrigger id="f-fase" aria-describedby="f-fase-ajuda">
+            <SelectTrigger
+              id="f-fase"
+              aria-invalid={erros?.fase ? "true" : undefined}
+              aria-describedby={
+                erros?.fase
+                  ? `f-fase-ajuda ${idDoErro("fase")}`
+                  : "f-fase-ajuda"
+              }
+            >
               {/* Sem função de render o Base UI imprime o VALOR do banco: a
                   ficha mostrava `quente`, `contratado` e `D`. */}
               <SelectValue>
@@ -153,9 +176,12 @@ export function FichaAbaPreliminar({
               ? " A equipe está acompanhando este cliente, então a fase não volta para Prospecção."
               : null}
           </p>
+          <CampoErro id={idDoErro("fase")} texto={erros?.fase} />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="f-data">Data da reunião preliminar</Label>
+          <Label htmlFor="f-data">
+            Data da reunião preliminar <span className="rotulo text-muted-foreground">(opcional)</span>
+          </Label>
           {/* 🔴 `flex h-8 items-center` NÃO é decoração — é a correção do
               "ícone quebrado, caindo para baixo".
               Duas coisas somadas: (a) a coluna do lado ("Fase") tem texto de
@@ -177,7 +203,12 @@ export function FichaAbaPreliminar({
               type="date"
               value={dataReuniao}
               onChange={(e) => onDataReuniao(e.target.value)}
-              aria-describedby="f-data-ajuda"
+              aria-invalid={erros?.data_reuniao_preliminar ? "true" : undefined}
+              aria-describedby={
+                erros?.data_reuniao_preliminar
+                  ? `f-data-ajuda ${idDoErro("data_reuniao_preliminar")}`
+                  : "f-data-ajuda"
+              }
               className="pl-9"
             />
           </div>
@@ -205,13 +236,17 @@ export function FichaAbaPreliminar({
               </>
             )}
           </p>
+          <CampoErro
+            id={idDoErro("data_reuniao_preliminar")}
+            texto={erros?.data_reuniao_preliminar}
+          />
         </div>
       </div>
 
       {/* ── ANDAMENTO DO CONTATO — os 4 marcos ─────────────────────────── */}
       <fieldset className="grid gap-2">
         <legend className="mb-2 text-sm leading-none font-medium">
-          Andamento do contato
+          Andamento do contato <span className="rotulo text-muted-foreground">(opcional)</span>
         </legend>
         <div className="grid gap-2 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2">
           <label className="flex items-center gap-2 text-sm">
@@ -252,11 +287,13 @@ export function FichaAbaPreliminar({
           nomeia): a explicação da recusa entra por `aria-describedby` NELE,
           não numa `div` com `role="group"` — que não aceita `aria-invalid`. */}
       <fieldset
-        className="grid gap-2"
-        aria-describedby={problemasEmFalta ? "f-problemas-erro" : undefined}
+        className="grid gap-2 scroll-mt-4"
+        aria-describedby={
+          problemasEmFalta ? "f-problemas-erro" : undefined
+        }
       >
         <legend className="mb-2 text-sm leading-none font-medium">
-          Problemas (marque ao menos um)
+          Problemas <span className="rotulo text-muted-foreground">(opcional)</span>
         </legend>
         <div
           className={cn(
@@ -365,6 +402,7 @@ export function FichaAbaPreliminar({
               discRelacionamento={discRelacionamento}
               setDiscRelacionamento={setDiscRelacionamento}
               painelEntrevista={painelEntrevista}
+              erros={erros}
             />
           }
         />
@@ -418,13 +456,23 @@ export function FichaAbaPreliminar({
 
       {/* ── REGISTRO DO CONTATO ─────────────────────────────────────────── */}
       <div className="grid gap-2">
-        <Label htmlFor="f-reg">Registro do contato</Label>
+        <Label htmlFor="f-reg">
+          Registro do contato <span className="rotulo text-muted-foreground">(opcional)</span>
+        </Label>
         <Textarea
           id="f-reg"
           value={registro}
           onChange={(e) => onRegistro(e.target.value)}
           disabled={fichaNova}
-          aria-describedby={fichaNova ? "f-reg-ajuda" : undefined}
+          aria-invalid={erros?.registro_contato ? "true" : undefined}
+          aria-describedby={
+            [
+              fichaNova ? "f-reg-ajuda" : null,
+              erros?.registro_contato ? idDoErro("registro_contato") : null,
+            ]
+              .filter(Boolean)
+              .join(" ") || undefined
+          }
           placeholder="Anotações sobre as conversas, ligações e combinados."
           rows={4}
         />
@@ -436,6 +484,10 @@ export function FichaAbaPreliminar({
             Salve o telefone e este campo abre.
           </p>
         ) : null}
+        <CampoErro
+          id={idDoErro("registro_contato")}
+          texto={erros?.registro_contato}
+        />
       </div>
     </div>
   );

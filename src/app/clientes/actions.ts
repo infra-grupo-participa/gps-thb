@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
-import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
+import {
+  traduzirErroBanco,
+  campoDoErroBanco,
+  MSG_SESSAO_INDETERMINADA,
+} from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import {
   ANEXO_PATH_REGEX,
@@ -17,7 +21,7 @@ import {
 import { GRAUS_RELACAO, REGIMES_TRIBUTARIOS } from "@/lib/types";
 // `ClienteEtapa1` saiu daqui em 24/09/2026 junto com `PatchCliente`: era ele
 // quem alimentava o `Pick<>`, e o tipo agora mora em `@/lib/clientes-tipos`.
-import type { FaseCliente, ModoEnfase } from "@/lib/types";
+import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
 import type { PatchCliente } from "@/lib/clientes-tipos";
 import { soDigitos } from "@/lib/masks";
 
@@ -139,6 +143,8 @@ function filtrarPatch(patch: PatchCliente): PatchCliente {
 function validarPatch(patch: PatchCliente): {
   patch?: PatchCliente;
   erro?: string;
+  /** Campo que causou `erro` — a tela leva o usuário até ele. */
+  campo?: keyof ClienteEtapa1;
 } {
   const saida: Record<string, unknown> = { ...patch };
 
@@ -147,12 +153,12 @@ function validarPatch(patch: PatchCliente): {
     if (v === null || v === undefined || v === "") {
       saida.valor_honorarios = null;
     } else if (typeof v !== "number" || !Number.isFinite(v)) {
-      return { erro: "Honorários: informe um valor numérico." };
+      return { erro: "Honorários: informe um valor numérico.", campo: "valor_honorarios" };
     } else if (v < 0) {
-      return { erro: "Honorários não podem ser negativos." };
+      return { erro: "Honorários não podem ser negativos.", campo: "valor_honorarios" };
     } else if (v > 9_999_999_999.99) {
       // Teto do numeric(12,2) da coluna — sem isso o erro vira 22003.
-      return { erro: "Honorários: valor acima do limite permitido." };
+      return { erro: "Honorários: valor acima do limite permitido.", campo: "valor_honorarios" };
     }
   }
 
@@ -166,7 +172,7 @@ function validarPatch(patch: PatchCliente): {
       typeof v !== "string" ||
       !(GRAUS_RELACAO as readonly string[]).includes(v)
     ) {
-      return { erro: "Escolha um grau de relação da lista." };
+      return { erro: "Escolha um grau de relação da lista.", campo: "grau_relacao" };
     }
   }
 
@@ -175,19 +181,19 @@ function validarPatch(patch: PatchCliente): {
     if (v === null || v === undefined) {
       saida.contrato_url = null;
     } else if (typeof v !== "string") {
-      return { erro: "Link do contrato inválido." };
+      return { erro: "Link do contrato inválido.", campo: "contrato_url" };
     } else {
       const url = v.trim();
       if (url === "") {
         saida.contrato_url = null;
       } else if (!url.startsWith("https://")) {
         return {
-          erro: "O link do contrato precisa começar com https:// (o endereço do Drive).",
+          erro: "O link do contrato precisa começar com https:// (o endereço do Drive).", campo: "contrato_url",
         };
       } else if (/\s/.test(url)) {
-        return { erro: "O link do contrato não pode conter espaços." };
+        return { erro: "O link do contrato não pode conter espaços.", campo: "contrato_url" };
       } else if (url.length < 12 || url.length > 2000) {
-        return { erro: "Link do contrato inválido (tamanho fora do permitido)." };
+        return { erro: "Link do contrato inválido (tamanho fora do permitido).", campo: "contrato_url" };
       } else {
         saida.contrato_url = url;
       }
@@ -221,9 +227,9 @@ function validarPatch(patch: PatchCliente): {
 
   if ("razao_social" in saida) {
     const r = textoOuNulo(saida.razao_social);
-    if (!r.ok) return { erro: "Razão social inválida." };
+    if (!r.ok) return { erro: "Razão social inválida.", campo: "razao_social" };
     if (r.valor !== null && r.valor.length > 200) {
-      return { erro: "A razão social é longa demais (máximo 200 caracteres)." };
+      return { erro: "A razão social é longa demais (máximo 200 caracteres).", campo: "razao_social" };
     }
     saida.razao_social = r.valor;
   }
@@ -233,7 +239,7 @@ function validarPatch(patch: PatchCliente): {
     if (v === null || v === undefined || v === "") {
       saida.cnpj = null;
     } else if (typeof v !== "string") {
-      return { erro: "CNPJ inválido." };
+      return { erro: "CNPJ inválido.", campo: "cnpj" };
     } else {
       // 🔑 `soDigitos` (src/lib/masks.ts) é o único `.replace(/\D/g,"")` do
       // repo. A coluna guarda DÍGITO PURO — a máscara 00.000.000/0000-00 é da
@@ -244,7 +250,7 @@ function validarPatch(patch: PatchCliente): {
         // INFORMADO, não erro. Esvaziar um campo opcional é ação legítima.
         saida.cnpj = null;
       } else if (d.length !== 14) {
-        return { erro: "O CNPJ precisa ter 14 dígitos." };
+        return { erro: "O CNPJ precisa ter 14 dígitos.", campo: "cnpj" };
       } else {
         // 🔴 SEM dígito verificador, por decisão do Marcio (24/09/2026):
         // `cnpjValido` existe em `masks.ts`, mas a ficha é cadastro de
@@ -258,10 +264,10 @@ function validarPatch(patch: PatchCliente): {
 
   if ("ramo_atividade" in saida) {
     const r = textoOuNulo(saida.ramo_atividade);
-    if (!r.ok) return { erro: "Ramo de atividade inválido." };
+    if (!r.ok) return { erro: "Ramo de atividade inválido.", campo: "ramo_atividade" };
     if (r.valor !== null && r.valor.length > 120) {
       return {
-        erro: "O ramo de atividade é longo demais (máximo 120 caracteres).",
+        erro: "O ramo de atividade é longo demais (máximo 120 caracteres).", campo: "ramo_atividade",
       };
     }
     saida.ramo_atividade = r.valor;
@@ -275,7 +281,7 @@ function validarPatch(patch: PatchCliente): {
       typeof v !== "string" ||
       !REGIMES_TRIBUTARIOS.some((r) => r.valor === v)
     ) {
-      return { erro: "Escolha um regime tributário da lista." };
+      return { erro: "Escolha um regime tributário da lista.", campo: "regime_tributario" };
     }
   }
 
@@ -354,11 +360,17 @@ export async function atualizarCliente(
   clienteId: string,
   alunoId: string,
   patch: PatchCliente,
-) {
+): Promise<{ erro?: string; campo?: keyof ClienteEtapa1 }> {
   const seguro = filtrarPatch(patch);
   if (Object.keys(seguro).length === 0) return { erro: "Nada para salvar." };
-  const { patch: validado, erro: erroValidacao } = validarPatch(seguro);
-  if (erroValidacao || !validado) return { erro: erroValidacao };
+  const {
+    patch: validado,
+    erro: erroValidacao,
+    campo: campoValidacao,
+  } = validarPatch(seguro);
+  if (erroValidacao || !validado) {
+    return { erro: erroValidacao, campo: campoValidacao };
+  }
   const supabase = await createClient();
   // `.select("id")` NÃO é enfeite: sem ele, um `update` que não casa linha
   // nenhuma (id de outro ambiente, cliente já apagado, RLS recusando) volta
@@ -372,7 +384,13 @@ export async function atualizarCliente(
     .eq("id", clienteId)
     .select("id");
 
-  if (error) return { erro: traduzirErroBanco("atualizarCliente", error) };
+  if (error) {
+    const campo = campoDoErroBanco(error);
+    return {
+      erro: traduzirErroBanco("atualizarCliente", error),
+      ...(campo ? { campo } : {}),
+    };
+  }
   if ((data ?? []).length === 0) {
     logErro("atualizarCliente", "update sem linha afetada", {
       alunoId,
@@ -405,7 +423,7 @@ export async function mudarFaseCliente(
   clienteId: string,
   alunoId: string,
   fase: FaseCliente,
-): Promise<{ erro?: string }> {
+): Promise<{ erro?: string; campo?: keyof ClienteEtapa1 }> {
   return atualizarCliente(clienteId, alunoId, { fase });
 }
 

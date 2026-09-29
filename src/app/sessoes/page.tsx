@@ -401,7 +401,7 @@ export type { BlocoDeTipo } from "@/components/sessoes/causa-do-vazio";
  * dados sintéticos, sem sessão de verdade. O `page` acima só resolve dados e
  * chama isto.
  */
-export function CorpoSessoes({
+function CorpoSessoes({
   blocos,
   clientes,
   letraDiscPorCliente,

@@ -12,7 +12,8 @@
     "e2e:desktop": "playwright test --project=desktop",
     "e2e:celular": "playwright test --project=celular",
     "e2e:ver": "playwright test --headed --project=desktop",
-    "e2e:relatorio": "playwright show-report e2e/.relatorio"
+    "e2e:relatorio": "playwright show-report e2e/.relatorio",
+    "build:webpack": "next build --webpack"
   },
   "engines": {
     "node": ">=20"

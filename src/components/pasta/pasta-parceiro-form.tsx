@@ -3,7 +3,7 @@
 import { useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { salvarMinhaPasta } from "@/app/pasta/actions";
-import { ehUrlDoDrive } from "@/lib/pasta";
+import { EMAILS_EQUIPE_PASTA, ehUrlDoDrive } from "@/lib/pasta";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -116,10 +116,20 @@ export function PastaParceiroForm({
       {mostrarForm ? (
         <form onSubmit={enviar} noValidate className="grid gap-2">
           <Label htmlFor={idCampo}>Link da pasta do Drive</Label>
-          <p id={idAjuda} className="text-sm text-muted-foreground">
-            Compartilhe a pasta com a equipe (acesso de editor ou leitor) antes
-            de colar o link.
-          </p>
+          <div id={idAjuda} className="grid gap-1 text-sm text-muted-foreground">
+            <p>
+              Antes de colar o link, compartilhe a pasta no Drive (botão
+              &ldquo;Compartilhar&rdquo;, acesso de editor) com os e-mails da
+              equipe:
+            </p>
+            <ul className="list-disc pl-5">
+              {EMAILS_EQUIPE_PASTA.map((email) => (
+                <li key={email} className="select-all font-medium text-foreground">
+                  {email}
+                </li>
+              ))}
+            </ul>
+          </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               ref={campoRef}

@@ -9,6 +9,17 @@
 // do aluno passou a abrir o Drive direto (`/pasta/abrir`), e o iframe só
 // renderizava com a pasta compartilhada por link — vinha vazio nas privadas.
 
+/**
+ * Contas da equipe com que o parceiro compartilha a pasta antes de colar o
+ * link (Marcio, 30/09/2026). Sem isso a equipe abre o link e cai em "Você
+ * precisa de acesso". Mostradas na tela do parceiro (`pasta-parceiro-form`).
+ */
+export const EMAILS_EQUIPE_PASTA = [
+  "cristiane@advmais.com",
+  "aldri@advmais.com",
+  "isabela@advmais.com",
+] as const;
+
 /** Teto de tamanho do link — o mesmo do CHECK no banco. */
 const PASTA_URL_MAXIMO = 2048;
 

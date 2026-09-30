@@ -52,7 +52,7 @@ export default async function AdminAlunoPastaPage({
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo={`Pasta de ${aluno?.nome ?? ""}`}
-          descricao="Configure e acompanhe a pasta do Drive do parceiro."
+          descricao="O link da pasta do Drive pode ser colocado pela equipe ou pelo próprio parceiro."
         />
 
         <div className="grid gap-6">
@@ -60,8 +60,15 @@ export default async function AdminAlunoPastaPage({
           <PastaConfigForm
             alunoId={alunoId}
             pastaUrl={ambiente.pasta_drive_url}
+            origem={ambiente.pasta_drive_origem}
           />
-          <PastaView pastaUrl={ambiente.pasta_drive_url} isAdmin />
+          <PastaView
+            pastaUrl={ambiente.pasta_drive_url}
+            isAdmin
+            porNome={ambiente.pasta_drive_por_nome}
+            em={ambiente.pasta_drive_em}
+            origem={ambiente.pasta_drive_origem}
+          />
         </div>
       </main>
     </>

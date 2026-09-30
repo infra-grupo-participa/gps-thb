@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
-import { ehUrlDoDrive } from "@/lib/pasta";
+import { ehUrlDoDrive, FRASES_PASTA_DRIVE } from "@/lib/pasta";
 import { traduzirErroBanco } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import { enviarCredenciaisAcesso, enviarAcessoLiberado } from "@/lib/email";
@@ -770,21 +770,37 @@ export async function criarAcessoAluno(
  * Define/atualiza o link da pasta do Google Drive do ambiente (gps.ambientes).
  * A pasta é do AMBIENTE, compartilhada entre titular e sócios — não vive mais
  * em `gps.membros` (que agora tem N linhas por ambiente).
+ *
+ * Escrita SÓ pela RPC `gps.pasta_drive_definir` (migração 20260930180726): o UPDATE
+ * direto em `pasta_drive_url` foi revogado de `authenticated`. A RPC grava a
+ * trilha (origem 'equipe', nome 'Equipe') e usa `urlAnterior` como trava
+ * otimista — se o parceiro trocou o link enquanto a tela estava aberta, a
+ * equipe recebe "O link mudou…" em vez de sobrescrever às cegas.
  */
-export async function salvarPastaDriveUrl(alunoId: string, url: string) {
+export async function salvarPastaDriveUrl(
+  alunoId: string,
+  url: string,
+  urlAnterior: string | null,
+) {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
   const valor = url.trim();
   if (valor && !ehUrlDoDrive(valor)) {
     return { erro: "Informe um link válido do Google Drive." };
   }
   const supabase = await createClient();
-  const { error } = await supabase
-    .schema("gps")
-    .from("ambientes")
-    .update({ pasta_drive_url: valor || null })
-    .eq("aluno_id", alunoId);
-  if (error) return { erro: traduzirErroBanco("salvarPastaDriveUrl", error) };
+  const { error } = await supabase.schema("gps").rpc("pasta_drive_definir", {
+    p_aluno_id: alunoId,
+    p_url: valor,
+    p_url_anterior: urlAnterior?.trim() || null,
+  });
+  if (error) {
+    return {
+      erro: traduzirErroBanco("salvarPastaDriveUrl", error, { alunoId }, FRASES_PASTA_DRIVE),
+    };
+  }
   revalidatePath("/admin", "layout");
+  revalidatePath("/pasta");
+  revalidatePath(`/admin/aluno/${alunoId}/pasta`);
   return {};
 }
 

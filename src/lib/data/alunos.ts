@@ -59,7 +59,11 @@ export async function getAmbiente(alunoId: string): Promise<Ambiente | null> {
   const { data } = await supabase
     .schema("gps")
     .from("ambientes")
-    .select("aluno_id, pasta_drive_url, data_agendamento_disponivel, criado_em, atualizado_em")
+    // `pasta_drive_por` (uuid de auth.users) fica de FORA de propósito: é
+    // trilha interna, e o aluno não vê quem da equipe gravou.
+    .select(
+      "aluno_id, pasta_drive_url, pasta_drive_por_nome, pasta_drive_em, pasta_drive_origem, data_agendamento_disponivel, criado_em, atualizado_em",
+    )
     .eq("aluno_id", alunoId)
     .maybeSingle();
   return (data as Ambiente) ?? null;

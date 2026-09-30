@@ -149,6 +149,12 @@ export interface Membro {
 export interface Ambiente {
   aluno_id: string;
   pasta_drive_url: string | null;
+  /** Nome exibido de quem gravou o link: 'Equipe' ou o nome do parceiro. */
+  pasta_drive_por_nome: string | null;
+  /** Quando o link foi gravado pela última vez (timestamptz ISO). */
+  pasta_drive_em: string | null;
+  /** Quem gravou por último. `null` = sem link. Link 'equipe' o parceiro não troca. */
+  pasta_drive_origem: "equipe" | "parceiro" | null;
   data_agendamento_disponivel: string | null;
   criado_em: string;
   atualizado_em: string;

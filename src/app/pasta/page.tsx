@@ -5,6 +5,7 @@ import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { PastaView } from "@/components/pasta/pasta-view";
+import { PastaParceiroForm } from "@/components/pasta/pasta-parceiro-form";
 
 export const metadata = { title: "Pasta" };
 
@@ -19,6 +20,9 @@ export default async function PastaPage() {
     getAmbiente(ctx.alunoId),
     getTutoriaisAtivo(),
   ]);
+
+  const pastaUrl = ambiente?.pasta_drive_url ?? null;
+  const origem = ambiente?.pasta_drive_origem ?? null;
 
   return (
     <>
@@ -36,16 +40,28 @@ export default async function PastaPage() {
         <PageHeader
           titulo="Minha pasta"
           descricao={
-            ambiente?.pasta_drive_url
-              ? "Os documentos do seu processo, organizados na sua pasta do Drive."
-              : "Aqui fica a sua pasta de documentos no Drive, criada pela equipe durante a implementação."
+            pastaUrl
+              ? "Os documentos do seu processo, na sua pasta do Drive."
+              : "Cole aqui o link da pasta do Drive com os seus documentos — ou aguarde a equipe inserir."
           }
         />
 
         {/* PF4 — o formulário de admin NÃO é importado aqui: se estivesse,
             o código dele e a referência da Server Action de admin entrariam
-            no bundle do aluno mesmo sem nunca renderizar. */}
-        <PastaView pastaUrl={ambiente?.pasta_drive_url ?? null} isAdmin={false} />
+            no bundle do aluno mesmo sem nunca renderizar. O do parceiro
+            (`PastaParceiroForm`) chama só `salvarMinhaPasta`, cujo aluno vem
+            da sessão. É irmão do `PastaView`, não filho: o refresh depois de
+            salvar troca o vazio pelo card sem desmontar o formulário. */}
+        <div className="grid gap-4">
+          <PastaView
+            pastaUrl={pastaUrl}
+            isAdmin={false}
+            origem={origem}
+            porNome={ambiente?.pasta_drive_por_nome ?? null}
+            em={ambiente?.pasta_drive_em ?? null}
+          />
+          <PastaParceiroForm pastaUrl={pastaUrl} origem={origem} />
+        </div>
       </main>
     </>
   );

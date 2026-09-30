@@ -2453,6 +2453,17 @@ foi **removida**, e `drive.google.com` saiu do `frame-src` da CSP. Admin define 
 **removido** da UI; a constante `ESTRUTURA_PASTA` de `pasta.ts` **não existe mais** — saiu com o
 código morto na rodada final de 09/09.)
 
+**Desde 30/09/2026 o parceiro (titular ou sócio) também grava o link** (migração `20260930180726`).
+Escrita **só** pela RPC `gps.pasta_drive_definir(aluno_id, url, url_anterior)` — `authenticated` perdeu
+o UPDATE de tabela em `gps.ambientes` (fica só `data_agendamento_disponivel`, `atualizado_em`).
+Regras: equipe (`gp_is_admin`) insere/troca/remove e aparece como "Equipe"; parceiro insere quando
+vazio e só troca link que ele mesmo pôs (origem `parceiro`), nunca remove; `url_anterior` é trava
+otimista (P0001 "O link mudou…"). Trilha: `pasta_drive_por/_por_nome/_em/_origem`.
+Formato em **3 lugares idênticos**: CHECK `ambientes_pasta_drive_url_formato`, IF da RPC e
+`ehUrlDoDrive` — recusam `/url` (redirecionador do Google), segmento `/./` `/../`, `%2e`, `\`, espaço.
+Telas: parceiro em `/pasta` (`pasta-parceiro-form.tsx` → `salvarMinhaPasta`), admin em
+`/admin/aluno/[id]/pasta`. Prova: `supabase/verificacao-20260930180726.sql` (T1–T13).
+
 ## Onboarding do aluno (modelo definido)
 
 Alunos **não** são provisionados em massa e a base **não** é importada. Auto-cadastro padrão:

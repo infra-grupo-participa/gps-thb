@@ -2,6 +2,7 @@ import { FolderOpen, ExternalLink } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatarData } from "@/lib/datas";
 
 /**
  * O que o ALUNO vê da pasta: o link e o estado vazio.
@@ -19,14 +20,51 @@ import { EmptyState } from "@/components/ui/empty-state";
  * Hoje isto é **Server Component** (zero JavaScript no cliente) e o
  * formulário mora em `pasta-config-form.tsx`, importado SÓ pela página de
  * admin. `isAdmin` continua aqui, mas só para escolher a frase do estado
- * vazio — quem lê "cole o link acima" é quem tem o campo acima.
+ * vazio — quem lê "cole o link acima" é quem tem o campo acima — e o destino
+ * do botão.
+ *
+ * 30/09/2026 — o link passa a poder ser gravado pela equipe OU pelo parceiro
+ * (titular ou sócio). A tela mostra a procedência; o campo do parceiro mora em
+ * `pasta-parceiro-form.tsx`, importado só por `app/pasta/page.tsx`.
  */
+export type OrigemPasta = "equipe" | "parceiro";
+
+/**
+ * "Link inserido por Ana Souza (parceiro) em 30/09/2026."
+ *
+ * Origem `equipe` sai sempre como "pela equipe": o backend grava o nome
+ * literal "Equipe", e "por Equipe (equipe)" repetiria a mesma palavra. Links
+ * antigos (nome e data nulos) caem em "pela equipe", sem data.
+ */
+function textoProcedencia(
+  origem: OrigemPasta,
+  nome: string | null | undefined,
+  em: string | null | undefined,
+): string {
+  const quem =
+    origem === "equipe"
+      ? "pela equipe"
+      : nome?.trim()
+        ? `por ${nome.trim()} (parceiro)`
+        : "pelo parceiro";
+  return `Link inserido ${quem}${em ? ` em ${formatarData(em)}` : ""}.`;
+}
+
 export function PastaView({
   pastaUrl,
   isAdmin,
+  origem,
+  porNome,
+  em,
 }: {
   pastaUrl: string | null;
   isAdmin: boolean;
+  /** Quem gravou o link. Opcional: a tela de admin ainda não passa. */
+  origem?: OrigemPasta | null;
+  /** Nome de quem gravou (`pasta_drive_por_nome`). */
+  porNome?: string | null;
+  /** Quando gravou (`pasta_drive_em`, timestamptz ISO). */
+  em?: string | null;
 }) {
   if (!pastaUrl) {
     // UX6 — o vazio era um `Card` à mão, com `py-10` somando ao padding que
@@ -36,13 +74,13 @@ export function PastaView({
         icone={<FolderOpen />}
         titulo={
           isAdmin
-            ? "Nenhuma pasta configurada para este parceiro"
-            : "Sua pasta está sendo preparada pela equipe"
+            ? "Nenhuma pasta vinculada a este parceiro"
+            : "Sua pasta do Drive ainda não foi vinculada"
         }
         descricao={
           isAdmin
-            ? "Cole o link da pasta do Drive no campo acima para disponibilizá-la ao parceiro."
-            : "Nela ficam os modelos de contrato e os documentos do seu processo. Assim que estiver pronta, a aba Pasta abre direto no Drive — não é preciso fazer nada."
+            ? "Cole o link da pasta do Drive no campo acima, ou aguarde o parceiro inserir pela tela dele."
+            : "Cole o link da sua pasta no campo abaixo, ou aguarde a equipe inserir. Depois disso, a aba Pasta abre direto no Drive."
         }
       />
     );
@@ -65,20 +103,28 @@ export function PastaView({
             principal da tela. `buttonVariants()` usa `marca-acao` (#C74600,
             4,88:1 medido) e traz junto o foco por outline, que o botão à mão
             também não tinha. */}
+        {/* Aluno abre por `/pasta/abrir`, que reconfere `ehUrlDoDrive` antes
+            do redirect — o link agora também é gravado pelo parceiro. Admin
+            usa o link direto: `/pasta/abrir` manda admin para `/admin`. */}
         <a
-          href={pastaUrl}
+          href={isAdmin ? pastaUrl : "/pasta/abrir"}
           target="_blank"
           rel="noopener noreferrer"
           className={buttonVariants()}
         >
-          Abrir no Drive <ExternalLink aria-hidden />
+          Abrir pasta no Drive <ExternalLink aria-hidden />
         </a>
       </CardHeader>
-      <CardContent>
+      <CardContent className="grid gap-1">
         <p className="text-sm text-muted-foreground">
           A pasta abre no Google Drive, em outra aba. Lá dá para ver e baixar
           os documentos.
         </p>
+        {origem ? (
+          <p className="text-sm text-muted-foreground">
+            {textoProcedencia(origem, porNome, em)}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

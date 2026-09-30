@@ -23,9 +23,11 @@ import { Label } from "@/components/ui/label";
 export function PastaConfigForm({
   alunoId,
   pastaUrl,
+  origem = null,
 }: {
   alunoId: string;
   pastaUrl: string | null;
+  origem?: "equipe" | "parceiro" | null;
 }) {
   const router = useRouter();
   const [url, setUrl] = useState(pastaUrl ?? "");
@@ -33,7 +35,7 @@ export function PastaConfigForm({
 
   function salvar() {
     startTransition(async () => {
-      const res = await salvarPastaDriveUrl(alunoId, url);
+      const res = await salvarPastaDriveUrl(alunoId, url, pastaUrl);
       if (res.erro) {
         toast.error(res.erro);
         return;
@@ -49,10 +51,18 @@ export function PastaConfigForm({
         <CardTitle className="text-base">Link da pasta (Drive)</CardTitle>
         <p className="text-sm text-muted-foreground">
           Cole o link da pasta do Google Drive deste parceiro (compartilhada entre
-          a equipe e o parceiro).
+          a equipe e o parceiro). O parceiro também pode inserir o link enquanto
+          estiver pendente.
         </p>
       </CardHeader>
       <CardContent>
+        {/* Quem inseriu e quando já aparece no `PastaView` logo abaixo. */}
+        {pastaUrl && origem === "parceiro" && (
+          <p className="mb-2 text-sm text-muted-foreground">
+            Link colocado pelo parceiro. Ao trocar, ele deixa de poder
+            corrigi-lo.
+          </p>
+        )}
         <div className="flex flex-col gap-2 sm:flex-row">
           {/* O campo não tinha rótulo associado: o `CardTitle` fica ao lado,
               não no `for`. Sem isto o leitor de tela anuncia só "edit". */}

@@ -12,6 +12,7 @@ import "server-only";
  */
 
 import {
+  APP_URL,
   LARANJA_ACELERA,
   botao,
   enviar,
@@ -24,11 +25,6 @@ import {
 /** Os e-mails do Plantão saem como Acelera Holding (migração …173), no mesmo endereço verificado. */
 const DE_ACELERA = remetente("Acelera Holding");
 import { horaCurta } from "@/lib/plantao";
-
-const APP_URL = (
-  process.env.NEXT_PUBLIC_APP_URL ||
-  "https://programa.timeholdingbrasil.com.br"
-).replace(/\/+$/, "");
 
 /** "2026-09-15" → "terça-feira, 15 de setembro de 2026" (fuso fixo em UTC — data-only). */
 /**

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import type {
   Operador,
   DossieDoCliente,
@@ -27,7 +27,7 @@ import type {
  * própria linha, admin lê todas).
  */
 export async function getOperadores(): Promise<{ linhas: Operador[]; erro?: string }> {
-  if (!(await ehAdmin())) return { linhas: [], erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { linhas: [], erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data, error } = await supabase

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Converter um TITULAR de ambiente próprio em SÓCIO de outro ambiente — a
@@ -99,7 +99,7 @@ export async function getPreviaConversaoSocio(
   membroId: string,
   ambienteDestinoId: string,
 ): Promise<{ erro?: string; previa?: PreviaConversaoSocio }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   if (!membroId || !ambienteDestinoId) {
     return { erro: "Membro ou ambiente de destino não informado." };
   }

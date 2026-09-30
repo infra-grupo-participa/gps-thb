@@ -27,7 +27,6 @@ import type { ResultadoAcao } from "@/lib/tutoriais-tipos";
  * o match de `traduzirErroBanco` é por igualdade EXATA.
  */
 const FRASES_TUTORIAL: Record<string, string> = {
-  "Sem permissão.": "Sem permissão para esta ação.",
   "tutorial nao informado":
     "Faltou um dado obrigatório para concluir esta ação. Recarregue a tela e tente de novo.",
   "Tutorial não encontrado.": "Tutorial não encontrado. Atualize a lista e tente de novo.",

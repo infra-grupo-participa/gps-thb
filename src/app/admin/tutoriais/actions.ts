@@ -42,7 +42,6 @@ import {
  * igualdade EXATA.
  */
 const FRASES_TUTORIAL: Record<string, string> = {
-  "Sem permissão.": "Sem permissão para esta ação.",
   "O título precisa ter de 3 a 200 caracteres.":
     "O título precisa ter de 3 a 200 caracteres.",
   "O resumo passa de 500 caracteres.": "O resumo passa de 500 caracteres.",

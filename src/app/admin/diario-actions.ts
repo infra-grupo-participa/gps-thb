@@ -17,8 +17,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao, ehAdmin } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
-import { MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
+import { SEM_PERMISSAO, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { logErro } from "@/lib/log";
+import { APP_URL } from "@/lib/email";
 import { notificarMencao } from "@/lib/slack";
 import {
   TIPOS_NOTA,
@@ -28,11 +29,6 @@ import {
   type OrigemNota,
   type VozNota,
 } from "@/lib/types";
-
-const APP_URL = (
-  process.env.NEXT_PUBLIC_APP_URL ||
-  "https://programa.timeholdingbrasil.com.br"
-).replace(/\/+$/, "");
 
 /** Uma nota não vira disparo em massa. O banco aplica o mesmo teto. */
 const MAX_MENCOES = 10;
@@ -99,7 +95,7 @@ export async function registrarNota(
     return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
   }
   if (!ctx || ctx.papel !== "admin") {
-    return { ok: false, erro: "Sem permissão." };
+    return { ok: false, erro: SEM_PERMISSAO };
   }
 
   if (!input.alunoId) return { ok: false, erro: "Aluno não informado." };
@@ -273,7 +269,7 @@ export async function darBaixaPendencia(
     return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
   }
   if (!ctx || ctx.papel !== "admin") {
-    return { ok: false, erro: "Sem permissão." };
+    return { ok: false, erro: SEM_PERMISSAO };
   }
   if (!notaId) return { ok: false, erro: "Nota não informada." };
 
@@ -357,7 +353,7 @@ export async function apagarNota(
   notaId: string,
   alunoId: string,
 ): Promise<ResultadoDiarioAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { error } = await supabase

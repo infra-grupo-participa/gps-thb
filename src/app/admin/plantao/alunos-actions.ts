@@ -23,7 +23,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { emailValido } from "@/lib/texto";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import type { ResultadoAcao } from "@/lib/plantao-tipos";
 
 /**
@@ -35,7 +35,7 @@ import type { ResultadoAcao } from "@/lib/plantao-tipos";
  * conseguir se inscrever, cancelar ou revelar a sala na mesma hora.
  */
 export async function revogarAcessoPlantao(alunoPlantaoId: string): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
 
@@ -51,7 +51,7 @@ export async function revogarAcessoPlantao(alunoPlantaoId: string): Promise<Resu
 }
 
 export async function reativarAcessoPlantao(alunoPlantaoId: string): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -90,7 +90,7 @@ export async function liberarAlunoPlantao(dados: {
 }): Promise<
   ResultadoAcao & { reativado?: boolean; precisaConfirmar?: boolean }
 > {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const email = dados.email.trim();
   const nome = dados.nome.trim();

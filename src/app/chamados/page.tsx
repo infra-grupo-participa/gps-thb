@@ -62,11 +62,12 @@ export default async function ChamadosPage({
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
   const alunoId = ctx.alunoId;
-  const [aluno, chamados, suporteAberto, categoriasAtivo] = await Promise.all([
+  const [aluno, chamados, suporteAberto, categoriasAtivo, tutoriaisAtivo] = await Promise.all([
     getAlunoById(alunoId),
     getChamadosDoAmbiente(alunoId),
     getSuporteAberto(),
     getChamadosCategoriasAtivo(),
+    getTutoriaisAtivo(),
   ]);
 
   // O formulário de troca só precisa de clientes/sócio quando a feature está
@@ -100,8 +101,6 @@ export default async function ChamadosPage({
       temSocio={Boolean(socioAtual)}
     />
   ) : null;
-
-  const tutoriaisAtivo = await getTutoriaisAtivo();
 
   return (
     <>

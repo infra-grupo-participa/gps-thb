@@ -22,13 +22,9 @@ import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { brlOuTraco } from "@/lib/moeda";
-import {
-  MOTIVO_MAX,
-  MOTIVO_MIN,
-  exigeMotivo,
-  rotuloEtapa,
-  type AcaoPendente,
-} from "../tipos";
+// A ação de trilha (reabrir) exige motivo de 3 a 300, no servidor E no banco.
+import { MOTIVO_MAX, MOTIVO_MIN } from "@/lib/etapas-lote-tipos";
+import { exigeMotivo, rotuloEtapa, type AcaoPendente } from "../tipos";
 
 /**
  * "Motivo (fica no histórico do parceiro)" — o mesmo desenho do "Motivo (o parceiro

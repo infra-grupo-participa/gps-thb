@@ -26,7 +26,7 @@ import { revalidatePath } from "next/cache";
 
 import { getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
-import { MSG_SESSAO_INDETERMINADA, traduzirErroBanco } from "@/lib/erros";
+import { MSG_SESSAO_INDETERMINADA, SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import { createClient } from "@/lib/supabase/server";
 import type {
   SessaoAgendarResultado,
@@ -142,7 +142,7 @@ export async function agendarSessao(input: {
     // `gps.aluno_atual()` dentro da RPC (42501) e a RLS. Aqui é só para não
     // gastar uma ida ao banco por quem nem sessão de aluno tem.
     if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
-      return { ok: false, erro: "Sem permissão para esta ação." };
+      return { ok: false, erro: SEM_PERMISSAO };
     }
   } catch (e) {
     if (!ehSessaoIndeterminada(e)) throw e;
@@ -202,7 +202,7 @@ export async function cancelarSessao(input: {
   try {
     const ctx = await getContextoSessao();
     if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
-      return { ok: false, erro: "Sem permissão para esta ação." };
+      return { ok: false, erro: SEM_PERMISSAO };
     }
   } catch (e) {
     if (!ehSessaoIndeterminada(e)) throw e;

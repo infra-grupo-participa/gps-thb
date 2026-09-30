@@ -44,15 +44,13 @@ import {
   liberarAcompanhamento,
 } from "@/app/admin/central-actions";
 import { formatarData } from "@/lib/datas";
+// As RPCs `...203` recusam menos de 3 e mais de 300 — o mesmo limite da Central.
+import { MOTIVO_MAX, MOTIVO_MIN } from "@/lib/etapas-lote-tipos";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-
-/** As RPCs `...203` recusam menos de 3 e mais de 300 — o mesmo limite da Central. */
-const MOTIVO_MIN = 3;
-const MOTIVO_MAX = 300;
 
 /**
  * O caminho de saída, num lugar só. Vai como `?categoria=troca_cliente` para

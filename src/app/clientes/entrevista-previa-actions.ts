@@ -69,7 +69,6 @@ import {
 /** Frases das travas das RPCs, repassadas sem reescrita. */
 function frasesDasTravas(): Record<string, string> {
   return {
-    "Sem permissão.": "Sem permissão.",
     "Cliente não encontrado.": "Cliente não encontrado.",
     "Entrevista não encontrada.": "Entrevista não encontrada.",
     "Esta entrevista já foi concluída.": "Esta entrevista já foi concluída.",

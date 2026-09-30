@@ -215,7 +215,8 @@ export default async function HomePage() {
     favorito,
     membros,
     alunoSocio,
-    jaTemCliente
+    jaTemCliente,
+    tutoriaisAtivo,
   ] = await Promise.all([
     // Liberação POR ALUNO: `coalesce(override, global)`. O override
     // (`gps.etapa_liberacao_aluno`) manda nos dois sentidos — libera quem está
@@ -239,7 +240,8 @@ export default async function HomePage() {
     souSocio && ctx.membroAlunoId
       ? getAlunoById(ctx.membroAlunoId)
       : Promise.resolve(null),
-    alunoJaTemCliente(alunoId)
+    alunoJaTemCliente(alunoId),
+    getTutoriaisAtivo(),
   ]);
   const { etapas, overrides } = etapasEOverrides;
   const aluno = souSocio ? alunoSocio : alunoAmbiente;
@@ -301,8 +303,6 @@ export default async function HomePage() {
     (passo ? etapas.find((e) => e.id === passo.etapa) : null) ??
     [...liberadas].sort((a, b) => b.ordem - a.ordem)[0] ??
     null;
-
-  const tutoriaisAtivo = await getTutoriaisAtivo();
 
   return (
     <>

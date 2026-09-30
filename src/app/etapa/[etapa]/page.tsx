@@ -40,10 +40,11 @@ export default async function EtapaAlunoPage({
   // `getAlunoById` entra no MESMO lote: ele recebe `alunoId` da sessão e não
   // depende de etapa nenhuma. Estava sozinho, depois das guardas — uma ida
   // ao banco a mais, em série, em toda abertura de etapa.
-  const [etapasGlobais, overrides, aluno] = await Promise.all([
+  const [etapasGlobais, overrides, aluno, tutoriaisAtivo] = await Promise.all([
     getEtapas(),
     getEtapasLiberadasPara(alunoId),
     getAlunoById(alunoId),
+    getTutoriaisAtivo(),
   ]);
   const etapas = etapasComLiberacaoDoAluno(etapasGlobais, overrides);
   const etapaInfo = etapas.find((e) => e.id === n);
@@ -60,8 +61,6 @@ export default async function EtapaAlunoPage({
   // voltando para a home: ali não há decisão sobre esta pessoa nem motivo
   // escrito, e a home já diz "Em breve · Libera conforme sua turma avança".
   if (!etapaInfo.liberada && !travadaPelaEquipe) redirect("/");
-
-  const tutoriaisAtivo = await getTutoriaisAtivo();
 
   return (
     <>

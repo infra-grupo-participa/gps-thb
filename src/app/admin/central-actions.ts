@@ -26,7 +26,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import {
   LOTE_ETAPAS_MAX_ALUNOS,
   MOTIVO_MAX,
@@ -71,7 +71,7 @@ export async function definirLiberacaoEtapasEmLote(
   itens: ItemLiberacaoEtapa[],
   motivo: string,
 ): Promise<Resultado<ResultadoLoteEtapas>> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   // Server Action é endpoint POST: o formato não é garantido pelo tipo.
   if (!Array.isArray(alunoIds) || !Array.isArray(itens)) {
     return { erro: "Pedido fora do formato." };
@@ -142,15 +142,15 @@ export async function reabrirEtapa(
   etapa: number,
   motivo: string,
 ): Promise<Resultado<{ reabertas: number }>> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   if (!alunoId || !Number.isInteger(etapa)) {
     return { erro: "Aluno ou etapa não informado." };
   }
   const texto = motivo.trim();
-  if (texto.length < 3) {
+  if (texto.length < MOTIVO_MIN) {
     return { erro: "Escreva o motivo — a trilha deste aluno vai registrar." };
   }
-  if (texto.length > 300) return { erro: "O motivo passa de 300 caracteres." };
+  if (texto.length > MOTIVO_MAX) return { erro: `O motivo passa de ${MOTIVO_MAX} caracteres.` };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -186,7 +186,7 @@ export async function vincularPessoaMembro(
   pessoaAlunoId: string | null,
   alunoId?: string,
 ): Promise<Resultado<{ nome: string | null; email: string | null }>> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   if (!membroId) return { erro: "Membro não informado." };
 
   const supabase = await createClient();
@@ -231,7 +231,7 @@ export async function trocarTitular(
     financeiroPassaAVer: boolean;
   }>
 > {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   if (!alunoId || !novoTitularMembroId) {
     return { erro: "Ambiente ou membro não informado." };
   }
@@ -269,7 +269,7 @@ export async function moverMembro(
   novoAlunoId: string,
   alunoIdOrigem?: string,
 ): Promise<Resultado<{ de: string | null; para: string | null }>> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   if (!membroId || !novoAlunoId) {
     return { erro: "Membro ou ambiente de destino não informado." };
   }
@@ -313,7 +313,7 @@ export async function previaConversaoSocio(
   membroId: string,
   ambienteDestinoId: string,
 ): Promise<{ erro?: string; previa?: PreviaConversaoSocio }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   return getPreviaConversaoSocio(membroId, ambienteDestinoId);
 }
 
@@ -350,7 +350,7 @@ export async function converterTitularEmSocio(
     destinoNome: string | null;
   }>
 > {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   if (!membroId || !ambienteDestinoId) {
     return { erro: "Membro ou ambiente de destino não informado." };
   }
@@ -403,7 +403,7 @@ export async function vincularFinanceiro(
   alunoId: string,
   contatoHmId: string,
 ): Promise<Resultado> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   if (!alunoId || !contatoHmId.trim()) {
     return { erro: "Contrato não informado." };
   }
@@ -436,7 +436,7 @@ export async function desvincularFinanceiro(
   alunoId: string,
   contatoHmId: string,
 ): Promise<Resultado<{ vinculadoPeloPortal: boolean }>> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   if (!alunoId || !contatoHmId.trim()) {
     return { erro: "Contrato não informado." };
   }
@@ -481,13 +481,13 @@ export async function confirmarAcompanhamento(
   alunoId: string,
   motivo: string,
 ): Promise<Resultado<{ clienteId: string }>> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   if (!clienteId) return { erro: "Cliente não informado." };
   const texto = motivo.trim();
-  if (texto.length < 3) {
+  if (texto.length < MOTIVO_MIN) {
     return { erro: "Escreva o motivo — a trilha deste aluno vai registrar." };
   }
-  if (texto.length > 300) return { erro: "O motivo passa de 300 caracteres." };
+  if (texto.length > MOTIVO_MAX) return { erro: `O motivo passa de ${MOTIVO_MAX} caracteres.` };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -521,13 +521,13 @@ export async function liberarAcompanhamento(
   alunoId: string,
   motivo: string,
 ): Promise<Resultado<{ clienteId: string }>> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   if (!clienteId) return { erro: "Cliente não informado." };
   const texto = motivo.trim();
-  if (texto.length < 3) {
+  if (texto.length < MOTIVO_MIN) {
     return { erro: "Escreva o motivo — a trilha deste aluno vai registrar." };
   }
-  if (texto.length > 300) return { erro: "O motivo passa de 300 caracteres." };
+  if (texto.length > MOTIVO_MAX) return { erro: `O motivo passa de ${MOTIVO_MAX} caracteres.` };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -566,7 +566,7 @@ export async function liberarAcompanhamento(
 export async function destravarOnboarding(
   alunoId: string,
 ): Promise<Resultado<{ jaEstava: boolean }>> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -603,7 +603,7 @@ export async function marcarFinalizado(
   alunoId: string,
   finalizado: boolean,
 ): Promise<{ erro?: string; nome?: string }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data, error } = await supabase

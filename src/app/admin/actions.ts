@@ -10,7 +10,7 @@ import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { ehUrlDoDrive, FRASES_PASTA_DRIVE } from "@/lib/pasta";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import { enviarCredenciaisAcesso, enviarAcessoLiberado } from "@/lib/email";
 import {
@@ -232,7 +232,7 @@ export async function listarTurmas(): Promise<Turma[]> {
 export async function cadastrarAluno(
   dados: NovoAlunoInput,
 ): Promise<{ erro?: string; duplicado?: AlunoDuplicado; aluno?: AlunoBusca }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const nome = dados.nome?.trim() ?? "";
   const email = dados.email?.trim().toLowerCase() ?? "";
@@ -352,7 +352,7 @@ export async function cadastrarAluno(
 
 /** Vincula um aluno ao GPS como TITULAR (cria o ambiente da Etapa 01). */
 export async function adicionarAlunoGps(alunoId: string) {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -371,7 +371,7 @@ export async function aprovarSolicitacao(
   userId: string,
   alunoId: string,
 ) {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const {
@@ -455,7 +455,7 @@ export async function recusarSolicitacao(
   solicitacaoId: string,
   observacao?: string,
 ) {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const {
@@ -481,7 +481,7 @@ export async function recusarSolicitacao(
 
 /** Atualiza o e-mail do aluno no cadastro (thb_alunos). */
 export async function atualizarEmailAluno(alunoId: string, email: string) {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   const novo = email.trim().toLowerCase();
   // `emailValido` é a regex única do repo (texto.ts): barra `<>"'`, que a
   // frouxa aceitava (achado BAIXO do pentest da UI, 09/09).
@@ -508,7 +508,7 @@ export async function diagnosticarLoginAluno(
   alunoId: string,
   emailInformado?: string,
 ): Promise<{ erro?: string; diagnostico?: DiagnosticoLogin }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data: aluno } = await supabase
@@ -575,7 +575,7 @@ export async function criarAcessoAluno(
     permitirAdocao?: boolean;
   },
 ) {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data: aluno } = await supabase
@@ -782,7 +782,7 @@ export async function salvarPastaDriveUrl(
   url: string,
   urlAnterior: string | null,
 ) {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   const valor = url.trim();
   if (valor && !ehUrlDoDrive(valor)) {
     return { erro: "Informe um link válido do Google Drive." };
@@ -873,7 +873,7 @@ export async function criarAcessosEmLote(
   erro?: string;
   resultados: ResultadoAcessoEmLote[];
 }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão.", resultados: [] };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO, resultados: [] };
 
   const ids = [...new Set(alunoIds ?? [])].filter(
     (id) => typeof id === "string" && id.length > 0,

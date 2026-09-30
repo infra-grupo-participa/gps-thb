@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import type { FaseCliente, GrauRelacao } from "@/lib/types";
 import type { FiltroReuniao } from "@/components/admin/clientes-programa/estado-na-url";
 
@@ -63,7 +63,7 @@ export interface FiltrosClientesDoPrograma {
 export async function getClientesDoPrograma(
   opts?: FiltrosClientesDoPrograma,
 ): Promise<{ linhas: ClienteDoPrograma[]; total: number; erro?: string }> {
-  if (!(await ehAdmin())) return { linhas: [], total: 0, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { linhas: [], total: 0, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data, error } = await supabase.schema("gps").rpc("admin_clientes_lista", {
@@ -135,7 +135,7 @@ export async function getClientesReuniaoKpis(): Promise<{
   kpis: ReuniaoKpis;
   erro?: string;
 }> {
-  if (!(await ehAdmin())) return { kpis: KPIS_ZERADOS, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { kpis: KPIS_ZERADOS, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data, error } = await supabase

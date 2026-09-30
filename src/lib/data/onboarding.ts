@@ -2,7 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao, ehAdmin } from "@/lib/auth";
 import { logErro } from "@/lib/log";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import type {
   FaseCliente1,
   GrauRelacao,
@@ -231,7 +231,7 @@ interface PessoaCrua extends RespostasCruas {
 export async function getOnboardingDoAluno(
   alunoId: string,
 ): Promise<{ pessoas: OnboardingDaPessoa[]; erro?: string }> {
-  if (!(await ehAdmin())) return { pessoas: [], erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { pessoas: [], erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data, error } = await supabase

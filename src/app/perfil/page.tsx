@@ -28,17 +28,17 @@ export default async function PerfilPage() {
   // A pessoa logada: para o titular é o mesmo aluno do ambiente; para o
   // sócio é o próprio cadastro (`membroAlunoId`), não o do titular.
   const pessoaAlunoId = ctx.membroAlunoId ?? ctx.alunoId;
-  const [aluno, membro, onboarding] = await Promise.all([
+  const [aluno, membro, onboarding, tutoriaisAtivo] = await Promise.all([
     getAlunoById(pessoaAlunoId),
     getMembroDoUsuario(ctx.user.id),
     // As respostas do dia 0 — só de leitura. A seção SOME quando a pessoa não
     // respondeu: quem ainda não passou pelo questionário não precisa de uma
     // caixa vazia dizendo isso, ele abre sozinho no próximo acesso.
     getMeuOnboarding(),
+    getTutoriaisAtivo(),
   ]);
   const turma = await getTurmaCodigo(aluno?.turma_id);
   const abas = navDoAluno(ctx);
-  const tutoriaisAtivo = await getTutoriaisAtivo();
 
   return (
     <>

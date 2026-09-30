@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin, getContextoSessao } from "@/lib/auth";
 import { logErro } from "@/lib/log";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import type { OverridesLiberacao } from "@/lib/etapas";
 import type { StatusAcesso, MembroAcesso } from "@/lib/acesso-tipos";
 
@@ -155,7 +155,7 @@ export function mapearStatusAcesso(bruto: unknown): StatusAcesso {
 export async function getDiagnosticoAmbiente(
   alunoId: string,
 ): Promise<{ erro?: string; diagnostico?: DiagnosticoAmbiente }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
   if (!alunoId) return { erro: "Aluno não informado." };
 
   const supabase = await createClient();

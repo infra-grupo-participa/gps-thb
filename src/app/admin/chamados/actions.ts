@@ -206,7 +206,6 @@ export async function expurgarAnexo(item: {
  * `"use server"` distintos por um mapa pequeno.
  */
 const FRASES_SOLICITACAO: Record<string, string> = {
-  "Sem permissão.": "Sem permissão para esta ação.",
   "Escreva o motivo — a trilha deste aluno vai registrar.":
     "Escreva o motivo — ele fica no histórico deste parceiro.",
   "Escreva o motivo — o aluno vai ver esta frase.":

@@ -25,7 +25,12 @@ const FROM =
   process.env.EMAIL_FROM ||
   "Time Holding Brasil <acesso@programa.timeholdingbrasil.com.br>";
 
-const APP_URL = (
+/**
+ * URL pública do portal, sem barra final — fonte ÚNICA para montar link em
+ * e-mail, Slack e redefinição de senha. Importada pelos demais módulos
+ * (`email-chamados`, `email-plantao`, actions); não redeclarar.
+ */
+export const APP_URL = (
   process.env.NEXT_PUBLIC_APP_URL ||
   "https://programa.timeholdingbrasil.com.br"
 ).replace(/\/+$/, "");

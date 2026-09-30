@@ -1,4 +1,3 @@
-import { cache } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
@@ -28,13 +27,6 @@ import { podeApagarNota as consultarPodeApagarNota } from "@/app/admin/diario-ac
 import { cn } from "@/lib/utils";
 
 /**
- * 🔑 `cache()` do React: `generateMetadata` e a página pedem o MESMO aluno na
- * mesma requisição. Sem isto, pôr o nome no título custaria uma segunda
- * consulta a `thb_alunos` por abertura de tela.
- */
-const carregarAluno = cache(getAlunoById);
-
-/**
  * O nome do parceiro no título da aba. Com oito abas abertas — o dia normal da
  * equipe — "Diário do parceiro" oito vezes não distingue de quem é cada uma.
  *
@@ -50,7 +42,7 @@ export async function generateMetadata({
   const ctx = await getContextoSessao();
   if (!ctx || ctx.papel !== "admin") return { title: "Diário do parceiro" };
   const { alunoId } = await params;
-  const aluno = await carregarAluno(alunoId);
+  const aluno = await getAlunoById(alunoId);
   const nome = aluno?.nome?.trim();
   return { title: nome ? `Diário — ${nome}` : "Diário do parceiro" };
 }
@@ -171,7 +163,7 @@ export default async function AdminAlunoDiarioPage({
     podeApagarNota,
     tutoriaisAtivo,
   ] = await Promise.all([
-    carregarAluno(alunoId),
+    getAlunoById(alunoId),
     // A janela vale para as TRÊS fontes da trilha (eventos, notas e ações
     // administrativas) — senão o filtro "30 dias" mostraria nota de 6 meses
     // atrás e a tela mentiria sobre o próprio recorte.

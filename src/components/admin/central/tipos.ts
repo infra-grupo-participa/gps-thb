@@ -31,10 +31,6 @@ export type AcaoPendente =
       produto: string | null;
     };
 
-/** A ação de trilha (reabrir) exige motivo de 3 a 300, no servidor E no banco. */
-export const MOTIVO_MIN = 3;
-export const MOTIVO_MAX = 300;
-
 export function exigeMotivo(acao: AcaoPendente): boolean {
   return (
     acao.tipo === "reabrir-etapa"

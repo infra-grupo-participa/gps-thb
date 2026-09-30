@@ -50,8 +50,16 @@ export interface ErroDeBanco {
 const FALTA_PARAMETRO =
   "Faltou um dado obrigatório para concluir esta ação. Recarregue a tela e tente de novo.";
 
+/**
+ * Frase ÚNICA de "sem permissão": a das guardas das Server Actions
+ * (`if (!(await ehAdmin())) return { erro: SEM_PERMISSAO }`) e a tradução do
+ * `raise exception 'Sem permissão.'` das RPCs. Uma fonte só, para a tela não
+ * mostrar duas frases para a mesma recusa.
+ */
+export const SEM_PERMISSAO = "Sem permissão.";
+
 const FRASES_DO_BANCO: Record<string, string> = {
-  "Sem permissão.": "Sem permissão para esta ação.",
+  "Sem permissão.": SEM_PERMISSAO,
   // ⚠️ O "8" fica LITERAL aqui: a chave é o texto VERBATIM que as RPCs do
   // admin levantam (`length(trim(p_senha)) < 8`), e o mapa casa por igualdade
   // exata. Interpolar `SENHA_MINIMO` faria a chave deixar de casar no dia em
@@ -533,8 +541,8 @@ const FRASES_DO_BANCO: Record<string, string> = {
 
   // Guardas de PAPEL (mesmas RPCs). A frase é a de `42501`, escrita aqui para
   // não depender do SQLSTATE que a RPC escolheu.
-  "apenas administradores": "Sem permissão para esta ação.",
-  "sem permissao": "Sem permissão para esta ação.",
+  "apenas administradores": SEM_PERMISSAO,
+  "sem permissao": SEM_PERMISSAO,
 
   // ── Anexo: variante que faltava (as outras já estão mapeadas acima) ────
   "tipo de anexo invalido": "Formato não aceito. Envie PNG, JPG, WEBP ou PDF.",
@@ -724,7 +732,7 @@ const POR_CODIGO: Record<string, string> = {
   // check_violation — algum campo não passou na regra da coluna
   "23514": "Algum campo está fora do formato aceito. Revise e tente de novo.",
   // insufficient_privilege (RLS, grant, guarda de admin)
-  "42501": "Sem permissão para esta ação.",
+  "42501": SEM_PERMISSAO,
   // invalid_parameter_value — as funções `gps.*` usam para argumento inválido
   "22023": "Algum dado enviado está fora do formato aceito.",
   // no_data_found — as funções `gps.*` usam para "não achei o registro"

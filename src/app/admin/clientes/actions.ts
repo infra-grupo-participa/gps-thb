@@ -21,7 +21,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import { montarCsv, nomeDoArquivo } from "@/lib/csv";
 import { COLUNAS_CSV_CLIENTES } from "@/lib/csv-clientes";
 import { getClientesDoPrograma } from "@/lib/data/clientes-admin";
@@ -55,7 +55,7 @@ export async function exportarClientesCsv(filtros?: {
   busca?: string | null;
   reuniao?: FiltroReuniao;
 }): Promise<{ csv?: string; linhas?: number; erro?: string }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const { linhas, erro } = await getClientesDoPrograma({
     limite: LIMITE_EXPORT_CSV,

@@ -63,6 +63,5 @@ export const FRASES_PASTA_DRIVE: Record<string, string> = {
   "Informe o link da pasta.": "Informe o link da pasta.",
   "Ambiente não encontrado.": "Ambiente não encontrado.",
   "Ambiente não informado.": "Ambiente não informado.",
-  "Sem permissão.": "Sem permissão.",
   "Sessão expirada. Entre de novo.": "Sessão expirada. Entre de novo.",
 };

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import {
   INTERRUPTORES_POR_CHAVE,
   type ResultadoAcaoConfig,
@@ -28,7 +28,7 @@ export async function alternarInterruptor(
   chave: string,
   ligado: boolean,
 ): Promise<ResultadoAcaoConfig> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão para esta ação." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   if (!INTERRUPTORES_POR_CHAVE.has(chave)) {
     return { ok: false, erro: "Este interruptor não existe." };

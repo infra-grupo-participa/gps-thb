@@ -24,7 +24,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import { emailValido } from "@/lib/texto";
 import type { LoginResolvidoResultado } from "@/lib/resolver-login-tipos";
 
@@ -37,7 +37,7 @@ import type { LoginResolvidoResultado } from "@/lib/resolver-login-tipos";
 export async function resolverLoginPorEmail(
   email: string,
 ): Promise<LoginResolvidoResultado> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const limpo = email.trim();
   if (!emailValido(limpo)) {

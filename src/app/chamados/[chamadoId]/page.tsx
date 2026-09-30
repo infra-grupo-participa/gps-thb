@@ -37,10 +37,11 @@ export default async function ChamadoPage({
   if (ctx.papel === "admin") redirect(`/admin/chamados/${chamadoId}`);
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
-  const [aluno, dados, suporteAberto] = await Promise.all([
+  const [aluno, dados, suporteAberto, tutoriaisAtivo] = await Promise.all([
     getAlunoById(ctx.alunoId),
     getChamado(chamadoId),
     getSuporteAberto(),
+    getTutoriaisAtivo(),
   ]);
   if (!dados) notFound();
 
@@ -55,7 +56,6 @@ export default async function ChamadoPage({
     "aluno",
     suporteAberto,
   );
-  const tutoriaisAtivo = await getTutoriaisAtivo();
 
   return (
     <>

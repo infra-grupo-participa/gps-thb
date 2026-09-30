@@ -23,7 +23,16 @@ import type {
 // `src/lib/data.ts` reexporta tudo daqui, para os importadores não mudarem.
 // ─────────────────────────────────────────────────────────────────────────
 
-export async function getAlunoById(alunoId: string): Promise<Aluno | null> {
+/**
+ * 🔑 MEMOIZADA POR REQUISIÇÃO com `cache()` do React (mesmo padrão de
+ * `getTutoriaisAtivo` em `tutoriais.ts`). O layout raiz (`BotaoSecretaria`) e a
+ * página pedem o MESMO aluno na mesma requisição — sem `cache()`, cada um
+ * refazia o `select` em `thb_alunos`. Escopo de requisição, não de processo:
+ * não vaza entre alunos. NUNCA trocar por `unstable_cache`.
+ */
+export const getAlunoById = cache(async function getAlunoById(
+  alunoId: string,
+): Promise<Aluno | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("thb_alunos")
@@ -33,7 +42,7 @@ export async function getAlunoById(alunoId: string): Promise<Aluno | null> {
     .eq("id", alunoId)
     .maybeSingle();
   return (data as Aluno) ?? null;
-}
+});
 
 /** Código/nome da turma do aluno (thb_turmas). */
 export async function getTurmaCodigo(

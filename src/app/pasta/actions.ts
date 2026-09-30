@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
 import { ehUrlDoDrive, FRASES_PASTA_DRIVE } from "@/lib/pasta";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 
 /**
  * O PARCEIRO (titular ou sócio) define o link da pasta do Drive do próprio
@@ -27,7 +27,7 @@ export async function salvarMinhaPasta(
 ): Promise<{ erro?: string }> {
   const ctx = await getContextoSessao();
   if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
-    return { erro: "Sem permissão." };
+    return { erro: SEM_PERMISSAO };
   }
   const alunoId = ctx.alunoId;
 

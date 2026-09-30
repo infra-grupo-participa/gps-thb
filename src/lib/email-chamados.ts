@@ -22,12 +22,7 @@ import "server-only";
  *     só a via dias depois. Quem escreve é a equipe: não há vetor de rajada.
  */
 
-import { enviar, esc, layout, botao, type ResultadoEmail } from "@/lib/email";
-
-const APP_URL = (
-  process.env.NEXT_PUBLIC_APP_URL ||
-  "https://programa.timeholdingbrasil.com.br"
-).replace(/\/+$/, "");
+import { APP_URL, enviar, esc, layout, botao, type ResultadoEmail } from "@/lib/email";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

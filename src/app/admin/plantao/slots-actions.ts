@@ -17,6 +17,7 @@
  * os componentes de `src/components/admin/plantao-*` não mudarem de import.
  */
 
+import { SEM_PERMISSAO } from "@/lib/erros";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
@@ -99,7 +100,7 @@ export interface CriarSlotInput {
 export async function criarSlot(
   input: CriarSlotInput,
 ): Promise<ResultadoCriacaoSlots> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   if (!somarDias(input.data, 0)) {
     return { ok: false, erro: "Data inválida." };
@@ -215,7 +216,7 @@ export interface EditarSlotInput {
 }
 
 export async function editarSlot(input: EditarSlotInput): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const zoom = validarZoomUrl(input.zoomUrl);
   if ("erro" in zoom) return { ok: false, erro: zoom.erro };
@@ -300,7 +301,7 @@ export async function trocarMentoraSlot(
   slotId: string,
   mentoraId: string,
 ): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
   if (!mentoraId) return { ok: false, erro: "Escolha a mentora do plantão." };
 
   const supabase = await createClient();
@@ -399,7 +400,7 @@ export async function publicarSlot(
   slotId: string,
   publicado: boolean,
 ): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
 
@@ -477,7 +478,7 @@ export async function cancelarSlot(
   slotId: string,
   motivo?: string,
 ): Promise<ResultadoCancelamento> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   // Valida aqui em vez de deixar o CHECK do banco estourar: um 23514 volta
   // como "Não foi possível cancelar", que não diz o que corrigir.
@@ -677,7 +678,7 @@ export async function cancelarSlot(
  * aconteceu: presença e NPS de inscrição cancelada são nulos por definição.
  */
 export async function removerSlot(slotId: string): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
 
@@ -706,7 +707,7 @@ export async function salvarGravacao(
   slotId: string,
   gravacaoUrl: string,
 ): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   // Mesma trava do `zoom_url`: a gravação vira `<a href>` no painel, e React
   // não neutraliza `javascript:`. Só admin escreve e só admin vê, mas manter

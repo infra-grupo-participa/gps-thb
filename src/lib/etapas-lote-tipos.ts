@@ -12,6 +12,10 @@
 export const LOTE_ETAPAS_MAX_ALUNOS = 50;
 export const MOTIVO_MIN = 3;
 export const MOTIVO_MAX = 300; // mesmo CHECK de gps.etapa_liberacao_aluno.motivo
+// Fonte ÚNICA do motivo 3..300 da trilha do aluno: liberação de etapa (lote e
+// individual), `admin_reabrir_etapa` e `admin_confirmar/liberar_acompanhamento`
+// (migrações …152, …153, …203 — mesma trava e mesma frase no banco). Plantão
+// (1..300, opcional) e sessão (outra tabela) NÃO usam estas constantes.
 
 /** `liberada: null` = volta à regra geral (`gps.etapas.liberada`). */
 export type ItemLiberacaoEtapa = { etapa: number; liberada: boolean | null };

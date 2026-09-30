@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ehEquipeDaEsteira } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import type { PerfilDisc } from "@/lib/types";
 import type {
   Decisor,
@@ -50,7 +50,7 @@ export interface FiltrosFilaDeLigacoes {
 export async function getFilaDeLigacoes(
   opts?: FiltrosFilaDeLigacoes,
 ): Promise<{ linhas: FilaDeLigacaoLinha[]; total: number; erro?: string }> {
-  if (!(await ehEquipeDaEsteira())) return { linhas: [], total: 0, erro: "Sem permissão." };
+  if (!(await ehEquipeDaEsteira())) return { linhas: [], total: 0, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data, error } = await supabase.schema("gps").rpc("fila_de_ligacoes", {

@@ -33,7 +33,7 @@ import { revalidatePath } from "next/cache";
 
 import { getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
-import { MSG_SESSAO_INDETERMINADA, traduzirErroBanco } from "@/lib/erros";
+import { MSG_SESSAO_INDETERMINADA, SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -76,7 +76,7 @@ async function guardaDeEquipe(): Promise<{ ok: true } | { ok: false; erro: strin
   try {
     const ctx = await getContextoSessao();
     if (!ctx || ctx.papel !== "admin") {
-      return { ok: false, erro: "Sem permissão para esta ação." };
+      return { ok: false, erro: SEM_PERMISSAO };
     }
     return { ok: true };
   } catch (e) {

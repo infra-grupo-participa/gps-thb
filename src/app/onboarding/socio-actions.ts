@@ -18,7 +18,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
-import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
+import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA, SEM_PERMISSAO } from "@/lib/erros";
 import { soDigitos } from "@/lib/masks";
 import type { SocioCadastroResultado } from "@/lib/socio-cadastro-tipos";
 
@@ -37,7 +37,7 @@ export async function gravarCadastroSocio(
     return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
   }
   if (ctx?.papel !== "aluno" || ctx.papelMembro !== "socio") {
-    return { ok: false, erro: "Sem permissão para esta ação." };
+    return { ok: false, erro: SEM_PERMISSAO };
   }
 
   const nome = texto(formData, "nome");

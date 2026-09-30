@@ -20,7 +20,7 @@ import { revalidatePath } from "next/cache";
 
 import { getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
-import { MSG_SESSAO_INDETERMINADA, traduzirErroBanco } from "@/lib/erros";
+import { MSG_SESSAO_INDETERMINADA, SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import { getBriefingDaSessao } from "@/lib/data/sessoes";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -69,7 +69,7 @@ export async function cancelarSessaoNaEquipe(input: {
   try {
     const ctx = await getContextoSessao();
     if (!ctx || ctx.papel !== "admin") {
-      return { ok: false, erro: "Sem permissão para esta ação." };
+      return { ok: false, erro: SEM_PERMISSAO };
     }
   } catch (e) {
     if (!ehSessaoIndeterminada(e)) throw e;
@@ -120,7 +120,7 @@ export async function marcarFaltaNaSessao(input: {
   try {
     const ctx = await getContextoSessao();
     if (!ctx || ctx.papel !== "admin") {
-      return { ok: false, erro: "Sem permissão para esta ação." };
+      return { ok: false, erro: SEM_PERMISSAO };
     }
   } catch (e) {
     if (!ehSessaoIndeterminada(e)) throw e;
@@ -169,7 +169,7 @@ export async function abrirBriefingDaSessao(
   try {
     const ctx = await getContextoSessao();
     if (!ctx || ctx.papel !== "admin") {
-      return { ok: false, erro: "Sem permissão para esta ação." };
+      return { ok: false, erro: SEM_PERMISSAO };
     }
   } catch (e) {
     if (!ehSessaoIndeterminada(e)) throw e;

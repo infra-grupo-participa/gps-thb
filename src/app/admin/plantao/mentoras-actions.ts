@@ -8,6 +8,7 @@
  * comportamento. Aquele arquivo virou o agregador que reexporta daqui.
  */
 
+import { SEM_PERMISSAO } from "@/lib/erros";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
@@ -20,7 +21,7 @@ export interface CriarMentoraInput {
 }
 
 export async function criarMentora(input: CriarMentoraInput): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const nome = input.nome.trim();
   if (!nome) return { ok: false, erro: "Informe o nome da mentora." };
@@ -54,7 +55,7 @@ export interface EditarMentoraInput {
  * contornaria qualquer checagem só de tela.
  */
 export async function editarMentora(input: EditarMentoraInput): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const nome = input.nome.trim();
   if (!nome) return { ok: false, erro: "Informe o nome da mentora." };
@@ -94,7 +95,7 @@ export async function alternarAtivaMentora(
   mentoraId: string,
   ativa: boolean,
 ): Promise<ResultadoAcao & { plantoesFuturos?: number }> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
 

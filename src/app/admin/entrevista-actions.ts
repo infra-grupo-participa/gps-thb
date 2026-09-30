@@ -23,7 +23,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehEquipeDaEsteira } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import {
   RESULTADOS_ENTREVISTA,
   ENTREVISTA_OBSERVACOES_MAXIMO,
@@ -55,7 +55,7 @@ function revalidar(alunoId?: string) {
 export async function gravarEntrevista(
   input: EntrevistaGravarInput,
 ): Promise<EntrevistaGravarResultado> {
-  if (!(await ehEquipeDaEsteira())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehEquipeDaEsteira())) return { ok: false, erro: SEM_PERMISSAO };
 
   const clienteId = (input.clienteId ?? "").trim();
   if (!clienteId) return { ok: false, erro: "Faltou informar o cliente." };

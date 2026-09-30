@@ -30,7 +30,7 @@ import { revalidatePath } from "next/cache";
 
 import { getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
-import { MSG_SESSAO_INDETERMINADA, traduzirErroBanco } from "@/lib/erros";
+import { MSG_SESSAO_INDETERMINADA, SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -75,7 +75,7 @@ async function conferirAluno(): Promise<string | null> {
   try {
     const ctx = await getContextoSessao();
     if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
-      return "Sem permissão para esta ação.";
+      return SEM_PERMISSAO;
     }
     return null;
   } catch (e) {

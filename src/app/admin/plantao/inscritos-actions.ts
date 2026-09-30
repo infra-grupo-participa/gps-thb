@@ -24,7 +24,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { emailValido } from "@/lib/texto";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import type { ResultadoAcao } from "@/lib/plantao-tipos";
 
 /** Frases das 4 RPCs desta rodada — consultadas antes do mapa comum. */
@@ -57,7 +57,7 @@ export async function marcarPresencaInscrito(
   inscricaoId: string,
   presente: boolean,
 ): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { error } = await supabase.schema("gps").rpc("admin_plantao_marcar_presenca", {
@@ -91,7 +91,7 @@ export async function editarNomeInscricao(
   inscricaoId: string,
   nome: string,
 ): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { error } = await supabase.schema("gps").rpc("admin_plantao_editar_nome_inscricao", {
@@ -126,7 +126,7 @@ export async function cancelarInscricaoPeloAdmin(
   inscricaoId: string,
   motivo?: string,
 ): Promise<ResultadoAcao> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { error } = await supabase.schema("gps").rpc("admin_plantao_cancelar_inscricao", {
@@ -166,7 +166,7 @@ export async function inscreverAlunoNoSlot(
   email: string,
   nome?: string,
 ): Promise<ResultadoAcao & { reativada?: boolean; slotConflitanteId?: string }> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const emailLimpo = email.trim();
   if (!emailValido(emailLimpo)) return { ok: false, erro: "Informe um e-mail válido." };

@@ -37,16 +37,17 @@ export default async function AdminAlunoFinanceiroPage({
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  const membros = await getMembrosDoAmbiente(alunoId);
-  if (membros.length === 0) notFound();
-
-  const [aluno, resultado, extrato, progresso, tutoriaisAtivo] = await Promise.all([
+  // `membros` só alimenta o nav e o 404 — não depende das outras leituras, então
+  // entra no mesmo lote; o `notFound()` continua logo depois dele.
+  const [membros, aluno, resultado, extrato, progresso, tutoriaisAtivo] = await Promise.all([
+    getMembrosDoAmbiente(alunoId),
     getAlunoById(alunoId),
     getFinanceiroDoAluno(alunoId),
     getExtratoDoAluno(alunoId),
     getProgressoFaturamento(alunoId),
     getTutoriaisAtivo(),
   ]);
+  if (membros.length === 0) notFound();
   const linhasExtrato = extrato.estado === "ok" ? extrato.linhas : [];
   const extratoTruncado = extrato.estado === "ok" && extrato.truncado;
 

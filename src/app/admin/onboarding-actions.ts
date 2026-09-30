@@ -22,6 +22,7 @@
  * este bloco — 1 consulta extra por CLIQUE, não por card.
  */
 
+import { SEM_PERMISSAO } from "@/lib/erros";
 import { ehAdmin } from "@/lib/auth";
 import { getClienteEquipe, getOnboardingDoAluno, urlDoAnexoOnboarding } from "@/lib/data";
 import type {
@@ -32,7 +33,7 @@ import type {
 export async function respostasDoOnboarding(
   alunoId: string,
 ): Promise<ResultadoRespostasOnboarding> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const [{ pessoas, erro }, cliente] = await Promise.all([
     getOnboardingDoAluno(alunoId),
@@ -78,7 +79,7 @@ export async function urlDoAnexoDoQuestionario(
   path: string,
   nome: string,
 ): Promise<ResultadoUrlAnexoOnboarding> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const url = await urlDoAnexoOnboarding(path, nome);
   if (!url) {

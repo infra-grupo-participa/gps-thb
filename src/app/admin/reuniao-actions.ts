@@ -22,7 +22,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin, ehEquipeDaEsteira } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import type { ReuniaoProporInput, ReuniaoResultado } from "@/lib/reuniao-preliminar-tipos";
 
 function revalidar(alunoId?: string) {
@@ -38,7 +38,7 @@ function revalidar(alunoId?: string) {
 export async function proporDataReuniao(
   input: ReuniaoProporInput,
 ): Promise<ReuniaoResultado> {
-  if (!(await ehEquipeDaEsteira())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehEquipeDaEsteira())) return { ok: false, erro: SEM_PERMISSAO };
 
   const clienteId = (input.clienteId ?? "").trim();
   if (!clienteId) return { ok: false, erro: "Faltou informar o cliente." };
@@ -81,7 +81,7 @@ export async function cancelarPropostaReuniao(
   propostaId: string,
   alunoId?: string,
 ): Promise<ReuniaoResultado> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const id = (propostaId ?? "").trim();
   if (!id) return { ok: false, erro: "Faltou informar a proposta." };

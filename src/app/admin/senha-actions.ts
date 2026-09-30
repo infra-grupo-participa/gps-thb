@@ -6,8 +6,8 @@ import { revalidatePath } from "next/cache";
 import { createClient as createStatelessClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
-import { enviarCredenciaisAcesso } from "@/lib/email";
-import { traduzirErroBanco } from "@/lib/erros";
+import { APP_URL, enviarCredenciaisAcesso } from "@/lib/email";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import { logErro } from "@/lib/log";
 import { mapearStatusAcesso } from "@/lib/data/central";
 import { MSG_SENHA_MINIMO, SENHA_MINIMO } from "@/lib/senha-regras";
@@ -39,11 +39,82 @@ import type { StatusAcesso } from "@/lib/acesso-tipos";
 // módulo `"use server"` não pode exportar função síncrona, por isso ela não
 // mora aqui.
 
+/**
+ * Guarda cross-sistema — UM lugar só para as 4 actions que trocam senha ou
+ * e-mail de uma conta de `auth.users` (compartilhado por 7 portais do grupo):
+ * `definirSenhaAluno`, `definirSenhaMembro`, `adicionarSocioAluno` e
+ * `trocarEmailLogin`. Pentest de 09/09 (MÉDIO) + war-room 10/09 (B2, E1).
+ *
+ * Resolve o e-mail do login pelo `alvo`:
+ * - `{ alunoId }`: `email_login` de `admin_status_acesso` (o TITULAR do
+ *   ambiente, que é quem `admin_definir_senha` atinge);
+ * - `{ membroId }`: `gps.membros.aluno_id` → `admin_status_acesso` → e-mail
+ *   daquele membro na lista;
+ * - `{ email }`: o próprio e-mail informado.
+ * Sem e-mail resolvido, devolve `programas: []` (não há conta a proteger).
+ *
+ * Falha FECHADA: se `admin_programas_do_email` falhar, devolve `{ erro }` —
+ * sem saber em quais portais a conta tem papel, não se troca senha nem e-mail
+ * nenhum (Fable, war-room 10/09). "GPS" sai da lista porque é o portal em que
+ * o admin já está. `programas.length > 0` ⇒ o chamador devolve
+ * `precisaConfirmar` SEM alterar nada.
+ *
+ * Não exportada de propósito: módulo `"use server"` expõe toda função
+ * exportada como endpoint HTTP.
+ */
+async function programasDeOutrosSistemas(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  alvo: { alunoId: string } | { membroId: string } | { email: string },
+  escopo: string,
+): Promise<{ erro: string } | { programas: string[] }> {
+  let email: string | null | undefined;
+  if ("email" in alvo) {
+    email = alvo.email;
+  } else if ("alunoId" in alvo) {
+    const { data: status, error: erroStatus } = await supabase
+      .schema("gps")
+      .rpc("admin_status_acesso", { p_aluno_id: alvo.alunoId });
+    if (erroStatus) return { erro: traduzirErroBanco(escopo, erroStatus) };
+    email = (status as { email_login?: string | null } | null)?.email_login;
+  } else {
+    const { data: membro, error: erroMembro } = await supabase
+      .schema("gps")
+      .from("membros")
+      .select("aluno_id")
+      .eq("id", alvo.membroId)
+      .maybeSingle();
+    if (erroMembro) return { erro: traduzirErroBanco(escopo, erroMembro) };
+    if (membro?.aluno_id) {
+      const { data: status, error: erroStatus } = await supabase
+        .schema("gps")
+        .rpc("admin_status_acesso", { p_aluno_id: membro.aluno_id });
+      if (erroStatus) return { erro: traduzirErroBanco(escopo, erroStatus) };
+      email = (
+        (status as { membros?: { membro_id: string; email: string | null }[] } | null)?.membros ?? []
+      ).find((m) => m.membro_id === alvo.membroId)?.email;
+    }
+  }
+  if (!email) return { programas: [] };
+
+  const { data: prog, error: erroProg } = await supabase
+    .schema("gps")
+    .rpc("admin_programas_do_email", { p_email: email });
+  if (erroProg) {
+    return { erro: traduzirErroBanco(escopo, erroProg) };
+  }
+  const programas = (
+    (prog as { programas?: { programa: string }[] } | null)?.programas ?? []
+  )
+    .map((x) => x.programa)
+    .filter((nome) => nome !== "GPS");
+  return { programas };
+}
+
 /** Diagnóstico do acesso: mostra exatamente onde o aluno trava. */
 export async function statusAcessoAluno(
   alunoId: string,
 ): Promise<{ erro?: string; status?: StatusAcesso }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -95,7 +166,7 @@ export async function definirSenhaAluno(
   precisaConfirmar?: boolean;
   programas?: string[];
 }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const senha = opts?.senha?.trim() || gerarSenhaTemporaria();
   if (senha.length < SENHA_MINIMO) {
@@ -110,28 +181,14 @@ export async function definirSenhaAluno(
   // é exatamente quem `admin_definir_senha` atinge. "GPS" sai da lista porque é
   // o portal em que o admin já está.
   if (opts?.confirmarOutrosSistemas !== true) {
-    const { data: status } = await supabase
-      .schema("gps")
-      .rpc("admin_status_acesso", { p_aluno_id: alunoId });
-    const emailLogin = (status as { email_login?: string | null } | null)
-      ?.email_login;
-    if (emailLogin) {
-      const { data: prog, error: erroProg } = await supabase
-        .schema("gps")
-        .rpc("admin_programas_do_email", { p_email: emailLogin });
-      // Falha FECHADA: sem saber em quais portais a conta tem papel, não se
-      // troca senha nenhuma (Fable, war-room 10/09).
-      if (erroProg) {
-        return { erro: traduzirErroBanco("admin/definirSenhaAluno.programas", erroProg) };
-      }
-      const programas = (
-        (prog as { programas?: { programa: string }[] } | null)?.programas ?? []
-      )
-        .map((x) => x.programa)
-        .filter((nome) => nome !== "GPS");
-      if (programas.length > 0) {
-        return { precisaConfirmar: true, programas };
-      }
+    const guarda = await programasDeOutrosSistemas(
+      supabase,
+      { alunoId },
+      "admin/definirSenhaAluno.programas",
+    );
+    if ("erro" in guarda) return { erro: guarda.erro };
+    if (guarda.programas.length > 0) {
+      return { precisaConfirmar: true, programas: guarda.programas };
     }
   }
 
@@ -207,7 +264,7 @@ export async function definirSenhaMembro(
   precisaConfirmar?: boolean;
   programas?: string[];
 }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const senha = opts?.senha?.trim() || gerarSenhaTemporaria();
   if (senha.length < SENHA_MINIMO) {
@@ -221,37 +278,17 @@ export async function definirSenhaMembro(
   // derrubar as sessões) de uma conta que é privilegiada em OUTRO portal, o admin
   // precisa saber — e confirmar. Nada muda no banco até a confirmação.
   if (opts?.confirmarOutrosSistemas !== true) {
-    const { data: membro } = await supabase
-      .schema("gps")
-      .from("membros")
-      .select("aluno_id")
-      .eq("id", membroId)
-      .maybeSingle();
-    if (membro?.aluno_id) {
-      const { data: status } = await supabase
-        .schema("gps")
-        .rpc("admin_status_acesso", { p_aluno_id: membro.aluno_id });
-      const emailDoMembro = (
-        (status as { membros?: { membro_id: string; email: string | null }[] } | null)?.membros ?? []
-      ).find((m) => m.membro_id === membroId)?.email;
-      if (emailDoMembro) {
-        const { data: prog, error: erroProg } = await supabase
-          .schema("gps")
-          .rpc("admin_programas_do_email", { p_email: emailDoMembro });
-        if (erroProg) {
-          return { erro: traduzirErroBanco("admin/definirSenhaMembro.programas", erroProg) };
-        }
-        const programas = (
-          (prog as { programas?: { programa: string }[] } | null)?.programas ?? []
-        )
-          .map((x) => x.programa)
-          .filter((nome) => nome !== "GPS");
-        if (programas.length > 0) {
-          return { precisaConfirmar: true, programas };
-        }
-      }
+    const guarda = await programasDeOutrosSistemas(
+      supabase,
+      { membroId },
+      "admin/definirSenhaMembro.programas",
+    );
+    if ("erro" in guarda) return { erro: guarda.erro };
+    if (guarda.programas.length > 0) {
+      return { precisaConfirmar: true, programas: guarda.programas };
     }
   }
+
   const { data, error } = await supabase
     .schema("gps")
     .rpc("admin_definir_senha_membro", {
@@ -339,7 +376,7 @@ export async function excluirAcessoAluno(
   /** `true` = o banco recusou porque há conteúdo; a tela pede a confirmação. */
   precisaConfirmarPerda?: boolean;
 }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -406,7 +443,7 @@ export async function adicionarSocioAluno(
    */
   loginExistente?: boolean;
 }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const senha = opts?.senha?.trim() || gerarSenhaTemporaria();
   if (senha.length < SENHA_MINIMO) {
@@ -425,19 +462,14 @@ export async function adicionarSocioAluno(
   // `definirSenhaAluno`/`definirSenhaMembro`: devolve `precisaConfirmar` +
   // programas SEM tocar em nada; a UI repete com `confirmarOutrosSistemas`.
   if (opts?.confirmarOutrosSistemas !== true) {
-    const { data: prog, error: erroProg } = await supabase
-      .schema("gps")
-      .rpc("admin_programas_do_email", { p_email: email });
-    if (erroProg) {
-      return { erro: traduzirErroBanco("admin/adicionarSocioAluno.programas", erroProg) };
-    }
-    const programas = (
-      (prog as { programas?: { programa: string }[] } | null)?.programas ?? []
-    )
-      .map((x) => x.programa)
-      .filter((nome) => nome !== "GPS");
-    if (programas.length > 0) {
-      return { precisaConfirmar: true, programas };
+    const guarda = await programasDeOutrosSistemas(
+      supabase,
+      { email },
+      "admin/adicionarSocioAluno.programas",
+    );
+    if ("erro" in guarda) return { erro: guarda.erro };
+    if (guarda.programas.length > 0) {
+      return { precisaConfirmar: true, programas: guarda.programas };
     }
   }
 
@@ -494,7 +526,7 @@ export async function adicionarSocioAluno(
 export async function excluirMembroAluno(
   membroId: string,
 ): Promise<{ erro?: string }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -550,7 +582,7 @@ export async function trocarEmailLogin(
   nome?: string | null;
   telefone?: string | null;
 }> {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const emailNovoNormalizado = emailNovo?.trim().toLowerCase();
   if (!emailNovoNormalizado || !emailValido(emailNovoNormalizado)) {
@@ -573,37 +605,14 @@ export async function trocarEmailLogin(
   // compartilhado por 7 sistemas. O e-mail ATUAL é quem importa aqui — é a
   // conta que vai levar o e-mail (e a senha) novos.
   if (opts?.confirmarOutrosSistemas !== true) {
-    const { data: membro } = await supabase
-      .schema("gps")
-      .from("membros")
-      .select("aluno_id")
-      .eq("id", membroId)
-      .maybeSingle();
-    if (membro?.aluno_id) {
-      const { data: status } = await supabase
-        .schema("gps")
-        .rpc("admin_status_acesso", { p_aluno_id: membro.aluno_id });
-      const emailAtualDoMembro = (
-        (status as { membros?: { membro_id: string; email: string | null }[] } | null)?.membros ?? []
-      ).find((m) => m.membro_id === membroId)?.email;
-      if (emailAtualDoMembro) {
-        const { data: prog, error: erroProg } = await supabase
-          .schema("gps")
-          .rpc("admin_programas_do_email", { p_email: emailAtualDoMembro });
-        // Falha FECHADA: sem saber em quais portais a conta tem papel, não se
-        // troca e-mail (nem senha) nenhuma.
-        if (erroProg) {
-          return { erro: traduzirErroBanco("admin/trocarEmailLogin.programas", erroProg) };
-        }
-        const programas = (
-          (prog as { programas?: { programa: string }[] } | null)?.programas ?? []
-        )
-          .map((x) => x.programa)
-          .filter((nome) => nome !== "GPS");
-        if (programas.length > 0) {
-          return { precisaConfirmar: true, programas };
-        }
-      }
+    const guarda = await programasDeOutrosSistemas(
+      supabase,
+      { membroId },
+      "admin/trocarEmailLogin.programas",
+    );
+    if ("erro" in guarda) return { erro: guarda.erro };
+    if (guarda.programas.length > 0) {
+      return { precisaConfirmar: true, programas: guarda.programas };
     }
   }
 
@@ -694,7 +703,7 @@ export async function trocarEmailLogin(
 
 /** Envia ao aluno o e-mail de redefinição de senha (fluxo do Supabase). */
 export async function enviarRedefinicaoSenha(alunoId: string) {
-  if (!(await ehAdmin())) return { erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
   const supabase = await createClient();
   const { data: aluno } = await supabase
@@ -704,11 +713,6 @@ export async function enviarRedefinicaoSenha(alunoId: string) {
     .maybeSingle();
   if (!aluno?.email) return { erro: "Este aluno não tem e-mail cadastrado." };
 
-  const appUrl = (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "https://programa.timeholdingbrasil.com.br"
-  ).replace(/\/+$/, "");
-
   const sb = createStatelessClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -716,7 +720,7 @@ export async function enviarRedefinicaoSenha(alunoId: string) {
   );
 
   const { error } = await sb.auth.resetPasswordForEmail(aluno.email, {
-    redirectTo: `${appUrl}/auth/confirm?next=/auth/redefinir`,
+    redirectTo: `${APP_URL}/auth/confirm?next=/auth/redefinir`,
   });
   if (error) {
     // Erro do GoTrue, não do Postgres: `traduzirErroBanco` não o conhece. A

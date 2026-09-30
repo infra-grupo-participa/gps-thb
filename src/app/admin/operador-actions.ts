@@ -20,7 +20,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
-import { traduzirErroBanco } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import type { OperadorResultado } from "@/lib/operador-tipos";
 
 function revalidar() {
@@ -40,7 +40,7 @@ export async function definirOperador(
   ativo: boolean,
   nome?: string | null,
 ): Promise<OperadorResultado> {
-  if (!(await ehAdmin())) return { ok: false, erro: "Sem permissão." };
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
 
   const id = (userId ?? "").trim();
   if (!id) return { ok: false, erro: "Faltou informar o usuário." };

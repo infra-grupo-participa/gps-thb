@@ -28,9 +28,9 @@ import { getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
 import { getAlunoById } from "@/lib/data";
 import { emailValido, normalizarEmail } from "@/lib/texto";
-import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { logErro } from "@/lib/log";
-import { enviarConviteSocio } from "@/lib/email";
+import { APP_URL, enviarConviteSocio } from "@/lib/email";
 
 /**
  * O nome do TITULAR para o e-mail do convite. `ctx.perfil` é `null` para
@@ -74,7 +74,7 @@ export async function convidarSocio(
     return { erro: MSG_SESSAO_INDETERMINADA };
   }
   if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
-    return { erro: "Sem permissão." };
+    return { erro: SEM_PERMISSAO };
   }
   // Guarda de papel — a RPC confere de novo (é a fronteira real).
   if (ctx.papelMembro !== "titular") {
@@ -102,10 +102,7 @@ export async function convidarSocio(
     return { erro: "Não foi possível gerar o convite agora. Tente de novo." };
   }
 
-  const appUrl = (
-    process.env.NEXT_PUBLIC_APP_URL || "https://programa.timeholdingbrasil.com.br"
-  ).replace(/\/+$/, "");
-  const link = `${appUrl}/convite?t=${encodeURIComponent(token)}`;
+  const link = `${APP_URL}/convite?t=${encodeURIComponent(token)}`;
 
   // Falha de e-mail NUNCA bloqueia o convite (padrão de src/lib/email.ts:
   // `{ ok, erro? }`, nunca lança) — a tela mostra o link para o titular copiar.
@@ -145,7 +142,7 @@ export async function reenviarConvite(
     return { erro: MSG_SESSAO_INDETERMINADA };
   }
   if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
-    return { erro: "Sem permissão." };
+    return { erro: SEM_PERMISSAO };
   }
   if (ctx.papelMembro !== "titular") {
     return { erro: "Só o titular do ambiente pode reenviar o convite." };
@@ -187,10 +184,7 @@ export async function reenviarConvite(
     return { erro: "Não foi possível gerar o novo convite agora. Tente de novo." };
   }
 
-  const appUrl = (
-    process.env.NEXT_PUBLIC_APP_URL || "https://programa.timeholdingbrasil.com.br"
-  ).replace(/\/+$/, "");
-  const link = `${appUrl}/convite?t=${encodeURIComponent(token)}`;
+  const link = `${APP_URL}/convite?t=${encodeURIComponent(token)}`;
 
   const nomeTitular = await nomeDoTitular(ctx.alunoId, ctx.user.email ?? null);
   const resultado = await enviarConviteSocio({ paraEmail: email, nomeTitular, link });
@@ -210,7 +204,7 @@ export async function revogarConvite(
     return { erro: MSG_SESSAO_INDETERMINADA };
   }
   if (!ctx || ctx.papel !== "aluno" || !ctx.alunoId) {
-    return { erro: "Sem permissão." };
+    return { erro: SEM_PERMISSAO };
   }
   if (ctx.papelMembro !== "titular") {
     return { erro: "Só o titular do ambiente pode revogar o convite." };

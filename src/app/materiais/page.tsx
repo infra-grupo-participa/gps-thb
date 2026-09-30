@@ -26,11 +26,12 @@ export default async function MateriaisPage() {
 
   // O acervo respeita a liberação POR ALUNO: sem isto, o material de uma etapa
   // liberada só para ele continuaria sem link (o corte é no servidor).
-  const [aluno, etapasGlobais, overrides, videosAtivo] = await Promise.all([
+  const [aluno, etapasGlobais, overrides, videosAtivo, tutoriaisAtivo] = await Promise.all([
     getAlunoById(ctx.alunoId),
     getEtapas(),
     getEtapasLiberadasPara(ctx.alunoId),
     getVideosAtivo(),
+    getTutoriaisAtivo(),
   ]);
   const etapas = etapasComLiberacaoDoAluno(etapasGlobais, overrides);
   const nomes: Record<number, string> = {};
@@ -44,7 +45,6 @@ export default async function MateriaisPage() {
   // busca a lista se estiver ligada, para não gastar uma RPC à toa quando a
   // seção nem vai aparecer.
   const videos = videosAtivo ? await getVideosDoAluno() : [];
-  const tutoriaisAtivo = await getTutoriaisAtivo();
 
   return (
     <>

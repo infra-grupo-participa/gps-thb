@@ -42,7 +42,6 @@ import {
  * suposição.
  */
 const FRASES_VIDEO: Record<string, string> = {
-  "Sem permissão.": "Sem permissão para esta ação.",
   "O título precisa ter de 3 a 200 caracteres.":
     "O título precisa ter de 3 a 200 caracteres.",
   "Informe o ID do vídeo do YouTube (11 caracteres) — cole o link que o sistema extrai o ID sozinho.":

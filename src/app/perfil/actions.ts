@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
-import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
+import { SEM_PERMISSAO, traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import type { PerfilAluno } from "@/lib/types";
 
 const CAMPOS: (keyof PerfilAluno)[] = [
@@ -61,7 +61,7 @@ export async function salvarPerfilAluno(
 
   let query;
   if (alunoId) {
-    if (ctx.papel !== "admin") return { erro: "Sem permissão." };
+    if (ctx.papel !== "admin") return { erro: SEM_PERMISSAO };
 
     const { data: titular, error: eTitular } = await supabase
       .schema("gps")
@@ -81,7 +81,7 @@ export async function salvarPerfilAluno(
       .update({ perfil: limpo })
       .eq("id", titular.id);
   } else {
-    if (ctx.papel !== "aluno") return { erro: "Sem permissão." };
+    if (ctx.papel !== "aluno") return { erro: SEM_PERMISSAO };
     query = supabase
       .schema("gps")
       .from("membros")

@@ -21,7 +21,7 @@
  *
  * 🔴 **Quem GRAVA o endereço usa `window.history.replaceState`, nunca
  * `router.replace`.** Vale para os três escritores de URL do painel —
- * `useEstadoDoPainel` (aqui, `q`/`ordem`/`f`/`classe`), `abas-painel.tsx`
+ * `useEstadoDoPainel` (aqui, `q`/`ordem`/`f`/`classe`/`lote`), `abas-painel.tsx`
  * (`aba`/`vis`) e `dashboard/regua.tsx` (`foco`). O porquê medido está no
  * comentário de `useEstadoDoPainel`, no fim deste arquivo.
  */
@@ -214,6 +214,27 @@ export const AJUDA_CLASSE: Record<ClasseAluno, string> = {
   finalizado: "Bateram a meta de R$ 150 mil",
 };
 
+/**
+ * `?lote=` — qual ação em lote está ligada na lista (30/09/2026).
+ *
+ * 🔑 COMPATIBILIDADE: antes deste parâmetro o lote de ACESSO já existia, ligado
+ * só pelo filtro `sem_login` (`?f=sem_login`, que os links do dashboard usam).
+ * Isso continua valendo: `f=sem_login` sem `lote` = modo acesso. `lote=acesso`
+ * na URL IMPLICA o filtro `sem_login` — criar acesso para quem já tem login
+ * não é ação que exista, então o modo não pode viver sem o filtro.
+ *
+ * `lote=etapas` é explícito e vence o filtro: liberar etapa para quem ainda
+ * não tem login é legítimo (a etapa fica pronta quando a pessoa entrar).
+ */
+export const LOTES = ["acesso", "etapas"] as const;
+export type ModoLote = (typeof LOTES)[number];
+
+/** O modo em lote que a tela desenha — derivado, nunca guardado à parte. */
+export function modoLoteDe(e: Pick<EstadoDoPainel, "lote" | "filtros">): ModoLote | null {
+  if (e.lote === "etapas") return "etapas";
+  return e.filtros.has("sem_login") ? "acesso" : null;
+}
+
 /** A aba de `/admin` sem `?aba=`. Escrita uma vez, lida por três arquivos. */
 export const ABA_PADRAO: AbaPainel = "visao";
 
@@ -228,6 +249,8 @@ export interface EstadoDoPainel {
   termo: string;
   ordem: OrdemAlunos;
   filtros: Set<FiltroId>;
+  /** A escolha explícita de lote. Quem a tela lê é `modoLoteDe`. */
+  lote: ModoLote | null;
 }
 
 /** Teto do termo de busca lido da URL — barra URL gigante colada por engano. */
@@ -242,6 +265,13 @@ function lerEstado(sp: URLSearchParams): EstadoDoPainel {
     .split(",")
     .map((x) => x.trim())
     .filter((x): x is FiltroId => FILTROS_SET.has(x));
+  const loteBruto = sp.get("lote");
+  const lote = (LOTES as readonly string[]).includes(loteBruto ?? "")
+    ? (loteBruto as ModoLote)
+    : null;
+  // `lote=acesso` sem o filtro seria um modo sem candidato certo: o filtro
+  // vem junto (ver `LOTES`).
+  if (lote === "acesso" && !f.includes("sem_login")) f.push("sem_login");
   return {
     aba: (ABAS as readonly string[]).includes(aba ?? "")
       ? (aba as AbaPainel)
@@ -255,6 +285,7 @@ function lerEstado(sp: URLSearchParams): EstadoDoPainel {
     termo: (sp.get("q") ?? "").slice(0, MAX_TERMO),
     ordem: ORDENS_SET.has(ordem ?? "") ? (ordem as OrdemAlunos) : "recentes",
     filtros: new Set(f),
+    lote,
   };
 }
 
@@ -290,6 +321,7 @@ function escreverEstado(
     FILTROS.filter((x) => estado.filtros.has(x)).join(","),
     "",
   );
+  por("lote", estado.lote ?? "", "");
   // `URLSearchParams` escapa a vírgula como `%2C`. Ela é um separador legal de
   // consulta e este link é feito para ser LIDO e colado num chat da equipe:
   // `?f=chamado,sem_login` se entende, `?f=chamado%2Csem_login` não. O parse
@@ -371,12 +403,19 @@ export function useEstadoDoPainel() {
       const filtros = new Set(e.filtros);
       if (ligado) filtros.add(id);
       else filtros.delete(id);
-      return { ...e, filtros };
+      // Desligar `sem_login` desliga o modo acesso junto (ver `LOTES`).
+      const lote = e.lote === "acesso" && !filtros.has("sem_login") ? null : e.lote;
+      return { ...e, filtros, lote };
     });
   }, []);
 
   const limparFiltros = useCallback(
-    () => setEstado((e) => ({ ...e, filtros: new Set<FiltroId>() })),
+    () =>
+      setEstado((e) => ({
+        ...e,
+        filtros: new Set<FiltroId>(),
+        lote: e.lote === "acesso" ? null : e.lote,
+      })),
     [],
   );
 
@@ -408,9 +447,33 @@ export function useEstadoDoPainel() {
     (classe: ClasseNaUrl | null) =>
       setEstado((e) =>
         classe === null
-          ? { ...e, classe: null, termo: "", filtros: new Set<FiltroId>() }
+          ? {
+              ...e,
+              classe: null,
+              termo: "",
+              filtros: new Set<FiltroId>(),
+              lote: null,
+            }
           : { ...e, classe },
       ),
+    [],
+  );
+
+  /**
+   * Liga um modo em lote, ou desliga (`null`).
+   *
+   * 🔑 O modo acesso É o filtro `sem_login` (compatibilidade): ligá-lo marca o
+   * filtro, e desligá-lo o desmarca — sem isso o botão diria "desligado" com a
+   * barra ainda na tela. Ligar `etapas` não mexe em filtro nenhum.
+   */
+  const definirLote = useCallback(
+    (lote: ModoLote | null) =>
+      setEstado((e) => {
+        const filtros = new Set(e.filtros);
+        if (lote === "acesso") filtros.add("sem_login");
+        else if (modoLoteDe(e) === "acesso") filtros.delete("sem_login");
+        return { ...e, filtros, lote };
+      }),
     [],
   );
 
@@ -446,6 +509,7 @@ export function useEstadoDoPainel() {
     definirTermo,
     definirOrdem,
     definirClasse,
+    definirLote,
     hrefComEstado,
   };
 }

@@ -331,16 +331,10 @@ export function CentralResolucao({
                   etapas={diagnostico.etapas}
                   progresso={diagnostico.progresso}
                   alunoId={alunoId}
-                  // Abre quando há exceção para revisar; a lista de etapas não
-                  // é o remédio de "faltam clientes", então aviso de outra
-                  // linha não a escancara.
+                  nomeAluno={diagnostico.nome}
+                  // O bloco de histórico abre quando há exceção para revisar.
                   aberto={diagnostico.etapas.some((e) => e.origem !== "global")}
                   pendente={pendente}
-                  onLiberar={(etapa) => abrir({ tipo: "liberar-etapa", etapa })}
-                  onTravar={(etapa) => abrir({ tipo: "travar-etapa", etapa })}
-                  onVoltarRegraGeral={(etapa) =>
-                    abrir({ tipo: "voltar-regra-geral", etapa })
-                  }
                   onReabrir={(etapa, concluidas) =>
                     abrir({ tipo: "reabrir-etapa", etapa, concluidas })
                   }

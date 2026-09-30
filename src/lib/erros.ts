@@ -136,6 +136,13 @@ const FRASES_DO_BANCO: Record<string, string> = {
     "Este cadastro não tem ambiente no programa.",
   "Esta etapa já segue a regra geral para este aluno.":
     "Esta etapa já segue a regra geral para este aluno.",
+  // gps.admin_definir_liberacao_etapas_lote ("Sem ambiente no programa: N de M…"
+  // tem contagem e é casada por prefixo na própria action)
+  "Selecione ao menos um aluno.": "Selecione ao menos um aluno.",
+  "No máximo 50 alunos por vez.": "No máximo 50 alunos por vez.",
+  "Escolha ao menos uma etapa.": "Escolha ao menos uma etapa.",
+  "Etapa repetida na lista.": "Etapa repetida na lista.",
+  "Item de etapa em formato inválido.": "Item de etapa em formato inválido.",
   "Não há tarefa concluída nesta etapa para reabrir.":
     "Não há tarefa concluída nesta etapa para reabrir.",
 

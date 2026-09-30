@@ -37,9 +37,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowLeft, RotateCw, Search, Users } from "lucide-react";
 import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
+import type { Etapa } from "@/lib/types";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LoteDeAcesso } from "./lote-acesso";
+import { LoteDeEtapas } from "./lote-etapas";
 import { ExportarCsv } from "./exportar-csv";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
@@ -65,9 +67,11 @@ import {
   CLASSES,
   FILTROS,
   ROTULO_CLASSE,
+  modoLoteDe,
   useEstadoDoPainel,
   type ClasseAluno,
   type FiltroId,
+  type ModoLote,
 } from "./estado-na-url";
 import { CardsDeClasse } from "./cards-de-classe";
 import { ordenarAlunos } from "./ordenacao";
@@ -80,6 +84,7 @@ export function AlunosAtivosLista({
   erro = null,
   carregarMaisHref,
   carregarMaisQtd,
+  etapas,
 }: {
   alunos: AlunoGps[];
   /**
@@ -100,6 +105,12 @@ export function AlunosAtivosLista({
   carregarMaisHref: string | null;
   /** Quantos ambientes o próximo lote acrescenta. Só vale com o href acima. */
   carregarMaisQtd: number;
+  /**
+   * As 6 etapas com a liberação GLOBAL (`getEtapas()`, que a página já lê
+   * para a aba Etapas). Alimenta o lote de etapas — uma leitura por página,
+   * nunca uma por card.
+   */
+  etapas: Etapa[];
 }) {
   // `alunos.length` é o lote carregado; `total`, o universo. Toda frase da
   // tela tem de deixar claro qual dos dois está falando.
@@ -111,6 +122,7 @@ export function AlunosAtivosLista({
     definirTermo,
     definirOrdem,
     definirClasse,
+    definirLote,
     hrefComEstado,
   } = useEstadoDoPainel();
 
@@ -225,12 +237,13 @@ export function AlunosAtivosLista({
   useAncoraDoPainel();
 
   /**
-   * Seleção em lote — só existe com o filtro "sem login" ligado.
+   * Seleção em lote — só existe com um modo em lote ligado: `acesso` (o
+   * filtro "sem login", compatível com os links antigos) ou `etapas`
+   * (`?lote=etapas`). Ver `modoLoteDe`.
    *
-   * 🔑 O checkbox aparece exatamente onde a ação existe. "Criar acesso" não
-   * faz sentido para quem já tem login, e uma caixa de seleção em 158 cards
-   * que não leva a lugar nenhum é ruído — a lição do chip de filtro que não
-   * separa ninguém.
+   * 🔑 O checkbox aparece exatamente onde a ação existe. Uma caixa de seleção
+   * em 158 cards que não leva a lugar nenhum é ruído — a lição do chip de
+   * filtro que não separa ninguém.
    *
    * 🔴 **A seleção é sempre a INTERSEÇÃO com o que está na tela.** `marcados`
    * guarda ids; quem manda é `visiveis.filter(...)`. Sem isso, marcar cinco
@@ -241,8 +254,31 @@ export function AlunosAtivosLista({
    * dispara renderização em cascata e some com a seleção em casos que ninguém
    * previu.)
    */
-  const emLote = estado.filtros.has("sem_login");
-  const [marcados, setMarcados] = useState<Set<string>>(() => new Set());
+  const modoLote = modoLoteDe(estado);
+  /**
+   * 🔴 TROCAR DE MODO ZERA A SELEÇÃO — e zera por DERIVAÇÃO: a marcação
+   * guarda o modo em que foi feita, e fora dele vale vazio. As duas ações têm
+   * candidatos diferentes (acesso = só quem não tem login) e consequências
+   * diferentes; cinco pessoas marcadas para liberar etapa não podem virar,
+   * num clique de modo, cinco logins criados. Remarcar custa um clique
+   * ("Selecionar todos"); herdar a seleção errada não se desfaz.
+   */
+  const [marcacao, setMarcacao] = useState<{
+    modo: ModoLote | null;
+    ids: Set<string>;
+  }>(() => ({ modo: null, ids: new Set() }));
+  const marcados = useMemo(
+    () =>
+      marcacao.modo === modoLote && modoLote !== null
+        ? marcacao.ids
+        : new Set<string>(),
+    [marcacao, modoLote],
+  );
+  const setMarcados = (f: Set<string> | ((s: Set<string>) => Set<string>)) =>
+    setMarcacao((m) => {
+      const atual = m.modo === modoLote ? m.ids : new Set<string>();
+      return { modo: modoLote, ids: typeof f === "function" ? f(atual) : f };
+    });
 
   const selecionados = useMemo(
     () => visiveis.filter((a) => marcados.has(a.alunoId)),
@@ -441,8 +477,40 @@ export function AlunosAtivosLista({
         ))}
       </div>
 
-      {emLote ? (
+      {/* Os dois modos em lote, lado a lado. O ativo vira "Fechar …": o
+          mesmo botão liga e desliga, e `aria-pressed` diz o estado. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {(
+          [
+            ["acesso", "Criar acesso em lote", "Fechar lote de acesso"],
+            ["etapas", "Liberar etapas em lote", "Fechar lote de etapas"],
+          ] as const
+        ).map(([modo, ligar, fechar]) => (
+          <Button
+            key={modo}
+            type="button"
+            size="sm"
+            variant={modoLote === modo ? "secondary" : "outline"}
+            aria-pressed={modoLote === modo}
+            onClick={() => definirLote(modoLote === modo ? null : modo)}
+          >
+            {modoLote === modo ? fechar : ligar}
+          </Button>
+        ))}
+      </div>
+
+      {modoLote === "acesso" ? (
         <LoteDeAcesso
+          selecionados={selecionados}
+          candidatos={visiveis}
+          onLimpar={() => setMarcados(new Set())}
+          onSelecionarAte={(n) =>
+            setMarcados(new Set(visiveis.slice(0, n).map((a) => a.alunoId)))
+          }
+        />
+      ) : modoLote === "etapas" ? (
+        <LoteDeEtapas
+          etapas={etapas}
           selecionados={selecionados}
           candidatos={visiveis}
           onLimpar={() => setMarcados(new Set())}
@@ -503,8 +571,10 @@ export function AlunosAtivosLista({
             {...a}
             atendimentoDe={atendimentoDe}
             selecao={
-              emLote
+              modoLote
                 ? {
+                    finalidade:
+                      modoLote === "acesso" ? "criar acesso" : "liberar etapas",
                     marcado: marcados.has(a.alunoId),
                     onChange: (v) =>
                       setMarcados((s) => {

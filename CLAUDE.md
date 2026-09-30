@@ -24,8 +24,9 @@ O negócio tem **duas frentes**:
 5. Execução
 6. Entrega
 
-**Regra de liberação:** liberação controlada por `gps.etapas.liberada`. Só a Etapa 01 está
-liberada; as demais ficam bloqueadas e são liberadas uma por dia. Para liberar:
+**Regra de liberação:** liberação controlada por `gps.etapas.liberada`. Etapas 01 e 02
+liberadas globalmente (medido em 29–30/09/2026); as demais ficam bloqueadas e são liberadas uma
+por dia. Por aluno, o override de `gps.etapa_liberacao_aluno` vence (ver "Central de resolução"). Para liberar:
 `update gps.etapas set liberada = true where id = <n>`. Admin pode pré-visualizar etapas
 bloqueadas em `/admin/aluno/<id>/etapa/<n>`.
 
@@ -51,7 +52,7 @@ da equipe (`gps.etapa3_revisao`). Etapa 1 e 3 têm guias próprios; demais usam 
 O fetch/branch por etapa fica em `EtapaConteudo` (server). Actions de etapa em `src/app/etapa/actions.ts`.
 **Etapa 04 (Contrato)** em `src/lib/etapa4.ts` (3 tarefas). **Etapa 05 (Execução)** em
 `src/lib/etapa5.ts` (26 tarefas). **Etapa 06 (Fechamento)** em `src/lib/etapa6.ts` (2 tarefas).
-**As 6 etapas estão estruturadas.** Só a 1 está liberada; 2–6 bloqueadas até
+**As 6 etapas estão estruturadas.** 1 e 2 liberadas globalmente (30/09/2026); 3–6 bloqueadas até
 `update gps.etapas set liberada=true where id=<n>`.
 
 ### Etapa 01 — checklist do aluno (da planilha oficial)
@@ -1302,6 +1303,14 @@ rollback — bloco B0–B9 da spec):**
   REMOVE o override; motivo 3..300 obrigatório; log + evento `etapa_liberada/travada_pela_equipe`),
   `gps.admin_reabrir_etapa` (**UPDATE `concluida=false`**, nunca DELETE; N eventos
   `tarefa_reaberta` com ator `equipe` pela trigger; provado: 7 upd, 0 del).
+  **Em lote (30/09, migration 20260930201829):** `gps.admin_definir_liberacao_etapas_lote(uuid[], jsonb, text)` — 1..50
+  alunos (dedupe) × `[{"etapa":<id em gps.etapas>,"liberada":true|false|null}]`, um motivo para o lote. Valida
+  TUDO antes de escrever (inclusive ambiente de todos: erro `Sem ambiente no programa: N de M…`,
+  casado por prefixo na action) e chama a unitária por par que MUDA — log e evento continuam só
+  nela. Pula override igual ao pedido, e sem override pula `null` e pedido = global (evita o 22023
+  "já segue a regra geral" e log redundante). Atômica. Retorno
+  `{alterados, sem_mudanca, itens[]}`; action `definirLiberacaoEtapasEmLote`
+  (`src/app/admin/central-actions.ts`), contrato em `src/lib/etapas-lote-tipos.ts`.
   **No TS a mesma regra é `etapaLiberadaPara`/`etapasComLiberacaoDoAluno` (`src/lib/etapas.ts`)**
   — cada página do aluno troca `getEtapas()` por
   `etapasComLiberacaoDoAluno(await getEtapas(), await getEtapasLiberadasPara(alunoId))` e nada
@@ -1336,7 +1345,7 @@ rollback — bloco B0–B9 da spec):**
   `mapearStatusAcesso` (`src/lib/data/central.ts`) é o **único mapeador** da RPC de acesso —
   `senha-actions.ts` passou a usá-lo (módulo `"use server"` só exporta função async).
 - **Actions** (`src/app/admin/central-actions.ts`, todas com `ehAdmin()` e `{ erro }` traduzido):
-  `definirLiberacaoEtapa`, `reabrirEtapa`, `vincularPessoaMembro`, `trocarTitular`, `moverMembro`,
+  `definirLiberacaoEtapasEmLote` (1 ou N alunos; a unitária saiu em 30/09), `reabrirEtapa`, `vincularPessoaMembro`, `trocarTitular`, `moverMembro`,
   `vincularFinanceiro`, `desvincularFinanceiro`.
 
 **Frontend (`e5176d4`)**: aba **"Resolver"** (`adminOnly` — some na prévia "como o aluno vê")

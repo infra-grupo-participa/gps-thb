@@ -74,10 +74,6 @@ function CampoMotivo({
 }
 
 const PLACEHOLDER_MOTIVO: Record<string, string> = {
-  "liberar-etapa":
-    "Ex.: adiantou o croqui na reunião de 08/09 e precisa da etapa aberta.",
-  "travar-etapa": "Ex.: vai refazer a lista de clientes antes de seguir.",
-  "voltar-regra-geral": "Ex.: a turma inteira alcançou, não precisa mais da exceção.",
   "reabrir-etapa": "Ex.: marcou as tarefas sem ter feito; combinamos refazer.",
 };
 
@@ -232,79 +228,6 @@ export function ConfirmacaoDaAcao({
           rotuloConfirmar="Mover sócio"
           rotuloConfirmando="Movendo…"
         />
-      );
-
-    case "liberar-etapa":
-      return (
-        <DialogoConfirmacao
-          {...comum}
-          destrutivo={false}
-          titulo={`Liberar a ${rotuloEtapa(acao.etapa.etapa)} só para este parceiro?`}
-          descricao={acao.etapa.nome}
-          consequencia={
-            <>
-              A <strong>{rotuloEtapa(acao.etapa.etapa)}</strong> abre{" "}
-              <strong>só para este parceiro</strong>. Os outros continuam com a
-              regra geral, que hoje diz{" "}
-              <strong>{acao.etapa.global ? "liberada" : "bloqueada"}</strong>.
-              Para desfazer, use &ldquo;Voltar à regra geral&rdquo;.
-            </>
-          }
-          rotuloConfirmar="Liberar para este parceiro"
-          rotuloConfirmando="Liberando…"
-        >
-          {campo}
-        </DialogoConfirmacao>
-      );
-
-    case "travar-etapa":
-      return (
-        <DialogoConfirmacao
-          {...comum}
-          titulo={`Travar a ${rotuloEtapa(acao.etapa.etapa)} só para este parceiro?`}
-          descricao={acao.etapa.nome}
-          consequencia={
-            <>
-              <strong>
-                O parceiro perde o acesso a esta etapa mesmo que ela esteja liberada
-                para todo mundo.
-              </strong>{" "}
-              A regra geral continua{" "}
-              <strong>{acao.etapa.global ? "liberada" : "bloqueada"}</strong>{" "}
-              para os demais. Nada do que ele já fez é apagado; para desfazer,
-              use &ldquo;Voltar à regra geral&rdquo;.
-            </>
-          }
-          rotuloConfirmar="Travar para este parceiro"
-          rotuloConfirmando="Travando…"
-        >
-          {campo}
-        </DialogoConfirmacao>
-      );
-
-    case "voltar-regra-geral":
-      return (
-        <DialogoConfirmacao
-          {...comum}
-          destrutivo={false}
-          titulo={`Voltar a ${rotuloEtapa(acao.etapa.etapa)} à regra geral?`}
-          descricao={acao.etapa.nome}
-          consequencia={
-            <>
-              A exceção deste parceiro é removida e a{" "}
-              <strong>{rotuloEtapa(acao.etapa.etapa)}</strong> volta a seguir a
-              regra geral, que hoje diz{" "}
-              <strong>{acao.etapa.global ? "liberada" : "bloqueada"}</strong>.
-              {acao.etapa.liberada && !acao.etapa.global ? (
-                <> O parceiro perde o acesso que tinha por exceção.</>
-              ) : null}
-            </>
-          }
-          rotuloConfirmar="Voltar à regra geral"
-          rotuloConfirmando="Voltando…"
-        >
-          {campo}
-        </DialogoConfirmacao>
       );
 
     case "reabrir-etapa":

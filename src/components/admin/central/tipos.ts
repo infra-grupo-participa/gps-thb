@@ -23,9 +23,6 @@ export type AcaoPendente =
   | { tipo: "vincular-pessoa"; membro: MembroDiagnostico; pessoa: AlunoBusca }
   | { tipo: "trocar-titular"; membro: MembroDiagnostico }
   | { tipo: "mover-membro"; membro: MembroDiagnostico; destino: AlunoBusca }
-  | { tipo: "liberar-etapa"; etapa: EtapaDiagnostico }
-  | { tipo: "travar-etapa"; etapa: EtapaDiagnostico }
-  | { tipo: "voltar-regra-geral"; etapa: EtapaDiagnostico }
   | { tipo: "reabrir-etapa"; etapa: EtapaDiagnostico; concluidas: number }
   | { tipo: "vincular-financeiro"; candidato: CandidatoFinanceiro }
   | {
@@ -34,15 +31,12 @@ export type AcaoPendente =
       produto: string | null;
     };
 
-/** As quatro ações de trilha exigem motivo de 3 a 300, no servidor E no banco. */
+/** A ação de trilha (reabrir) exige motivo de 3 a 300, no servidor E no banco. */
 export const MOTIVO_MIN = 3;
 export const MOTIVO_MAX = 300;
 
 export function exigeMotivo(acao: AcaoPendente): boolean {
   return (
-    acao.tipo === "liberar-etapa" ||
-    acao.tipo === "travar-etapa" ||
-    acao.tipo === "voltar-regra-geral" ||
     acao.tipo === "reabrir-etapa"
   );
 }

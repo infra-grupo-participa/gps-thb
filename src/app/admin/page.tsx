@@ -261,6 +261,7 @@ export default async function AdminPage({
               erro={pagina.erro ?? null}
               carregarMaisHref={carregarMaisHref}
               carregarMaisQtd={proximoLote}
+              etapas={etapas}
             />
           }
           solicitacoes={

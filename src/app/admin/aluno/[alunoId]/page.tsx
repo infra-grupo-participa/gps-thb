@@ -27,6 +27,8 @@ import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { GerenciarAcesso } from "@/components/admin/gerenciar-acesso";
 import { DiarioResumoCard } from "@/components/admin/diario-resumo-card";
+import { EtapasAlunoDialogo } from "@/components/admin/etapas-liberacao/etapas-aluno-dialogo";
+import type { EtapaInfo } from "@/components/admin/etapas-liberacao/seletor-etapas";
 import { VoltarAoPainel } from "@/components/admin/voltar-ao-painel";
 
 /**
@@ -52,7 +54,7 @@ export default async function AdminAlunoInicioPage({
   const base = `/admin/aluno/${alunoId}`;
   const [
     aluno,
-    { etapas, overrides },
+    { etapas, todas, overrides },
     clientes,
     progressoTodas,
     favorito,
@@ -70,6 +72,7 @@ export default async function AdminAlunoInicioPage({
     Promise.all([getEtapas(), getEtapasLiberadasPara(alunoId)]).then(
       ([todas, overrides]) => ({
         etapas: etapasComLiberacaoDoAluno(todas, overrides),
+        todas,
         overrides,
       }),
     ),
@@ -81,6 +84,15 @@ export default async function AdminAlunoInicioPage({
     alunoJaTemCliente(alunoId),
     getTutoriaisAtivo(),
   ]);
+
+  // `liberadaGlobal` precisa do valor CRU de `gps.etapas`; `etapas` já vem
+  // resolvida com a exceção e diria "liberada" para uma etapa travada só aqui.
+  const etapasInfo: EtapaInfo[] = todas.map((e) => ({
+    numero: e.id,
+    titulo: e.nome,
+    liberadaGlobal: e.liberada,
+    override: overrides[e.id]?.liberada ?? null,
+  }));
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
   // Mesma regra do ambiente do aluno (PL2): tarefa travada não é próximo
@@ -117,7 +129,17 @@ export default async function AdminAlunoInicioPage({
           // devolve a ÚLTIMA URL do painel (`admin/painel-url.ts`).
           voltar={<VoltarAoPainel />}
           acao={
-            <GerenciarAcesso alunoId={alunoId} nomeAluno={aluno?.nome ?? null} />
+            <div className="flex flex-wrap items-center gap-2">
+              <EtapasAlunoDialogo
+                alunoId={alunoId}
+                nomeAluno={aluno?.nome ?? null}
+                etapas={etapasInfo}
+              />
+              <GerenciarAcesso
+                alunoId={alunoId}
+                nomeAluno={aluno?.nome ?? null}
+              />
+            </div>
           }
         />
 

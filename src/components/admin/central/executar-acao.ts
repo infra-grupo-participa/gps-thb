@@ -12,7 +12,6 @@
  */
 
 import {
-  definirLiberacaoEtapa,
   desvincularFinanceiro,
   moverMembro,
   reabrirEtapa,
@@ -108,42 +107,6 @@ export async function executarAcao(
       return {
         erro: r.erro,
         sucesso: `Sócio movido para ${r.para ?? acao.destino.nome ?? "o ambiente escolhido"}. O que ele registrou ficou aqui.`,
-      };
-    }
-    case "liberar-etapa": {
-      const r = await definirLiberacaoEtapa(
-        alunoId,
-        acao.etapa.etapa,
-        true,
-        motivo,
-      );
-      return {
-        erro: r.erro,
-        sucesso: `${rotuloEtapa(acao.etapa.etapa)} liberada só para este aluno.`,
-      };
-    }
-    case "travar-etapa": {
-      const r = await definirLiberacaoEtapa(
-        alunoId,
-        acao.etapa.etapa,
-        false,
-        motivo,
-      );
-      return {
-        erro: r.erro,
-        sucesso: `${rotuloEtapa(acao.etapa.etapa)} travada só para este aluno.`,
-      };
-    }
-    case "voltar-regra-geral": {
-      const r = await definirLiberacaoEtapa(
-        alunoId,
-        acao.etapa.etapa,
-        null,
-        motivo,
-      );
-      return {
-        erro: r.erro,
-        sucesso: `${rotuloEtapa(acao.etapa.etapa)} voltou a seguir a regra geral.`,
       };
     }
     case "reabrir-etapa": {

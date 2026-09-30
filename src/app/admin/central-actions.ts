@@ -28,6 +28,14 @@ import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { traduzirErroBanco } from "@/lib/erros";
 import {
+  LOTE_ETAPAS_MAX_ALUNOS,
+  MOTIVO_MAX,
+  MOTIVO_MIN,
+  type ItemAlterado,
+  type ItemLiberacaoEtapa,
+  type ResultadoLoteEtapas,
+} from "@/lib/etapas-lote-tipos";
+import {
   getPreviaConversaoSocio,
   type PreviaConversaoSocio,
 } from "@/lib/data/conversao-socio";
@@ -53,48 +61,75 @@ type Resultado<T = Record<string, unknown>> = { erro?: string } & Partial<T>;
 // ── trilha ────────────────────────────────────────────────────────────────
 
 /**
- * Libera (`true`), trava (`false`) ou volta à regra geral (`null`) UMA etapa
- * para UM ambiente. O `null` é o terceiro estado, não outro caminho: a UI não
- * precisa escolher a função a partir de um estado que pode ter mudado entre
- * ler e clicar.
+ * A mesma liberação, para até `LOTE_ETAPAS_MAX_ALUNOS` alunos × N etapas numa
+ * chamada só. Atômica: a RPC valida tudo antes de escrever e qualquer erro
+ * desfaz o lote inteiro. Pares que já estão no estado pedido são pulados
+ * (`semMudanca`) — não geram linha, log nem evento.
  */
-export async function definirLiberacaoEtapa(
-  alunoId: string,
-  etapa: number,
-  liberada: boolean | null,
+export async function definirLiberacaoEtapasEmLote(
+  alunoIds: string[],
+  itens: ItemLiberacaoEtapa[],
   motivo: string,
-): Promise<Resultado<{ liberada: boolean; removido: boolean }>> {
+): Promise<Resultado<ResultadoLoteEtapas>> {
   if (!(await ehAdmin())) return { erro: "Sem permissão." };
-  if (!alunoId || !Number.isInteger(etapa)) {
-    return { erro: "Aluno ou etapa não informado." };
+  // Server Action é endpoint POST: o formato não é garantido pelo tipo.
+  if (!Array.isArray(alunoIds) || !Array.isArray(itens)) {
+    return { erro: "Pedido fora do formato." };
   }
-  const texto = motivo.trim();
-  if (texto.length < 3) {
+  const ids = Array.from(
+    new Set(alunoIds.filter((id): id is string => typeof id === "string" && id !== "")),
+  );
+  if (ids.length === 0) return { erro: "Selecione ao menos um aluno." };
+  if (ids.length > LOTE_ETAPAS_MAX_ALUNOS) {
+    return { erro: `No máximo ${LOTE_ETAPAS_MAX_ALUNOS} alunos por vez.` };
+  }
+  if (itens.length === 0 || itens.some((i) => !i || typeof i !== "object")) {
+    return { erro: "Escolha ao menos uma etapa." };
+  }
+  const texto = (typeof motivo === "string" ? motivo : "").trim();
+  if (texto.length < MOTIVO_MIN) {
     return { erro: "Escreva o motivo — ele fica no histórico deste aluno." };
   }
-  if (texto.length > 300) return { erro: "O motivo passa de 300 caracteres." };
+  if (texto.length > MOTIVO_MAX) {
+    return { erro: `O motivo passa de ${MOTIVO_MAX} caracteres.` };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("gps")
-    .rpc("admin_definir_liberacao_etapa", {
-      p_aluno_id: alunoId,
-      p_etapa: etapa,
-      p_liberada: liberada,
+    .rpc("admin_definir_liberacao_etapas_lote", {
+      p_alunos: ids,
+      p_itens: itens.map((i) => ({ etapa: i.etapa, liberada: i.liberada })),
       p_motivo: texto,
     });
   if (error) {
+    const traduzida = traduzirErroBanco(
+      "central/definirLiberacaoEtapasEmLote",
+      error,
+      { alunos: ids.length, itens: itens.length },
+    );
+    // Frase com contagem ("Sem ambiente no programa: 2 de 10 …") não casa por
+    // igualdade em FRASES_DO_BANCO; o prefixo é fixo e escrito por nós.
+    const bruto = (error.message ?? "").trim();
     return {
-      erro: traduzirErroBanco("central/definirLiberacaoEtapa", error, {
-        alunoId,
-        etapa,
-      }),
+      erro: bruto.startsWith("Sem ambiente no programa:") ? bruto : traduzida,
     };
   }
 
-  revalidar(alunoId);
   const d = (data ?? {}) as Record<string, unknown>;
-  return { liberada: Boolean(d.liberada), removido: Boolean(d.removido) };
+  const alterados = Array.isArray(d.itens) ? (d.itens as ItemAlterado[]) : [];
+  // Revalida só quem mudou: com 0 alterados nada do que o aluno vê mudou.
+  for (const alunoId of new Set(alterados.map((i) => i.aluno_id))) {
+    revalidatePath(`/admin/aluno/${alunoId}`, "layout");
+  }
+  revalidatePath("/admin", "layout");
+  if (alterados.length > 0) revalidatePath("/", "layout");
+
+  return {
+    alterados: Number(d.alterados ?? 0),
+    semMudanca: Number(d.sem_mudanca ?? 0),
+    itens: alterados,
+  };
 }
 
 /**

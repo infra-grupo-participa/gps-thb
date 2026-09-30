@@ -129,11 +129,17 @@ export function AlunoCard({
   /** Nunca `undefined`: o card sempre tem o que ler, sem `?.` espalhado. */
   atendimentoDe: (alunoId: string) => AtendimentoDoAluno;
   /**
-   * Seleção em lote. Só chega quando o filtro "sem login" está ativo — o
-   * checkbox é para uma ação (criar acesso) que só existe para quem não tem
-   * login, e uma caixa que não leva a lugar nenhum é ruído em 158 cards.
+   * Seleção em lote. Só chega com um modo em lote LIGADO (acesso ou etapas,
+   * `modoLoteDe` em `estado-na-url.ts`) — uma caixa que não leva a lugar
+   * nenhum é ruído em 158 cards. `finalidade` completa o nome acessível
+   * ("Selecionar Fulano para liberar etapas"): o leitor de tela precisa saber
+   * PARA QUE está marcando.
    */
-  selecao?: { marcado: boolean; onChange: (v: boolean) => void };
+  selecao?: {
+    marcado: boolean;
+    onChange: (v: boolean) => void;
+    finalidade: string;
+  };
   /**
    * Mostrar em que FASE este parceiro está (14/09/2026). Só quando a lista
    * está varrendo TODAS as fases — buscando por nome dentro de um card de
@@ -201,7 +207,7 @@ export function AlunoCard({
             <Checkbox
               checked={selecao.marcado}
               onCheckedChange={(v) => selecao.onChange(v === true)}
-              aria-label={`Selecionar ${nome} para criar acesso`}
+              aria-label={`Selecionar ${nome} para ${selecao.finalidade}`}
               className="relative z-10 mt-1 shrink-0"
             />
           ) : null}

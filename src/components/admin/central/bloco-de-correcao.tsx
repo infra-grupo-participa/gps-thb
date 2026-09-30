@@ -5,8 +5,9 @@ import { ChevronRight } from "lucide-react";
  *
  * 🔑 Existe para conciliar duas regras que se contradizem no papel: *"botão só
  * onde há vermelho ou âmbar"* (senão a Central vira painel de "tudo pode") e
- * *"o admin precisa conseguir trocar o titular / voltar a etapa à regra geral"*
- * — coisas que ele faz **sobre linha verde**. A saída é atrito, não ausência:
+ * *"o admin precisa conseguir trocar o titular / desvincular contrato"*
+ * — coisas que ele faz **sobre linha verde**. (Liberar/travar etapa NÃO mora
+ * mais aqui: o `PainelEtapasAluno` é visível, fora deste bloco.) A saída é atrito, não ausência:
  * o bloco nasce **fechado** quando a seção está toda em ordem e **aberto**
  * quando há problema ou aviso. Nada some; o que muda é quantos cliques uma
  * escrita rara custa.

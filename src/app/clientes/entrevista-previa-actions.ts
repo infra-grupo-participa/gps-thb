@@ -43,6 +43,8 @@ import { revalidatePath } from "next/cache";
 import { getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
 import { MSG_SESSAO_INDETERMINADA, traduzirErroBanco } from "@/lib/erros";
+import { logErro } from "@/lib/log";
+import { TIPO_ENTREVISTA_PREVIA } from "@/lib/sessoes-tipos";
 import { createClient } from "@/lib/supabase/server";
 import {
   calcularDisc,
@@ -110,11 +112,13 @@ function paraGravar(respostas: RespostasEntrevista, frases: string[]): Record<st
   return saida;
 }
 
-async function guardaDeSessao(): Promise<{ ok: true } | { ok: false; erro: string }> {
+async function guardaDeSessao(): Promise<
+  { ok: true; souAdmin: boolean } | { ok: false; erro: string }
+> {
   try {
     const ctx = await getContextoSessao();
     if (!ctx) return { ok: false, erro: "Faça login para continuar." };
-    return { ok: true };
+    return { ok: true, souAdmin: ctx.papel === "admin" };
   } catch (e) {
     if (!ehSessaoIndeterminada(e)) throw e;
     return { ok: false, erro: MSG_SESSAO_INDETERMINADA };
@@ -214,6 +218,8 @@ export async function concluirEntrevistaPrevia(input: {
       confianca: "alta" | "media" | "baixa";
       decisoresTotal: number;
       exigeTodosNaPreliminar: boolean;
+      /** Só quando a EP concluiu mas a sessão do admin NÃO foi fechada. */
+      avisoSessao: string | null;
     }
   | { ok: false; erro: string }
 > {
@@ -297,6 +303,16 @@ export async function concluirEntrevistaPrevia(input: {
     decisores_total: number;
     exige_todos_na_preliminar: boolean;
   };
+
+  const avisoSessao = guarda.souAdmin
+    ? await fecharSessaoDaEntrevista(input.clienteId, {
+        perfilDisc: disc.letra,
+        consciencia: relatorio.consciencia,
+        gatilhos: relatorio.gatilhos,
+        relacionamento: relatorio.relacionamento,
+      })
+    : null;
+
   return {
     ok: true,
     entrevistaId: input.entrevistaId,
@@ -306,5 +322,81 @@ export async function concluirEntrevistaPrevia(input: {
     confianca: disc.confianca,
     decisoresTotal: r.decisores_total,
     exigeTodosNaPreliminar: r.exige_todos_na_preliminar,
+    avisoSessao,
   };
+}
+
+const RESUMO_SESSAO_EP = "Entrevista Prévia concluída no questionário";
+const AVISO_SESSAO_ABERTA = "A sessão não foi fechada — conclua em /admin/sessoes.";
+/** Folga para o admin concluir a EP um pouco antes do horário marcado. */
+const JANELA_SESSAO_MS = 60 * 60 * 1000;
+
+/**
+ * Fecha a sessão de EP (tipo 1) do cliente quando o ADMIN conclui o
+ * questionário — o Marco conduz a EP pela agenda e, sem isto, a sessão
+ * ficava "agendada" até alguém lembrar de concluí-la em /admin/sessoes.
+ *
+ * 🔴 Nunca desfaz a EP: ela já foi gravada. Falha aqui vira aviso + log.
+ * Sem sessão na janela = nada a fechar (EP fora da agenda), sem aviso.
+ *
+ * Guardas de `gps.sessao_concluir` (migration …301, lida): admin ou
+ * responsável; estado `agendado`; e RECUSA `inicio_em > now()`. A janela de
+ * +1h acha a sessão, mas a RPC só fecha depois do horário — antes disso o
+ * admin recebe o aviso com o motivo.
+ */
+async function fecharSessaoDaEntrevista(
+  clienteId: string,
+  disc: {
+    perfilDisc: string | null;
+    consciencia: string | null;
+    gatilhos: string | null;
+    relacionamento: string | null;
+  },
+): Promise<string | null> {
+  const supabase = await createClient();
+  const limite = new Date(Date.now() + JANELA_SESSAO_MS).toISOString();
+  const { data: sessoes, error: erroBusca } = await supabase
+    .schema("gps")
+    .from("sessao_agendamentos")
+    .select("id")
+    .eq("cliente_id", clienteId)
+    .eq("tipo_id", TIPO_ENTREVISTA_PREVIA)
+    .eq("estado", "agendado")
+    .lte("inicio_em", limite)
+    .order("inicio_em", { ascending: false })
+    .limit(1);
+
+  if (erroBusca) {
+    logErro("concluirEntrevistaPrevia.buscarSessao", erroBusca, { clienteId });
+    return AVISO_SESSAO_ABERTA;
+  }
+  const sessaoId = (sessoes?.[0] as { id: string } | undefined)?.id;
+  if (!sessaoId) return null;
+
+  const texto = (v: string | null) => {
+    const t = (v ?? "").trim();
+    return t === "" ? null : t;
+  };
+  const { error } = await supabase.schema("gps").rpc("sessao_concluir", {
+    p_agendamento_id: sessaoId,
+    p_resumo: RESUMO_SESSAO_EP,
+    p_perfil_disc: texto(disc.perfilDisc),
+    p_disc_consciencia: texto(disc.consciencia),
+    p_disc_gatilhos: texto(disc.gatilhos),
+    p_disc_relacionamento: texto(disc.relacionamento),
+  });
+  if (error) {
+    const motivo = traduzirErroBanco(
+      "concluirEntrevistaPrevia.fecharSessao",
+      error,
+      { rpc: "gps.sessao_concluir", agendamentoId: sessaoId, clienteId },
+      {
+        "Esta sessão ainda não começou. A conclusão só pode ser registrada depois do horário.":
+          "A sessão ainda não começou.",
+      },
+    );
+    return `${AVISO_SESSAO_ABERTA} ${motivo}`;
+  }
+  revalidatePath("/admin/sessoes");
+  return null;
 }

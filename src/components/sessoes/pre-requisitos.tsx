@@ -394,10 +394,10 @@ export function PreRequisitos({
                       // e `horaDeTime` são recorte de string, sem `new Date`
                       // sobre `date`: `new Date("2026-09-30")` é meia-noite UTC
                       // e volta um dia em São Paulo.
-                      `marcada para ${rotuloDoDia(entrevistaViva!.data)}, às ${horaDeTime(entrevistaViva!.hora_inicio)} — é ela que apura o perfil e quem decide junto`
+                      `marcada com a equipe para ${rotuloDoDia(entrevistaViva!.data)}, às ${horaDeTime(entrevistaViva!.hora_inicio)} — é ela que apura o perfil e quem decide junto`
                     : estadoEntrevista === "a-conferir"
                       ? "não deu para conferir agora"
-                      : "é ela que apura o perfil e quem decide junto, antes da Reunião Preliminar"
+                      : "é ela que apura o perfil e quem decide junto, antes da Reunião Preliminar. Você pode fazer com o seu cliente ou marcar um horário abaixo para a equipe conduzir"
               }
               // Sem link quando já está marcada: oferecer "fazer a entrevista"
               // a quem já tem hora marcada é oferecer o que ele já resolveu.

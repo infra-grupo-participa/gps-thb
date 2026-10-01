@@ -62,6 +62,8 @@ function frasesDoLink(): Record<string, string> {
     "O link não pode conter quebra de linha. Cole a URL numa linha só.",
     "O link passa de 500 caracteres.",
     "O link precisa começar com https://",
+    // Caracteres de HTML (…330, achado do pentest).
+    "O link não pode ter espaço, aspas, crase nem os sinais < e >. Copie de novo o endereço da sala.",
     // Estado do agendamento.
     "Sessão não encontrada.",
     "Esta sessão não está marcada — não há sala para definir.",

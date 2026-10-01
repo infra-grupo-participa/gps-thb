@@ -1,19 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 
 import { AppHeader } from "@/components/app-header";
-import { FormularioEntrevistaPrevia } from "@/components/clientes/entrevista-previa/formulario";
-import {
-  dataCombinadaFutura,
-  getPreliminarViva,
-} from "@/components/clientes/entrevista-previa/preliminar-viva";
+import { ConducaoDaEntrevista } from "@/components/clientes/entrevista-previa/conducao";
 import { PageHeader } from "@/components/ui/page-header";
 import { getContextoSessao } from "@/lib/auth";
-import { hojeSaoPaulo } from "@/lib/datas";
 import { getAlunoById, getClienteById } from "@/lib/data";
 import { navDoAluno } from "@/lib/nav";
-import { iniciarEntrevistaPrevia } from "@/app/clientes/entrevista-previa-actions";
-import { getEntrevistaEmAberto } from "@/lib/data/entrevista-previa";
-import type { RespostasEntrevista } from "@/lib/entrevista-previa-calculo";
 
 /**
  * `/clientes/[clienteId]/entrevista` — a Entrevista Prévia 2.0.
@@ -26,18 +18,22 @@ import type { RespostasEntrevista } from "@/lib/entrevista-previa-calculo";
  * Esc ou clique-fora perderia a conversa inteira. Rota tem URL, sobrevive a
  * refresh, e a RPC retoma a entrevista em aberto.
  *
- * 🔴 A entrevista abre NO SERVIDOR, antes de pintar a tela. Se ela nascesse
- * no clique do primeiro botão, uma falha de rede deixaria o parceiro
- * respondendo perguntas que não estão sendo gravadas em lugar nenhum.
+ * 🔴 O render SÓ LÊ (01/10/2026). Abrir a linha no servidor a cada GET
+ * gerava EP vazia/duplicada (prefetch, refresh, aba repetida). A linha nasce
+ * no "Começar", e a primeira pergunta só abre depois do ok da RPC — falha
+ * de rede vira erro na abertura, nunca pergunta respondida sem gravar. Ver
+ * `ConducaoDaEntrevista`.
  */
 export const metadata = { title: "Entrevista Prévia" };
 
 export default async function EntrevistaPreviaPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ clienteId: string }>;
+  searchParams: Promise<{ nova?: string | string[] }>;
 }) {
-  const { clienteId } = await params;
+  const [{ clienteId }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
   if (ctx.papel === "admin") redirect("/admin");
@@ -50,38 +46,6 @@ export default async function EntrevistaPreviaPage({
   ]);
   // Mesma guarda da ficha: o cliente tem de ser deste ambiente.
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
-
-  const abertura = await iniciarEntrevistaPrevia({
-    clienteId,
-    entrevistado: cliente.nome,
-  });
-
-  if (!abertura.ok) {
-    return (
-      <>
-        <AppHeader
-          nome={aluno?.nome ?? ctx.user.email ?? null}
-          email={ctx.user.email ?? null}
-          papelRotulo="Parceiro"
-          navItems={navDoAluno(ctx)}
-        />
-        <main id="conteudo" className="mx-auto w-full max-w-2xl px-4 pt-8 pb-16">
-          <PageHeader titulo="Entrevista Prévia" />
-          <p role="alert" className="border border-borda-fina px-4 py-4 corpo-sm text-destructive">
-            {abertura.erro}
-          </p>
-        </main>
-      </>
-    );
-  }
-
-  // Retomada: se a conversa caiu no meio, as respostas já marcadas voltam.
-  // A Preliminar viva do ambiente vai junto, em paralelo: a validação oferece
-  // "Já está marcada" quando é deste cliente (ajuste do Marcio, 29/09).
-  const [emAberto, viva] = await Promise.all([
-    getEntrevistaEmAberto(abertura.entrevistaId),
-    getPreliminarViva(alunoId),
-  ]);
 
   return (
     <>
@@ -96,20 +60,14 @@ export default async function EntrevistaPreviaPage({
           titulo="Entrevista Prévia"
           descricao={`Conversa com ${cliente.nome ?? "o cliente"}. Leia as perguntas em voz alta e marque o que ele responder. São perguntas rápidas (até 15), cerca de 8 minutos, e no fim já marca a Reunião Preliminar.`}
         />
-        <FormularioEntrevistaPrevia
-          entrevistaId={abertura.entrevistaId}
+        <ConducaoDaEntrevista
+          alunoId={alunoId}
           clienteId={clienteId}
-          clienteNome={cliente.nome ?? "o cliente"}
-          entrevistado={cliente.nome ?? null}
-          respostasIniciais={(emAberto?.respostas ?? {}) as RespostasEntrevista}
-          preliminarViva={
-            viva.sessao
-              ? { inicioEm: viva.sessao.inicio_em, desteCliente: viva.sessao.cliente_id === clienteId }
-              : null
-          }
-          dataCombinada={dataCombinadaFutura(cliente.data_reuniao_preliminar, hojeSaoPaulo())}
+          clienteNome={cliente.nome ?? null}
+          dataReuniaoPreliminar={cliente.data_reuniao_preliminar}
           conduzidoPor="parceiro"
           voltarHref={`/clientes/${clienteId}`}
+          nova={sp.nova === "1"}
         />
       </main>
     </>

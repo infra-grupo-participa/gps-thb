@@ -310,6 +310,18 @@ export interface SessaoCancelarResultado {
   por: "aluno" | "responsavel" | "admin";
 }
 
+/**
+ * Retorno de `gps.sessao_remarcar` (migração `…327`). `inicio_em`/`fim_em` são
+ * o horário NOVO; `remarcado_de` é o `inicio_em` anterior (timestamptz ISO).
+ */
+export interface SessaoRemarcarResultado {
+  agendamento_id: string;
+  estado: "agendado";
+  inicio_em: string;
+  fim_em: string;
+  remarcado_de: string;
+}
+
 /** Retorno de `gps.sessao_marcar_falta`. */
 export interface SessaoMarcarFaltaResultado {
   agendamento_id: string;

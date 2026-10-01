@@ -168,6 +168,20 @@ async function abrirEntrevista(page: Pagina): Promise<boolean> {
  */
 async function passarDaAbertura(page: Pagina): Promise<boolean> {
   const comecar = page.getByRole("button", { name: /^começar$/i });
+  // 🔑 01/10: a página só LÊ. Se a última entrevista está concluída e não há
+  // uma em aberto, ela mostra o resumo + "Nova entrevista" (`?nova=1`), que
+  // leva à abertura sem criar linha — quem cria é o "Começar".
+  const nova = page.getByRole("link", { name: /^nova entrevista$/i });
+  await expect(
+    comecar
+      .or(nova)
+      .or(page.getByRole("progressbar"))
+      .or(page.getByRole("button", { name: BOTAO_CONFIRMOU })),
+  ).toBeVisible({ timeout: 12_000 });
+  if (await nova.isVisible()) {
+    await nova.click();
+    await page.waitForURL(/\/entrevista\?nova=1$/, { timeout: 15_000 });
+  }
   await expect(
     comecar
       .or(page.getByRole("progressbar"))

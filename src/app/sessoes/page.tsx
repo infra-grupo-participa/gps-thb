@@ -692,6 +692,24 @@ function BlocoDoTipo({
         Marque sua {tipo.nome}
       </h3>
       <p className="mt-0.5 corpo-sm text-muted-foreground">Escolha um horário</p>
+      {tipo.id === TIPO_ENTREVISTA_PREVIA ? (
+        <p className="mt-0.5 max-w-[62ch] corpo-sm text-muted-foreground">
+          Aqui você pede à equipe que conduza a Entrevista Prévia com o seu
+          cliente; o nome de quem atende aparece em cada horário. Se preferir
+          fazer você mesmo,{" "}
+          {clienteDaZona1 ? (
+            <Link
+              href={`/clientes/${clienteDaZona1}/entrevista`}
+              className="text-accent-foreground underline underline-offset-4 hover:no-underline"
+            >
+              abra a Entrevista Prévia do seu cliente
+            </Link>
+          ) : (
+            "abra a Entrevista Prévia na ficha do seu cliente"
+          )}
+          .
+        </p>
+      ) : null}
       <div className="mt-2">
         <GradeHorarios
           tipo={tipo}

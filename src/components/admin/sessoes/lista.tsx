@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import {
   cancelarSessaoNaEquipe,
+  listarHorariosParaRemarcar,
   marcarFaltaNaSessao,
+  remarcarSessao,
 } from "@/app/admin/sessoes/actions";
 import {
   concluirSessao,
@@ -14,9 +17,10 @@ import {
   lerResumoDaSessao,
   removerLinkDaSessao,
 } from "@/app/admin/sessoes/sessao-actions";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import {
+  agruparPorDia,
   formatarDuracao,
   horaDeTime,
   horaFimDeBloco,
@@ -28,6 +32,7 @@ import { DiscNaConclusao } from "@/components/admin/sessoes/disc-na-conclusao";
 import {
   ROTULO_ESTADO_SESSAO,
   TIPO_ENTREVISTA_PREVIA,
+  type HorarioLivre,
   type SessaoAgendamento,
 } from "@/lib/sessoes-tipos";
 
@@ -95,9 +100,25 @@ function LinhaDaSessao({
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState<
-    "cancelar" | "falta" | "concluir" | "resumo" | "link" | null
+    "cancelar" | "remarcar" | "falta" | "concluir" | "resumo" | "link" | null
   >(null);
   const [motivo, setMotivo] = useState("");
+  // Remarcar: a grade livre da MESMA profissional, buscada SÓ ao abrir o
+  // diálogo (nunca na listagem — N linhas não viram N chamadas à RPC). O
+  // novo horário é ESCOLHIDO nessa lista; não há campo de data/hora (PRD
+  // §7.1: "tem que exibir as opções de horário"). `escolhido` guarda o
+  // `inicio_em` do bloco. O `motivo` é o mesmo estado do cancelar — só um
+  // diálogo fica aberto por vez.
+  const [grade, setGrade] = useState<
+    | { estado: "carregando" }
+    | { estado: "erro"; erro: string }
+    | { estado: "pronta"; horarios: HorarioLivre[] }
+  >({ estado: "carregando" });
+  const [escolhido, setEscolhido] = useState<string | null>(null);
+  // Descarta resposta de uma abertura anterior (fechar e reabrir rápido).
+  const pedidoDaGrade = useRef(0);
+  // Aviso pós-remarcação. Some ao abrir qualquer outra ação da linha.
+  const [aviso, setAviso] = useState<string | null>(null);
   const [erroInline, setErroInline] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
   const [linkTexto, setLinkTexto] = useState("");
@@ -145,6 +166,83 @@ function LinhaDaSessao({
       }
       setAberto(null);
       setMotivo("");
+      router.refresh();
+    });
+  }
+
+  async function carregarGrade() {
+    const pedido = ++pedidoDaGrade.current;
+    setGrade({ estado: "carregando" });
+    let r: Awaited<ReturnType<typeof listarHorariosParaRemarcar>>;
+    try {
+      r = await listarHorariosParaRemarcar({
+        tipoId: sessao.tipo_id,
+        responsavelId: sessao.responsavel_id,
+      });
+    } catch {
+      r = {
+        ok: false,
+        erro: "Não foi possível carregar os horários. Tente de novo.",
+      };
+    }
+    if (pedido !== pedidoDaGrade.current) return;
+    if (!r.ok) {
+      setGrade({ estado: "erro", erro: r.erro });
+      return;
+    }
+    // O horário ATUAL fica fora: remarcar para o mesmo instante a RPC recusa.
+    // Compara INSTANTE (timestamptz), não texto — o PostgREST pode devolver
+    // `+00:00` de um lado e `Z` do outro.
+    const atual = Date.parse(sessao.inicio_em);
+    setGrade({
+      estado: "pronta",
+      horarios: r.horarios.filter((h) => Date.parse(h.inicio_em) !== atual),
+    });
+  }
+
+  function abrirRemarcar() {
+    setErroInline(null);
+    setAviso(null);
+    setMotivo("");
+    setEscolhido(null);
+    setAberto("remarcar");
+    void carregarGrade();
+  }
+
+  function confirmarRemarcacao() {
+    setErroInline(null);
+    const texto = motivo.trim();
+    const bloco =
+      grade.estado === "pronta"
+        ? grade.horarios.find((h) => h.inicio_em === escolhido)
+        : undefined;
+    if (!bloco) {
+      setErroInline("Escolha o novo horário na lista.");
+      return;
+    }
+    if (texto.length < 3 || texto.length > 300) {
+      setErroInline("O motivo precisa ter entre 3 e 300 caracteres.");
+      return;
+    }
+    iniciar(async () => {
+      const r = await remarcarSessao({
+        sessaoId: sessao.id,
+        data: bloco.data,
+        hora: horaDeTime(bloco.hora_inicio),
+        motivo: texto,
+      });
+      if (!r.ok) {
+        setErroInline(r.erro);
+        // A grade pode ter mudado por baixo (outro parceiro pegou o bloco):
+        // recarrega para não insistir num horário morto.
+        setEscolhido(null);
+        void carregarGrade();
+        return;
+      }
+      setAberto(null);
+      setMotivo("");
+      setEscolhido(null);
+      setAviso("O aluno será avisado por e-mail.");
       router.refresh();
     });
   }
@@ -296,6 +394,18 @@ function LinhaDaSessao({
           >
             {briefingAberto ? "Fechar briefing" : "Ver briefing"}
           </Button>
+          {/* Atalho do Marco (EP a partir de 06/10): da agenda direto ao
+              questionário do cliente certo. Link puro — abrir a página NÃO
+              cria entrevista (o "Começar" de lá é que cria), então o
+              prefetch do <Link> não grava nada. */}
+          {podeAgir && ehEntrevistaPrevia && sessao.cliente_id ? (
+            <Link
+              href={`/admin/aluno/${sessao.aluno_id}/clientes/${sessao.cliente_id}/entrevista`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Abrir entrevista
+            </Link>
+          ) : null}
           {podeAgir ? (
             <Button
               variant="outline"
@@ -370,6 +480,16 @@ function LinhaDaSessao({
               Cancelar
             </Button>
           ) : null}
+          {/* 🔴 Visibilidade: `agendado` + futura + admin. A página inteira é
+              só-admin (`page.tsx`: `ctx.papel !== "admin"` → redirect), e as
+              doutoras entram como admin; por isso não existe caminho para a
+              "dona não-admin" aqui. A fronteira real é `gps.sessao_remarcar`
+              (admin ou `responsavel_id = auth.uid()`). */}
+          {podeAgir && !jaComecou && souAdmin ? (
+            <Button variant="outline" size="sm" onClick={abrirRemarcar}>
+              Remarcar
+            </Button>
+          ) : null}
           {podeAgir && jaComecou ? (
             <Button
               variant="outline"
@@ -385,6 +505,12 @@ function LinhaDaSessao({
           ) : null}
         </div>
       </div>
+
+      {aviso ? (
+        <p role="status" className="corpo-sm text-muted-foreground">
+          {aviso}
+        </p>
+      ) : null}
 
       {aberto === "concluir" ? (
         <div className="border-t border-borda-fina pt-2">
@@ -517,6 +643,112 @@ function LinhaDaSessao({
         }}
       >
         <label className="grid gap-1 text-left">
+          <span className="rotulo text-muted-foreground">
+            Motivo (obrigatório, 3 a 300 caracteres — o aluno vê)
+          </span>
+          <textarea
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            maxLength={300}
+            rows={2}
+            className="w-full rounded-md border border-borda-forte bg-card px-2 py-1.5 corpo-sm focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring"
+          />
+          <span className="corpo-sm text-muted-foreground">
+            {motivo.trim().length}/300
+          </span>
+        </label>
+      </DialogoConfirmacao>
+
+      <DialogoConfirmacao
+        aberto={aberto === "remarcar"}
+        titulo="Remarcar a sessão"
+        descricao={`${rotuloDoDia(sessao.data)}, ${inicio} — ${clienteNome ?? "cliente"}`}
+        consequencia={
+          <>
+            A sessão muda para o novo horário e o horário atual volta a ficar
+            livre. O motivo é obrigatório e o aluno o vê. O aluno será avisado
+            por e-mail.
+          </>
+        }
+        rotuloConfirmar="Remarcar sessão"
+        rotuloConfirmando="Remarcando…"
+        rotuloCancelar="Voltar"
+        destrutivo={false}
+        confirmando={pendente}
+        erro={erroInline}
+        onConfirmar={confirmarRemarcacao}
+        onCancelar={() => {
+          setAberto(null);
+          setErroInline(null);
+        }}
+      >
+        <fieldset className="grid gap-1 text-left">
+          <legend className="rotulo text-muted-foreground">
+            Novo horário ({responsavelNome ?? "mesma profissional"})
+          </legend>
+          {grade.estado === "carregando" ? (
+            <p role="status" className="corpo-sm text-muted-foreground">
+              Carregando horários livres…
+            </p>
+          ) : grade.estado === "erro" ? (
+            <div className="grid gap-1">
+              <p role="alert" className="corpo-sm text-destructive">
+                {grade.erro}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="justify-self-start"
+                onClick={() => void carregarGrade()}
+              >
+                Tentar de novo
+              </Button>
+            </div>
+          ) : grade.horarios.length === 0 ? (
+            <p className="corpo-sm text-muted-foreground">
+              Nenhum outro horário livre de{" "}
+              {responsavelNome ?? "esta profissional"} nas próximas 8 semanas.
+              Peça a ela que abra horário na grade e volte aqui, ou use
+              &quot;Cancelar&quot; nesta sessão — o parceiro marca de novo
+              quando houver horário.
+            </p>
+          ) : (
+            <div className="max-h-64 overflow-y-auto border border-borda-fina">
+              {agruparPorDia(grade.horarios).map((dia) => (
+                <div key={dia.data}>
+                  <p className="rotulo border-b border-borda-fina px-2 pt-2 pb-1 text-muted-foreground">
+                    {dia.rotulo}
+                  </p>
+                  <ul className="divide-y divide-borda-fina">
+                    {dia.horarios.map((h) => {
+                      const ini = horaDeTime(h.hora_inicio);
+                      const fimBloco = horaFimDeBloco(h.hora_inicio, h.duracao_min);
+                      return (
+                        <li key={h.inicio_em}>
+                          <label className="flex cursor-pointer items-center gap-2 px-2 py-1.5 corpo-sm">
+                            <input
+                              type="radio"
+                              name={`remarcar-${sessao.id}`}
+                              value={h.inicio_em}
+                              checked={escolhido === h.inicio_em}
+                              onChange={() => setEscolhido(h.inicio_em)}
+                              disabled={pendente}
+                            />
+                            <span className="font-medium text-foreground">
+                              {ini}
+                              {fimBloco ? ` – ${fimBloco}` : null}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </fieldset>
+        <label className="mt-2 grid gap-1 text-left">
           <span className="rotulo text-muted-foreground">
             Motivo (obrigatório, 3 a 300 caracteres — o aluno vê)
           </span>

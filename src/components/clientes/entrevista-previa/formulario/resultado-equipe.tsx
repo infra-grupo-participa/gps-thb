@@ -23,6 +23,7 @@ export function ResultadoEquipe({
   confianca,
   decisoresTotal,
   exigeTodos,
+  avisoSessao,
   onVoltar,
 }: {
   clienteNome: string;
@@ -31,6 +32,8 @@ export function ResultadoEquipe({
   confianca: ConfiancaDisc;
   decisoresTotal: number;
   exigeTodos: boolean;
+  /** EP gravada, mas a sessão da agenda ficou aberta (ver a action). */
+  avisoSessao: string | null;
   onVoltar: () => void;
 }) {
   const letra = perfilDisc && perfilDisc in NOME_DA_LETRA ? (perfilDisc as LetraDisc) : null;
@@ -66,6 +69,12 @@ export function ResultadoEquipe({
         </p>
       </div>
 
+      {avisoSessao ? (
+        <p role="alert" className="border border-borda-forte px-4 py-3 corpo-sm">
+          {avisoSessao}
+        </p>
+      ) : null}
+
       {exigeTodos ? (
         <div role="alert" className="border border-borda-forte bg-superficie-afundada px-4 py-3">
           <p className="rotulo">{decisoresTotal} decisores identificados</p>
@@ -85,13 +94,12 @@ export function ResultadoEquipe({
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={onVoltar}>Voltar para a ficha</Button>
-        {/* 🔑 `window.location.assign`, não `router.refresh()`: o
-            `entrevistaId` é PROP do servidor e não muda com refresh — o
-            formulário voltaria apontando para a entrevista já concluída. A
-            navegação real remonta a página e a RPC abre uma linha nova. */}
+        {/* 🔑 `window.location.assign`, não `router.refresh()`: o estado do
+            formulário é local e sobreviveria ao refresh. `?nova=1` remonta a
+            página na abertura SEM criar linha — quem cria é o "Começar". */}
         <Button
           variant="outline"
-          onClick={() => window.location.assign(window.location.pathname)}
+          onClick={() => window.location.assign(`${window.location.pathname}?nova=1`)}
         >
           Entrevistar outra pessoa
         </Button>

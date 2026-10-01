@@ -67,6 +67,8 @@ function frasesDasTravas(): Record<string, string> {
       "O link não pode conter quebra de linha. Cole a URL numa linha só.",
     "O link passa de 500 caracteres.": "O link passa de 500 caracteres.",
     "O link precisa começar com https://": "O link precisa começar com https://",
+    "O link não pode ter espaço, aspas, crase nem os sinais < e >. Copie de novo o endereço da sala.":
+      "O link não pode ter espaço, aspas, crase nem os sinais < e >. Copie de novo o endereço da sala.",
     "Esta sessão não tem link para remover.":
       "Esta sessão não tem link para remover.",
   };

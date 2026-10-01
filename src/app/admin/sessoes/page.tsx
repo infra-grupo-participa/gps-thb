@@ -86,7 +86,7 @@ export default async function AdminSessoesPage() {
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Sessões com a equipe"
-          descricao="Entrevista Prévia e Reunião Preliminar marcadas pelos parceiros nos horários que a equipe publicou."
+          descricao="Entrevistas Prévias com o Marco e Reuniões Preliminares marcadas pelos parceiros nos horários que a equipe publicou."
         />
 
         {erro ? (

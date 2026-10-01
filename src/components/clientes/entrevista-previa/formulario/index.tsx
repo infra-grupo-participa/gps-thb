@@ -34,6 +34,7 @@ import { formatarDataHora } from "@/lib/datas";
 import {
   salvarProgressoEntrevista,
   concluirEntrevistaPrevia,
+  iniciarEntrevistaPrevia,
 } from "@/app/clientes/entrevista-previa-actions";
 
 import { agendamentoInicial, destinoDepois, telaInicial, type Tela } from "./navegacao";
@@ -60,7 +61,14 @@ import { ResultadoEquipe } from "./resultado-equipe";
  *   equipe:   resultado + "combine o horário com o parceiro" (item d)
  *
  * 🔴 NENHUMA LEITURA AQUI. Tudo chega por prop do Server Component; as
- * actions só escrevem (salvar rascunho, concluir).
+ * actions só escrevem (iniciar, salvar rascunho, concluir).
+ *
+ * 🔴 A ENTREVISTA NASCE NO "COMEÇAR", NÃO NO RENDER (01/10/2026). A página
+ * abria a linha no servidor a cada GET — prefetch, refresh e aba duplicada
+ * viravam EP vazia (12 de 35 no banco, 6 clientes com duplicata). Agora
+ * `entrevistaId` chega `null` quando não há uma em aberto, e só o clique em
+ * "Começar" chama `iniciarEntrevistaPrevia`; a primeira pergunta só abre
+ * DEPOIS do ok, então nunca se responde sem linha gravando.
  */
 
 /** Destaque da escolha única antes de avançar sozinha (plano 3.0, §2). */
@@ -77,7 +85,8 @@ export function FormularioEntrevistaPrevia({
   preliminarViva,
   dataCombinada,
 }: {
-  entrevistaId: string;
+  /** `null` = nenhuma em aberto: o "Começar" é que cria a linha. */
+  entrevistaId: string | null;
   clienteId: string;
   clienteNome: string;
   entrevistado: string | null;
@@ -100,6 +109,7 @@ export function FormularioEntrevistaPrevia({
   dataCombinada: string | null;
 }) {
   const router = useRouter();
+  const [idAtual, setIdAtual] = useState<string | null>(entrevistaId);
   const [respostas, setRespostas] = useState<RespostasEntrevista>(respostasIniciais);
   const [tela, setTela] = useState<Tela>(() => telaInicial(respostasIniciais));
   // O foco só é movido depois da 1ª interação: no carregamento da página ele
@@ -131,6 +141,7 @@ export function FormularioEntrevistaPrevia({
     confianca: ConfiancaDisc;
     decisoresTotal: number;
     exigeTodos: boolean;
+    avisoSessao: string | null;
   } | null>(null);
 
   // O avanço de 200 ms é um timer: sai com a tela, e cada novo clique o
@@ -158,7 +169,7 @@ export function FormularioEntrevistaPrevia({
     setErro(null);
     // Em segundo plano. Falha aqui NÃO interrompe a conversa — a conclusão
     // reenvia tudo (ver o comentário da action).
-    void salvarProgressoEntrevista({ entrevistaId, respostas: novas });
+    if (idAtual) void salvarProgressoEntrevista({ entrevistaId: idAtual, respostas: novas });
   }
 
   function escolher(opcaoId: string) {
@@ -234,7 +245,8 @@ export function FormularioEntrevistaPrevia({
       const n = nomes[d.sinal]?.trim();
       if (n) nomesDecisores[d.sinal] = n;
     }
-    if (!agendamento) return;
+    if (!agendamento || !idAtual) return;
+    const entrevistaId = idAtual;
     const escolha = agendamento;
     const fechamento: RespostasEntrevista = { [CHAVE_AGENDAMENTO_PRELIMINAR]: escolha };
     if (escolha === "nao_agendou" && motivo) fechamento[CHAVE_AGENDAMENTO_MOTIVO] = motivo;
@@ -272,16 +284,16 @@ export function FormularioEntrevistaPrevia({
         router.push(voltarHref);
         return;
       }
-      // 🔑 Sem `router.refresh()`: a página do admin abre a entrevista no
-      // servidor, e um refresh depois de concluir criaria uma linha nova e
-      // vazia. O resultado vem do retorno da action; a ficha já foi
-      // revalidada por ela.
+      // O resultado vem do retorno da action (a ficha já foi revalidada por
+      // ela). Um refresh aqui não criaria linha — a página só lê —, mas
+      // trocaria esta tela pelo resumo da ficha; o admin volta pelo botão.
       setResultado({
         perfilDisc: r.perfilDisc,
         secundaria: r.secundaria,
         confianca: r.confianca,
         decisoresTotal: r.decisoresTotal,
         exigeTodos: r.exigeTodosNaPreliminar,
+        avisoSessao: r.avisoSessao,
       });
     });
   }
@@ -300,6 +312,23 @@ export function FormularioEntrevistaPrevia({
   // ── ABERTURA ─────────────────────────────────────────────────────────────
   if (tela.tipo === "abertura") {
     const primeira = perguntasVisiveis(respostas)[0];
+    const comecar = () => {
+      if (!primeira) return;
+      if (idAtual) {
+        irPara({ tipo: "pergunta", id: primeira.id });
+        return;
+      }
+      setErro(null);
+      iniciar(async () => {
+        const r = await iniciarEntrevistaPrevia({ clienteId, entrevistado });
+        if (!r.ok) {
+          setErro(r.erro);
+          return;
+        }
+        setIdAtual(r.entrevistaId);
+        irPara({ tipo: "pergunta", id: primeira.id });
+      });
+    };
     return (
       <div className="grid gap-4">
         <div className="border border-borda-fina px-4 py-4">
@@ -312,10 +341,15 @@ export function FormularioEntrevistaPrevia({
           </p>
         </div>
         <div>
-          <Button onClick={() => primeira && irPara({ tipo: "pergunta", id: primeira.id })}>
-            Começar
+          <Button onClick={comecar} disabled={pendente}>
+            {pendente ? "Abrindo…" : "Começar"}
           </Button>
         </div>
+        {erro ? (
+          <p role="alert" className="corpo-sm text-destructive">
+            {erro}
+          </p>
+        ) : null}
       </div>
     );
   }

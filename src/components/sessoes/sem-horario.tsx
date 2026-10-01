@@ -155,7 +155,7 @@ export function SemHorario({
             este bloco corrige. */}
         {href && !ehAEntrevista ? (
           <p className="mt-1 corpo-sm text-muted-foreground">
-            Enquanto isso, você pode adiantar a Entrevista Prévia.
+            Enquanto isso, você pode fazer a Entrevista Prévia você mesmo, com o seu cliente.
           </p>
         ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
@@ -218,7 +218,21 @@ export function SemHorario({
         por semana. Volte a abrir esta tela nos próximos dias — assim que um
         bloco for publicado ou liberado por um cancelamento, ele aparece aqui.
       </p>
-      <div className="mt-3">
+      {href && etapaDoTipo === 1 ? (
+        <p className="mt-1 corpo-sm text-muted-foreground">
+          Não quer esperar? Você mesmo pode fazer a Entrevista Prévia com o seu
+          cliente, sem depender de horário da equipe.
+        </p>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {href && etapaDoTipo === 1 ? (
+          <Link
+            href={href}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Fazer a Entrevista Prévia
+          </Link>
+        ) : null}
         <Link
           href="/chamados"
           className={buttonVariants({ variant: "ghost", size: "sm" })}

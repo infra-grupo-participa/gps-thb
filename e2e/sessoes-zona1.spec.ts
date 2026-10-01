@@ -151,7 +151,7 @@ test.describe("Zona 1 de /sessoes · Entrevista Prévia @estatico", () => {
       copy,
       "REGRA: 'marcada' sem QUANDO é pior que 'falta' — o parceiro não sabe se " +
         "precisa agir. A data sai do próprio agendamento, sem consulta nova.",
-    ).toContain("marcada para ");
+    ).toContain("marcada com a equipe para ");
   });
 });
 

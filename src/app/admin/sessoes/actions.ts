@@ -21,12 +21,14 @@ import { revalidatePath } from "next/cache";
 import { getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
 import { MSG_SESSAO_INDETERMINADA, SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
-import { getBriefingDaSessao } from "@/lib/data/sessoes";
+import { getBriefingDaSessao, getHorariosLivres } from "@/lib/data/sessoes";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  HorarioLivre,
   SessaoBriefing,
   SessaoCancelarResultado,
   SessaoMarcarFaltaResultado,
+  SessaoRemarcarResultado,
 } from "@/lib/sessoes-tipos";
 
 /**
@@ -49,7 +51,147 @@ function frasesDasTravas(): Record<string, string> {
       "A observação passa de 300 caracteres.",
     "Esta sessão ainda não começou. A falta só pode ser registrada depois do horário.":
       "Esta sessão ainda não começou. A falta só pode ser registrada depois do horário.",
+    // gps.sessao_remarcar (…327) — mesmas frases, sem reescrita.
+    "Escolha o novo horário para continuar.": "Escolha o novo horário para continuar.",
+    "Escreva o motivo da remarcação (ao menos 3 caracteres).":
+      "Escreva o motivo da remarcação (ao menos 3 caracteres).",
+    "Esta sessão não está marcada — não há o que remarcar.":
+      "Esta sessão não está marcada — não há o que remarcar.",
+    "Esta sessão já começou. Só uma sessão futura pode ser remarcada.":
+      "Esta sessão já começou. Só uma sessão futura pode ser remarcada.",
+    "Esse horário já passou. Escolha outro.": "Esse horário já passou. Escolha outro.",
+    "A sessão já está marcada nesse horário.": "A sessão já está marcada nesse horário.",
+    "Esse horário não está na agenda livre desta profissional. Escolha outro na lista.":
+      "Esse horário não está na agenda livre desta profissional. Escolha outro na lista.",
+    "Alguém acabou de pegar esse horário. Escolha outro na lista.":
+      "Alguém acabou de pegar esse horário. Escolha outro na lista.",
+    "Este aluno já tem outra sessão deste tipo marcada.":
+      "Este aluno já tem outra sessão deste tipo marcada.",
+    "Esse horário conflita com outra sessão da mesma profissional. Escolha outro na lista.":
+      "Esse horário conflita com outra sessão da mesma profissional. Escolha outro na lista.",
+    "Esta sessão já foi remarcada 3 vezes nas últimas 24 horas. Fale com o aluno antes de mudar de novo.":
+      "Esta sessão já foi remarcada 3 vezes nas últimas 24 horas. Fale com o aluno antes de mudar de novo.",
   };
+}
+
+/**
+ * Guarda de FORMA das actions de remarcação: só admin — o MESMO recorte do
+ * cancelar desta tela. A fronteira real é `gps.sessao_remarcar`
+ * (`gp_is_admin()` ou a dona da sessão). Devolve a frase de recusa, ou `null`.
+ */
+async function recusaSeNaoForAdmin(): Promise<string | null> {
+  try {
+    const ctx = await getContextoSessao();
+    return ctx?.papel === "admin" ? null : SEM_PERMISSAO;
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return MSG_SESSAO_INDETERMINADA;
+  }
+}
+
+const RE_DATA = /^\d{4}-\d{2}-\d{2}$/;
+const RE_HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** `YYYY-MM-DD` que existe no calendário (rejeita 2026-02-30). */
+function dataValida(s: string): boolean {
+  if (!RE_DATA.test(s)) return false;
+  const d = new Date(`${s}T12:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
+/**
+ * Remarca uma sessão FUTURA e `agendado` para outro horário LIVRE da grade do
+ * MESMO responsável — só a equipe. `data`/`hora` são o horário LOCAL de São
+ * Paulo (`YYYY-MM-DD`, `HH:MM`), exatamente os campos `data`/`hora_inicio` de
+ * `HorarioLivre` que `listarHorariosParaRemarcar` devolve. Motivo 3..300
+ * obrigatório (vai no e-mail ao aluno e na trilha).
+ *
+ * Validação aqui é cortesia de tela; quem recusa de fato é a RPC (guarda,
+ * grade revalidada sob `for update`, travas 23505/23P01).
+ */
+export async function remarcarSessao(input: {
+  sessaoId: string;
+  data: string;
+  hora: string;
+  motivo: string;
+}): Promise<
+  { ok: true; sessao: SessaoRemarcarResultado } | { ok: false; erro: string }
+> {
+  const recusa = await recusaSeNaoForAdmin();
+  if (recusa) return { ok: false, erro: recusa };
+
+  const data = (input.data ?? "").trim();
+  const hora = (input.hora ?? "").trim().slice(0, 5);
+  if (!input.sessaoId || !dataValida(data) || !RE_HORA.test(hora)) {
+    return { ok: false, erro: "Escolha o novo horário para continuar." };
+  }
+
+  const motivo = (input.motivo ?? "").trim();
+  if (motivo.length < 3 || motivo.length > 300) {
+    return {
+      ok: false,
+      erro: "O motivo precisa ter entre 3 e 300 caracteres.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data: resultado, error } = await supabase
+    .schema("gps")
+    .rpc("sessao_remarcar", {
+      p_sessao_id: input.sessaoId,
+      p_data: data,
+      p_hora: hora,
+      p_motivo: motivo,
+    });
+
+  if (error) {
+    return {
+      ok: false,
+      erro: traduzirErroBanco(
+        "remarcarSessao",
+        error,
+        { rpc: "gps.sessao_remarcar", sessaoId: input.sessaoId },
+        frasesDasTravas(),
+      ),
+    };
+  }
+
+  revalidatePath("/admin/sessoes");
+  revalidatePath("/sessoes");
+  return { ok: true, sessao: resultado as SessaoRemarcarResultado };
+}
+
+/**
+ * A grade livre para o diálogo de remarcar — chamada pelo componente CLIENTE
+ * ao abrir o diálogo (sob demanda, nunca na listagem). Envolve
+ * `getHorariosLivres` (a MESMA RPC que `gps.sessao_remarcar` usa para
+ * revalidar, então a tela nunca oferece o que a RPC recusa). `responsavelId`
+ * é obrigatório: a remarcação é sempre para a MESMA profissional.
+ */
+export async function listarHorariosParaRemarcar(input: {
+  tipoId: number;
+  responsavelId: string;
+  de?: string;
+  ate?: string;
+}): Promise<{ ok: true; horarios: HorarioLivre[] } | { ok: false; erro: string }> {
+  const recusa = await recusaSeNaoForAdmin();
+  if (recusa) return { ok: false, erro: recusa };
+
+  if (!Number.isInteger(input.tipoId) || !input.responsavelId) {
+    return { ok: false, erro: "Sessão sem tipo ou profissional definidos." };
+  }
+  if ((input.de && !dataValida(input.de)) || (input.ate && !dataValida(input.ate))) {
+    return { ok: false, erro: "Período inválido." };
+  }
+
+  const { horarios, erro } = await getHorariosLivres({
+    tipoId: input.tipoId,
+    responsavelId: input.responsavelId,
+    de: input.de,
+    ate: input.ate,
+  });
+  if (erro) return { ok: false, erro };
+  return { ok: true, horarios };
 }
 
 /**

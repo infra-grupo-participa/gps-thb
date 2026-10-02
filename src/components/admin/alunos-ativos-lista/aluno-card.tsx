@@ -132,7 +132,7 @@ export function AlunoCard({
    * Seleção em lote. Só chega com um modo em lote LIGADO (acesso ou etapas,
    * `modoLoteDe` em `estado-na-url.ts`) — uma caixa que não leva a lugar
    * nenhum é ruído em 158 cards. `finalidade` completa o nome acessível
-   * ("Selecionar Fulano para liberar etapas"): o leitor de tela precisa saber
+   * ("Selecionar Fulano para o lote de etapas e estrela"): o leitor de tela precisa saber
    * PARA QUE está marcando.
    */
   selecao?: {

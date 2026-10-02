@@ -208,7 +208,7 @@ test.describe("Admin · etapas em lote — /admin?lote=etapas", () => {
     await page.goto("/admin?aba=ativos");
 
     // Porta de entrada: o botão da lista liga o modo, e a URL passa a dizer.
-    const ligar = page.getByRole("button", { name: "Liberar etapas em lote" });
+    const ligar = page.getByRole("button", { name: "Etapas e estrela em lote" });
     await expect(ligar).toBeVisible({ timeout: 15_000 });
     await ligar.click();
     await expect(
@@ -223,14 +223,14 @@ test.describe("Admin · etapas em lote — /admin?lote=etapas", () => {
 
     // 🔴 Âncora dupla: exatamente 2 caixas, e cada uma com o nome declarado.
     const caixas = page.getByRole("checkbox", {
-      name: /^Selecionar .+ para liberar etapas$/,
+      name: /^Selecionar .+ para o lote de etapas e estrela$/,
     });
     await expect(caixas).toHaveCount(2, { timeout: 15_000 });
     const ids: string[] = [];
     for (const nome of nomesLote) {
       await expect(
         page.getByRole("checkbox", {
-          name: `Selecionar ${nome} para liberar etapas`,
+          name: `Selecionar ${nome} para o lote de etapas e estrela`,
           exact: true,
         }),
       ).toBeVisible();
@@ -266,7 +266,7 @@ test.describe("Admin · etapas em lote — /admin?lote=etapas", () => {
       for (const nome of nomesLote) {
         await page
           .getByRole("checkbox", {
-            name: `Selecionar ${nome} para liberar etapas`,
+            name: `Selecionar ${nome} para o lote de etapas e estrela`,
             exact: true,
           })
           .check();

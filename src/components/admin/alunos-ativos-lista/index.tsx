@@ -42,6 +42,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LoteDeAcesso } from "./lote-acesso";
 import { LoteDeEtapas } from "./lote-etapas";
+import { LoteDeFavorito } from "./lote-favorito";
 import { ExportarCsv } from "./exportar-csv";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
@@ -483,7 +484,7 @@ export function AlunosAtivosLista({
         {(
           [
             ["acesso", "Criar acesso em lote", "Fechar lote de acesso"],
-            ["etapas", "Liberar etapas em lote", "Fechar lote de etapas"],
+            ["etapas", "Etapas e estrela em lote", "Fechar lote de etapas e estrela"],
           ] as const
         ).map(([modo, ligar, fechar]) => (
           <Button
@@ -509,15 +510,18 @@ export function AlunosAtivosLista({
           }
         />
       ) : modoLote === "etapas" ? (
-        <LoteDeEtapas
-          etapas={etapas}
-          selecionados={selecionados}
-          candidatos={visiveis}
-          onLimpar={() => setMarcados(new Set())}
-          onSelecionarAte={(n) =>
-            setMarcados(new Set(visiveis.slice(0, n).map((a) => a.alunoId)))
-          }
-        />
+        <>
+          <LoteDeEtapas
+            etapas={etapas}
+            selecionados={selecionados}
+            candidatos={visiveis}
+            onLimpar={() => setMarcados(new Set())}
+            onSelecionarAte={(n) =>
+              setMarcados(new Set(visiveis.slice(0, n).map((a) => a.alunoId)))
+            }
+          />
+          <LoteDeFavorito selecionados={selecionados} />
+        </>
       ) : null}
 
       {/* 🔑 O botão fica JUNTO do rodapé "Mostrando X de Y" (14/09/2026): é
@@ -574,7 +578,7 @@ export function AlunosAtivosLista({
               modoLote
                 ? {
                     finalidade:
-                      modoLote === "acesso" ? "criar acesso" : "liberar etapas",
+                      modoLote === "acesso" ? "criar acesso" : "o lote de etapas e estrela",
                     marcado: marcados.has(a.alunoId),
                     onChange: (v) =>
                       setMarcados((s) => {

@@ -26,6 +26,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
+import { logErro } from "@/lib/log";
 import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import {
   LOTE_ETAPAS_MAX_ALUNOS,
@@ -35,6 +36,13 @@ import {
   type ItemLiberacaoEtapa,
   type ResultadoLoteEtapas,
 } from "@/lib/etapas-lote-tipos";
+import {
+  FAVORITO_LOTE_MAXIMO,
+  type EntradaFavoritoLote,
+  type ItemFavoritoLote,
+  type ResultadoFavoritoLote,
+  type ResultadoItemFavoritoLote,
+} from "@/lib/favorito-lote-tipos";
 import {
   getPreviaConversaoSocio,
   type PreviaConversaoSocio,
@@ -129,6 +137,117 @@ export async function definirLiberacaoEtapasEmLote(
     alterados: Number(d.alterados ?? 0),
     semMudanca: Number(d.sem_mudanca ?? 0),
     itens: alterados,
+  };
+}
+
+const RESULTADOS_FAVORITO_LOTE: readonly ResultadoItemFavoritoLote[] = [
+  "removido",
+  "sem_favorito",
+  "pulado",
+];
+
+/**
+ * Tira a estrela (cliente favorito) de até `FAVORITO_LOTE_MAXIMO` alunos.
+ * Atômica: a RPC valida tudo antes de escrever. Favorito que já andou
+ * (confirmado, contrato, sessão, EP, proposta) é PULADO, salvo `forcar` —
+ * aí sai como removido e `motivos` diz o que ficou preso ao cliente antigo.
+ * `simular` devolve o mesmo resultado sem escrever nada.
+ */
+export async function removerFavoritoEmLote(
+  entrada: EntradaFavoritoLote,
+): Promise<{ ok: true; resultado: ResultadoFavoritoLote } | { ok: false; erro: string }> {
+  if (!(await ehAdmin())) return { ok: false, erro: SEM_PERMISSAO };
+  // Server Action é endpoint POST: o formato não é garantido pelo tipo.
+  if (!entrada || typeof entrada !== "object" || !Array.isArray(entrada.alunoIds)) {
+    return { ok: false, erro: "Pedido fora do formato." };
+  }
+  // Recusa o pedido inteiro com id fora do formato (pentest 02/10, BAIXO):
+  // sem isto, um id malformado virava erro genérico de tipo no banco.
+  const UUID_ALUNO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (entrada.alunoIds.some((id) => typeof id !== "string" || !UUID_ALUNO.test(id))) {
+    return { ok: false, erro: "Pedido fora do formato." };
+  }
+  const ids = Array.from(new Set(entrada.alunoIds as string[]));
+  if (ids.length === 0) return { ok: false, erro: "Selecione ao menos um aluno." };
+  if (ids.length > FAVORITO_LOTE_MAXIMO) {
+    return { ok: false, erro: `No máximo ${FAVORITO_LOTE_MAXIMO} alunos por vez.` };
+  }
+  const texto = (typeof entrada.motivo === "string" ? entrada.motivo : "").trim();
+  if (texto.length < MOTIVO_MIN) {
+    return { ok: false, erro: "Escreva o motivo — ele fica no histórico deste aluno." };
+  }
+  if (texto.length > MOTIVO_MAX) {
+    return { ok: false, erro: `O motivo passa de ${MOTIVO_MAX} caracteres.` };
+  }
+  // Só `true` literal liga: valor forjado não vira escrita nem força.
+  const simular = entrada.simular === true;
+  const forcar = entrada.forcar === true;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("admin_remover_favorito_lote", {
+      p_alunos: ids,
+      p_motivo: texto,
+      p_simular: simular,
+      p_forcar: forcar,
+    });
+  if (error) {
+    const traduzida = traduzirErroBanco("central/removerFavoritoEmLote", error, {
+      alunos: ids.length,
+      simular,
+      forcar,
+    });
+    // Frase com contagem não casa por igualdade em FRASES_DO_BANCO; o prefixo
+    // é fixo e escrito por nós (mesmo caso do lote de etapas).
+    const bruto = (error.message ?? "").trim();
+    return {
+      ok: false,
+      erro: bruto.startsWith("Sem ambiente no programa:") ? bruto : traduzida,
+    };
+  }
+
+  const d = (data ?? {}) as Record<string, unknown>;
+  const brutos = Array.isArray(d.itens) ? (d.itens as Record<string, unknown>[]) : [];
+  // Resultado fora do catálogo = contrato quebrado entre banco e tela: falha
+  // ruidosa, nunca "pulado" em silêncio (veredito 02/10).
+  if (brutos.some((i) => !RESULTADOS_FAVORITO_LOTE.includes(i.resultado as ResultadoItemFavoritoLote))) {
+    logErro("removerFavoritoEmLote.contrato", { message: "resultado fora do catálogo" }, { simular });
+    return {
+      ok: false,
+      erro: simular
+        ? "Não deu para montar a prévia. Recarregue e tente de novo."
+        : "A gravação respondeu fora do esperado. Recarregue a lista e confira as estrelas.",
+    };
+  }
+  const itens: ItemFavoritoLote[] = brutos.map((i) => ({
+    alunoId: String(i.aluno_id ?? ""),
+    clienteId: typeof i.cliente_id === "string" ? i.cliente_id : null,
+    resultado: RESULTADOS_FAVORITO_LOTE.includes(i.resultado as ResultadoItemFavoritoLote)
+      ? (i.resultado as ResultadoItemFavoritoLote)
+      : "pulado",
+    motivos: Array.isArray(i.motivos)
+      ? i.motivos.filter((m): m is string => typeof m === "string")
+      : [],
+  }));
+
+  if (!simular) {
+    const removidos = itens.filter((i) => i.resultado === "removido");
+    for (const alunoId of new Set(removidos.map((i) => i.alunoId))) {
+      revalidatePath(`/admin/aluno/${alunoId}`, "layout");
+    }
+    revalidatePath("/admin", "layout");
+    if (removidos.length > 0) revalidatePath("/", "layout");
+  }
+
+  return {
+    ok: true,
+    resultado: {
+      removidos: Number(d.removidos ?? 0),
+      semFavorito: Number(d.sem_favorito ?? 0),
+      pulados: Number(d.pulados ?? 0),
+      itens,
+    },
   };
 }
 

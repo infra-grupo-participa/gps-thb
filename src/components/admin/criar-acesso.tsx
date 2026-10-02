@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Info, KeyRound, TriangleAlert, UserRoundPlus } from "lucide-react";
@@ -27,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { AvisoInline } from "@/components/ui/aviso-inline";
 import { Input } from "@/components/ui/input";
@@ -273,16 +274,45 @@ export function CriarAcessoPainel({
                 <div className="font-medium">{sel.nome}</div>
                 <div className="text-xs text-muted-foreground">
                   {sel.documento ? `CPF/CNPJ: ${sel.documento}` : "sem CPF"} ·{" "}
-                  {sel.jaNoGps
-                    ? "já tem ambiente no programa"
-                    : "novo no programa"}
+                  {sel.socioDe
+                    ? `sócio(a) de ${sel.socioDe.nome ?? "outro parceiro"}`
+                    : sel.jaNoGps
+                      ? "já tem ambiente no programa"
+                      : "novo no programa"}
                 </div>
               </div>
+
+              {/* Sócio: o login já existe e pertence ao ambiente do titular.
+                  "Criar login" aqui falharia sempre ("Já existe um registro" /
+                  "Este login já pertence a outro ambiente") — caso Marisa
+                  Tiedt, 02/10/2026. O caminho certo é Gerenciar acesso, lá. */}
+              {sel.socioDe ? (
+                <div className="grid gap-3 rounded-lg bg-neutro p-3 text-neutro-foreground">
+                  <p className="flex items-center gap-2 text-sm font-medium">
+                    <Info aria-hidden className="size-4 shrink-0" />
+                    Esta pessoa é sócia de {sel.socioDe.nome ?? "outro parceiro"}
+                  </p>
+                  <p className="text-xs">
+                    O acesso de sócio se gerencia no ambiente do titular: abra o
+                    ambiente, clique em <strong>Gerenciar acesso</strong> e use{" "}
+                    <strong>Definir senha</strong> na linha dela.
+                  </p>
+                  <div>
+                    <Link
+                      href={`/admin/aluno/${sel.socioDe.alunoId}`}
+                      className={buttonVariants({ size: "sm" })}
+                      onClick={() => onOpenChange(false)}
+                    >
+                      Abrir o ambiente de {sel.socioDe.nome ?? "titular"}
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
 
               {/* 🔴 O diagnóstico não respondeu: dizer isso é o mínimo. Criar
                   o login assim mesmo continua possível — o que não pode é o
                   admin achar que a conferência foi feita e deu limpo. */}
-              {erroDiag ? (
+              {sel.socioDe ? null : erroDiag ? (
                 <AvisoInline>
                   Não foi possível conferir este e-mail nos outros portais do
                   grupo ({erroDiag}) — confira antes de criar, ou tente de novo
@@ -290,7 +320,7 @@ export function CriarAcessoPainel({
                 </AvisoInline>
               ) : null}
 
-              {diag && !diag.temDireito && (
+              {!sel.socioDe && diag && !diag.temDireito && (
                 <div className="rounded-lg bg-atencao p-3 text-atencao-foreground">
                   <p className="flex items-center gap-2 text-sm font-medium">
                     <TriangleAlert aria-hidden className="size-4 shrink-0" />
@@ -303,7 +333,7 @@ export function CriarAcessoPainel({
                 </div>
               )}
 
-              {diag?.temLogin && (
+              {!sel.socioDe && diag?.temLogin && (
                 <div className="rounded-lg bg-neutro p-3 text-neutro-foreground">
                   <p className="flex items-center gap-2 text-sm font-medium">
                     <Info aria-hidden className="size-4 shrink-0" />
@@ -338,6 +368,8 @@ export function CriarAcessoPainel({
                 </div>
               )}
 
+              {sel.socioDe ? null : (
+              <>
               <div className="grid gap-2">
                 <Label htmlFor="ca-email">E-mail do parceiro</Label>
                 <Input
@@ -384,6 +416,8 @@ export function CriarAcessoPainel({
                 parceiro entrar. <strong>Só criar ambiente</strong>: o parceiro se
                 cadastra depois com o próprio CPF.
               </p>
+              </>
+              )}
             </div>
           ) : (
             <>
@@ -445,7 +479,11 @@ export function CriarAcessoPainel({
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          {a.jaNoGps ? (
+                          {a.socioDe ? (
+                            <Badge variant="outline" className="text-[10px]">
+                              sócio(a) de {a.socioDe.nome ?? "outro parceiro"}
+                            </Badge>
+                          ) : a.jaNoGps ? (
                             <Badge variant="outline" className="text-[10px]">
                               no programa
                             </Badge>

@@ -201,10 +201,37 @@ export async function buscarAlunos(termo: string): Promise<AlunoBusca[]> {
     : { data: [] as { aluno_id: string }[] };
   const idsNoGps = new Set((membros ?? []).map((m) => m.aluno_id));
 
-  return ranqueado.map((a) => ({
-    ...a,
-    jaNoGps: idsNoGps.has(a.id),
-  }));
+  // Quem é SÓCIO em outro ambiente (pessoa_aluno_id = o cadastro dele): sem
+  // isto a tela dizia "novo no programa" e oferecia "Criar login", que falha
+  // sempre (caso Marisa Tiedt, 02/10/2026 — os 13 sócios estavam assim).
+  const { data: socios } = ids.length
+    ? await supabase
+        .schema("gps")
+        .from("membros")
+        .select("aluno_id, pessoa_aluno_id")
+        .eq("papel", "socio")
+        .in("pessoa_aluno_id", ids)
+    : { data: [] as { aluno_id: string; pessoa_aluno_id: string }[] };
+  const titularDe = new Map<string, string>();
+  for (const m of (socios ?? []) as { aluno_id: string; pessoa_aluno_id: string }[]) {
+    if (m.pessoa_aluno_id !== m.aluno_id) titularDe.set(m.pessoa_aluno_id, m.aluno_id);
+  }
+  const idsTitulares = [...new Set(titularDe.values())];
+  const { data: titulares } = idsTitulares.length
+    ? await supabase.from("thb_alunos").select("id, nome").in("id", idsTitulares)
+    : { data: [] as { id: string; nome: string | null }[] };
+  const nomeTitular = new Map(
+    ((titulares ?? []) as { id: string; nome: string | null }[]).map((t) => [t.id, t.nome]),
+  );
+
+  return ranqueado.map((a) => {
+    const titular = titularDe.get(a.id) ?? null;
+    return {
+      ...a,
+      jaNoGps: idsNoGps.has(a.id),
+      socioDe: titular ? { alunoId: titular, nome: nomeTitular.get(titular) ?? null } : null,
+    };
+  });
 }
 
 /** Turmas para o cadastro manual (a atual primeiro). */
@@ -346,6 +373,8 @@ export async function cadastrarAluno(
       ...(criado as Aluno),
       documento: (criado as { documento: string | null }).documento,
       jaNoGps: false,
+      // Cadastro recém-criado: ainda não é membro de ambiente nenhum.
+      socioDe: null,
     },
   };
 }

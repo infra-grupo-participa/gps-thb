@@ -11,12 +11,13 @@
  */
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
 import { adicionarSocioAluno } from "@/app/admin/senha-actions";
 import { buscarAlunos } from "@/app/admin/actions";
 import type { AlunoBusca } from "@/lib/admin-acesso-tipos";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -149,11 +150,37 @@ export function AdicionarSocio({
             <div className="font-medium">{sel.nome}</div>
             <div className="text-xs text-muted-foreground">
               {sel.documento ? `CPF/CNPJ: ${sel.documento}` : "sem CPF"} ·{" "}
-              {sel.jaNoGps
-                ? "já tem ambiente próprio no programa"
-                : "novo no programa"}
+              {sel.socioDe
+                ? `já é sócio(a) de ${sel.socioDe.nome ?? "outro parceiro"}`
+                : sel.jaNoGps
+                  ? "já tem ambiente próprio no programa"
+                  : "novo no programa"}
             </div>
           </div>
+          {/* 🔴 Já é sócio de outro ambiente (caso Marisa Tiedt, 02/10/2026):
+              "Adicionar como sócio" aqui MOVERIA a pessoa do ambiente de lá
+              (`on conflict (user_id) do update`, …219). Não oferece. */}
+          {sel.socioDe ? (
+            <div className="grid gap-2 rounded-lg bg-neutro p-3 text-neutro-foreground">
+              <p className="text-sm font-medium">
+                Esta pessoa já é sócia de {sel.socioDe.nome ?? "outro parceiro"}.
+              </p>
+              <p className="text-xs">
+                Adicioná-la aqui a tiraria do ambiente de lá. Se a intenção é
+                mudar de ambiente, use &ldquo;Mover sócio&rdquo; na aba Resolver
+                do titular atual.
+              </p>
+              <div>
+                <Link
+                  href={`/admin/aluno/${sel.socioDe.alunoId}`}
+                  className={buttonVariants({ size: "sm", variant: "outline" })}
+                >
+                  Abrir o ambiente de {sel.socioDe.nome ?? "titular"}
+                </Link>
+              </div>
+            </div>
+          ) : (
+          <>
           <div className="grid gap-2">
             <Label htmlFor="socio-email">E-mail do sócio</Label>
             <Input
@@ -197,6 +224,8 @@ export function AdicionarSocio({
               setLoginExistente(false);
             }}
           />
+          </>
+          )}
         </>
       ) : (
         <>
@@ -235,7 +264,11 @@ export function AdicionarSocio({
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      {a.jaNoGps ? (
+                      {a.socioDe ? (
+                        <Badge variant="outline" className="text-[10px]">
+                          sócio(a) de {a.socioDe.nome ?? "outro parceiro"}
+                        </Badge>
+                      ) : a.jaNoGps ? (
                         <Badge variant="outline" className="text-[10px]">
                           já no programa
                         </Badge>

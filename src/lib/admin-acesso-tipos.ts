@@ -43,6 +43,13 @@ export interface CompradorHmAguardando extends CandidatoAoLote {
 export interface AlunoBusca extends Aluno {
   documento: string | null;
   jaNoGps: boolean;
+  /**
+   * A pessoa é SÓCIA no ambiente de outro titular (02/10/2026, caso Marisa
+   * Tiedt). Sem isto a busca dizia "novo no programa" para os 13 sócios e
+   * oferecia "Criar login", que sempre falha: o login dela já existe e já
+   * pertence ao ambiente do titular. O acesso do sócio se gerencia lá.
+   */
+  socioDe: { alunoId: string; nome: string | null } | null;
 }
 
 export interface AlunoDuplicado {

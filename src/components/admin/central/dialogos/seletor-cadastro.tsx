@@ -140,7 +140,11 @@ export function SeletorCadastro({
                       ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      {a.jaNoGps ? (
+                      {a.socioDe ? (
+                        <Badge variant="neutral" icone={false}>
+                          sócio(a) de {a.socioDe.nome ?? "outro parceiro"}
+                        </Badge>
+                      ) : a.jaNoGps ? (
                         <Badge variant="neutral" icone={false}>
                           já tem ambiente
                         </Badge>

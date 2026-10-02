@@ -4,6 +4,21 @@ import { MenuDeContas } from "@/components/menu-de-contas";
 import { lerContas } from "@/lib/contas-do-navegador";
 import { TrilhoDeNavegacao, type NavItem } from "@/components/nav-tabs";
 import { AutoLogout } from "@/components/auto-logout";
+import { contarChamadosAguardandoParceiro } from "@/lib/data/chamados-selo";
+
+/**
+ * Quantos chamados a equipe respondeu e esperam o parceiro — ou `0` se a
+ * contagem falhar. Falhar aqui não pode derrubar o header (é ele que leva a
+ * todas as telas); sem número, a aba simplesmente fica sem selo, que é o
+ * estado de antes desta feature.
+ */
+async function respostasAguardando(): Promise<number> {
+  try {
+    return await contarChamadosAguardandoParceiro();
+  } catch {
+    return 0;
+  }
+}
 
 export async function AppHeader({
   nome,
@@ -27,9 +42,36 @@ export async function AppHeader({
   // esquecesse mostraria um menu sem a troca de conta, sem erro nenhum.
   //
   // A conta ATUAL sai da lista: trocar para si mesmo não é troca.
-  const outrasContas = (await lerContas())
+  //
+  // 🔑 O selo de respostas (Onda 1.1) segue a MESMA lógica: o header conta
+  // sozinho, UMA vez por requisição (`contarChamadosAguardandoParceiro` tem
+  // cache por request), e só quando algum item pede (`seloRespostas`, que só
+  // a aba Suporte do parceiro liga). Admin e modo assistência não pagam a
+  // consulta. Em paralelo com as contas — nenhuma espera pela outra.
+  const pedeSelo = (navItems ?? []).some((i) => i.seloRespostas);
+  const [contas, respostas] = await Promise.all([
+    lerContas(),
+    pedeSelo ? respostasAguardando() : Promise.resolve(0),
+  ]);
+  const outrasContas = contas
     .filter((c) => c.email !== email)
     .map(({ userId, email: e, nome: n }) => ({ userId, email: e, nome: n }));
+  const itensDoTrilho =
+    respostas > 0
+      ? (navItems ?? []).map((i) =>
+          i.seloRespostas
+            ? {
+                ...i,
+                badge: respostas,
+                badgeRotulo: respostas === 1 ? "1 resposta" : `${respostas} respostas`,
+                badgeAriaLabel:
+                  respostas === 1
+                    ? `${i.label} — 1 resposta da equipe esperando você`
+                    : `${i.label} — ${respostas} respostas da equipe esperando você`,
+              }
+            : i,
+        )
+      : navItems;
 
   // 🔑 Item marcado `noMenuDeContas` EXISTE no array (é `nav.ts` quem decide
   // se o usuário tem direito a ele — hoje "Equipe", atrás da flag de sempre),
@@ -101,7 +143,7 @@ export async function AppHeader({
           // 🔑 A fronteira cliente sobe para UM nó: com ela em cada `NavTabs`,
           // as três a quatro instâncias da mesma tela assinariam o router
           // separadamente e releriam o `sessionStorage` do painel uma vez cada.
-          <TrilhoDeNavegacao items={navItems} fixo={navFixo} />
+          <TrilhoDeNavegacao items={itensDoTrilho ?? navItems} fixo={navFixo} />
         ) : null}
       </header>
     </>

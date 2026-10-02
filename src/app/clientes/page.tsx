@@ -8,7 +8,15 @@ import { ClientesManager } from "@/components/clientes/clientes-manager";
 
 export const metadata = { title: "Clientes" };
 
-export default async function ClientesPage() {
+export default async function ClientesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ novo?: string | string[] }>;
+}) {
+  // `?novo=1` vem do card "Continue de onde parou" e abre o "Novo cliente".
+  // Só o valor EXATO "1" liga: qualquer outra coisa (array, "true", "") não.
+  const { novo } = await searchParams;
+  const abrirNovo = novo === "1";
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
   if (ctx.papel === "admin") redirect("/admin");
@@ -44,6 +52,7 @@ export default async function ClientesPage() {
           alunoId={alunoId}
           clientesIniciais={clientes}
           basePath=""
+          abrirNovoAoMontar={abrirNovo}
         />
       </main>
     </>

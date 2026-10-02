@@ -24,9 +24,23 @@
  * 🔑 A ajuda de cada opção fica ABAIXO do campo e muda com a escolha — as duas
  * listas já carregam `ajuda` (é o mesmo texto do cabeçalho do quadro e do
  * `title` dos chips), e sem ela "Fechamento" e "Conhecido" são só palavras.
+ *
+ * 🔴 "SALVAR E ADICIONAR OUTRO" (Onda 1.2, 02/10/2026). Reclamação literal do
+ * Digisac: *"só consegui cadastrar um"*. O único botão criava e levava para a
+ * ficha; para o segundo cliente era voltar, achar "Adicionar" e recomeçar. O
+ * botão novo grava, limpa nome e telefone, devolve o foco ao nome e diz em
+ * texto quem foi salvo e quantos já existem. "Criar e abrir a ficha" continua
+ * fazendo o que sempre fez (e o Enter continua sendo ele).
+ *
+ * Por isso o TELEFONE entrou aqui (opcional): na sequência "adicionar outro" a
+ * pessoa não passa pela ficha, e sem telefone a ficha não conta para os 30 —
+ * cadastrar 10 sem telefone seria trabalho que não aparece no progresso. Fase
+ * e grau NÃO são limpos entre um e outro: quem cadastra a família inteira
+ * repete o mesmo grau.
  */
 
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
+import { mascaraTelefone } from "@/lib/masks";
 import type { FaseCliente } from "@/lib/types";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { Button } from "@/components/ui/button";
@@ -50,30 +64,61 @@ import {
 
 export function DialogoNovoCliente({
   nome,
+  telefone,
   fase,
   grau,
   pending,
   erro,
+  confirmacao,
+  salvosNaSequencia,
+  emCurso,
   onNome,
+  onTelefone,
   onFase,
   onGrau,
   onCriar,
+  onSalvarEOutro,
   onCancelar,
 }: {
   nome: string;
+  /** Mascarado, como na ficha. `""` = não informado. */
+  telefone: string;
   fase: FaseCliente;
   /** `""` = não informado. Mesmo contrato do campo da ficha. */
   grau: string;
   pending: boolean;
   erro: string | null;
+  /**
+   * "✓ Fulano salvo — N cadastrados…", montado por quem conhece a lista.
+   * `null` antes do primeiro "Salvar e adicionar outro".
+   */
+  confirmacao: string | null;
+  /**
+   * Quantos o "Salvar e adicionar outro" já gravou nesta abertura. Cada
+   * incremento devolve o foco ao nome — é o sinal de "pode digitar o próximo".
+   */
+  salvosNaSequencia: number;
+  /** Qual dos dois botões disparou a gravação — só ele diz "Salvando…". */
+  emCurso: "ficha" | "outro" | null;
   onNome: (v: string) => void;
+  onTelefone: (v: string) => void;
   onFase: (v: FaseCliente) => void;
   onGrau: (v: string) => void;
   onCriar: () => void;
+  onSalvarEOutro: () => void;
   onCancelar: () => void;
 }) {
   const uid = useId();
   const idNome = `${uid}-nome`;
+  const idTelefone = `${uid}-telefone`;
+  const idTelefoneAjuda = `${uid}-telefone-ajuda`;
+  const refNome = useRef<HTMLInputElement>(null);
+
+  // Salvou e limpou: o cursor volta ao nome. Só DOM, nenhum estado — o
+  // contador vem de cima e é a única coisa que dispara isto.
+  useEffect(() => {
+    if (salvosNaSequencia > 0) refNome.current?.focus();
+  }, [salvosNaSequencia]);
   const idFase = `${uid}-fase`;
   const idFaseAjuda = `${uid}-fase-ajuda`;
   const idGrau = `${uid}-grau`;
@@ -98,9 +143,8 @@ export function DialogoNovoCliente({
                 que decide se a ficha CONTA para os 30 (ficha completa = nome +
                 telefone). 18 fichas em 9 ambientes ficaram sem telefone; duas
                 pessoas estão a uma ficha de destravar a Etapa 01. */}
-            Quem é o cliente e em que ponto ele está. Na ficha que abre em
-            seguida, preencha o telefone — sem ele a ficha não conta para os
-            30.
+            Nome e telefone são o que faz a ficha contar para os 30. O resto
+            você preenche depois, na ficha.
           </DialogDescription>
         </DialogHeader>
 
@@ -111,15 +155,43 @@ export function DialogoNovoCliente({
             <Label htmlFor={idNome}>Nome</Label>
             <Input
               id={idNome}
+              ref={refNome}
               value={nome}
               onChange={(e) => onNome(e.target.value)}
               placeholder="Como você chama esta pessoa"
               autoFocus
               // Enter cria, como em qualquer formulário de uma linha só.
               onKeyDown={(e) => {
-                if (e.key === "Enter" && nomeOk && !pending) onCriar();
+                if (e.key === "Enter" && nomeOk && !pending)
+                  // Em sequência ("adicionar outro"), Enter continua a sequência.
+                  (salvosNaSequencia > 0 ? onSalvarEOutro : onCriar)();
               }}
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor={idTelefone}>Telefone (com DDD)</Label>
+            <Input
+              id={idTelefone}
+              value={telefone}
+              onChange={(e) => onTelefone(mascaraTelefone(e.target.value))}
+              inputMode="tel"
+              autoComplete="off"
+              placeholder="(11) 98888-7777"
+              aria-describedby={idTelefoneAjuda}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && nomeOk && !pending)
+                  // Em sequência ("adicionar outro"), Enter continua a sequência.
+                  (salvosNaSequencia > 0 ? onSalvarEOutro : onCriar)();
+              }}
+            />
+            <p
+              id={idTelefoneAjuda}
+              className="text-xs leading-snug text-muted-foreground"
+            >
+              Pode deixar em branco e preencher depois — mas sem telefone a
+              ficha ainda não conta para os 30.
+            </p>
           </div>
 
           <div className="grid gap-2">
@@ -193,10 +265,30 @@ export function DialogoNovoCliente({
         >
           {erro}
         </p>
+        {/* A confirmação do "adicionar outro". `polite`: não interrompe quem já
+            está digitando o próximo nome. Some quando há erro, para as duas
+            frases não se contradizerem. */}
+        <p
+          role="status"
+          aria-live="polite"
+          className="corpo-sm font-medium text-foreground empty:hidden"
+        >
+          {erro ? null : confirmacao}
+        </p>
 
         <DialogFooter>
           <Button variant="outline" onClick={onCancelar} disabled={pending}>
-            Cancelar
+            {salvosNaSequencia > 0 ? "Fechar" : "Cancelar"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={onSalvarEOutro}
+            disabled={pending || !nomeOk}
+            aria-busy={(pending && emCurso === "outro") || undefined}
+          >
+            {pending && emCurso === "outro"
+              ? "Salvando…"
+              : "Salvar e adicionar outro"}
           </Button>
           {/* Desabilitado sem nome: o botão não oferece o que o servidor vai
               recusar. A razão fica no texto abaixo do campo, não num toast
@@ -204,9 +296,9 @@ export function DialogoNovoCliente({
           <Button
             onClick={onCriar}
             disabled={pending || !nomeOk}
-            aria-busy={pending || undefined}
+            aria-busy={(pending && emCurso === "ficha") || undefined}
           >
-            {pending ? "Criando…" : "Criar e abrir a ficha"}
+            {pending && emCurso === "ficha" ? "Criando…" : "Criar e abrir a ficha"}
           </Button>
         </DialogFooter>
       </DialogContent>

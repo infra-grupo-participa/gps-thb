@@ -57,7 +57,15 @@ export function alunoNavItems(
     // deixaria o aluno sem saber que ele existe"; a posição contradizia o
     // princípio. Aqui ela cai na primeira dobra, ao lado da aba onde o aluno
     // trava (Clientes).
-    { href: `${basePath}/chamados`, label: "Suporte", icon: "suporte" },
+    {
+      href: `${basePath}/chamados`,
+      label: "Suporte",
+      icon: "suporte",
+      // 🔑 Selo "N respostas" (Onda 1.1, 02/10/2026): só para o parceiro
+      // logado (`basePath === ""`). No modo assistência a contagem seria a do
+      // ADMIN, não a do ambiente — e o admin já tem a fila própria.
+      seloRespostas: basePath === "",
+    },
     // 📅 Sessões com a equipe jurídica (22/09/2026) — Entrevista Prévia e
     // Reunião Preliminar com as Dras. Elaine e Cristiane. O aluno escolhe um
     // horário que a equipe JÁ declarou que pode (`gps.sessao_*`).

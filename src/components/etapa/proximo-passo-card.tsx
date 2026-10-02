@@ -95,7 +95,10 @@ export function ProximoPassoCard({
     <Link
       href={
         vaiParaClientes
-          ? `${basePath}/clientes`
+          ? // `?novo=1`: a página abre o "Novo cliente" sozinha (Onda 1.2,
+            // 02/10/2026). O botão diz "Cadastrar clientes"; cair na lista e
+            // ainda procurar "Adicionar" era um passo a mais para quem trava.
+            `${basePath}/clientes?novo=1`
           : `${basePath}/etapa/${passo.etapa}`
       }
       className="group flex min-w-0 flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border border-primary/30 bg-card px-5 py-5 shadow-(--shadow-raised) transition-[box-shadow,transform,border-color] duration-150 ease-out hover:-translate-y-px hover:border-primary/60 hover:shadow-(--shadow-hover)"

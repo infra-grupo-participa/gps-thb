@@ -15,9 +15,12 @@ import { UUID_RE } from "@/lib/texto";
  *
  * 🔑 QUANDO SAI — quem decide é o banco (`gps.chamado_abrir`/
  * `gps.chamado_responder` devolvem `avisar` preenchido ou nulo):
- *   - para a EQUIPE: só na MUDANÇA DE STATUS (aluno escreve num chamado que
- *     não estava `aberto`). Cinco mensagens seguidas do aluno geram UM e-mail
- *     — a trava anti-flood é o modelo, não um contador aqui.
+ *   - para a EQUIPE: na MUDANÇA DE STATUS (aluno escreve num chamado que
+ *     não estava `aberto`) e, desde a `…335` (02/10/2026), também a cada nova
+ *     mensagem do parceiro num chamado já aberto — AGRUPADO: no máximo 1
+ *     e-mail por chamado a cada 30 min, citando quantas chegaram. A janela
+ *     vive no banco (`chamados.ultimo_aviso_equipe_em`), não aqui. Chave
+ *     `gps.config.chamados_aviso_por_mensagem` = 'false' volta à regra antiga.
  *   - para o PARCEIRO: a CADA resposta da equipe (`…319`, 28/09/2026). A
  *     resposta que vinha depois de um "aguarde" ficava sem e-mail e o parceiro
  *     só a via dias depois. Quem escreve é a equipe: não há vetor de rajada.
@@ -40,28 +43,52 @@ function assuntoSeguro(v: string): string {
 }
 
 /**
- * Chamado ABERTO pelo aluno → avisa a equipe.
+ * Aviso à EQUIPE: chamado aberto pelo aluno, ou mensagem nova dele num
+ * chamado existente.
  *
  * `para` é a lista de `gps.config.chamados_email_equipe` (editável em
  * /admin/chamados, sem deploy) ou, se ela estiver vazia, `EMAIL_SUPORTE`. Lista
  * vazia nas duas pontas = ninguém é avisado, e quem chama REGISTRA isso — a
  * tela do admin mostra o aviso em destaque.
+ *
+ * `mensagensNovas` ausente = chamado NOVO (copy "abriu um chamado"). Presente
+ * (≥ 1) = o parceiro escreveu num chamado que já existia; o número é o que o
+ * banco contou desde o último aviso (`gps.chamado_responder`, …335).
  */
 export async function enviarChamadoAbertoParaEquipe(params: {
   para: string[];
   alunoNome: string;
   assunto: string;
   chamadoId: string;
+  mensagensNovas?: number;
 }): Promise<ResultadoEmail> {
   const { para, alunoNome, assunto, chamadoId } = params;
   if (!para.length) return { ok: false, erro: "Sem destinatário." };
 
   const url = linkDoChamado("admin/chamados", chamadoId);
   const nome = (alunoNome ?? "").trim() || "Um aluno";
+  const n =
+    typeof params.mensagensNovas === "number" && Number.isFinite(params.mensagensNovas)
+      ? Math.max(1, Math.floor(params.mensagensNovas))
+      : null;
+
+  // Frase do que aconteceu, em texto puro (o HTML escapa `nome` à parte).
+  const acao =
+    n === null
+      ? "abriu um chamado no portal."
+      : n === 1
+        ? "escreveu no chamado."
+        : `mandou ${n} mensagens novas no chamado.`;
+  const assuntoEmail =
+    n === null
+      ? `Novo chamado: ${assuntoSeguro(assunto)}`
+      : n === 1
+        ? `Nova mensagem no chamado: ${assuntoSeguro(assunto)}`
+        : `${n} mensagens novas no chamado: ${assuntoSeguro(assunto)}`;
 
   const corpo = `
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
-      <strong>${esc(nome)}</strong> abriu um chamado no portal.
+      <strong>${esc(nome)}</strong> ${esc(acao)}
     </p>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
       Assunto: <strong>${esc(assuntoSeguro(assunto))}</strong>
@@ -72,7 +99,7 @@ export async function enviarChamadoAbertoParaEquipe(params: {
     </p>`;
 
   const texto = [
-    `${nome} abriu um chamado no portal.`,
+    `${nome} ${acao}`,
     `Assunto: ${assuntoSeguro(assunto)}`,
     "",
     `Responder em: ${url}`,
@@ -81,10 +108,13 @@ export async function enviarChamadoAbertoParaEquipe(params: {
 
   return enviar({
     para,
-    assunto: `Novo chamado: ${assuntoSeguro(assunto)}`,
+    assunto: assuntoEmail,
     html: layout({
-      preheader: "Um aluno abriu um chamado no portal.",
-      titulo: "Novo chamado no portal",
+      preheader:
+        n === null
+          ? "Um aluno abriu um chamado no portal."
+          : "Um aluno escreveu num chamado do portal.",
+      titulo: n === null ? "Novo chamado no portal" : "Mensagem nova no chamado",
       corpo,
     }),
     texto,

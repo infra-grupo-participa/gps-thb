@@ -40,19 +40,22 @@ export function SequenciaMensagens({ bloqueada }: { bloqueada: boolean }) {
 
   return (
     <>
+      {/* Os modelos ficam SEMPRE abertos para leitura e cópia (pedido 02/10/2026:
+          o parceiro achava que "não existe modelo"). `bloqueada` só muda o
+          aviso — a conclusão do passo segue travada pelos 30 em `etapas.ts`. */}
+      {bloqueada ? (
+        <p className="mb-2 corpo-sm text-muted-foreground">
+          Você vai usar estes modelos quando concluir a lista de 30 clientes.
+          Pode ler e copiar desde já.
+        </p>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         {SEQUENCIA_MENSAGENS.map((m) => (
           <button
             key={m.id}
             type="button"
-            disabled={bloqueada}
             onClick={() => setAberta(m)}
-            className={
-              "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-left corpo-sm transition " +
-              (bloqueada
-                ? "cursor-not-allowed border-dashed border-borda-fina text-muted-foreground"
-                : "border-borda-fina bg-card hover:border-marca-acao hover:bg-primary/[0.04] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring")
-            }
+            className="inline-flex items-center gap-2 rounded-lg border border-borda-fina bg-card px-3 py-1.5 text-left corpo-sm transition hover:border-marca-acao hover:bg-primary/[0.04] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <MessageSquareText aria-hidden className="size-4 shrink-0 text-primary" />
             <span>

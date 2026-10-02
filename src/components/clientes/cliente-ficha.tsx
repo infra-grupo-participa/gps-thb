@@ -97,6 +97,8 @@ import { FichaBarraSalvar } from "@/components/clientes/ficha-barra-salvar";
 import { ControleDiscDialogoContexto } from "@/components/clientes/disc-dialogo";
 import {
   ABAS_FICHA,
+  ROTULO_DA_ABA,
+  ROTULO_DO_CAMPO,
   CAMPOS_NO_POPUP_DISC,
   alteradoPorAba,
   camposAlteradosDaFicha,
@@ -280,7 +282,15 @@ export function ClienteFicha({
     numeroParaMoeda(cliente.valor_honorarios),
   );
   const [contratoUrl, setContratoUrl] = useState(cliente.contrato_url ?? "");
-  const [pending, startTransition] = useTransition();
+  const [pendingOutros, startTransition] = useTransition();
+  /**
+   * 🔴 "Salvar ficha" honesto (Onda 1.5, 02/10/2026). O salvar tem a SUA
+   * transição: com uma só, "Salvando…" acendia também quando a pessoa mexia
+   * na estrela — o botão dizia que gravava a ficha sem gravar nada. `pending`
+   * (a soma) continua travando tudo que travava antes.
+   */
+  const [salvando, startSalvar] = useTransition();
+  const pending = pendingOutros || salvando;
   /**
    * Por que a ficha recusou salvar — a frase EXATA, no `role="alert"` da barra
    * de salvar. Não some sozinha em 4 segundos; some quando ele salva de novo.
@@ -596,7 +606,10 @@ export function ClienteFicha({
     // clientes (39 ambientes) estão com ZERO problema marcado, dado legado de
     // meses. Travar o salvamento deixaria 40% das fichas sem poder corrigir
     // telefone ou fase. A cobrança é da tarefa 1.1, não do botão Salvar.
-    startTransition(async () => {
+    // O QUE vai ser gravado, lido no clique (depois do refresh a comparação
+    // volta a zero e não diria mais nada).
+    const oQueFoiSalvo = descreverAlteracoes(camposAlterados, abasAlteradas);
+    startSalvar(async () => {
       const res = await atualizarCliente(cliente.id, alunoId, {
         nome: nome.trim(),
         telefone: telefone.trim() || null,
@@ -652,7 +665,11 @@ export function ClienteFicha({
         return;
       }
       setTentouSalvar(false);
-      toast.success("Ficha salva.");
+      // 🔴 Diz O QUE foi salvo (Digisac: "disse que salvou mas não salvou").
+      // O "Ficha salva." genérico aparecia também quando o que a pessoa tinha
+      // feito era anexar um croqui ou um link — que se gravam sozinhos e
+      // nunca passaram por este botão.
+      toast.success(oQueFoiSalvo);
       // 🔑 `fichaNova` vem de `cliente.telefone`, que é prop do servidor: sem o
       // refresh, quem acabou de salvar o telefone continuaria vendo "Registro
       // do contato" desabilitado até navegar para outra tela. E os contadores
@@ -828,6 +845,7 @@ export function ClienteFicha({
         erroSalvar={erroSalvar ?? alertaLocal}
         aviso={fraseDaBarra({ pendencias: barram, abasAlteradas })}
         pending={pending}
+        salvando={salvando}
         onSalvar={salvar}
         onIrParaCampo={
           primeiraQueBarra ? () => levarAoCampo(primeiraQueBarra) : null
@@ -865,6 +883,28 @@ export function ClienteFicha({
     </div>
     </ControleDiscDialogoContexto.Provider>
   );
+}
+
+/**
+ * A frase do toast de "Salvar ficha": QUAIS campos foram gravados.
+ *
+ * Até 3 campos, pelo nome ("Telefone e Fase"); mais que isso, pelas folhas
+ * ("8 campos em Dados básicos e Reunião preliminar"). Sem alteração nenhuma, o
+ * salvar ainda grava (o botão nunca é desabilitado por "há alteração" — ver
+ * `ficha-barra-salvar.tsx`), e a frase diz que nada tinha mudado em vez de
+ * fingir um salvamento.
+ */
+function descreverAlteracoes(
+  campos: readonly (keyof ClienteEtapa1)[],
+  abas: readonly AbaFicha[],
+): string {
+  if (campos.length === 0) return "Ficha conferida: nenhum campo tinha mudado.";
+  const juntar = (xs: string[]) =>
+    xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} e ${xs[xs.length - 1]}`;
+  if (campos.length <= 3) {
+    return `Ficha salva: ${juntar(campos.map((c) => ROTULO_DO_CAMPO[c] ?? String(c)))}.`;
+  }
+  return `Ficha salva: ${campos.length} campos em ${juntar(abas.map((a) => ROTULO_DA_ABA[a]))}.`;
 }
 
 /**

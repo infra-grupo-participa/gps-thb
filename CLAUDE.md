@@ -1615,8 +1615,8 @@ arquiteto (§A–K), contratos, bloco de conferência e vetores de pentest estã
   que falharia (estrela some dos outros cards; "Excluir" some; "Prospecção" sai do select).
   `admin_confirmar_acompanhamento` exige que o cliente já seja a estrela; `admin_liberar_…` **não**
   desmarca. Casa da escrita: a ficha no modo assistência; a Central só linka.
-- **Grau de relação** (`etapa1_clientes.grau_relacao`, 6 valores fechados: parente · amigo ·
-  conhecido · indicação · cliente atual · lead) é **tipo de vínculo**, ortogonal a
+- **Grau de relação** (`etapa1_clientes.grau_relacao`, 7 valores fechados: parente · amigo ·
+  conhecido · indicação · cliente atual · lead · eu mesmo [`…334`, 02/10/2026; fora do onboarding]) é **tipo de vínculo**, ortogonal a
   `nivel_relacionamento` (temperatura), que foi **CONGELADO em 10/09/2026** e não existe mais
   na UI. `null` = "Não informado" — **nunca** exibir como "Lead".
   **Não entra em `comDados`** (reabriria a tarefa 1 de quem já a concluiu).

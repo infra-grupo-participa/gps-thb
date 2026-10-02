@@ -123,7 +123,8 @@ export function LinksDrive({
         </CardTitle>
         <p className="corpo-sm text-muted-foreground">
           A pasta com os documentos <strong>deste cliente</strong>. A pasta do
-          escritório fica na aba Pasta.
+          escritório fica na aba Pasta. Salvo à parte, no botão daqui — não
+          depende do botão &quot;Salvar ficha&quot;.
         </p>
       </CardHeader>
       <CardContent className="grid gap-3">

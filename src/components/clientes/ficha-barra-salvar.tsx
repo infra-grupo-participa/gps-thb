@@ -32,6 +32,7 @@ export function FichaBarraSalvar({
   erroSalvar,
   aviso,
   pending,
+  salvando,
   onSalvar,
   onIrParaCampo,
 }: {
@@ -39,7 +40,13 @@ export function FichaBarraSalvar({
   erroSalvar: string | null;
   /** O aviso de estado, já montado (`fraseDaBarra`). */
   aviso: string;
+  /** Qualquer gravação da ficha em curso (estrela inclusive) — trava o botão. */
   pending: boolean;
+  /**
+   * É ESTE botão que está gravando. Só aí o rótulo vira "Salvando…" — com a
+   * estrela gravando, o botão fica travado sem afirmar que salva a ficha.
+   */
+  salvando: boolean;
   onSalvar: () => void;
   /**
    * Leva ao 1º campo que barra o salvar. `null`/omitido = nada barrando, e o
@@ -74,8 +81,12 @@ export function FichaBarraSalvar({
           Ir para o campo
         </Button>
       ) : null}
-      <Button onClick={onSalvar} disabled={pending}>
-        {pending ? "Salvando..." : "Salvar ficha"}
+      <Button
+        onClick={onSalvar}
+        disabled={pending}
+        aria-busy={salvando || undefined}
+      >
+        {salvando ? "Salvando…" : "Salvar ficha"}
       </Button>
     </div>
   );

@@ -48,7 +48,9 @@ test.describe("Header · parceiro · trilho de 1º nível + fixa + em breve", ()
     const rotulos = [
       /^In(í|i)cio$/i,
       /^Clientes$/i,
-      /^Suporte$/i,
+      // Sem `$`: com chamado respondido o nome vira "Suporte — 1 resposta da
+      // equipe esperando você" (selo da Onda 1.1, 02/10/2026).
+      /^Suporte( |$)/i,
       /^Sess(õ|o)es$/i,
       /^Materiais$/i,
       /^Plant(ã|a)o$/i,

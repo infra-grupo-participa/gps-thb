@@ -177,9 +177,12 @@ export async function salvarPassoOnboarding(
     "cliente_grau_relacao" in limpo &&
     limpo.cliente_grau_relacao != null &&
     limpo.cliente_grau_relacao !== "" &&
-    !(GRAUS_RELACAO as readonly string[]).includes(
-      String(limpo.cliente_grau_relacao),
-    )
+    // "eu_mesmo" (…334) existe só na ficha: o CHECK de onboarding_respostas e
+    // as RPCs do onboarding (…206/…260) seguem com os 6 valores antigos.
+    (String(limpo.cliente_grau_relacao) === "eu_mesmo" ||
+      !(GRAUS_RELACAO as readonly string[]).includes(
+        String(limpo.cliente_grau_relacao),
+      ))
   ) {
     return { erro: "Escolha um grau de relação da lista." };
   }

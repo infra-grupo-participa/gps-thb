@@ -110,7 +110,7 @@ export const FASES_CLIENTE: {
 /**
  * Rótulos do GRAU DE RELAÇÃO (migração 20260910000202), no molde de
  * `FASES_CLIENTE`. Espelha o CHECK `chk_etapa1_clientes_grau_relacao` — os dois
- * têm de ter os mesmos 6 valores.
+ * têm de ter os mesmos 7 valores.
  *
  * ⚠️ É outro eixo, não substitui `NIVEIS_RELACIONAMENTO` (temperatura). E
  * `null` nunca vira um destes rótulos na tela: a ausência de resposta sobre um
@@ -151,6 +151,11 @@ export const GRAUS_RELACAO_UI: {
     id: "lead",
     rotulo: "Lead",
     ajuda: "Veio da captação — ainda não te conhece.",
+  },
+  {
+    id: "eu_mesmo",
+    rotulo: "Eu mesmo (minha família)",
+    ajuda: "O cliente é você: a holding é da sua própria família.",
   },
 ];
 

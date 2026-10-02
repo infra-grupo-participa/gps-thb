@@ -97,6 +97,26 @@ export interface NavItem {
    */
   badge?: number;
   /**
+   * Texto VISÍVEL da pílula no lugar do número cru (ex.: "1 resposta"), e a
+   * pílula passa a ser laranja de marca em vez de vermelha: é notícia boa
+   * (a equipe respondeu), não fila atrasada. Só vale com `badge > 0`.
+   */
+  badgeRotulo?: string;
+  /**
+   * Nome acessível do link quando há pílula (ex.: "Suporte — 1 resposta da
+   * equipe esperando você"). Sem isto o leitor de tela leria "Suporte 1
+   * resposta" colado, sem dizer de quem nem o que fazer.
+   */
+  badgeAriaLabel?: string;
+  /**
+   * 🔑 Só a aba Suporte do PARCEIRO (Onda 1.1, 02/10/2026). Pede ao
+   * `AppHeader` (Server Component) que conte os chamados que a equipe já
+   * respondeu e esperam o parceiro, e preencha `badge`/`badgeRotulo`. A
+   * contagem é UMA por requisição, no servidor — não por aba, não no cliente.
+   * Modo assistência e admin não ligam a flag (ver `alunoNavItems`).
+   */
+  seloRespostas?: boolean;
+  /**
    * Só a aba "Parceiros" do painel do admin. O clique leva à **última URL do
    * painel** (aba, busca, ordem, filtros, lote) em vez de `/admin` pelado —
    * ver `components/admin/painel-url.ts`.
@@ -258,6 +278,7 @@ function NavTabLink({
     <Link
       href={destino ?? item.href}
       aria-current={marcaPagina ? "page" : undefined}
+      aria-label={mostraBadge && item.badgeAriaLabel ? item.badgeAriaLabel : undefined}
       // Sem prefetch: as abas ficam visíveis em toda tela e o Next
       // pré-buscava todas de uma vez. Como as rotas são dinâmicas, cada
       // pré-busca roda o proxy (getUser) e renderiza a página inteira —
@@ -283,11 +304,11 @@ function NavTabLink({
       {item.novaAba ? <span className="sr-only"> (abre em nova aba)</span> : null}
       {mostraBadge ? (
         <Badge
-          variant="danger"
+          variant={item.badgeRotulo ? "default" : "danger"}
           icone={false}
           className="h-5 px-1.5 text-[10px]"
         >
-          {item.badge}
+          {item.badgeRotulo ?? item.badge}
         </Badge>
       ) : null}
     </Link>

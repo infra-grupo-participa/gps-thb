@@ -177,7 +177,10 @@ export function PassoFase({
             <option value="" disabled>
               Escolha…
             </option>
-            {GRAUS_RELACAO_UI.map((g) => (
+            {/* `eu_mesmo` (02/10/2026) só existe na ficha do cliente: o CHECK de
+                onboarding_respostas e a RPC onboarding_salvar/concluir ainda
+                aceitam os 6 antigos. Oferecer aqui falharia no banco. */}
+            {GRAUS_RELACAO_UI.filter((g) => g.id !== "eu_mesmo").map((g) => (
               <option key={g.id} value={g.id}>
                 {g.rotulo}
               </option>

@@ -223,6 +223,7 @@ export const GRAUS_RELACAO = [
   "indicacao",
   "cliente_atual",
   "lead",
+  "eu_mesmo",
 ] as const;
 export type GrauRelacao = (typeof GRAUS_RELACAO)[number];
 

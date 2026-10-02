@@ -15,10 +15,14 @@ import { ClientesManager } from "@/components/clientes/clientes-manager";
 
 export default async function AdminAlunoClientesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ alunoId: string }>;
+  searchParams: Promise<{ novo?: string | string[] }>;
 }) {
   const { alunoId } = await params;
+  // Mesmo contrato de `/clientes`: só `?novo=1` exato abre o "Novo cliente".
+  const { novo } = await searchParams;
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
@@ -62,6 +66,7 @@ export default async function AdminAlunoClientesPage({
           clientesIniciais={clientes}
           basePath={base}
           admin
+          abrirNovoAoMontar={novo === "1"}
         />
       </main>
     </>

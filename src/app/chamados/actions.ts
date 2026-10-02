@@ -16,8 +16,9 @@
  *
  * 🔑 E-MAIL DEPOIS DO COMMIT, e falha de e-mail NÃO desfaz o chamado. As RPCs
  * devolvem `avisar`/`avisar_equipe` já preenchido quando há alguém a avisar
- * (equipe: na transição de status; parceiro: a cada resposta da equipe, desde
- * a `…319`); aqui só se envia o que veio. Resend fora do ar vira `logErro` com contexto
+ * (equipe: na transição de status e, desde a `…335`, a cada mensagem nova do
+ * parceiro, agrupada em 1 e-mail por chamado a cada 30 min; parceiro: a cada
+ * resposta da equipe, desde a `…319`); aqui só se envia o que veio. Resend fora do ar vira `logErro` com contexto
  * (uma linha JSON, `src/lib/log.ts`) — o chamado continua de pé.
  */
 
@@ -324,15 +325,36 @@ export async function responderChamado(input: {
 
   if (error) return { ok: false, erro: traduzirErro("responderChamado", error) };
 
-  const linha = ((data ?? []) as { status_novo: string; avisar: string | null }[])[0];
+  const linha = (
+    (data ?? []) as {
+      status_novo: string;
+      avisar: string | null;
+      avisar_equipe?: boolean | null;
+      mensagens_novas?: number | null;
+    }[]
+  )[0];
 
   // Quem decide se avisa é o banco (`gps.chamado_responder`):
-  //   - aluno escreveu → avisa a equipe só na TRANSIÇÃO de status (trava
-  //     anti-flood; a equipe trabalha pela fila de `/admin/chamados`);
+  //   - aluno escreveu → `avisar_equipe` (…335): na TRANSIÇÃO de status e, com
+  //     o chamado já aberto, AGRUPADO — no máximo 1 e-mail por chamado a cada
+  //     30 min, com `mensagens_novas` = quantas chegaram. A janela vive no
+  //     banco (`chamados.ultimo_aviso_equipe_em`), não aqui. `avisar` pode vir
+  //     nulo com `avisar_equipe = true` (lista da equipe vazia): é o caso em
+  //     que `avisarEquipe` cai no fallback — antes da …335 ele nem era chamado.
   //   - equipe escreveu → avisa o parceiro SEMPRE (`…319`, 28/09): a resposta
   //     que vinha depois de um "aguarde" ficava sem e-mail, e o parceiro só
   //     via dias depois.
-  if (linha?.avisar) {
+  // 🔑 `avisar_equipe` ausente = banco ainda na …319 (deploy antes da
+  // migration): cai na regra antiga, `avisar` preenchido.
+  const ehDoAluno = linha?.status_novo === "aberto";
+  const avisarEquipeAgora =
+    ehDoAluno &&
+    (typeof linha?.avisar_equipe === "boolean"
+      ? linha.avisar_equipe
+      : Boolean(linha?.avisar));
+  const avisarParceiroAgora = !!linha && !ehDoAluno && !!linha.avisar;
+
+  if (avisarEquipeAgora || avisarParceiroAgora) {
     const { data: chamado } = await supabase
       .schema("gps")
       .from("chamados")
@@ -342,10 +364,15 @@ export async function responderChamado(input: {
 
     const assunto = (chamado as { assunto?: string } | null)?.assunto ?? "chamado";
 
-    if (linha.status_novo === "aberto") {
-      // Quem escreveu foi o ALUNO: avisa a equipe.
-      await avisarEquipe(linha.avisar, assunto, input.chamadoId);
-    } else {
+    if (avisarEquipeAgora) {
+      // Quem escreveu foi o ALUNO: avisa a equipe (um e-mail por chamada).
+      await avisarEquipe(linha?.avisar ?? null, assunto, input.chamadoId, {
+        mensagensNovas:
+          typeof linha?.mensagens_novas === "number" && linha.mensagens_novas > 0
+            ? linha.mensagens_novas
+            : 1,
+      });
+    } else if (linha?.avisar) {
       // Quem escreveu foi a EQUIPE: avisa o aluno.
       const r = await enviarChamadoRespondidoParaAluno({
         para: linha.avisar,
@@ -411,6 +438,8 @@ async function avisarEquipe(
   avisarDoBanco: string | null,
   assunto: string,
   chamadoId: string,
+  /** Ausente = chamado NOVO; presente = mensagem nova num chamado existente. */
+  opcoes?: { mensagensNovas: number },
 ): Promise<boolean> {
   let destinatarios = listaDeEmails(
     avisarDoBanco || process.env.EMAIL_SUPORTE || "",
@@ -485,6 +514,7 @@ async function avisarEquipe(
     alunoNome: alunoNome ?? "Um aluno",
     assunto,
     chamadoId,
+    mensagensNovas: opcoes?.mensagensNovas,
   });
   if (!r.ok) {
     logErro("chamados.avisarEquipe", r.erro ?? "falha sem detalhe", { chamadoId });

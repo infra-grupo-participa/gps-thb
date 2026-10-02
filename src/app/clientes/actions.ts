@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { revalidatePath } from "next/cache";
+
 import { createClient } from "@/lib/supabase/server";
 import { getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
@@ -24,6 +24,7 @@ import { GRAUS_RELACAO, REGIMES_TRIBUTARIOS } from "@/lib/types";
 import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
 import type { PatchCliente } from "@/lib/clientes-tipos";
 import { soDigitos } from "@/lib/masks";
+import { revalidarClientes } from "./revalidar";
 
 /*
  * CD3 (09/09/2026) — este arquivo morava em `src/app/etapa-1/`, uma pasta com
@@ -289,16 +290,7 @@ function validarPatch(patch: PatchCliente): {
 }
 
 function revalidar(alunoId: string) {
-  // `/etapa/1` é a rota de verdade do guia da Etapa 01. Até 09/09 esta linha
-  // revalidava o nome DESTA PASTA, que nunca teve `page.tsx`: rota
-  // inexistente, e o cache do guia só caía pelo `revalidatePath("/etapa",
-  // "layout")` abaixo (CD3).
-  revalidatePath("/etapa/1");
-  revalidatePath("/clientes");
-  revalidatePath("/clientes", "layout");
-  revalidatePath("/etapa", "layout");
-  revalidatePath("/", "layout");
-  revalidatePath(`/admin/aluno/${alunoId}`, "layout");
+  revalidarClientes(alunoId);
 }
 
 /**

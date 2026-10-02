@@ -24,11 +24,19 @@
  * estado local quando a action falha.
  */
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
-import { LayoutGrid, List as ListIcon, PhoneCall, Plus, Star, Users } from "lucide-react";
+import {
+  ClipboardPaste,
+  LayoutGrid,
+  List as ListIcon,
+  PhoneCall,
+  Plus,
+  Star,
+  Users,
+} from "lucide-react";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
 import {
   META_CLIENTES,
@@ -36,6 +44,7 @@ import {
   resumoHonorarios,
 } from "@/lib/etapa1";
 import {
+  atualizarCliente,
   criarCliente,
   definirClienteEquipe,
   mudarFaseCliente,
@@ -60,6 +69,7 @@ import { ClientesTabela } from "./clientes-tabela";
 import { ConfirmacaoEquipe } from "./confirmacao-equipe";
 import { DialogoExcluirCliente } from "./dialogos";
 import { DialogoNovoCliente } from "./dialogo-novo-cliente";
+import { DialogoColarLista } from "./dialogo-colar-lista";
 import { DialogoDesfavoritar } from "../dialogo-desfavoritar";
 import { DialogoEscolherFavorito } from "../dialogo-escolher-favorito";
 import { DialogoSelecaoEntrevista } from "../selecao-entrevista";
@@ -77,10 +87,18 @@ export function ClientesManager({
   clientesIniciais,
   basePath,
   admin = false,
+  abrirNovoAoMontar = false,
 }: {
   alunoId: string;
   clientesIniciais: ClienteEtapa1[];
   basePath: string;
+  /**
+   * A página recebeu `?novo=1` (o card "Continue de onde parou" da home leva
+   * direto à ação). Quem valida o valor é a PÁGINA, no servidor — só `"1"`
+   * exato liga isto. O diálogo nasce aberto e o parâmetro sai da URL (ver o
+   * efeito abaixo), para não reabrir no recarregar.
+   */
+  abrirNovoAoMontar?: boolean;
   /**
    * Modo assistência. É a EQUIPE quem troca e desmarca o cliente acompanhado
    * (migração ...215): com `false`, a estrela vira sinal assim que o aluno
@@ -91,6 +109,21 @@ export function ClientesManager({
 }) {
   const router = useRouter();
   const [clientes, setClientes] = useState<ClienteEtapa1[]>(clientesIniciais);
+  /**
+   * 🔴 A LISTA ACOMPANHA O SERVIDOR (02/10/2026). Até aqui `clientesIniciais`
+   * só valia na montagem: o `revalidatePath` das actions trazia a lista nova
+   * por prop e o `useState` a ignorava. Com um cadastro por abertura isso não
+   * aparecia (o "Criar" navega para a ficha); com "Salvar e adicionar outro" e
+   * "Colar lista" a pessoa fica NESTA tela e veria o contador parado em 3
+   * depois de cadastrar 10. Padrão "ajustar estado quando a prop muda" do
+   * React (sem efeito): prop nova = verdade do servidor, que substitui o
+   * otimismo local — que, a essa altura, já foi confirmado ou desfeito.
+   */
+  const [iniciaisVistos, setIniciaisVistos] = useState(clientesIniciais);
+  if (clientesIniciais !== iniciaisVistos) {
+    setIniciaisVistos(clientesIniciais);
+    setClientes(clientesIniciais);
+  }
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<"todos" | FaseCliente>("todos");
   const [filtroGrau, setFiltroGrau] = useState<"todos" | FiltroGrau>("todos");
@@ -105,7 +138,16 @@ export function ClientesManager({
   /** Cliente aguardando a confirmação de ESCOLHA do aluno (migração ...215). */
   const [escolhendo, setEscolhendo] = useState<ClienteEtapa1 | null>(null);
   /** Diálogo "Novo cliente" aberto? Fase e grau nascem no padrão. */
-  const [novoAberto, setNovoAberto] = useState(false);
+  const [novoAberto, setNovoAberto] = useState(abrirNovoAoMontar);
+  /** "Colar lista" aberto? Só para o parceiro (a action resolve o ambiente pela sessão). */
+  const [colarAberto, setColarAberto] = useState(false);
+  const [novoTelefone, setNovoTelefone] = useState("");
+  /** Qual botão do diálogo disparou a gravação — só ele diz "Salvando…". */
+  const [emCurso, setEmCurso] = useState<"ficha" | "outro" | null>(null);
+  /** Quantos "Salvar e adicionar outro" nesta abertura (devolve o foco ao nome). */
+  const [salvosNaSequencia, setSalvosNaSequencia] = useState(0);
+  /** Nome do último salvo pelo "adicionar outro" — vira a confirmação. */
+  const [ultimoSalvo, setUltimoSalvo] = useState<string | null>(null);
   /** Diálogo "Escolher os 5 da entrevista" aberto? */
   const [selecionandoEntrevista, setSelecionandoEntrevista] = useState(false);
   const [novoNome, setNovoNome] = useState("");
@@ -174,30 +216,77 @@ export function ClientesManager({
   const existeTravado = travado !== null;
   const ctxEstrela = { admin, existeTravado };
 
+  // `?novo=1` já abriu o diálogo (estado inicial). Aqui só sai da URL, para
+  // recarregar a página não abrir de novo. `history.replaceState` e não
+  // `router.replace`: este último re-executa o Server Component inteiro
+  // (nota de 23/09) só para apagar um parâmetro que o servidor já leu.
+  useEffect(() => {
+    if (!abrirNovoAoMontar) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("novo")) return;
+    url.searchParams.delete("novo");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [abrirNovoAoMontar]);
+
   // ---- Ações ----
   function abrirNovo() {
     setErroDialogo(null);
     setNovoNome("");
+    setNovoTelefone("");
     setNovaFase("prospeccao");
     setNovoGrau("");
+    setSalvosNaSequencia(0);
+    setUltimoSalvo(null);
     setNovoAberto(true);
   }
 
-  /** Cria o cliente já com a fase e o vínculo escolhidos no diálogo (uma chamada). */
-  function criarComFaseEGrau() {
+  /**
+   * Cria o cliente já com a fase e o vínculo escolhidos no diálogo.
+   *
+   * `modo = "ficha"`: o de sempre — cria e abre a ficha.
+   * `modo = "outro"`: cria, limpa nome e telefone e fica no diálogo.
+   *
+   * O telefone vai por `atualizarCliente` logo depois do `criarCliente`, que
+   * não o aceita. São duas chamadas; se a segunda falhar o cliente JÁ existe,
+   * e a frase diz isso em vez de "não foi possível" (que levaria a pessoa a
+   * cadastrar de novo e duplicar).
+   */
+  function criarComFaseEGrau(modo: "ficha" | "outro") {
     setErroDialogo(null);
+    setEmCurso(modo);
+    const nome = novoNome.trim();
+    const telefone = novoTelefone.trim();
     startTransition(async () => {
       const res = await criarCliente(alunoId, {
-        nome: novoNome,
+        nome,
         fase: novaFase,
         grau_relacao: (novoGrau as GrauRelacao) || null,
       });
       if (res.erro || !res.id) {
+        setEmCurso(null);
         setErroDialogo(res.erro ?? "Não foi possível adicionar o cliente.");
         return;
       }
-      setNovoAberto(false);
-      router.push(fichaHref(res.id));
+      let erroTelefone: string | null = null;
+      if (telefone) {
+        const tel = await atualizarCliente(res.id, alunoId, { telefone });
+        if (tel.erro) erroTelefone = tel.erro;
+      }
+      setEmCurso(null);
+      if (modo === "ficha") {
+        setNovoAberto(false);
+        router.push(fichaHref(res.id));
+        return;
+      }
+      setNovoNome("");
+      setNovoTelefone("");
+      setUltimoSalvo(nome);
+      setSalvosNaSequencia((n) => n + 1);
+      if (erroTelefone) {
+        setErroDialogo(
+          `${nome} foi salvo, mas o telefone não: ${erroTelefone} Preencha o telefone na ficha dele.`,
+        );
+      }
     });
   }
 
@@ -395,6 +484,18 @@ export function ClientesManager({
               >
                 <PhoneCall aria-hidden /> Escolher os 5 da entrevista
               </Button>
+              {/* "Colar lista" só para o parceiro: `cadastrarClientesEmLote`
+                  resolve o ambiente pela SESSÃO, e no modo assistência a
+                  sessão é do admin. */}
+              {!admin ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setColarAberto(true)}
+                  disabled={pending}
+                >
+                  <ClipboardPaste aria-hidden /> Colar lista
+                </Button>
+              ) : null}
               <Button onClick={abrirNovo} disabled={pending}>
                 Adicionar
               </Button>
@@ -528,6 +629,11 @@ export function ClientesManager({
               <Button onClick={abrirNovo}>
                 <Plus aria-hidden /> Cadastrar o primeiro cliente
               </Button>
+              {!admin ? (
+                <Button variant="outline" onClick={() => setColarAberto(true)}>
+                  <ClipboardPaste aria-hidden /> Já tenho a lista: colar
+                </Button>
+              ) : null}
               {/* Zero chamados abertos com 104 alunos travados: ninguém acha
                   o caminho de pedir ajuda. Aqui ele fica ao lado de quem
                   travou, não escondido na 7ª aba do header. */}
@@ -606,17 +712,43 @@ export function ClientesManager({
         <DialogoNovoCliente
           nome={novoNome}
           onNome={setNovoNome}
+          telefone={novoTelefone}
+          onTelefone={setNovoTelefone}
           fase={novaFase}
           grau={novoGrau}
           pending={pending}
           erro={erroDialogo}
+          confirmacao={
+            ultimoSalvo
+              ? `✓ ${ultimoSalvo} salvo — ${clientes.length} ${clientes.length === 1 ? "cadastrado" : "cadastrados"} · ${comDados} de ${META_CLIENTES} com nome e telefone.`
+              : null
+          }
+          salvosNaSequencia={salvosNaSequencia}
+          emCurso={emCurso}
           onFase={setNovaFase}
           onGrau={setNovoGrau}
-          onCriar={criarComFaseEGrau}
+          onCriar={() => criarComFaseEGrau("ficha")}
+          onSalvarEOutro={() => criarComFaseEGrau("outro")}
           onCancelar={() => {
             setNovoAberto(false);
             setErroDialogo(null);
+            // Quem salvou em sequência fecha com um resumo (o diálogo some).
+            if (salvosNaSequencia > 0) {
+              toast.success(
+                salvosNaSequencia === 1
+                  ? "1 cliente cadastrado."
+                  : `${salvosNaSequencia} clientes cadastrados.`,
+              );
+            }
           }}
+        />
+      ) : null}
+
+      {colarAberto ? (
+        <DialogoColarLista
+          comDados={comDados}
+          meta={META_CLIENTES}
+          onFechar={() => setColarAberto(false)}
         />
       ) : null}
 

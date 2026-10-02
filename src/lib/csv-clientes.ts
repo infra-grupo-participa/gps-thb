@@ -2,6 +2,7 @@ import type { ColunaCsv } from "@/lib/csv";
 import { formatarData, formatarDataSoDia } from "@/lib/datas";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import type { ClienteDoPrograma } from "@/lib/data/clientes-admin";
+import { mascaraTelefone } from "@/lib/masks";
 
 /**
  * Colunas do CSV da lista consolidada de clientes do programa
@@ -22,7 +23,9 @@ export const COLUNAS_CSV_CLIENTES: ColunaCsv<ClienteDoPrograma>[] = [
     cabecalho: "Fase",
     valor: (c) => FASES_CLIENTE.find((f) => f.id === c.fase)?.rotulo ?? c.fase,
   },
-  { cabecalho: "Telefone", valor: (c) => c.telefone ?? "" },
+  // `telefone` tem duas formas na base: a ficha grava com máscara e o lote
+  // (…335) só dígitos. Toda leitura passa por mascaraTelefone.
+  { cabecalho: "Telefone", valor: (c) => (c.telefone ? mascaraTelefone(c.telefone) : "") },
   {
     cabecalho: "Grau de relação",
     // `null` nunca vira um rótulo inventado — "Não informado", nunca "Lead"

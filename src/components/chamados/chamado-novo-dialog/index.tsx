@@ -18,6 +18,7 @@ import type { OpcaoCliente } from "@/components/chamados/seletor-cliente";
 import { CampoCategoria } from "./campo-categoria";
 import { CampoTrocaCliente } from "./campo-troca-cliente";
 import { CampoTrocaSocio } from "./campo-troca-socio";
+import { SugestoesChamado } from "@/components/ajuda/sugestoes-chamado";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +57,7 @@ import {
  * a tela de retenção do admin expurga.
  */
 export function ChamadoNovoDialog({
+  ajudaAtiva = false,
   categoriaInicial = null,
   categoriasAtivo,
   clientes,
@@ -64,6 +66,12 @@ export function ChamadoNovoDialog({
   socioAtualNome,
   temSocio,
 }: {
+  /**
+   * Interruptor da central de ajuda (`getAjudaAtiva()`, lido na página).
+   * `true` = sugere até 3 artigos enquanto a pessoa escreve. A sugestão
+   * NUNCA bloqueia o envio — não há estado dela que `enviar()` leia.
+   */
+  ajudaAtiva?: boolean;
   /**
    * Categoria que já vem escolhida — hoje só quando chega de
    * `hrefChamadoTroca` (`?categoria=troca_cliente`, ficha do cliente).
@@ -277,6 +285,13 @@ export function ChamadoNovoDialog({
               </div>
             </>
           )}
+
+          {ajudaAtiva && !ehTroca ? (
+            <SugestoesChamado
+              texto={`${assunto} ${texto}`}
+              categoria={categoriasAtivo ? categoria : null}
+            />
+          ) : null}
 
           {/* Anexo só faz sentido no formulário de texto livre: print/PDF de
               um problema no sistema. Nas trocas, o "atual × novo" já é a

@@ -23,6 +23,11 @@ import type { SocioCadastroPayload } from "@/lib/socio-cadastro-tipos";
  * recusa — e a pessoa só descobre DEPOIS de enviar o formulário inteiro.
  * Foi o que acontecia com o telefone: aqui `>= 10`, lá `in (10, 11)`.
  */
+/**
+ * 338 (Onda 3, C40–C45): só NOME e CPF são obrigatórios — o resto é opcional
+ * e, quando preenchido, só tem o FORMATO conferido (mesma regra da RPC
+ * remendada). O CPF é sempre digitado.
+ */
 export function razaoParaTravar(entrada: SocioCadastroPayload): string {
   if (entrada.nome.trim().length < 2) {
     return "Escreva o seu nome completo.";
@@ -32,33 +37,18 @@ export function razaoParaTravar(entrada: SocioCadastroPayload): string {
   }
   // `semDdi55` antes de contar: se a pessoa colar o número já em formato
   // internacional (+55 91 99615-0394), os 13 dígitos precisam virar 11 — é
-  // o mesmo que a RPC faz no banco. Sem isso, front e banco discordam: aqui
-  // passava (`>= 10`) e lá recusava (`in (10, 11)`), e o erro só apareceria
-  // depois de enviar, como "Telefone inválido" num número correto.
+  // o mesmo que a RPC faz no banco. Sem isso, front e banco discordam.
   const telefoneDigitos = semDdi55(entrada.telefone).length;
-  if (telefoneDigitos !== 10 && telefoneDigitos !== 11) {
-    return "Informe o seu telefone com DDD.";
+  if (telefoneDigitos !== 0 && telefoneDigitos !== 10 && telefoneDigitos !== 11) {
+    return "Confira o telefone: DDD + número.";
   }
-  if (soDigitos(entrada.cep).length !== 8) {
-    return "Informe o CEP.";
+  const cepDigitos = soDigitos(entrada.cep).length;
+  if (cepDigitos !== 0 && cepDigitos !== 8) {
+    return "Confira o CEP: são 8 números.";
   }
-  if (entrada.cidade.trim().length < 2) {
-    return "Informe a cidade.";
-  }
-  if (entrada.estado.trim().length !== 2) {
-    return "Escolha o estado (UF).";
-  }
-  if (entrada.bairro.trim().length < 2) {
-    return "Informe o bairro.";
-  }
-  if (entrada.logradouro.trim().length < 2) {
-    return "Informe o endereço.";
-  }
-  if (entrada.numero.trim().length < 1) {
-    return "Informe o número.";
-  }
-  if (entrada.pais.trim().length < 2) {
-    return "Informe o país.";
+  const uf = entrada.estado.trim().length;
+  if (uf !== 0 && uf !== 2) {
+    return "Escolha o estado (UF) na lista.";
   }
   return "";
 }

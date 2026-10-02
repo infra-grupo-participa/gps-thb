@@ -38,6 +38,8 @@ import { HomeResumo } from "@/components/home-resumo";
 import { PerfilHero } from "@/components/perfil/perfil-hero";
 import { ThbLogo } from "@/components/thb-logo";
 import { AmbienteCompartilhadoBanner } from "@/components/ambiente-compartilhado-banner";
+import { HojeNoPrograma } from "@/components/home/hoje-no-programa";
+import { getHojeNoPrograma } from "@/lib/data/hoje";
 import type { Aluno } from "@/lib/types";
 
 /**
@@ -217,6 +219,7 @@ export default async function HomePage() {
     alunoSocio,
     jaTemCliente,
     tutoriaisAtivo,
+    hoje,
   ] = await Promise.all([
     // Liberação POR ALUNO: `coalesce(override, global)`. O override
     // (`gps.etapa_liberacao_aluno`) manda nos dois sentidos — libera quem está
@@ -242,6 +245,10 @@ export default async function HomePage() {
       : Promise.resolve(null),
     alunoJaTemCliente(alunoId),
     getTutoriaisAtivo(),
+    // "Hoje no programa" (item 1.6): Plantão, próxima sessão e atalhos, no
+    // MESMO lote — as 4 idas dele também são paralelas entre si. Nunca
+    // lança: fonte que falha some sozinha (ver `src/lib/data/hoje.ts`).
+    getHojeNoPrograma(alunoId, Boolean(ctx.pessoaAlunoId)),
   ]);
   const { etapas, overrides } = etapasEOverrides;
   const aluno = souSocio ? alunoSocio : alunoAmbiente;
@@ -355,6 +362,13 @@ export default async function HomePage() {
             <TudoEmDiaCard proximaEtapa={proximaBloqueada} />
           )}
         </div>
+
+        {/* "Hoje no programa" logo abaixo da ação: o que acontece hoje
+            (Plantão, sessão marcada) e onde fica cada coisa. Fica ANTES do
+            grid para não ser a última coisa da página no celular — a queixa
+            era justamente "achei o Plantão por acaso". Sem nenhuma parte, o
+            componente devolve `null` (e o `mt-6` vai junto). */}
+        <HojeNoPrograma dados={hoje} className="mt-6" />
 
         {/* Conteúdo: jornada (principal) + resumo (apoio) lado a lado.
             🔑 No CELULAR o resumo sobe (`order-first`): a home mobile tinha

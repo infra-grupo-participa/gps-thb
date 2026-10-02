@@ -5,6 +5,8 @@ import { lerContas } from "@/lib/contas-do-navegador";
 import { TrilhoDeNavegacao, type NavItem } from "@/components/nav-tabs";
 import { AutoLogout } from "@/components/auto-logout";
 import { contarChamadosAguardandoParceiro } from "@/lib/data/chamados-selo";
+import { lerAjudaDaTela } from "@/components/ajuda/ler-ajuda-da-tela";
+import { PainelAjuda } from "@/components/ajuda/painel-ajuda";
 
 /**
  * Quantos chamados a equipe respondeu e esperam o parceiro — ou `0` se a
@@ -49,9 +51,15 @@ export async function AppHeader({
   // a aba Suporte do parceiro liga). Admin e modo assistência não pagam a
   // consulta. Em paralelo com as contas — nenhuma espera pela outra.
   const pedeSelo = (navItems ?? []).some((i) => i.seloRespostas);
-  const [contas, respostas] = await Promise.all([
+  // 🔑 Central de ajuda ("Como faço?", 02/10/2026): MESMO sinal do selo —
+  // `seloRespostas` só existe no trilho do parceiro logado (`basePath === ""`
+  // em `alunoNavItems`). Admin, modo assistência e operador não pagam as 2
+  // RPCs e não veem o botão. Em paralelo com as contas e o selo.
+  const ehParceiro = pedeSelo;
+  const [contas, respostas, ajuda] = await Promise.all([
     lerContas(),
     pedeSelo ? respostasAguardando() : Promise.resolve(0),
+    ehParceiro ? lerAjudaDaTela() : Promise.resolve(null),
   ]);
   const outrasContas = contas
     .filter((c) => c.email !== email)
@@ -119,6 +127,7 @@ export async function AppHeader({
           </Link>
 
           <div className="ml-auto flex min-w-0 items-center gap-3">
+            {ajuda ? <PainelAjuda rota={ajuda.rota} artigos={ajuda.artigos} /> : null}
             {/* Perfil, trocar de conta e sair vivem num menu só. O botão de
                 logout solto saiu: eram dois alvos para a mesma área, e a
                 troca de conta não teria onde morar. */}

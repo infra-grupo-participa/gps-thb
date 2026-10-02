@@ -53,26 +53,24 @@ export async function gravarCadastroSocio(
 
   // Validação de forma no cliente do servidor — a mesma regra em português
   // que o banco reforça; não substitui as guardas da RPC.
+  //
+  // Desde a …338 só NOME e CPF são obrigatórios. Opcional preenchido só tem
+  // o formato conferido; em branco, a RPC mantém o que o cadastro já tem.
   if (!nome || nome.length < 2) {
     return { ok: false, erro: "Escreva o nome completo." };
   }
   if (soDigitos(documento).length !== 11) {
     return { ok: false, erro: "CPF inválido." };
   }
-  if (soDigitos(telefone).length < 10) {
+  if (telefone && soDigitos(telefone).length < 10) {
     return { ok: false, erro: "Telefone inválido." };
   }
-  if (soDigitos(cep).length !== 8) {
+  if (cep && soDigitos(cep).length !== 8) {
     return { ok: false, erro: "CEP inválido." };
   }
-  if (!cidade) return { ok: false, erro: "Informe a cidade." };
-  if (!/^[A-Z]{2}$/.test(estado)) {
+  if (estado && !/^[A-Z]{2}$/.test(estado)) {
     return { ok: false, erro: "Escolha o estado na lista." };
   }
-  if (!bairro) return { ok: false, erro: "Informe o bairro." };
-  if (!logradouro) return { ok: false, erro: "Informe o endereço." };
-  if (!numero) return { ok: false, erro: "Informe o número." };
-  if (!pais) return { ok: false, erro: "Informe o país." };
 
   const supabase = await createClient();
 

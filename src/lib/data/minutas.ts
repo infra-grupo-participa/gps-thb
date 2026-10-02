@@ -15,7 +15,7 @@ import type { ClienteMinuta } from "@/lib/minutas-tipos";
 // ─────────────────────────────────────────────────────────────────────────
 
 const COLUNAS_MINUTA =
-  "id, cliente_id, path, nome, tamanho, notas, enviado_em, enviado_por, enviado_pela_equipe, caso, o_que_foi_feito, ponto_de_ajuda, o_que_mudou";
+  "id, cliente_id, path, nome, tamanho, notas, enviado_em, enviado_por, enviado_pela_equipe, caso, o_que_foi_feito, ponto_de_ajuda, o_que_mudou, status, parecer, parecer_em, parecer_por";
 
 /**
  * Lista as minutas de UM cliente, mais recente primeiro. A RLS de

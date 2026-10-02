@@ -67,6 +67,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { VisorDocumento } from "@/components/clientes/visor-documento";
+import {
+  MinutaParecerForm,
+  MinutaParecerLeitura,
+  MinutaSeloStatus,
+} from "@/components/clientes/minuta-parecer";
 
 /** Teto por campo de contexto — decisão do Marcio (17/09). Independente de
  * `MINUTA_NOTA_MAXIMO` (o campo `notas` legado, que saiu do formulário mas
@@ -105,6 +110,7 @@ export function MinutasAnexo({
   minutas,
   podeAnexar,
   contextoObrigatorio,
+  equipe = false,
   desabilitado = false,
   aoMudar,
 }: {
@@ -119,6 +125,10 @@ export function MinutasAnexo({
    * os campos continuam visíveis e rotulados, só sem "(obrigatório)" e sem
    * travar o botão — é emergência, não mudança de produto. */
   contextoObrigatorio: boolean;
+  /** Quem vê é a EQUIPE (modo assistência) — mostra o formulário de status e
+   * parecer (…341). O parceiro só lê selo e parecer. Não é a proteção: a
+   * action e a RPC recusam quem não é admin. */
+  equipe?: boolean;
   desabilitado?: boolean;
   /** Chamado depois de gravar/remover — a ficha recarrega do servidor. */
   aoMudar: () => void;
@@ -476,6 +486,7 @@ export function MinutasAnexo({
                   <span className="shrink-0 corpo-sm text-muted-foreground">
                     Versão {versao}
                   </span>
+                  <MinutaSeloStatus status={minuta.status} />
                   <span className="order-first basis-full truncate corpo-sm font-medium sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto">
                     {minuta.nome}
                   </span>
@@ -578,6 +589,16 @@ export function MinutasAnexo({
                     <p className="corpo-sm text-muted-foreground">Notas</p>
                     <p className="corpo-sm whitespace-pre-wrap">{minuta.notas}</p>
                   </div>
+                ) : null}
+
+                {/* Retorno da equipe (…341): o parceiro lê aqui o que antes
+                    voltava pelo WhatsApp. Texto puro, nunca HTML. */}
+                <MinutaParecerLeitura minuta={minuta} />
+                {equipe ? (
+                  <MinutaParecerForm
+                    minuta={minuta}
+                    aoMudar={aoMudar}
+                  />
                 ) : null}
 
                 {visualizandoId === minuta.id ? (

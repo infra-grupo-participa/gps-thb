@@ -4,12 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { normalizarEmail, normalizarSenhaColada } from "@/lib/texto";
 import { documentoValido, soDigitos } from "@/lib/masks";
 import { MSG_SENHA_MINIMO, SENHA_MINIMO } from "@/lib/senha-regras";
+// Tipo fora daqui: módulo "use server" só exporta async function (CLAUDE.md).
+import type { CadastroState } from "@/lib/cadastro-tipos";
 
-export interface CadastroState {
-  erro?: string;
-  sucesso?: boolean;
-  precisaConfirmar?: boolean;
-}
 
 export async function cadastrar(
   _prev: CadastroState,

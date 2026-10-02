@@ -532,6 +532,9 @@ export function adminNavItems(
         // onboarding ficou escondida com 77 questionários preenchidos dentro
         // dela.
         { href: "/admin/tutoriais", label: "Tutoriais" },
+        // Central de ajuda (02/10/2026): artigos do "Como faço?" do parceiro.
+        // Mora em Conteúdo porque é texto curado pela equipe, como Tutoriais.
+        { href: "/admin/ajuda", label: "Ajuda" },
       ],
     },
     // Grupo "Configurações": Interruptores de `gps.config` (15/09/2026) — os

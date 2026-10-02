@@ -33,18 +33,22 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getContextoSessao } from "@/lib/auth";
+import { ehAdmin, getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
 import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { logErro } from "@/lib/log";
+import { UUID_RE } from "@/lib/texto";
+import { enviarMinutaRevisadaParaParceiro } from "@/lib/email-minutas";
 import {
   BUCKET_MINUTAS,
   MINUTA_CONTEXTO_MAXIMO,
   MINUTA_EXTENSAO,
   MINUTA_NOTA_MAXIMO,
+  MINUTA_PARECER_MAXIMO,
   MINUTA_PATH_REGEX,
   MINUTA_TAMANHO_MAXIMO,
   ehMinutaMime,
+  ehMinutaStatus,
   nomeDeMinutaSeguro,
 } from "@/lib/minutas-tipos";
 
@@ -336,4 +340,111 @@ export async function urlDeDownloadDaMinutaCliente(
     };
   }
   return { ok: true, url: assinada.signedUrl };
+}
+
+/**
+ * Frases de `gps.minuta_registrar_parecer` (…341). Passadas como
+ * `frasesExtras` a `traduzirErroBanco` (casamento por igualdade exata) em vez
+ * de crescer o mapa global de `erros.ts`.
+ */
+const FRASES_PARECER: Record<string, string> = {
+  "Minuta não informada.":
+    "Não foi possível identificar a minuta. Recarregue a página e tente de novo.",
+  "Status de minuta inválido.": "Escolha um status válido para a minuta.",
+  "O parecer passa de 4000 caracteres.": "O parecer pode ter até 4000 caracteres.",
+  "Escreva o parecer para marcar a minuta como revisada.":
+    "Escreva o parecer para marcar a minuta como revisada.",
+};
+
+/**
+ * A EQUIPE registra o status e o parecer de UMA versão de minuta (…341,
+ * decisão do João 02/10/2026, card 86akryphf). Sem integração com o gerador
+ * de minutas.
+ *
+ * 🔴 `ehAdmin()` aqui é atalho de mensagem; a fronteira é a RPC
+ * (`gp_is_admin()` → 42501). Server Action é endpoint HTTP: esconder o
+ * formulário do parceiro não protege nada.
+ *
+ * E-mail ao parceiro SÓ quando o status gravado é `revisada`, DEPOIS do commit,
+ * e a falha dele não desfaz o parecer (molde de `avisarAlunoDaDecisao` nos
+ * chamados). O destinatário vem do banco (`avisar`), nunca do cliente.
+ * `avisado` diz à tela se o e-mail saiu — sem fingir aviso que não houve.
+ */
+export async function registrarParecerMinuta(input: {
+  minutaId: string;
+  status: string;
+  parecer?: string | null;
+}): Promise<{ erro?: string; avisado?: boolean }> {
+  let admin: boolean;
+  try {
+    admin = await ehAdmin();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { erro: MSG_SESSAO_INDETERMINADA };
+  }
+  if (!admin) return { erro: "Sem permissão." };
+
+  if (!UUID_RE.test(input.minutaId ?? "")) {
+    return { erro: FRASES_PARECER["Minuta não informada."] };
+  }
+  if (!ehMinutaStatus(input.status)) {
+    return { erro: FRASES_PARECER["Status de minuta inválido."] };
+  }
+  const parecer = (input.parecer ?? "").trim();
+  if (parecer.length > MINUTA_PARECER_MAXIMO) {
+    return { erro: FRASES_PARECER["O parecer passa de 4000 caracteres."] };
+  }
+  if (input.status === "revisada" && parecer === "") {
+    return { erro: FRASES_PARECER["Escreva o parecer para marcar a minuta como revisada."] };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("minuta_registrar_parecer", {
+      p_minuta_id: input.minutaId,
+      p_status: input.status,
+      p_parecer: parecer === "" ? null : parecer,
+    });
+
+  if (error) {
+    return {
+      erro: traduzirErroBanco(
+        "registrarParecerMinuta",
+        error,
+        { minutaId: input.minutaId, status: input.status },
+        FRASES_PARECER,
+      ),
+    };
+  }
+
+  const r = (data ?? {}) as {
+    cliente_id?: string | null;
+    aluno_id?: string | null;
+    cliente_nome?: string | null;
+    status?: string | null;
+    avisar?: string | null;
+  };
+
+  if (r.aluno_id) revalidarFicha(r.aluno_id);
+
+  if (r.status !== "revisada") return {};
+
+  if (!r.avisar || !r.cliente_id) {
+    logErro("registrarParecerMinuta", "parecer gravado sem destinatario para o aviso", {
+      minutaId: input.minutaId,
+    });
+    return { avisado: false };
+  }
+  const envio = await enviarMinutaRevisadaParaParceiro({
+    para: r.avisar,
+    clienteNome: r.cliente_nome ?? null,
+    clienteId: r.cliente_id,
+  });
+  if (!envio.ok) {
+    logErro("registrarParecerMinuta", envio.erro ?? "falha sem detalhe", {
+      minutaId: input.minutaId,
+    });
+  }
+  return { avisado: envio.ok };
 }

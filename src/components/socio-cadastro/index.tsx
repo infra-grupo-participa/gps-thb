@@ -85,6 +85,10 @@ export function SocioCadastro({
   // fechar direto esconderia o aviso no mesmo instante em que ele nasce.
   const concluido = state.ok && (!precisaAvisar || avisoConfirmado);
 
+  // 338 (C40–C45): só nome e CPF são obrigatórios; o resto é opcional e,
+  // em branco, a RPC mantém o que o cadastro já tem. Sem pré-preenchimento
+  // vindo de thb_alunos (pentest, 02/10: convite aceito não prova posse do
+  // e-mail).
   const [nome, setNome] = useState("");
   const [documento, setDocumento] = useState("");
   const [telefone, setTelefone] = useState("");
@@ -234,7 +238,7 @@ export function SocioCadastro({
 
         <form action={formAction} className="grid gap-5">
           <p className="corpo-sm text-muted-foreground">
-            Todos os campos abaixo são obrigatórios.
+            Só o nome e o CPF são obrigatórios. O resto ajuda a equipe a falar com você.
           </p>
 
           <Secao nivel="h3" titulo="Identificação" classeConteudo="grid gap-3">
@@ -289,7 +293,7 @@ export function SocioCadastro({
 
           <Secao nivel="h3" titulo="Contato" classeConteudo="grid gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="sc-tel">Telefone / WhatsApp</Label>
+              <Label htmlFor="sc-tel">Telefone / WhatsApp (opcional)</Label>
               <Input
                 id="sc-tel"
                 name="telefone"
@@ -312,7 +316,7 @@ export function SocioCadastro({
           <Secao nivel="h3" titulo="Endereço" classeConteudo="grid gap-3">
             <div className="grid gap-3 sm:grid-cols-[1fr_2fr_auto]">
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-cep">CEP</Label>
+                <Label htmlFor="sc-cep">CEP (opcional)</Label>
                 <Input
                   id="sc-cep"
                   name="cep"
@@ -343,7 +347,7 @@ export function SocioCadastro({
                 ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-cidade">Cidade</Label>
+                <Label htmlFor="sc-cidade">Cidade (opcional)</Label>
                 <Input
                   id="sc-cidade"
                   name="cidade"
@@ -376,9 +380,8 @@ export function SocioCadastro({
                     erroDeCampo.estado ? "sc-uf-erro" : undefined
                   }
                 >
-                  <option value="" disabled>
-                    —
-                  </option>
+                  {/* Selecionável: a UF é opcional desde a 338. */}
+                  <option value="">—</option>
                   {UFS_BRASIL.map((sigla) => (
                     <option key={sigla} value={sigla}>
                       {sigla}
@@ -394,7 +397,7 @@ export function SocioCadastro({
             </div>
             <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-logradouro">Endereço</Label>
+                <Label htmlFor="sc-logradouro">Endereço (opcional)</Label>
                 <Input
                   id="sc-logradouro"
                   name="logradouro"
@@ -415,7 +418,7 @@ export function SocioCadastro({
                 ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-numero">Número</Label>
+                <Label htmlFor="sc-numero">Número (opcional)</Label>
                 <Input
                   id="sc-numero"
                   name="numero"
@@ -437,7 +440,7 @@ export function SocioCadastro({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-bairro">Bairro</Label>
+                <Label htmlFor="sc-bairro">Bairro (opcional)</Label>
                 <Input
                   id="sc-bairro"
                   name="bairro"
@@ -457,7 +460,7 @@ export function SocioCadastro({
                 ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-pais">País</Label>
+                <Label htmlFor="sc-pais">País (opcional)</Label>
                 <Input
                   id="sc-pais"
                   name="pais"
@@ -485,8 +488,9 @@ export function SocioCadastro({
             </p>
           ) : null}
 
-          {/* `cpfDeOutroMembro`: os dados foram gravados mesmo assim (o CPF já
-              pertencia a outro membro do programa) — a tela avisa sem citar
+          {/* `cpfDeOutroMembro`: NADA foi gravado nem vinculado (o CPF é de
+              outro cadastro — de outro membro ou com outro e-mail, …338) e a
+              Central resolve. A tela avisa sem citar
               nome nem ambiente de terceiro, conforme o contrato de
               `SocioCadastroResultado`, e só fecha quando a pessoa confirmar
               que leu (fechar sozinho esconderia o aviso no mesmo instante em
@@ -494,9 +498,8 @@ export function SocioCadastro({
           {precisaAvisar ? (
             <div className="grid gap-2 rounded-lg bg-atencao p-3 text-atencao-foreground">
               <p role="alert" aria-live="polite" className="corpo-sm">
-                Seus dados foram salvos. O CPF informado já está associado a
-                outro cadastro do programa — se isso não for esperado, avise
-                a equipe pelo Suporte.
+                Este CPF já está em outro cadastro. Fale com a equipe pelo
+                Suporte.
               </p>
               <Button
                 type="button"

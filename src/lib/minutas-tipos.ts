@@ -105,7 +105,36 @@ export interface ClienteMinuta {
   ponto_de_ajuda: string | null;
   /** Só preenchido a partir da 2ª minuta do cliente (contexto obrigatório, 17/09/2026). */
   o_que_mudou: string | null;
+  /** Andamento da análise pela equipe (…341, 02/10/2026). Nasce `enviada`. */
+  status: MinutaStatus;
+  /** Parecer da equipe sobre ESTA versão — texto puro, nunca HTML. */
+  parecer: string | null;
+  parecer_em: string | null;
+  parecer_por: string | null;
 }
+
+/**
+ * Status da análise da minuta pela equipe (migração `…341`, decisão do João
+ * 02/10/2026): o parceiro anexava e não via retorno — a análise voltava pelo
+ * WhatsApp. O MESMO catálogo do CHECK `chk_cliente_minutas_status` e do IF de
+ * `gps.minuta_registrar_parecer`; mudar um exige mudar os três.
+ * Sem integração com o gerador de minutas.
+ */
+export const MINUTA_STATUS = ["enviada", "em_analise", "revisada"] as const;
+export type MinutaStatus = (typeof MINUTA_STATUS)[number];
+
+export const MINUTA_STATUS_ROTULO: Record<MinutaStatus, string> = {
+  enviada: "Enviada",
+  em_analise: "Em análise",
+  revisada: "Revisada",
+};
+
+export function ehMinutaStatus(v: unknown): v is MinutaStatus {
+  return typeof v === "string" && (MINUTA_STATUS as readonly string[]).includes(v);
+}
+
+/** Teto do parecer — o mesmo do CHECK `chk_cliente_minutas_parecer_tam`. */
+export const MINUTA_PARECER_MAXIMO = 4000;
 
 /** "3,7 MB" — mesmo formato de `tamanhoLegivel` de `chamados-tipos.ts`,
  * copiado pelo mesmo motivo de não acoplar os dois módulos. */

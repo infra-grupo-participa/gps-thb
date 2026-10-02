@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { cadastrar, type CadastroState } from "./actions";
+import { cadastrar } from "./actions";
+import type { CadastroState } from "@/lib/cadastro-tipos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputSenha } from "@/components/ui/input-senha";

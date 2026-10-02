@@ -14,6 +14,7 @@ import {
   CHAMADOS_MAX_ABERTOS,
   type CategoriaChamado,
 } from "@/lib/chamados-tipos";
+import { getAjudaAtiva } from "@/lib/data/ajuda";
 import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
@@ -62,13 +63,17 @@ export default async function ChamadosPage({
   if (ctx.papel !== "aluno" || !ctx.alunoId) redirect("/");
 
   const alunoId = ctx.alunoId;
-  const [aluno, chamados, suporteAberto, categoriasAtivo, tutoriaisAtivo] = await Promise.all([
-    getAlunoById(alunoId),
-    getChamadosDoAmbiente(alunoId),
-    getSuporteAberto(),
-    getChamadosCategoriasAtivo(),
-    getTutoriaisAtivo(),
-  ]);
+  // `getAjudaAtiva` é `cache()` por requisição: o "Como faço?" do header lê
+  // o mesmo interruptor e não paga a 2ª ida ao banco.
+  const [aluno, chamados, suporteAberto, categoriasAtivo, tutoriaisAtivo, ajudaAtiva] =
+    await Promise.all([
+      getAlunoById(alunoId),
+      getChamadosDoAmbiente(alunoId),
+      getSuporteAberto(),
+      getChamadosCategoriasAtivo(),
+      getTutoriaisAtivo(),
+      getAjudaAtiva(),
+    ]);
 
   // O formulário de troca só precisa de clientes/sócio quando a feature está
   // ligada — poupa duas idas ao banco no caminho comum (interruptor
@@ -92,6 +97,7 @@ export default async function ChamadosPage({
 
   const dialogo = podeAbrir ? (
     <ChamadoNovoDialog
+      ajudaAtiva={ajudaAtiva}
       categoriaInicial={categoriaInicial}
       categoriasAtivo={categoriasAtivo}
       clientes={clientes.map((c) => ({ id: c.id, nome: c.nome }))}

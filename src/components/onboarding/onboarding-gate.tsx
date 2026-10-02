@@ -15,6 +15,7 @@ import {
 import { gravarCadastroSocio } from "@/app/onboarding/socio-actions";
 import { OnboardingPortalLazy } from "./portal-lazy";
 import { SocioCadastroPortalLazy } from "@/components/socio-cadastro/portal-lazy";
+import { AvisoCpfRecusado } from "@/components/socio-cadastro/aviso-recusado";
 
 /**
  * O portão do questionário inicial — **um lugar só, no `layout.tsx` da raiz**.
@@ -146,6 +147,9 @@ export async function OnboardingGate() {
   if (!ctx.pessoaAlunoId) {
     if (ctx.papelMembro !== "socio") return null;
     const c = await getSocioPrecisaCadastro();
+    // Recusado por CPF de outro cadastro (…343): aviso dispensável, portal
+    // liberado. Reabrir o formulário a cada visita era a queixa C41.
+    if (c.recusado) return <AvisoCpfRecusado />;
     if (!c.precisa) return null; // interruptor desligado = ninguém trancado
     return (
       <SocioCadastroPortalLazy

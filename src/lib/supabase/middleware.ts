@@ -14,6 +14,14 @@ import { destinoInterno } from "@/lib/nav";
  * `/perfil` e `/pasta` públicas também.
  */
 export async function updateSession(request: NextRequest) {
+  // 🔑 Central de ajuda (02/10/2026): o `AppHeader` é Server Component e não
+  // tem `usePathname()`. Ele precisa da rota para buscar os artigos da tela
+  // NO SERVIDOR (`getAjudaPorRota`), sem fetch por clique. O valor é SEMPRE
+  // sobrescrito aqui — um `x-gps-rota` enviado pelo navegador não sobrevive —
+  // e só escolhe artigo de ajuda; não é usado para permissão nenhuma.
+  // Entra antes do primeiro `NextResponse.next({ request })`, que é quem
+  // repassa os headers da requisição para a renderização.
+  request.headers.set("x-gps-rota", request.nextUrl.pathname);
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

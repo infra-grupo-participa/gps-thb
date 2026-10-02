@@ -123,6 +123,8 @@ export function FichaAbaFechamento({
           minutas={[...minutas]}
           podeAnexar
           contextoObrigatorio={contextoObrigatorio}
+          // Status e parecer da minuta (…341): só a equipe edita; o parceiro lê.
+          equipe={admin}
           desabilitado={pending}
           aoMudar={aoMudar}
         />

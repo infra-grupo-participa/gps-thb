@@ -21,12 +21,21 @@ export interface SocioPrecisaCadastro {
   precisa: boolean;
   titularNome: string | null;
   titularEmail: string | null;
+  /**
+   * `true` quando este login já teve o cadastro RECUSADO por CPF de outro
+   * cadastro (`gps.socio_cadastro_recusado`, migração …343). Nesse caso
+   * `precisa` é `false`: o formulário obrigatório não reabre (era o laço da
+   * queixa C41) e a tela mostra só um aviso dispensável — a Central liga a
+   * pessoa certa depois.
+   */
+  recusado: boolean;
 }
 
 const VAZIO: SocioPrecisaCadastro = {
   precisa: false,
   titularNome: null,
   titularEmail: null,
+  recusado: false,
 };
 
 export async function getSocioPrecisaCadastro(): Promise<SocioPrecisaCadastro> {
@@ -57,6 +66,18 @@ export async function getSocioPrecisaCadastro(): Promise<SocioPrecisaCadastro> {
   }
   if (obrigatorio !== true) return VAZIO;
 
+  // Já recusado por CPF de outro cadastro → nada de formulário obrigatório.
+  // Erro na leitura NÃO vira "recusado": cai no comportamento anterior
+  // (formulário), que é o lado que não esconde nada.
+  const { data: recusado, error: erroRecusado } = await supabase
+    .schema("gps")
+    .rpc("socio_cadastro_recusado");
+  if (erroRecusado) {
+    logErro("socio-cadastro/getSocioPrecisaCadastro/recusado", erroRecusado);
+  } else if (recusado === true) {
+    return { ...VAZIO, recusado: true };
+  }
+
   const { data: titular, error: erroTitular } = await supabase
     .from("thb_alunos")
     .select("nome, email")
@@ -71,5 +92,6 @@ export async function getSocioPrecisaCadastro(): Promise<SocioPrecisaCadastro> {
     precisa: true,
     titularNome: (titular?.nome as string | null) ?? null,
     titularEmail: (titular?.email as string | null) ?? null,
+    recusado: false,
   };
 }

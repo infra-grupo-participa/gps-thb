@@ -44,6 +44,10 @@ export const ORDENS: OrdemAlunos[] = [
 ];
 
 export const DIAS_INATIVO = 30;
+/** Janela do chip "Sem acesso há 14+ dias" (Onda 6.1). Chip PRÓPRIO: `inativos` segue em 30. */
+export const DIAS_SEM_ACESSO_CRITICO = 14;
+/** Chamado `aberto` (bola com a equipe) parado há tanto tempo ou mais, em horas. */
+export const HORAS_CHAMADO_SEM_RESPOSTA = 24;
 export const META_CLIENTES = 30;
 /** Janela do filtro "com nota nos últimos N dias" — dias de CALENDÁRIO. */
 export const DIAS_NOTA_RECENTE = 7;

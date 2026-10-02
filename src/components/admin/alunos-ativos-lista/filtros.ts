@@ -19,7 +19,13 @@ import type { AlunoGps, AtendimentoDoAluno } from "@/lib/data";
 import { casaTodosOsTermos } from "@/lib/texto";
 
 import type { FiltroId } from "./estado-na-url";
-import { DIAS_INATIVO, DIAS_NOTA_RECENTE, META_CLIENTES } from "./tipos";
+import {
+  DIAS_INATIVO,
+  DIAS_NOTA_RECENTE,
+  DIAS_SEM_ACESSO_CRITICO,
+  HORAS_CHAMADO_SEM_RESPOSTA,
+  META_CLIENTES,
+} from "./tipos";
 import { diasSemAcesso, notaRecente } from "./ordenacao";
 
 export interface ContextoDoFiltro {
@@ -34,7 +40,7 @@ interface DefinicaoDeFiltro {
   frase?: string;
   predicado: (a: AlunoGps, ctx: ContextoDoFiltro) => boolean;
   /** O dado existe neste lote? `false` esconde o chip (mas não o parse). */
-  disponivel: (alunos: AlunoGps[]) => boolean;
+  disponivel: (alunos: AlunoGps[], ctx: ContextoDoFiltro) => boolean;
 }
 
 const sempre = () => true;
@@ -227,6 +233,54 @@ export const DEFINICAO_DOS_FILTROS: Record<FiltroId, DefinicaoDeFiltro> = {
     frase: "com fichas de cliente incompletas",
     predicado: (a) => a.clientesComDados > 0 && a.clientesComDados < META_CLIENTES,
     disponivel: sempre,
+  },
+  /**
+   * Onda 6.1 — "Sem acesso há 14+ dias". `ultimoAcesso` já é o MAIOR
+   * `last_sign_in_at` entre TODOS os membros do ambiente (titular E sócio,
+   * `gps.admin_painel_alunos`), então "ninguém do ambiente" é o dado que já
+   * existe — zero query nova. Nunca entrou (`null`) conta: `diasSemAcesso`
+   * devolve Infinity. Chip próprio; `inativos` continua em 30.
+   */
+  sem_acesso_14d: {
+    rotulo: `Sem acesso há ${DIAS_SEM_ACESSO_CRITICO}+ dias`,
+    frase: `sem acesso de ninguém do ambiente há ${DIAS_SEM_ACESSO_CRITICO}+ dias`,
+    predicado: (a, c) => diasSemAcesso(a.ultimoAcesso, c.agora) >= DIAS_SEM_ACESSO_CRITICO,
+    disponivel: sempre,
+  },
+  /**
+   * "Parado na etapa" = 30+ fichas COMPLETAS (`clientesComDados`, a MESMA conta
+   * do filtro `listou30`) e nenhuma etapa além da 2 liberada para o ambiente.
+   * A liberação vem de `gps.admin_painel_sinais()` (coalesce override/global).
+   * Sem o dado no lote, o chip some — não conta "0 parados" por falta de dado.
+   */
+  parado_etapa: {
+    rotulo: "Parado na etapa",
+    frase: `com ${META_CLIENTES}+ fichas completas e nenhuma etapa além da 2 liberada`,
+    predicado: (a) =>
+      a.clientesComDados >= META_CLIENTES &&
+      a.etapaAlemDa2Liberada === false,
+    disponivel: (alunos) =>
+      alunos.some((a) => a.etapaAlemDa2Liberada !== undefined),
+  },
+  /**
+   * "Chamado sem resposta há 24h+": chamado `aberto` (bola com a equipe) cuja
+   * última mensagem do aluno tem 24h ou mais. `chamadosAbertos` sozinho conta
+   * também os `respondido` (bola com o aluno) — não serve para este chip.
+   */
+  chamado_24h: {
+    rotulo: `Chamado sem resposta há ${HORAS_CHAMADO_SEM_RESPOSTA}h+`,
+    frase: `com chamado sem resposta há ${HORAS_CHAMADO_SEM_RESPOSTA}h+`,
+    predicado: (a, c) => {
+      const desde = c.atendimento(a.alunoId).chamadoAbertoDesde;
+      if (!desde) return false;
+      const t = Date.parse(desde);
+      return Number.isFinite(t) && c.agora - t >= HORAS_CHAMADO_SEM_RESPOSTA * 3_600_000;
+    },
+    disponivel: (alunos, ctx) =>
+      alunos.some(
+        (a) =>
+          ctx.atendimento(a.alunoId).chamadoAbertoDesde !== undefined,
+      ),
   },
 };
 

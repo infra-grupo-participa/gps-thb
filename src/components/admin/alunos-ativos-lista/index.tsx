@@ -163,7 +163,7 @@ export function AlunosAtivosLista({
     () =>
       FILTROS.filter(
         (id) =>
-          DEFINICAO_DOS_FILTROS[id].disponivel(alunos) || estado.filtros.has(id),
+          DEFINICAO_DOS_FILTROS[id].disponivel(alunos, ctx) || estado.filtros.has(id),
       ).map((id) => ({
         id,
         rotulo: DEFINICAO_DOS_FILTROS[id].rotulo,

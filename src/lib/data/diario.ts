@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { logErro } from "@/lib/log";
+import { getSinaisDoPainel } from "@/lib/data/sinais-painel";
 import type {
   AlunoNota,
   AlunoNotaComAutor,
@@ -245,6 +246,12 @@ export interface AtendimentoDoAluno {
   ultimaNotaResumo: string | null;
   /** Chamados de suporte não fechados do ambiente (migração 20260909000115). */
   chamadosAbertos: number;
+  /**
+   * ISO do menor `ultima_mensagem_em` entre chamados `aberto` (bola com a
+   * equipe). `null` = nenhum esperando; `undefined` = dado não veio (RPC
+   * `admin_painel_sinais` ainda não aplicada) e o chip fica escondido.
+   */
+  chamadoAbertoDesde?: string | null;
 }
 
 /** Linha crua de `gps.admin_painel_atendimento()` (migração 20260909000080). */
@@ -280,9 +287,10 @@ export async function getAtendimentoPorAluno(): Promise<
 > {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .schema("gps")
-    .rpc("admin_painel_atendimento");
+  const [{ data, error }, sinais] = await Promise.all([
+    supabase.schema("gps").rpc("admin_painel_atendimento"),
+    getSinaisDoPainel(),
+  ]);
 
   if (error) {
     // Falha aqui não pode virar "nenhuma pendência em lugar nenhum" em
@@ -296,7 +304,7 @@ export async function getAtendimentoPorAluno(): Promise<
   }
 
   const linhas = (data ?? []) as LinhaPainelAtendimento[];
-  return new Map(
+  const mapa = new Map<string, AtendimentoDoAluno>(
     linhas.map((l) => [
       l.aluno_id,
       {
@@ -305,9 +313,15 @@ export async function getAtendimentoPorAluno(): Promise<
         ultimaNotaEm: l.ultima_nota_em,
         ultimaNotaTipo: l.ultima_nota_tipo,
         ultimaNotaResumo: l.ultima_nota_resumo,
+        chamadoAbertoDesde: sinais
+          ? (sinais.get(l.aluno_id)?.chamadoAbertoDesde ?? null)
+          : undefined,
       },
     ]),
   );
+  // O Map só tem ambientes com nota/chamado; quem tem chamado `aberto` sem
+  // estar nele não existe (a RPC inclui todo ambiente com chamado vivo).
+  return mapa;
 }
 
 // ─────────────────────────────────────────────────────────────────────────

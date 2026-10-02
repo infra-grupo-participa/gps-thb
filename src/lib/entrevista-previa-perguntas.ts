@@ -10,8 +10,10 @@
  * caminho mais longo, em 4 blocos — Consciência · Quem decide · Gatilhos ·
  * Relacionamento — e a Reunião Preliminar marcada no fim. Caminho curto: 11.
  *   • 20 perguntas foram APOSENTADAS, não apagadas: continuam aqui com
- *     `aposentada: true`, fora do fluxo e do cálculo, legíveis para as
- *     entrevistas antigas (o briefing ainda as mostra). NENHUM id foi
+ *     `aposentada: true`, fora do fluxo e do mapa de decisores, legíveis
+ *     para as entrevistas antigas (o briefing ainda as mostra). Desde
+ *     02/10 os PESOS delas voltam a contar no DISC de quem as respondeu
+ *     (ver `calcularDisc`). NENHUM id foi
  *     renomeado nem reaproveitado — o id é o que está gravado no banco.
  *   • Preço saiu do roteiro (`decide_investimento`, `reacao_preco`
  *     aposentadas). A Parte 06 do briefing passa a ser presença dos
@@ -442,9 +444,10 @@ const ATIVAS: readonly PerguntaEntrevista[] = [
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // Textos e pesos exatamente como estavam na 2.0 (`git show 43f39c5`). Não
-// entram em `perguntasVisiveis`, nem em `calcularDisc`, nem em
-// `mapearDecisores`: servem só para o briefing mostrar o que uma entrevista
-// antiga respondeu.
+// entram em `perguntasVisiveis` nem em `mapearDecisores`. Entram em
+// `calcularDisc` (02/10/2026, card 86akrypfm): entrevista antiga concluída
+// no 3.0 ficava sem DISC. 🔴 Mudar um peso aqui muda o DISC recalculado de
+// entrevista antiga.
 
 const APOSENTADAS: readonly PerguntaEntrevista[] = [
   {

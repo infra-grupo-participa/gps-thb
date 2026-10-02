@@ -71,6 +71,10 @@ export const FILTROS = [
   "etapa1_andamento",
   "sem_cliente",
   "clientes_incompleto",
+  // Onda 6.1 — a equipe deixa de descobrir problema pelo WhatsApp.
+  "sem_acesso_14d",
+  "parado_etapa",
+  "chamado_24h",
 ] as const;
 
 export type FiltroId = (typeof FILTROS)[number];

@@ -313,7 +313,7 @@ test.describe("Nenhum id antigo sumiu (o id é o que está gravado no banco) @es
     ).toBe(true);
   });
 
-  test("entrevista antiga: aposentadas não pesam no DISC e `participam_negocio` segue valendo como decide junto", () => {
+  test("entrevista antiga: aposentadas PESAM no DISC (02/10, card 86akrypfm), não no mapa de decisores; `participam_negocio` segue valendo como decide junto", () => {
     // Só perguntas aposentadas respondidas (estilo_decisao.rapido = D3, etc.).
     const legado: Record<string, string> = {
       estilo_decisao: "rapido",
@@ -328,10 +328,12 @@ test.describe("Nenhum id antigo sumiu (o id é o que está gravado no banco) @es
       disc = calcularDisc(legado);
       decisores = mapearDecisores(legado);
     }, "REGRA: uma entrevista antiga (só ids aposentados) não pode lançar exceção.").not.toThrow();
-    expect(disc!.pontos, "REGRA: o cálculo usa só perguntas ativas — aposentada não soma.").toEqual({
-      D: 0, I: 0, S: 0, C: 0,
+    // estilo_decisao.rapido D3 + o_que_convence.resultado D3 + consulta_terceiro.contador C2.
+    expect(disc!.pontos, "REGRA: aposentada respondida soma o peso do catálogo (senão a entrevista antiga fica sem DISC).").toEqual({
+      D: 6, I: 0, S: 0, C: 2,
     });
-    expect(disc!.letra, "REGRA: sem nenhum ponto não há perfil (nunca inventar 'D').").toBeNull();
+    expect(disc!.letra, "REGRA: entrevista antiga com sinais nas aposentadas tem letra.").toBe("D");
+    expect(calcularDisc({ temperatura: "morno" }).letra, "REGRA: sem nenhum ponto não há perfil (nunca inventar 'D').").toBeNull();
     expect(decisores!.total, "REGRA: o entrevistado é sempre 1 decisor; aposentada não acrescenta.").toBe(1);
     expect(decisores!.decideJunto, "REGRA: decisor de pergunta aposentada não trava.").toEqual([]);
 

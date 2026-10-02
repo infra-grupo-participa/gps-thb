@@ -1,4 +1,5 @@
 import {
+  PERGUNTAS_ENTREVISTA,
   perguntaPorId,
   type LetraDisc,
   type PapelDecisor,
@@ -20,11 +21,21 @@ export type { RespostasEntrevista } from "@/lib/entrevista-previa-perguntas";
  * Determinístico, auditável (a tela mostra os pontos) e sem chamada externa
  * no meio de uma conversa ao vivo.
  *
- * ── 🔑 SÓ AS ATIVAS E VISÍVEIS CONTAM ──────────────────────────────────────
+ * ── 🔑 O QUE CONTA NA SOMA ────────────────────────────────────────────────
  *
- * Pergunta aposentada (29/09) e pergunta que a condição escondeu ficam FORA
- * da soma e do mapa de decisores. Entrevista antiga recalculada aqui usa só
- * o que ainda está no roteiro — o que ela gravou continua intacto no banco.
+ * Perguntas ATIVAS e VISÍVEIS + perguntas APOSENTADAS que a entrevista
+ * respondeu. Pergunta ativa que a condição escondeu fica fora.
+ *
+ * 🔴 Por que a aposentada pesa (02/10/2026, card 86akrypfm): de 29/09 a
+ * 02/10 a aposentada ficava fora, e entrevista começada no 2.0 e concluída
+ * no 3.0 saía "DISC não definido — respostas insuficientes" — os sinais
+ * dela estavam todos em perguntas aposentadas. O peso usado é o do catálogo
+ * (idêntico ao 2.0, `git show 43f39c5`). Entrevista nascida no 3.0 não tem
+ * chave de pergunta aposentada (a tela não as mostra), então o resultado
+ * dela não muda.
+ * ⚠️ Não é a soma exata do 2.0: `ja_tentou`, `decide_sozinho.sozinho` e
+ * `socios_negocio.sem_socios` tinham peso no 2.0 e hoje não têm.
+ * O MAPA DE DECISORES continua só com ativas visíveis (inalterado).
  *
  * ── 🔴 O EMPATE É UM RESULTADO, NÃO UM ERRO ────────────────────────────────
  *
@@ -44,7 +55,8 @@ export interface ResultadoDisc {
   /** Letras empatadas na liderança (inclui a vencedora). Tamanho 1 = sem empate. */
   empate: LetraDisc[];
   /**
-   * Nº de OPÇÕES com peso marcadas (a múltipla conta cada item). Máx. 12.
+   * Nº de OPÇÕES com peso marcadas (a múltipla conta cada item). Máx. 12 no 3.0;
+   * entrevista antiga com aposentadas passa disso.
    */
   sinais: number;
   /** Pontos da 1ª − pontos da 2ª. */
@@ -96,10 +108,13 @@ export interface ResultadoDecisores {
 
 const LETRAS: LetraDisc[] = ["D", "I", "S", "C"];
 
+/** As aposentadas, montadas uma vez: pesam quando a entrevista as respondeu. */
+const APOSENTADAS = PERGUNTAS_ENTREVISTA.filter((p) => p.aposentada);
+
 /**
- * Soma os pesos das perguntas ATIVAS e VISÍVEIS e devolve o perfil.
- * Resposta ou opção desconhecida é ignorada em silêncio: o histórico nunca
- * derruba o cálculo.
+ * Soma os pesos das perguntas ATIVAS e VISÍVEIS + APOSENTADAS respondidas
+ * e devolve o perfil. Resposta ou opção desconhecida é ignorada em
+ * silêncio: o histórico nunca derruba o cálculo.
  */
 export function calcularDisc(respostas: RespostasEntrevista | null | undefined): ResultadoDisc {
   const r = respostas ?? {};
@@ -107,7 +122,7 @@ export function calcularDisc(respostas: RespostasEntrevista | null | undefined):
   let sinais = 0;
   let respondidasComPeso = 0;
 
-  for (const p of perguntasVisiveis(r)) {
+  for (const p of [...perguntasVisiveis(r), ...APOSENTADAS]) {
     const marcadas = new Set(opcoesMarcadas(r[p.id]));
     let perguntaPesou = false;
     for (const o of p.opcoes) {

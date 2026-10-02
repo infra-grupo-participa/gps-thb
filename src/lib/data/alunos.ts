@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { resumoEtapa1 } from "@/lib/etapa1";
 import { logErro } from "@/lib/log";
+import { getSinaisDoPainel } from "@/lib/data/sinais-painel";
 import { CLASSES, type ClasseAluno } from "@/lib/types";
 import type {
   Aluno,
@@ -257,6 +258,12 @@ export interface AlunoGps {
    * `docs/audits/2026-09-11-socios/medicao-painel-socio.md`).
    */
   socioNome?: string | null;
+  /**
+   * Alguma etapa com id > 2 liberada para o ambiente (`gps.admin_painel_sinais`).
+   * `undefined` = o dado não veio (RPC ainda não aplicada): o chip "Parado na
+   * etapa" fica escondido, nunca "0 parados".
+   */
+  etapaAlemDa2Liberada?: boolean;
 }
 
 /**
@@ -425,9 +432,12 @@ export async function getAlunosGps(opts?: {
   );
   const offset = Math.max(Math.trunc(opts?.offset ?? 0) || 0, 0);
 
-  const { data, error } = await supabase
-    .schema("gps")
-    .rpc("admin_painel_alunos", { p_limite: limite, p_offset: offset });
+  const [{ data, error }, sinais] = await Promise.all([
+    supabase
+      .schema("gps")
+      .rpc("admin_painel_alunos", { p_limite: limite, p_offset: offset }),
+    getSinaisDoPainel(),
+  ]);
 
   if (error) {
     // Falha aqui não pode virar "nenhum aluno no programa" em silêncio: a tela
@@ -517,6 +527,9 @@ export async function getAlunosGps(opts?: {
       finalizadoEm: l.finalizado_em ?? null,
       favorito: mapearFavorito(l.favorito_nome, l.favorito_fase),
       socioNome: l.socio_nome ?? null,
+      etapaAlemDa2Liberada: sinais
+        ? (sinais.get(l.aluno_id)?.etapaAlemDa2Liberada ?? false)
+        : undefined,
     };
   });
 

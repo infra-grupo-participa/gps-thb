@@ -27,6 +27,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ehAdmin } from "@/lib/auth";
 import { logErro } from "@/lib/log";
+import { UUID_RE } from "@/lib/texto";
 import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import {
   LOTE_ETAPAS_MAX_ALUNOS,
@@ -163,8 +164,7 @@ export async function removerFavoritoEmLote(
   }
   // Recusa o pedido inteiro com id fora do formato (pentest 02/10, BAIXO):
   // sem isto, um id malformado virava erro genérico de tipo no banco.
-  const UUID_ALUNO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (entrada.alunoIds.some((id) => typeof id !== "string" || !UUID_ALUNO.test(id))) {
+  if (entrada.alunoIds.some((id) => typeof id !== "string" || !UUID_RE.test(id))) {
     return { ok: false, erro: "Pedido fora do formato." };
   }
   const ids = Array.from(new Set(entrada.alunoIds as string[]));

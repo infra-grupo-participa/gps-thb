@@ -73,6 +73,8 @@ import { toast } from "sonner";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import type { ClienteCroqui } from "@/lib/croquis-tipos";
+import type { LinkDrive } from "@/lib/links-drive-tipos";
+import { LinksDrive } from "@/components/clientes/links-drive";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import {
   mascaraCpfCnpj,
@@ -126,6 +128,7 @@ export function ClienteFicha({
   outroFavoritoNome = null,
   minutas = [],
   croquis,
+  linksDrive,
   contextoObrigatorio = false,
   painelEntrevista = null,
   qtdDecisores = null,
@@ -196,6 +199,14 @@ export function ClienteFicha({
    * monte a ficha sem os croquis não compila.
    */
   croquis: ClienteCroqui[];
+  /**
+   * Links do Drive deste cliente (`getLinksDriveDoCliente`), com
+   * `podeRemover` já resolvido no servidor. Obrigatória pelo mesmo motivo de
+   * `croquis`: page que esquecer de buscar não compila, em vez de mostrar
+   * "nenhum link" sem ter lido o banco.
+   */
+  /** `null` = a leitura falhou (a seção avisa; nunca vira "nenhum link"). */
+  linksDrive: LinkDrive[] | null;
   /**
    * Interruptor `minuta_contexto_obrigatorio`, lido no servidor pela page.
    */
@@ -711,6 +722,10 @@ export function ClienteFicha({
         onToggleEquipe={toggleEquipe}
         aoMudarAcompanhamento={() => router.refresh()}
       />
+
+      {/* Acima das abas: os links valem para a ficha inteira, não para uma
+          folha. `souEquipe = admin` — a mesma prop que liga o modo assistência. */}
+      <LinksDrive clienteId={cliente.id} links={linksDrive} souEquipe={admin} />
 
       <FichaAbas
         aba={aba}

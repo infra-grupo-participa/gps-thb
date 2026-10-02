@@ -1,4 +1,5 @@
 import "server-only";
+import { UUID_RE } from "@/lib/texto";
 
 /**
  * Chamados (suporte do portal) — e-mails transacionais.
@@ -24,12 +25,10 @@ import "server-only";
 
 import { APP_URL, enviar, esc, layout, botao, type ResultadoEmail } from "@/lib/email";
 
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Link só com id no formato de UUID — nunca interpolar id cru numa URL. */
 function linkDoChamado(base: "chamados" | "admin/chamados", id: string): string {
-  return UUID_REGEX.test(id) ? `${APP_URL}/${base}/${id}` : `${APP_URL}/${base}`;
+  return UUID_RE.test(id) ? `${APP_URL}/${base}/${id}` : `${APP_URL}/${base}`;
 }
 
 /** Assunto do chamado no assunto do e-mail, cortado e sem quebra de linha

@@ -7,7 +7,12 @@ import { formatarData, formatarDataHora } from "@/lib/datas";
 import type { LetraDisc } from "@/lib/entrevista-previa-perguntas";
 import { logErro } from "@/lib/log";
 import { montarParte, PARTES_SCRIPT, type ParteMontada } from "@/lib/script-reuniao";
-import type { EntrevistaPreviaAoVivo, SessaoBriefing } from "@/lib/sessoes-tipos";
+import {
+  linksDriveDoBriefing,
+  type EntrevistaPreviaAoVivo,
+  type LinkDriveBriefing,
+  type SessaoBriefing,
+} from "@/lib/sessoes-tipos";
 
 /**
  * O briefing de UMA sessão — carregado SÓ quando esta ficha abre (nunca na
@@ -188,8 +193,44 @@ export function CorpoBriefing({ b }: { b: SessaoBriefing }) {
       </dl>
 
       <BlocoDecisores decisores={decisores} />
+      <BlocoLinksDrive links={linksDriveDoBriefing(b)} />
       <BlocoDisc disc={discAoVivo} />
       <PartesDoScript entrevista={entrevistaPrevia} letra={letraVigente} />
+    </div>
+  );
+}
+
+/** Links do Drive do cliente, lidos AO VIVO. Vazio vira texto, não sumiço. */
+function BlocoLinksDrive({ links }: { links: LinkDriveBriefing[] }) {
+  return (
+    <div className="grid gap-2 border-t border-borda-fina pt-3">
+      <p className="rotulo text-muted-foreground">Links do Drive do cliente</p>
+      {links.length === 0 ? (
+        <p className="corpo-sm text-muted-foreground">
+          O parceiro ainda não colocou links.
+        </p>
+      ) : (
+        <ul className="corpo-sm grid gap-0.5">
+          {links.map((l, i) => (
+            <li key={`${l.url}-${i}`}>
+              <a
+                href={l.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-accent-foreground underline underline-offset-2"
+              >
+                {l.nome}
+                <span className="sr-only"> (abre em nova aba)</span>
+              </a>
+              <span className="text-muted-foreground">
+                {" "}
+                — {l.origem === "equipe" ? "Equipe" : l.criadoPorNome}
+                {l.criadoEm ? ` · ${formatarData(l.criadoEm)}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

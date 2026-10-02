@@ -104,3 +104,9 @@ export function normalizarEmail(bruto: string): string {
 export function normalizarSenhaColada(bruto: string): string {
   return bruto.replace(/[ ​-‍⁠﻿‪-‮]/g, "");
 }
+
+/**
+ * A ÚNICA regex de UUID (formato, sem checar versão) do repo. Server Action é
+ * endpoint HTTP: id que chega do cliente passa por aqui antes do banco.
+ */
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -18,6 +18,7 @@ import { ClienteFicha } from "@/components/clientes/cliente-ficha";
 import { estrelaTravada } from "@/components/clientes/clientes-manager/ordenacao";
 import { getMinutasDoCliente } from "@/lib/data/minutas";
 import { getCroquisDoCliente } from "@/lib/data/croquis";
+import { getLinksDriveDoCliente } from "@/lib/data/links-drive";
 import {
   getDecisoresPendentes,
   getEntrevistasDoCliente,
@@ -50,6 +51,7 @@ export default async function AdminAlunoClienteFichaPage({
     croquis,
     decisores,
     entrevistas,
+    linksDrive,
   ] = await Promise.all([
     getAlunoById(alunoId),
     contarMembrosDoAmbiente(alunoId),
@@ -72,6 +74,9 @@ export default async function AdminAlunoClienteFichaPage({
     // de ficha, a tela mais usada do produto.
     getDecisoresPendentes(clienteId),
     getEntrevistasDoCliente(clienteId),
+    // 🔑 Espelha a ficha do parceiro: no MESMO Promise.all. `souEquipe =
+    // true` — só admin chega aqui (redirect acima).
+    getLinksDriveDoCliente(clienteId, true),
   ]);
   // 🔴 `estrelaTravada` desde 23/09/2026 (migração ...304): o que esconde a
   // estrela é o outro favorito cujo CASO já andou, não mais
@@ -144,6 +149,7 @@ export default async function AdminAlunoClienteFichaPage({
           cliente={cliente}
           minutas={minutas}
           croquis={croquis}
+          linksDrive={linksDrive}
           contextoObrigatorio={contextoObrigatorio}
           alunoId={alunoId}
           admin

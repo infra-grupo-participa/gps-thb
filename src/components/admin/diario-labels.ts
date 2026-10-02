@@ -103,6 +103,8 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   cliente_croqui_anexado: "Anexou um croqui do cliente",
   cliente_croqui_removido: "Removeu um croqui do cliente",
   cliente_documento_lido: "Equipe abriu um documento do cliente na ficha",
+  cliente_link_drive_adicionado: "Colocou um link do Drive na ficha do cliente",
+  cliente_link_drive_removido: "Removeu um link do Drive da ficha do cliente",
 };
 
 export const ROTULO_ATOR: Record<AtorEvento, string> = {

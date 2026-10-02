@@ -51,6 +51,24 @@ export function ehUrlDoDrive(url: string): boolean {
 }
 
 /**
+ * Forma canônica do link colado nos "Links do Drive" da ficha do cliente.
+ * 🔗 ESPELHO da normalização de `gps.cliente_link_drive_adicionar`: o banco
+ * compara a url normalizada para recusar duplicado, então as duas têm de dar
+ * o mesmo texto.
+ *
+ * trim → sem esquema e começando por `drive.google.com/`/`docs.google.com/`
+ * ganha `https://` → `http://` vira `https://` → host em minúsculas. O resto
+ * (caminho, `?usp=sharing`, `#`) fica intacto. No fim, `ehUrlDoDrive` decide:
+ * recusou, devolve `null`.
+ */
+export function normalizarUrlDoDrive(bruto: string): string | null {
+  const url = (bruto ?? "").trim();
+  const m = /^(?:https?:\/\/)?((?:drive|docs)\.google\.com)(\/.*)$/i.exec(url);
+  const normalizada = m ? `https://${m[1].toLowerCase()}${m[2]}` : url;
+  return ehUrlDoDrive(normalizada) ? normalizada : null;
+}
+
+/**
  * Frases das exceções de `gps.pasta_drive_definir`, repassadas a
  * `traduzirErroBanco` como `frasesExtras` (sem isso a frase do banco cairia na
  * genérica). A chave é a `message` exata do `raise exception`.

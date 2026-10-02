@@ -635,6 +635,10 @@ export const TIPOS_EVENTO = [
   "cliente_croqui_anexado",
   "cliente_croqui_removido",
   "cliente_documento_lido",
+  // Links do Drive da ficha (…332, 02/10/2026): detalhe {link_id, cliente_id},
+  // nunca a url nem o nome do link.
+  "cliente_link_drive_adicionado",
+  "cliente_link_drive_removido",
 ] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 

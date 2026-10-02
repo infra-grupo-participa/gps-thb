@@ -10,6 +10,7 @@ import { estrelaTravada } from "@/components/clientes/clientes-manager/ordenacao
 import { getMinutaContextoObrigatorio } from "@/lib/data/minutas";
 import { getMinutasDoCliente } from "@/lib/data/minutas";
 import { getCroquisDoCliente } from "@/lib/data/croquis";
+import { getLinksDriveDoCliente } from "@/lib/data/links-drive";
 import {
   getDecisoresPendentes,
   getEntrevistasDoCliente,
@@ -45,6 +46,7 @@ export default async function ClienteFichaPage({
     tutoriaisAtivo,
     decisores,
     entrevistas,
+    linksDrive,
   ] = await Promise.all([
     getClienteById(clienteId),
     getAlunoById(alunoId),
@@ -63,6 +65,9 @@ export default async function ClienteFichaPage({
     // mais por abertura de ficha — a tela mais usada do produto.
     getDecisoresPendentes(clienteId),
     getEntrevistasDoCliente(clienteId),
+    // 🔑 No MESMO Promise.all: os links do Drive dependem só do `clienteId`.
+    // `souEquipe = false` — aqui só entra o parceiro (admin foi redirecionado).
+    getLinksDriveDoCliente(clienteId, false),
   ]);
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
@@ -122,6 +127,7 @@ export default async function ClienteFichaPage({
           cliente={cliente}
           minutas={minutas}
           croquis={croquis}
+          linksDrive={linksDrive}
           contextoObrigatorio={contextoObrigatorio}
           alunoId={alunoId}
           outroConfirmadoNome={outroConfirmadoNome}

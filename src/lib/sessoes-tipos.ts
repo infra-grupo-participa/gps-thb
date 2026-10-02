@@ -268,6 +268,39 @@ export interface SessaoBriefing {
    * dos "dois valores para a mesma pergunta".
    */
   entrevista_previa_ao_vivo?: EntrevistaPreviaAoVivo | null;
+  /**
+   * Os links do Drive do cliente lidos AO VIVO (`links_drive_ao_vivo`) — irmão
+   * de `briefing`, pela mesma razão de `disc_ao_vivo`: o parceiro cola links
+   * DEPOIS do snapshot. Chave crua da RPC (snake); `linksDriveDoBriefing`
+   * converte em `linksDrive`. Ausente = [].
+   */
+  links_drive_ao_vivo?: Record<string, unknown>[] | null;
+  /** Forma camelCase de `links_drive_ao_vivo` (ver `linksDriveDoBriefing`). */
+  linksDrive?: LinkDriveBriefing[];
+}
+
+export interface LinkDriveBriefing {
+  nome: string;
+  url: string;
+  criadoPorNome: string;
+  origem: "equipe" | "parceiro";
+  criadoEm: string;
+}
+
+/** snake → camel de `links_drive_ao_vivo`; ausente/malformado = []. */
+export function linksDriveDoBriefing(b: SessaoBriefing): LinkDriveBriefing[] {
+  if (Array.isArray(b.linksDrive)) return b.linksDrive;
+  const cru = Array.isArray(b.links_drive_ao_vivo) ? b.links_drive_ao_vivo : [];
+  const s = (v: unknown) => (typeof v === "string" ? v : "");
+  return cru
+    .map((l) => ({
+      nome: s(l.nome),
+      url: s(l.url),
+      criadoPorNome: s(l.criado_por_nome ?? l.criadoPorNome),
+      origem: (l.origem === "equipe" ? "equipe" : "parceiro") as "equipe" | "parceiro",
+      criadoEm: s(l.criado_em ?? l.criadoEm),
+    }))
+    .filter((l) => l.nome && l.url);
 }
 
 /**

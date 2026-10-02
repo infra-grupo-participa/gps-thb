@@ -413,15 +413,39 @@ export async function aprovarSolicitacao(
     };
   }
 
-  const { error: erroMembro } = await supabase
-    .schema("gps")
-    .from("membros")
-    .upsert(
-      { aluno_id: alunoId, user_id: userId, papel: "titular" },
-      { onConflict: "user_id" },
-    );
-  if (erroMembro) {
-    return { erro: traduzirErroBanco("aprovarSolicitacao.membro", erroMembro) };
+  // Só INSERE quando não há vínculo. `authenticated` tem UPDATE em `gps.membros`
+  // apenas em (perfil, atualizado_em): um upsert pede UPDATE em aluno_id/user_id/
+  // papel e o banco recusa com 42501 — aprovar falhava SEMPRE (achado 02/10/2026).
+  // Já vinculado como titular deste ambiente = nada a gravar.
+  if (!jaVinculado) {
+    // Um titular por ambiente (`membros_um_titular_por_ambiente`). Sem esta
+    // leitura o admin veria só "Já existe um registro com esses dados".
+    const { data: titular, error: erroTitular } = await supabase
+      .schema("gps")
+      .from("membros")
+      .select("user_id")
+      .eq("aluno_id", alunoId)
+      .eq("papel", "titular")
+      .maybeSingle();
+    if (erroTitular) {
+      return { erro: traduzirErroBanco("aprovarSolicitacao.titular", erroTitular) };
+    }
+    if (titular) {
+      return {
+        erro: (titular as { user_id: string | null }).user_id
+          ? "Este aluno já tem um titular com outro login. Em “Gerenciar acesso”, " +
+            "adicione este login como sócio ou troque o titular antes de aprovar."
+          : "Este aluno já tem ambiente, ainda sem login. Use “Gerenciar acesso” " +
+            "para definir o acesso dele em vez de aprovar a solicitação.",
+      };
+    }
+    const { error: erroMembro } = await supabase
+      .schema("gps")
+      .from("membros")
+      .insert({ aluno_id: alunoId, user_id: userId, papel: "titular" });
+    if (erroMembro) {
+      return { erro: traduzirErroBanco("aprovarSolicitacao.membro", erroMembro) };
+    }
   }
 
   const { error } = await supabase
@@ -736,17 +760,56 @@ export async function criarAcessoAluno(
     return { erro: "Não foi possível criar o acesso agora. Tente de novo." };
   }
 
-  // Garante o vínculo com ESTE aluno, como TITULAR (o gatilho já tenta por
-  // CPF/e-mail).
+  // Garante o vínculo com ESTE aluno, como TITULAR. O gatilho
+  // `on_auth_user_created_gps` normalmente já o criou (por CPF/e-mail): aqui só
+  // se INSERE o que falta. Sem upsert — `authenticated` não tem UPDATE em
+  // aluno_id/user_id/papel e o banco recusava com 42501 (achado 02/10/2026).
   const novoUserId = signUpData.user?.id;
   if (novoUserId) {
-    await supabase
+    const { data: vinculo, error: erroVinculo } = await supabase
       .schema("gps")
       .from("membros")
-      .upsert(
-        { aluno_id: alunoId, user_id: novoUserId, papel: "titular" },
-        { onConflict: "user_id" },
+      .select("aluno_id")
+      .eq("user_id", novoUserId)
+      .maybeSingle();
+    // 🔴 Qualquer falha aqui PARA antes de mostrar/enviar a senha (pentest
+    // 02/10): login sem vínculo cai em "sem acesso"; vínculo com outro cadastro
+    // entregaria o ambiente de outra pessoa.
+    if (erroVinculo) {
+      logErro("criarAcessoAluno.vinculo", erroVinculo, { alunoId });
+      return {
+        erro:
+          "O login foi criado, mas não deu para conferir o vínculo com o programa. " +
+          "Abra “Gerenciar acesso” deste aluno para concluir.",
+      };
+    }
+    if (!vinculo) {
+      const { error: erroMembro } = await supabase
+        .schema("gps")
+        .from("membros")
+        .insert({ aluno_id: alunoId, user_id: novoUserId, papel: "titular" });
+      if (erroMembro) {
+        logErro("criarAcessoAluno.membro", erroMembro, { alunoId });
+        return {
+          erro:
+            "O login foi criado, mas o vínculo com o programa falhou. " +
+            "Abra “Gerenciar acesso” deste aluno para concluir.",
+        };
+      }
+    } else if ((vinculo as { aluno_id: string }).aluno_id !== alunoId) {
+      // O gatilho casou o login com OUTRO cadastro (CPF/e-mail duplicado). Não
+      // se move em silêncio (apagaria o vínculo de lá) e a senha não sai.
+      logErro(
+        "criarAcessoAluno.vinculoDivergente",
+        { message: "gatilho vinculou o login a outro aluno" },
+        { alunoId, vinculadoA: (vinculo as { aluno_id: string }).aluno_id },
       );
+      return {
+        erro:
+          "O login foi criado, mas o sistema o ligou a outro cadastro com o mesmo " +
+          "CPF ou e-mail. A senha não foi enviada. Confira na aba “Resolver” deste aluno.",
+      };
+    }
   }
 
   // Envia as credenciais por e-mail (não bloqueia a criação se o envio falhar).

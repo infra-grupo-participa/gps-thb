@@ -12,7 +12,6 @@ import { entrar, exigeLogin, registrarTela } from "./apoio";
  */
 
 const cred = exigeLogin();
-const NOME_LINK = "QA E2E link";
 const URL_SEM_HTTPS = "drive.google.com/drive/folders/qa-e2e?usp=sharing";
 
 test.describe("Links do Drive na ficha", () => {
@@ -43,59 +42,49 @@ test.describe("Links do Drive na ficha", () => {
       "A ficha aberta não é a do cliente de teste — abortando antes de escrever.",
     ).toHaveValue(/CLIENTE DE TESTE \(QA\)/i);
 
-    // O card pode morar em outra aba: percorre as abas até achá-lo visível.
-    const card = page.getByRole("region", { name: "Links do Drive deste cliente" });
-    let achou = false;
-    for (const aba of ["dados", "preliminar", "croqui", "fechamento"]) {
-      await page.goto(`${base}?aba=${aba}`);
-      achou = await card
-        .waitFor({ state: "visible", timeout: 4_000 })
-        .then(() => true)
-        .catch(() => false);
-      if (achou) break;
-    }
-    expect(achou, "O card 'Links do Drive deste cliente' não apareceu em nenhuma aba.").toBe(true);
+    // O card fica acima das abas: visível em qualquer uma.
+    const card = page.getByRole("region", { name: "Link do Drive deste cliente" });
+    await expect(card).toBeVisible({ timeout: 15_000 });
+    const abrir = card.getByRole("link", { name: /Abrir a pasta no Drive/ });
 
-    const removerSobras = async () => {
-      while (await card.getByRole("link", { name: new RegExp(NOME_LINK) }).count()) {
-        await card.getByRole("button", { name: new RegExp(`Remover o link ${NOME_LINK}`) }).first().click();
-        const d = page.getByRole("dialog");
-        await d.getByRole("button", { name: "Remover link" }).click();
-        await expect(d).toBeHidden({ timeout: 15_000 });
-        await page.reload();
-      }
-    };
-    await removerSobras();
+    // Sobra de rodada anterior: remove antes de começar.
+    if (await abrir.count()) {
+      await card.getByRole("button", { name: "Remover" }).click();
+      const d = page.getByRole("dialog");
+      await d.getByRole("button", { name: "Remover link" }).click();
+      await expect(d).toBeHidden({ timeout: 15_000 });
+      await page.reload();
+    }
 
     // Erro de formato: não chega ao servidor e fala em role=alert.
-    await card.getByLabel("Nome").fill(NOME_LINK);
     await card.getByLabel("Link do Drive").fill("https://exemplo.com/x");
-    await card.getByRole("button", { name: "Adicionar link" }).click();
+    await card.getByRole("button", { name: "Salvar link" }).click();
     await expect(card.getByRole("alert")).toContainText("Cole o link do Drive");
     await expect(card.getByLabel("Link do Drive")).toHaveAttribute("aria-invalid", "true");
 
     // Caminho feliz: sem https, o app normaliza.
     await card.getByLabel("Link do Drive").fill(URL_SEM_HTTPS);
-    await card.getByRole("button", { name: "Adicionar link" }).click();
-    const item = card.getByRole("link", { name: new RegExp(NOME_LINK) });
-    await expect(item).toBeVisible({ timeout: 20_000 });
-    await expect(item).toHaveAttribute("href", /^https:\/\/drive\.google\.com\/drive\/folders\/qa-e2e/);
-    await expect(item).toHaveAttribute("target", "_blank");
-    await expect(item).toHaveAttribute("rel", /noopener/);
-    await registrarTela(page, info, "links-drive-adicionado");
+    await card.getByRole("button", { name: "Salvar link" }).click();
+    await expect(abrir).toBeVisible({ timeout: 20_000 });
+    await expect(abrir).toHaveAttribute("href", /^https:\/\/drive\.google\.com\/drive\/folders\/qa-e2e/);
+    await expect(abrir).toHaveAttribute("target", "_blank");
+    await expect(abrir).toHaveAttribute("rel", /noopener/);
+    await registrarTela(page, info, "link-drive-salvo");
 
-    // Remover: o diálogo nomeia o link; confirmar tira da lista.
-    await card.getByRole("button", { name: `Remover o link ${NOME_LINK}` }).click();
+    // Trocar: um link só por cliente; o novo substitui o atual.
+    await card.getByRole("button", { name: "Trocar link" }).click();
+    await card.getByLabel("Novo link do Drive").fill("drive.google.com/drive/folders/qa-e2e-2");
+    await card.getByRole("button", { name: "Trocar", exact: true }).click();
+    await expect(abrir).toHaveAttribute("href", /qa-e2e-2/, { timeout: 20_000 });
+    await expect(abrir).toHaveCount(1);
+
+    // Remover com confirmação; persiste após recarregar.
+    await card.getByRole("button", { name: "Remover" }).click();
     const dialogo = page.getByRole("dialog");
-    await expect(dialogo).toContainText(NOME_LINK);
     await dialogo.getByRole("button", { name: "Remover link" }).click();
     await expect(dialogo).toBeHidden({ timeout: 15_000 });
-    await expect(card.getByRole("link", { name: new RegExp(NOME_LINK) })).toHaveCount(0, {
-      timeout: 15_000,
-    });
-
-    // Prova de persistência: recarrega e continua sem o link.
+    await expect(abrir).toHaveCount(0, { timeout: 15_000 });
     await page.reload();
-    await expect(card.getByRole("link", { name: new RegExp(NOME_LINK) })).toHaveCount(0);
+    await expect(abrir).toHaveCount(0);
   });
 });

@@ -81,6 +81,7 @@ import {
   estrelaTravada,
 } from "./ordenacao";
 import { ROTULO_ORDENACAO, type FiltroGrau, type Ordenacao } from "./tipos";
+import { erroDeNomeAbreviado } from "@/lib/nomes";
 
 export function ClientesManager({
   alunoId,
@@ -253,6 +254,11 @@ export function ClientesManager({
    */
   function criarComFaseEGrau(modo: "ficha" | "outro") {
     setErroDialogo(null);
+    const nomeAbreviado = erroDeNomeAbreviado(novoNome);
+    if (nomeAbreviado) {
+      setErroDialogo(nomeAbreviado);
+      return;
+    }
     setEmCurso(modo);
     const nome = novoNome.trim();
     const telefone = novoTelefone.trim();

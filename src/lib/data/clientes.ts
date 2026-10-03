@@ -1,5 +1,6 @@
 import { logErro } from "@/lib/log";
 import { createClient } from "@/lib/supabase/server";
+import { formatarNome } from "@/lib/nomes";
 import type { ClienteEtapa1 } from "@/lib/types";
 import type { ClienteHonorarios } from "@/lib/etapa1";
 
@@ -150,7 +151,7 @@ export async function getNomesDeClientes(
   return new Map(
     ((data ?? []) as { id: string; nome: string | null }[])
       .filter((c) => c.nome)
-      .map((c) => [c.id, c.nome as string]),
+      .map((c) => [c.id, formatarNome(c.nome) ?? (c.nome as string)]),
   );
 }
 

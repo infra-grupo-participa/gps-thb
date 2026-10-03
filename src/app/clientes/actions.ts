@@ -25,6 +25,7 @@ import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
 import type { PatchCliente } from "@/lib/clientes-tipos";
 import { soDigitos } from "@/lib/masks";
 import { revalidarClientes } from "./revalidar";
+import { erroDeNomeAbreviado, formatarNome } from "@/lib/nomes";
 
 /*
  * CD3 (09/09/2026) — este arquivo morava em `src/app/etapa-1/`, uma pasta com
@@ -148,6 +149,22 @@ function validarPatch(patch: PatchCliente): {
   campo?: keyof ClienteEtapa1;
 } {
   const saida: Record<string, unknown> = { ...patch };
+
+  // 🔴 Nome abreviado ("M. Silva") e nome em CAIXA ALTA (03/10/2026). A ficha
+  // só manda `nome` quando ele mudou — então a ficha antiga com inicial ainda
+  // salva telefone e fase; a trava pega quem DIGITA o nome.
+  if ("nome" in saida) {
+    const v = saida.nome;
+    if (typeof v !== "string" || !v.trim()) {
+      return { erro: "Informe o nome do cliente.", campo: "nome" };
+    }
+    if (v.trim().length > 200) {
+      return { erro: "O nome é longo demais (máximo 200 caracteres).", campo: "nome" };
+    }
+    const abreviado = erroDeNomeAbreviado(v);
+    if (abreviado) return { erro: abreviado, campo: "nome" };
+    saida.nome = formatarNome(v);
+  }
 
   if ("valor_honorarios" in saida) {
     const v = saida.valor_honorarios;
@@ -316,6 +333,8 @@ export async function criarCliente(
   const nome = (inicial?.nome ?? "").trim();
   if (!nome) return { erro: "Informe o nome do cliente." };
   if (nome.length > 200) return { erro: "O nome é longo demais (máximo 200 caracteres)." };
+  const nomeAbreviado = erroDeNomeAbreviado(nome);
+  if (nomeAbreviado) return { erro: nomeAbreviado };
 
   const fasesValidas: readonly string[] = ["prospeccao", "fechamento", "contratado"];
   const fase = inicial?.fase ?? "prospeccao";
@@ -339,7 +358,13 @@ export async function criarCliente(
   const { data, error } = await supabase
     .schema("gps")
     .from("etapa1_clientes")
-    .insert({ aluno_id: alunoId, nome, ordem: proximaOrdem, fase, grau_relacao: grau })
+    .insert({
+      aluno_id: alunoId,
+      nome: formatarNome(nome) ?? nome,
+      ordem: proximaOrdem,
+      fase,
+      grau_relacao: grau,
+    })
     .select("id")
     .single();
 

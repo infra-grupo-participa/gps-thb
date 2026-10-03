@@ -136,8 +136,10 @@ export function FaixaMetricas({
       {/* Cabeçalho da família: é ele que diz "estes números são de reunião".
           Régua ocupando o resto da largura — mesmo desenho do `Secao`, sem
           puxar o componente inteiro (aqui não há numeração de passo). */}
-      <div className="flex items-baseline gap-3">
-        <h3 className="rotulo shrink-0 text-muted-foreground">{titulo}</h3>
+      {/* `flex-wrap`: título longo + resumo passavam de 390 px e a página
+          inteira rolava para o lado (03/10/2026). O resumo desce de linha. */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h3 className="rotulo min-w-0 text-muted-foreground">{titulo}</h3>
         <span aria-hidden className="h-px min-w-4 flex-1 bg-borda-fina" />
         {resumo ? (
           <span className="corpo-sm shrink-0 tabular-nums text-muted-foreground">

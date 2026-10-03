@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 
 import { AppHeader } from "@/components/app-header";
+import { CalendarioDeSessoes } from "@/components/admin/sessoes/calendario";
 import { ListaDeSessoes } from "@/components/admin/sessoes/lista";
 import {
+  getSessoesDoMes,
   getSessoesVisiveisNaEquipe,
   TETO_SESSOES,
 } from "@/components/admin/sessoes/dados";
@@ -12,6 +14,7 @@ import { getContextoSessao } from "@/lib/auth";
 import { getNomesDeClientes } from "@/lib/data/clientes";
 import { getMapaDeResponsaveis } from "@/lib/data/sessoes";
 import { adminNavItems } from "@/lib/nav";
+import { limitesDoMes, mesAtualSaoPaulo } from "@/lib/plantao";
 import type { SessaoAgendamento } from "@/lib/sessoes-tipos";
 
 /**
@@ -42,24 +45,44 @@ import type { SessaoAgendamento } from "@/lib/sessoes-tipos";
 
 export const metadata = { title: "Admin — Sessões com a equipe" };
 
-export default async function AdminSessoesPage() {
+/** `?m=AAAA-MM` → mês do calendário; inválido ou ausente = mês atual em SP. */
+function parseMes(m: string | undefined): { ano: number; mes: number } {
+  if (m && /^\d{4}-\d{2}$/.test(m)) {
+    const [ano, mes] = m.split("-").map(Number);
+    if (mes >= 1 && mes <= 12) return { ano, mes };
+  }
+  return mesAtualSaoPaulo();
+}
+
+export default async function AdminSessoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ m?: string }>;
+}) {
   const ctx = await getContextoSessao();
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
+
+  const { m } = await searchParams;
+  const { ano, mes } = parseMes(m);
+  const { inicio, fim } = limitesDoMes(ano, mes);
 
   // 🔴 DUAS leituras, com recortes diferentes — e é deliberado.
   // "Próximas" são as agendadas: poucas por natureza (4/semana por doutora) e
   // é o que a equipe precisa ver INTEIRO, senão a tela esconde compromisso.
   // "Histórico" só cresce, então leva teto — e quando corta, a tela DIZ.
-  const [prox, hist, mapaResponsaveis] = await Promise.all([
+  // O calendário é uma TERCEIRA leitura, recortada pelo mês da grade: as
+  // listas cortam em 300 por estado e não cobrem qualquer mês navegado.
+  const [prox, hist, doMes, mapaResponsaveis] = await Promise.all([
     getSessoesVisiveisNaEquipe({ estados: ["agendado"] }),
     getSessoesVisiveisNaEquipe({
       estados: ["realizado", "cancelado", "falta"],
     }),
+    getSessoesDoMes(inicio, fim),
     getMapaDeResponsaveis(),
   ]);
 
-  const erro = prox.erro ?? hist.erro;
+  const erro = prox.erro ?? hist.erro ?? doMes.erro;
   const proximas = prox.sessoes;
   const historico = hist.sessoes;
   const sessoes = [...proximas, ...historico];
@@ -71,7 +94,7 @@ export default async function AdminSessoesPage() {
   // não com o que a tela mostra. Reprovado no veredito de 22/09 pelo
   // checklist do protocolo ("nenhum await dentro de for/map").
   const nomeDoCliente = await getNomesDeClientes(
-    sessoes.map((s) => s.cliente_id),
+    [...sessoes, ...doMes.sessoes].map((s) => s.cliente_id),
   );
 
   return (
@@ -83,7 +106,7 @@ export default async function AdminSessoesPage() {
         homeHref="/admin"
         navItems={adminNavItems({ souAdmin: true })}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
+      <main id="conteudo" className="mx-auto w-full max-w-5xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Sessões com a equipe"
           descricao="Entrevistas Prévias com o Marco e Reuniões Preliminares marcadas pelos parceiros nos horários que a equipe publicou."
@@ -95,6 +118,17 @@ export default async function AdminSessoesPage() {
           </p>
         ) : (
           <div className="grid gap-8">
+            <Secao titulo="Calendário" nivel="h2">
+              <CalendarioDeSessoes
+                ano={ano}
+                mes={mes}
+                sessoes={doMes.sessoes}
+                nomeDoCliente={nomeDoCliente}
+                nomeDaResponsavel={mapaResponsaveis}
+                truncado={doMes.truncado}
+              />
+            </Secao>
+
             <Secao titulo="Próximas sessões" nivel="h2">
               {/* 🔴 O teto vale para as DUAS listas, então o aviso também.
                   O comentário acima promete "ver INTEIRO", mas a query limita

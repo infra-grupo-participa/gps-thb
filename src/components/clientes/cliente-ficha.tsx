@@ -602,6 +602,10 @@ export function ClienteFicha({
       levarAoCampo(locais[0]);
       return;
     }
+    // 🔑 O nome só vai ao servidor quando MUDOU: a ficha antiga com só a
+    // inicial continua salvando telefone e fase; a trava (`erroDeNomeAbreviado`)
+    // pega quem DIGITA, e a recusa volta com `campo: "nome"` até o campo.
+    const nomeMudou = nome.trim() !== (cliente.nome ?? "").trim();
     // 🔑 A exigência do rótulo dos problemas AVISA, não trava: 355 dos 879
     // clientes (39 ambientes) estão com ZERO problema marcado, dado legado de
     // meses. Travar o salvamento deixaria 40% das fichas sem poder corrigir
@@ -611,7 +615,7 @@ export function ClienteFicha({
     const oQueFoiSalvo = descreverAlteracoes(camposAlterados, abasAlteradas);
     startSalvar(async () => {
       const res = await atualizarCliente(cliente.id, alunoId, {
-        nome: nome.trim(),
+        ...(nomeMudou ? { nome: nome.trim() } : {}),
         telefone: telefone.trim() || null,
         // `""` (campo esvaziado) vira `null` = NÃO INFORMADO. A action repete
         // esta normalização — aqui é para o `alterado` acima não mentir.

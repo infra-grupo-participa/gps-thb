@@ -33,7 +33,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { KeyRound, Mail } from "lucide-react";
+import { KeyRound, Mail, Sparkles } from "lucide-react";
 import {
   definirSenhaAluno,
   definirSenhaMembro,
@@ -55,6 +55,7 @@ import { Button } from "@/components/ui/button";
 import { InputSenha } from "@/components/ui/input-senha";
 import { Label } from "@/components/ui/label";
 import { SENHA_MINIMO } from "@/lib/senha-regras";
+import { formatarNome } from "@/lib/nomes";
 import {
   CredenciaisView,
   sugerirSenha,
@@ -455,7 +456,7 @@ export function GerenciarAcessoPainel({
                     ? `${membroEmail?.email ?? "Membro sem e-mail"} — ${
                         membroEmail?.papel === "titular" ? "titular" : "sócio"
                       } deste ambiente.`
-                    : `${nomeAluno ?? "Parceiro"} — defina a senha na hora, sem depender de e-mail.`}
+                    : (formatarNome(nomeAluno) ?? "Parceiro")}
             </DialogDescription>
           </DialogHeader>
 
@@ -519,42 +520,47 @@ export function GerenciarAcessoPainel({
                 onTrocarEmail={abrirEmailDeMembro}
               />
 
+              {/* Só o essencial: a regra do mínimo vai no placeholder e o
+                  botão fica desabilitado até cumpri-la. */}
               <div className="grid gap-2">
-                <Label htmlFor="senha-parceiro">Nova senha do titular</Label>
-                <div className="flex gap-2">
+                <Label htmlFor="senha-parceiro">Senha do titular</Label>
+                <div className="flex gap-1">
                   <InputSenha
                     id="senha-parceiro"
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
                     className="font-mono"
                     autoComplete="off"
+                    placeholder={`mín. ${SENHA_MINIMO} caracteres`}
                   />
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
+                    size="icon"
                     onClick={() => setSenha(sugerirSenha())}
+                    aria-label="Gerar senha"
+                    title="Gerar senha"
                   >
-                    Gerar
+                    <Sparkles className="size-4" />
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Mínimo de {SENHA_MINIMO} caracteres. As sessões abertas do titular caem e
-                  o e-mail dele fica confirmado.
-                </p>
-                <Button
-                  onClick={definirSenha}
-                  disabled={pending || senha.trim().length < SENHA_MINIMO}
-                >
-                  <KeyRound className="size-4" /> Definir senha agora
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={enviarEmailRedefinicao}
-                  disabled={pending}
-                >
-                  <Mail className="size-4" /> Preferir o e-mail de redefinição
-                </Button>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto px-0 text-muted-foreground"
+                    onClick={enviarEmailRedefinicao}
+                    disabled={pending}
+                  >
+                    <Mail className="size-4" /> Enviar por e-mail
+                  </Button>
+                  <Button
+                    onClick={definirSenha}
+                    disabled={pending || senha.trim().length < SENHA_MINIMO}
+                  >
+                    <KeyRound className="size-4" /> Definir senha
+                  </Button>
+                </div>
               </div>
 
               <ExcluirAmbiente

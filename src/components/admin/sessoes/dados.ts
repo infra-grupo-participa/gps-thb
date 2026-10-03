@@ -85,3 +85,45 @@ export async function getSessoesVisiveisNaEquipe(opts?: {
   const truncado = linhas.length > TETO_SESSOES;
   return { sessoes: truncado ? linhas.slice(0, TETO_SESSOES) : linhas, truncado };
 }
+
+/**
+ * As sessões de UM mês do calendário (`?m=YYYY-MM`), em qualquer estado —
+ * o calendário mostra também as canceladas, riscadas, para a equipe ver o
+ * buraco na agenda e não só os cheios.
+ *
+ * 🔑 Filtra por `data` (o DIA DA AGENDA, data-only em São Paulo) e não por
+ * `inicio_em`: aqui a pergunta é "em que quadrado do calendário cai", não
+ * "já passou de agora". `inicio_em` com limite data-only viraria meia-noite
+ * UTC e jogaria a sessão das 21h do último dia para fora do mês.
+ *
+ * Sem índice em `data` de propósito: medido em 03/10/2026, 7 linhas na
+ * tabela inteira (~400/ano a 8 por semana). Mesmo teto e mesmo aviso das
+ * listas — se um mês passar de 300 sessões, a tela diz que cortou.
+ */
+export async function getSessoesDoMes(
+  inicio: string,
+  fim: string,
+): Promise<{ sessoes: SessaoAgendamento[]; truncado: boolean; erro?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .from("sessao_agendamentos")
+    .select(COLUNAS_AGENDAMENTO)
+    .gte("data", inicio)
+    .lt("data", fim)
+    .order("inicio_em", { ascending: true })
+    .limit(TETO_SESSOES + 1);
+
+  if (error) {
+    logErro("getSessoesDoMes", error, { inicio, fim });
+    return {
+      sessoes: [],
+      truncado: false,
+      erro: "Não foi possível carregar o calendário agora.",
+    };
+  }
+
+  const linhas = (data ?? []) as unknown as SessaoAgendamento[];
+  const truncado = linhas.length > TETO_SESSOES;
+  return { sessoes: truncado ? linhas.slice(0, TETO_SESSOES) : linhas, truncado };
+}

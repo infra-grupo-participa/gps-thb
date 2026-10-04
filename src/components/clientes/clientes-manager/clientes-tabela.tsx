@@ -75,7 +75,7 @@ export function ClientesTabela({
   return (
     // `-mx-*`/`px-*`: a rolagem lateral vai até a borda do card, senão a
     // última coluna some atrás do padding em vez de rolar.
-    <div className="scrollbar-none -mx-(--card-spacing) hidden overflow-x-auto px-(--card-spacing) sm:block">
+    <div className="scrollbar-none -mx-(--card-spacing) hidden overflow-x-auto px-(--card-spacing) xl:block">
     {/* +6rem por causa da coluna "Vínculo": sem isso a última coluna (Ações)
         sai da área rolável em 1366 px em vez de rolar. */}
     <Table className="min-w-[60rem]">

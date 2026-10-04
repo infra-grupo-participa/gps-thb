@@ -64,7 +64,7 @@ export function Secao({
         <Tag className="font-heading titulo-h2 text-foreground">{titulo}</Tag>
         {/* A régua. `min-w-0` + `flex-1` para ela encolher antes do título. */}
         <span aria-hidden className="h-px min-w-4 flex-1 bg-borda-fina" />
-        {acao ? <div className="ml-auto shrink-0">{acao}</div> : null}
+        {acao ? <div className="ml-auto max-w-full shrink-0">{acao}</div> : null}
       </div>
       {descricao ? (
         <p className="mt-1.5 max-w-[62ch] corpo-sm text-muted-foreground">

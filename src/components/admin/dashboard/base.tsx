@@ -104,7 +104,10 @@ export function SubAbaParceiros({
   const parcial = ambientesCarregados < programa.total;
 
   return (
-    <section aria-labelledby="sub-aba-parceiros" className="grid gap-8">
+    // `grid-cols-[minmax(0,1fr)]`: a trilha implícita (`auto`) crescia até o
+    // max-content do `<dl>` de 2 colunas do ranking e a página rolava 17 px
+    // de lado em 390 px (medido em 03/10/2026).
+    <section aria-labelledby="sub-aba-parceiros" className="grid grid-cols-[minmax(0,1fr)] gap-8">
       <h2 id="sub-aba-parceiros" className="sr-only">
         Parceiros
       </h2>
@@ -264,7 +267,7 @@ export function SubAbaParceiros({
         denominador={`pessoas · em ${programa.total} ambientes`}
         link={null}
       >
-        <ul className="grid gap-0.5">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
           {linhasDaEquipe(equipe).map((l) => (
             <li key={l.rotulo} className="-mx-2 rounded-md px-2 py-1">
               <div className="flex items-baseline justify-between gap-3">
@@ -311,7 +314,7 @@ export function SubAbaParceiros({
         {grauInformado === 0 ? (
           // Vazio é resultado: o trilho vazio diz "medimos e ninguém
           // preencheu". Uma linha, sem caixa de alerta.
-          <div className="grid gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
             <p className="corpo-sm text-muted-foreground">
               <span className="numero font-semibold text-foreground">
                 {grauRelacao.naoInformado}
@@ -445,7 +448,7 @@ function Bloco({
   children: React.ReactNode;
 }) {
   return (
-    <section className="grid gap-2">
+    <section className="grid grid-cols-[minmax(0,1fr)] gap-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <div className="flex items-baseline gap-3">
           <h3 className="rotulo text-muted-foreground">{titulo}</h3>

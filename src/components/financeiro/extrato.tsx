@@ -113,7 +113,7 @@ export function Extrato({
             />
           </summary>
 
-          <div className="mt-3 overflow-x-auto">
+          <div className="mt-3">
             <table className="w-full text-sm">
               <caption className="sr-only">
                 Pagamentos do seu programa, do mais recente para o mais antigo.
@@ -157,7 +157,7 @@ export function Extrato({
                       <td className="py-2 pr-3 whitespace-nowrap tabular-nums">
                         {dataDoPagamento(l.pagoEm) ?? "—"}
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="py-2 pr-3 [overflow-wrap:anywhere]">
                         {categoriaLegivel(l.categoria, l.parcela)}
                         {apoio.length > 0 ? (
                           <span className="block text-xs text-muted-foreground">

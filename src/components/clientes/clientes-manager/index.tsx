@@ -468,7 +468,9 @@ export function ClientesManager({
             </>
           }
           acao={
-            <div className="flex items-center gap-2">
+            // `flex-wrap`: no celular os botões quebram linha; sem ele a fila
+            // empurrava o card e cortava o texto à direita (medido em 390 px).
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex rounded-lg border p-0.5">
                 <ViewButton
                   ativo={view === "lista"}
@@ -665,8 +667,9 @@ export function ClientesManager({
           </div>
         ) : (
           <>
-            {/* Mobile: cards */}
-            <div className="grid gap-2 sm:hidden">
+            {/* Cartões até `xl`: a tabela tem 60rem e, abaixo disso, arrastava
+                para o lado (03/10/2026 — "isso nao pode acontecer"). */}
+            <div className="grid gap-2 sm:grid-cols-2 xl:hidden">
               {listaOrdenada.map((c) => (
                 <ClienteCardLista
                   key={c.id}

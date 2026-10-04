@@ -83,9 +83,13 @@ export default async function AdminSessoesPage({
   ]);
 
   const erro = prox.erro ?? hist.erro ?? doMes.erro;
-  const proximas = prox.sessoes;
+  // 🔴 `agendado` com o bloco JÁ ENCERRADO não é "próxima": é sessão sem
+  // desfecho registrado (achado de 03/10/2026 — uma de 23/09 aparecia como
+  // próxima). Corte por `fim_em`, não `inicio_em`: a que está em andamento
+  // continua em Próximas.
+  const { semDesfecho, proximas } = separarEncerradas(prox.sessoes);
   const historico = hist.sessoes;
-  const sessoes = [...proximas, ...historico];
+  const sessoes = [...prox.sessoes, ...historico];
 
   // 🔴 UMA consulta para todos os clientes, nunca uma por cliente.
   // A versão anterior fazia `Array.from(ids, getClienteById)` — uma ida ao
@@ -129,6 +133,20 @@ export default async function AdminSessoesPage({
               />
             </Secao>
 
+            {semDesfecho.length > 0 ? (
+              <Secao titulo="Sem desfecho" nivel="h2">
+                <p className="corpo-sm mb-2 text-muted-foreground">
+                  Já passaram e seguem como agendadas.
+                </p>
+                <ListaDeSessoes
+                  sessoes={ordenarPorInicio(semDesfecho)}
+                  nomeDoCliente={nomeDoCliente}
+                  nomeDaResponsavel={mapaResponsaveis}
+                  souAdmin
+                />
+              </Secao>
+            ) : null}
+
             <Secao titulo="Próximas sessões" nivel="h2">
               {/* 🔴 O teto vale para as DUAS listas, então o aviso também.
                   O comentário acima promete "ver INTEIRO", mas a query limita
@@ -171,6 +189,18 @@ export default async function AdminSessoesPage({
       </main>
     </>
   );
+}
+
+/**
+ * Fora do corpo do componente pelo mesmo motivo de `desdeDaJanela` no diário:
+ * `react-hooks/purity` reprova `Date.now()` direto no render.
+ */
+function separarEncerradas(lista: SessaoAgendamento[]) {
+  const agora = Date.now();
+  return {
+    semDesfecho: lista.filter((s) => Date.parse(s.fim_em) < agora),
+    proximas: lista.filter((s) => Date.parse(s.fim_em) >= agora),
+  };
 }
 
 /** Próximas: mais cedo primeiro (o que precisa de atenção primeiro). */

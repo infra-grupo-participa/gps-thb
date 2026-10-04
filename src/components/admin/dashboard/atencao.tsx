@@ -350,7 +350,7 @@ export function PrecisaDeAtencao({
   const parcial = ambientesCarregados < programa.total;
 
   return (
-    <section aria-labelledby="precisa-de-atencao" className="grid gap-8">
+    <section aria-labelledby="precisa-de-atencao" className="grid grid-cols-[minmax(0,1fr)] gap-8">
       <h2 id="precisa-de-atencao" className="sr-only">
         Quem precisa de atenção
       </h2>
@@ -359,7 +359,7 @@ export function PrecisaDeAtencao({
           🔴 O denominador da seção está NO TÍTULO, uma vez. Os blocos não o
           repetem — exceto os dois que são sobre clientes e por isso escrevem a
           exceção (ver `excecaoDenominador`). */}
-      <section aria-labelledby="atencao-parceiros" className="grid gap-3">
+      <section aria-labelledby="atencao-parceiros" className="grid grid-cols-[minmax(0,1fr)] gap-3">
         <div className="flex items-baseline gap-3 border-b border-borda-fina pb-1">
           <h3 id="atencao-parceiros" className="rotulo text-foreground">
             Parceiros
@@ -378,7 +378,7 @@ export function PrecisaDeAtencao({
         {/* Esperando a equipe — 4 linhas, cada uma o próprio link. Era card
             próprio e ESTAVA DUPLICADO: é literalmente a definição desta
             sub-aba. */}
-        <div className="grid gap-1 pt-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-1 pt-2">
           <h4 className="rotulo text-muted-foreground">Esperando a equipe</h4>
           <ul className="grid gap-0.5 sm:grid-cols-2 xl:grid-cols-4">
             {esperandoAEquipe.map((l) => (
@@ -426,8 +426,8 @@ export function PrecisaDeAtencao({
         {/* Atividade no portal — ritmo, não fila: sem link, de propósito. Não
             há "eventos suficientes" definido em lugar nenhum, então o número
             não é bom nem ruim por si. */}
-        <div className="grid gap-1 pt-2">
-          <div className="flex items-baseline gap-3">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-1 pt-2">
+          <div className="flex flex-wrap items-baseline gap-x-3">
             <h4 className="rotulo text-muted-foreground">Atividade 30 dias</h4>
             <p className="numero font-semibold tabular-nums">
               {totalAtividade}
@@ -467,7 +467,7 @@ export function PrecisaDeAtencao({
           Nenhuma barra abaixo repete o "de 1.704": todas saem de
           `total={totalClientes}` ou `total={totalNasFases}`, e o `%` de cada
           linha responde a este denominador. */}
-      <section aria-labelledby="atencao-clientes" className="grid gap-3">
+      <section aria-labelledby="atencao-clientes" className="grid grid-cols-[minmax(0,1fr)] gap-3">
         <div className="flex items-baseline gap-3 border-b border-borda-fina pb-1">
           <h3 id="atencao-clientes" className="rotulo text-foreground">
             Clientes
@@ -481,7 +481,7 @@ export function PrecisaDeAtencao({
             🔴 "Contratados" NÃO é submétrica de "em fechamento": é a fase
             SEGUINTE, um conjunto à parte. Por isso são duas linhas irmãs, não
             um número dentro do outro. */}
-        <div className="grid gap-1">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-1">
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
             <div className="flex items-baseline gap-3">
               <h4 className="rotulo text-muted-foreground">Em fechamento</h4>
@@ -602,7 +602,7 @@ function SubBloco({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-1">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-1">
       <h4 className="rotulo text-muted-foreground">{titulo}</h4>
       {children}
     </div>

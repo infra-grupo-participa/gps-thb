@@ -106,7 +106,7 @@ export function DashboardExecutivo({ dados }: { dados: Dashboard }) {
   ];
 
   return (
-    <section aria-labelledby="visao-do-programa" className="grid gap-3">
+    <section aria-labelledby="visao-do-programa" className="grid grid-cols-[minmax(0,1fr)] gap-3">
       {/* O título da sub-aba já nomeia a seção na tela; o `h2` fica para a
           estrutura do documento e para quem navega por cabeçalho. */}
       <h2 id="visao-do-programa" className="sr-only">
@@ -248,7 +248,7 @@ function Variante({
   const submetricas = submetricasDoFoco(dados, foco);
 
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
       {/* `Cruzamento` devolve `null` com a série vazia — o estado vazio é
           desta camada. Uma linha, sem caixa de alerta: sem semana no período é
           RESULTADO (a RPC olhou e não achou), não erro. */}

@@ -145,27 +145,30 @@ export function VideosAdmin({ videos }: { videos: VideoGps[] }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Vídeo</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="max-sm:hidden">Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {itens.map((v) => {
                   const emAcao = pending && videoEmAcao === v.id;
+                  const status = v.publicado ? (
+                    <Badge variant="success">Publicado</Badge>
+                  ) : (
+                    <Badge variant="neutral" icone={false}>
+                      Rascunho — aluno não vê
+                    </Badge>
+                  );
+                  // Celular (03/10/2026): status desce para baixo do título e
+                  // as ações viram só ícone — a tabela cabe em 390 px sem
+                  // rolagem lateral.
                   return (
                     <TableRow key={v.id}>
-                      <TableCell>
+                      <TableCell className="whitespace-normal">
                         <span className="font-medium">{v.titulo}</span>
+                        <div className="mt-1 sm:hidden">{status}</div>
                       </TableCell>
-                      <TableCell>
-                        {v.publicado ? (
-                          <Badge variant="success">Publicado</Badge>
-                        ) : (
-                          <Badge variant="neutral" icone={false}>
-                            Rascunho — aluno não vê
-                          </Badge>
-                        )}
-                      </TableCell>
+                      <TableCell className="max-sm:hidden">{status}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1.5">
                           <Button
@@ -174,7 +177,8 @@ export function VideosAdmin({ videos }: { videos: VideoGps[] }) {
                             disabled={emAcao}
                             onClick={() => setModo({ editando: v })}
                           >
-                            <PencilIcon className="size-4" /> Editar
+                            <PencilIcon className="size-4" aria-hidden />
+                            <span className="max-sm:sr-only">Editar</span>
                           </Button>
                           {v.publicado ? (
                             <Button
@@ -183,7 +187,8 @@ export function VideosAdmin({ videos }: { videos: VideoGps[] }) {
                               disabled={emAcao}
                               onClick={() => alternarPublicado(v, false)}
                             >
-                              <EyeOffIcon className="size-4" /> Despublicar
+                              <EyeOffIcon className="size-4" aria-hidden />
+                            <span className="max-sm:sr-only">Despublicar</span>
                             </Button>
                           ) : (
                             <Button
@@ -192,7 +197,8 @@ export function VideosAdmin({ videos }: { videos: VideoGps[] }) {
                               disabled={emAcao}
                               onClick={() => alternarPublicado(v, true)}
                             >
-                              <EyeIcon className="size-4" /> Publicar
+                              <EyeIcon className="size-4" aria-hidden />
+                            <span className="max-sm:sr-only">Publicar</span>
                             </Button>
                           )}
                           <Button
@@ -205,7 +211,8 @@ export function VideosAdmin({ videos }: { videos: VideoGps[] }) {
                             }}
                             className="text-muted-foreground hover:text-destructive"
                           >
-                            <Trash2Icon className="size-4" /> Excluir
+                            <Trash2Icon className="size-4" aria-hidden />
+                            <span className="max-sm:sr-only">Excluir</span>
                           </Button>
                         </div>
                       </TableCell>

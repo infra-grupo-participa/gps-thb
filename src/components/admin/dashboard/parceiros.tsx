@@ -63,6 +63,14 @@
  */
 
 import Link from "next/link";
+import {
+  BadgeCheck,
+  CalendarCheck,
+  Clock,
+  MessageSquare,
+  Star,
+  Users,
+} from "lucide-react";
 
 import {
   Table,
@@ -127,6 +135,25 @@ const FOCOS_SEM_RECORTE = new Set<Foco>(["entrou", "onboarding"]);
  * induziria a ler falta de dado onde há tautologia.
  */
 const FOCOS_IDENTIDADE = new Set<Foco>(["cadastrou"]);
+
+/** Número com ícone no cartão do celular — o rótulo vai no `title` e no leitor de tela. */
+function Numero({
+  icone: Icone,
+  valor,
+  rotulo,
+}: {
+  icone: typeof Users;
+  valor: number;
+  rotulo: string;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1" title={`${valor} ${rotulo}`}>
+      <Icone aria-hidden className="size-3.5" />
+      <span className={cn(valor > 0 && "text-foreground")}>{valor}</span>
+      <span className="sr-only"> {rotulo}</span>
+    </span>
+  );
+}
 
 function celulaDiasSemAbrir(dias: number) {
   // `dias <= 0` cobre o negativo (data futura) e o "abriu agora": nenhum dos
@@ -278,7 +305,7 @@ export function RankingDeParceiros({
       : `${totalParceiros} parceiros`;
 
   return (
-    <section aria-labelledby="ranking-parceiros" className="grid gap-3">
+    <section aria-labelledby="ranking-parceiros" className="grid grid-cols-[minmax(0,1fr)] gap-3">
       <h2 id="ranking-parceiros" className="sr-only">
         Ranking de parceiros
       </h2>
@@ -338,14 +365,59 @@ export function RankingDeParceiros({
         )}
       </div>
 
-      {/* Quem rola na horizontal (celular 390px) é o container do próprio
-          `Table` (`ui/table.tsx`, `overflow-x-auto`) — o `<main>` do portal
-          nunca rola. 🔴 Sem `scrollbar-none` de propósito: medido em 24/09,
-          em 390 só `#` e `Parceiro` cabem na tela e as 7 colunas numéricas
-          ficam fora; a barra é o único indício de que existe mais tabela.
-          (Um `overflow-x-auto scrollbar-none` nesta caixa externa era letra
-          morta: o container interno rola primeiro e mostrava a barra dele.) */}
-      <div className="-mx-(--card-spacing) rounded-xl border bg-card px-(--card-spacing)">
+      {/* 🔴 (03/10/2026, João) "arrastar pro lado … isso nao pode acontecer
+          de forma alguma". A tabela de 52rem só aparece onde CABE (`lg`);
+          abaixo disso cada parceiro vira um cartão de 2 linhas: nome + dias
+          sem abrir, e os números com ícone (o cabeçalho da tabela é a
+          legenda no largo; no estreito o ícone + `title` bastam). */}
+      <ul className="divide-y rounded-xl border bg-card xl:hidden">
+        {itensNaTela.map((p, i) => (
+          <li key={p.alunoId} className="relative px-4 py-2.5">
+            <div className="flex items-baseline gap-2">
+              <span className="w-6 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                {i + 1}
+              </span>
+              <Link
+                href={`/admin/aluno/${p.alunoId}`}
+                prefetch={false}
+                className="foco-visivel min-w-0 flex-1 truncate font-medium after:absolute after:inset-0 after:content-['']"
+                title={p.nome || undefined}
+              >
+                {p.nome || "Sem nome"}
+              </Link>
+              {p.dias > 0 ? (
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1 text-xs tabular-nums",
+                    p.dias >= PRAZO_SEM_ABRIR_DIAS
+                      ? "font-medium text-destructive"
+                      : "text-muted-foreground",
+                  )}
+                  title={`Sem abrir há ${p.dias} dias`}
+                >
+                  <Clock aria-hidden className="size-3.5" />
+                  {p.dias}d
+                  <span className="sr-only"> sem abrir</span>
+                </span>
+              ) : null}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 pl-8 text-xs text-muted-foreground tabular-nums">
+              <Numero icone={Users} valor={p.clientes} rotulo="clientes" />
+              <Numero icone={MessageSquare} valor={p.mensagens} rotulo="mensagens" />
+              <Numero icone={Star} valor={p.favoritos} rotulo="favoritos" />
+              <Numero icone={CalendarCheck} valor={p.reunioes} rotulo="reuniões" />
+              <Numero icone={BadgeCheck} valor={p.contratados} rotulo="contratados" />
+              {p.honorarios ? (
+                <span className="ml-auto font-medium text-foreground">
+                  {brlOuTraco(p.honorarios)}
+                </span>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div className="-mx-(--card-spacing) hidden rounded-xl border bg-card px-(--card-spacing) xl:block">
         <Table className="min-w-[52rem]" aria-describedby="ranking-parceiros-tabela">
           <TableHeader>
             <TableRow>

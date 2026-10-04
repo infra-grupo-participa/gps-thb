@@ -9,7 +9,7 @@
  * Regras (as mesmas do UPDATE de 03/10/2026 no banco):
  * - partículas (de, da, do, das, dos, e) em minúsculas, menos no início;
  * - cada parte de hífen e apóstrofo começa maiúscula: "D'Ávila", "Ana-Clara";
- * - romanos (II, III, IV…) e siglas sem vogal ("CPF", "THB") em maiúsculas;
+ * - romanos (II, III, IV…), siglas sem vogal ("CPF", "THB") e as de `SIGLAS` em maiúsculas;
  * - sufixo de empresa: "Ltda"; "ME", "EPP", "EIRELI" e "S/A" em maiúsculas;
  * - UF no fim, depois de hífen ou barra: "Uberlândia-MG", "Salvador - BA".
  *
@@ -40,6 +40,9 @@ export function formatarNome(nome: string | null | undefined): string | null {
 const PARTICULAS = new Set(["de", "da", "do", "das", "dos", "e"]);
 const ROMANO = /^(ii|iii|iv|vi|vii|viii|ix|xi|xii)$/;
 const SUFIXO_EMPRESA = new Set(["me", "epp", "eireli"]);
+// Siglas com vogal que a regra "sem vogal" não pega. "PVA" é rótulo de
+// origem do cliente (03/10/2026: virou "Pva" e foi devolvido à mão).
+const SIGLAS = new Set(["pva"]);
 const TITULOS = new Set(["jr", "sr", "dr", "sra", "dra"]);
 const VOGAL = /[aeiouyáàâãéêíóôõúü]/;
 const UF =
@@ -58,7 +61,7 @@ function formatarPalavra(palavra: string, indice: number, palavras: string[]) {
   if (nucleo === "s/a" || palavra === "s/a" || palavra === "s.a.") {
     return palavra.toLocaleUpperCase("pt-BR");
   }
-  if (ROMANO.test(nucleo)) return palavra.toLocaleUpperCase("pt-BR");
+  if (ROMANO.test(nucleo) || SIGLAS.has(nucleo)) return palavra.toLocaleUpperCase("pt-BR");
   if (indice === total - 1 && indice > 0 && SUFIXO_EMPRESA.has(nucleo)) {
     return palavra.toLocaleUpperCase("pt-BR");
   }

@@ -100,7 +100,7 @@ export function TrilhaDoAluno({
           <Card>
             <CardContent className="grid divide-y divide-border/60 py-2">
               {grupo.itens.map((item, i) => (
-                <div key={`${grupo.dia}-${i}`} className="py-1">
+                <div key={`${grupo.dia}-${i}`} className="min-w-0 py-1">
                   <TrilhaItem
                     item={item}
                     alunoId={alunoId}

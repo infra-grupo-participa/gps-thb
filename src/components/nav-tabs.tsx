@@ -228,11 +228,15 @@ function NavTabLink({
   item,
   pathname,
   urlDoPainel,
+  denso = false,
 }: {
   item: NavItem;
   pathname: string;
   urlDoPainel: string | undefined;
+  /** Trilho longo (o do parceiro, 9 abas): rótulo só a partir de `xl`, e no celular até a ativa vira ícone. */
+  denso?: boolean;
 }) {
+  const soIcone = denso ? "max-xl:sr-only" : "max-md:sr-only";
   // 🔴 `grupoAtivo`, não a comparação solta que estava aqui: um GRUPO fica
   // ativo também pelos filhos. Para item sem `filhos` o resultado é idêntico
   // ao de antes (a função cai no `casaSozinho` e o `.some` roda sobre `[]`).
@@ -257,16 +261,17 @@ function NavTabLink({
       <span
         aria-disabled="true"
         className={cn(
-          "-mb-px inline-flex shrink-0 cursor-default items-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-sm whitespace-nowrap text-muted-foreground/70",
+          "-mb-px inline-flex shrink-0 cursor-default items-center gap-1.5 border-b-2 border-transparent px-2 py-2.5 text-sm whitespace-nowrap text-muted-foreground/70 sm:px-2.5 md:px-3",
           item.adminOnly && "previa-oculta",
         )}
+        title={Icon ? `${item.label} (em breve)` : undefined}
       >
         {Icon ? <Icon className="size-4" aria-hidden /> : null}
-        {item.label}
+        <span className={cn(Icon && soIcone)}>{item.label}</span>
         <Badge
           variant="neutral"
           icone={false}
-          className="h-5 px-1.5 text-[10px] font-normal"
+          className={cn("h-5 px-1.5 text-[10px] font-normal", Icon && soIcone)}
         >
           em breve
         </Badge>
@@ -292,15 +297,24 @@ function NavTabLink({
         // contraste mas a aba ativa e a inativa tinham quase o mesmo
         // peso visual a 1366 px — não dava para dizer onde se está.
         // A régua é inequívoca e some da área do texto.
-        "foco-visivel -mb-px inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors",
+        "foco-visivel -mb-px inline-flex shrink-0 items-center gap-1.5 border-b-2 px-2 py-2.5 text-sm whitespace-nowrap transition-colors sm:px-2.5 md:px-3",
         ativo
           ? "border-primary font-semibold text-foreground [&>svg]:text-accent-foreground"
           : "border-transparent font-medium text-muted-foreground hover:border-borda-forte hover:text-foreground",
         item.adminOnly && "previa-oculta",
       )}
+      title={Icon ? item.label : undefined}
     >
       {Icon ? <Icon className="size-4" aria-hidden /> : null}
-      {item.label}
+      {/* 03/10/2026: a aba INATIVA vira só ícone abaixo de `md` (`xl` no
+          trilho denso do parceiro); o rótulo continua no DOM como `sr-only`,
+          então o nome acessível fica intacto. A ativa mantém o texto, salvo
+          no trilho denso abaixo de `sm`, onde a régua marca onde se está.
+          Tudo para caber sem rolagem lateral, que o João vetou ("não pode
+          acontecer de forma alguma"). Medido em 390/768/1024/1280/1366. */}
+      <span className={cn(Icon && (ativo ? denso && "max-sm:sr-only" : soIcone))}>
+        {item.label}
+      </span>
       {item.novaAba ? <span className="sr-only"> (abre em nova aba)</span> : null}
       {mostraBadge ? (
         <Badge
@@ -376,14 +390,15 @@ export function NavTabs({
   const primeiroEmBreve = doTrilho.findIndex((i) => i.emBreve);
 
   return (
-    // `w-max` para o contêiner rolável do header medir a largura real das abas
-    // em vez de espremê-las (o pior caso é 8 abas em 360 px).
+    // `flex-wrap`, não scroller (03/10/2026): com as inativas só ícone abaixo
+    // de `md` as abas cabem em 390 px; se um dia não couberem, quebram linha
+    // em vez de esconder aba atrás de rolagem lateral.
     //
     // `aria-label` pelo mesmo motivo do bloco `fixo` acima: três `<nav>`
     // irmãos indistinguíveis na lista de regiões.
     <nav
       aria-label="Navegação principal"
-      className="flex w-max items-stretch gap-0.5"
+      className="flex flex-wrap items-stretch gap-0.5"
     >
       {doTrilho.map((item, i) => (
         <Fragment key={item.href}>
@@ -400,6 +415,7 @@ export function NavTabs({
             item={item}
             pathname={pathname}
             urlDoPainel={urlDoPainel}
+            denso={doTrilho.length > 6}
           />
         </Fragment>
       ))}
@@ -503,8 +519,8 @@ export function SubNavTabs({
   }
 
   return (
-    // `w-max` pela mesma razão do 1º nível: o contêiner rolável precisa medir
-    // a largura real das sub-abas, não espremê-las em 360 px.
+    // `flex-wrap` pela mesma razão do 1º nível: sub-aba que não cabe quebra
+    // linha, nunca rola para o lado.
     //
     // `aria-label` NOMEIA O GRUPO ("Seções de Parceiros"): esta é a 3ª de três
     // regiões de navegação na mesma tela, e é a única cujo conteúdo muda
@@ -512,7 +528,7 @@ export function SubNavTabs({
     // que o menu é.
     <nav
       aria-label={`Seções de ${grupoLabel}`}
-      className="flex w-max items-stretch gap-0.5"
+      className="flex flex-wrap items-stretch gap-0.5"
     >
       {itens.map((item) => {
         const ativa = item.abaDoPainel
@@ -527,7 +543,7 @@ export function SubNavTabs({
         const classe = cn(
           // Régua FINA (1 px) — metade da de cima. Mesma linguagem, menos
           // peso: é a marca do 2º nível, não um segundo 1º nível.
-          "foco-visivel -mb-px inline-flex shrink-0 items-center gap-1.5 border-b px-3 py-1.5 corpo-sm whitespace-nowrap transition-colors",
+          "foco-visivel -mb-px inline-flex shrink-0 items-center gap-1.5 border-b px-2 py-1.5 corpo-sm whitespace-nowrap transition-colors sm:px-3",
           ativa
             ? "border-primary font-semibold text-foreground"
             : "border-transparent text-muted-foreground hover:border-borda-forte hover:text-foreground",
@@ -652,8 +668,9 @@ export function TrilhoDeNavegacao({
       {/* Um `NavTabs` só por REGIÃO (A11Y4): antes existiam dois nós para
           as MESMAS abas — `hidden md:block` e `md:hidden` — o que duplicava
           o DOM e punha cada link duas vezes na ordem de tabulação. Aqui
-          continua valendo: o trilho rola na horizontal quando não cabe
-          (pior caso: 8 abas em 360 px, com fade nas bordas), e a aba FIXA
+          continua valendo. Desde 03/10/2026 o trilho NÃO rola: abaixo de
+          `md` as inativas são só ícone e o `<nav>` quebra linha se faltar
+          espaço (a medição de 15/09 abaixo é da era do scroller). A aba FIXA
           (`fixo`) mora num `NavTabs` SEPARADO, fora do scroller — cada
           link do menu aparece exatamente uma vez no DOM, fixo ou não.
 
@@ -670,7 +687,7 @@ export function TrilhoDeNavegacao({
           largura, inclusive 360 px — MEDIDO, ver o comentário abaixo. */}
       <div className="border-t">
         <div className="mx-auto flex w-full max-w-6xl items-stretch">
-          <div className="scrollbar-none fade-lateral min-w-0 flex-1 overflow-x-auto pl-4">
+          <div className="min-w-0 flex-1 pl-4">
             <NavTabs
               items={items}
               pathname={pathname}
@@ -735,7 +752,7 @@ export function TrilhoDeNavegacao({
         // 2º nível é curto por construção (2 a 5 itens).
         <div className={cn("border-t", linhaSoAdmin && "previa-oculta")}>
           <div className="mx-auto w-full max-w-6xl">
-            <div className="scrollbar-none fade-lateral overflow-x-auto pl-4">
+            <div className="pl-4">
               <SubNavTabs
                 itens={subItens}
                 grupoLabel={ativo?.label ?? ""}

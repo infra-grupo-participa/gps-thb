@@ -3,18 +3,24 @@
 import { useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlertCircle, ExternalLink, Trash2 } from "lucide-react";
+import { AlertCircle, ExternalLink, FolderPlus, Trash2 } from "lucide-react";
 
 import {
   adicionarLinkDrive,
   removerLinkDrive,
 } from "@/app/clientes/link-drive-actions";
+import { criarPastaCliente } from "@/app/drive/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  EstadoPasta,
+  useAtualizarEnquantoCriando,
+} from "@/components/pasta/estado-drive";
 import { formatarData } from "@/lib/datas";
+import type { EstadoDrive } from "@/lib/drive-tipos";
 import {
   FRASE_LINK_INVALIDO,
   NOME_LINK_DRIVE_PADRAO,
@@ -42,11 +48,14 @@ export function LinksDrive({
   clienteId,
   links,
   souEquipe,
+  estadoDrive,
 }: {
   clienteId: string;
   /** `null` = a leitura falhou no servidor. Com a regra de 1 por cliente, 0 ou 1 item. */
   links: LinkDrive[] | null;
   souEquipe: boolean;
+  /** Criação automática da pasta; `null` = a leitura falhou (avisa, não oferece criar). */
+  estadoDrive: EstadoDrive | null;
 }) {
   const router = useRouter();
   const id = useId();
@@ -62,7 +71,32 @@ export function LinksDrive({
 
   const falhou = links === null;
   const atual = links?.[0] ?? null;
-  const mostrarCampo = !falhou && (!atual || editando);
+  // Criação automática: só quando a chave está ligada e o cliente não tem link.
+  const semLink = !falhou && !atual;
+  const ativoDrive = estadoDrive?.ativo === true;
+  const pastaCliente = ativoDrive ? estadoDrive.cliente : null;
+  // Só oferece criar se a equipe já organizou a raiz do parceiro: sem ela a
+  // criação falharia.
+  const raizOrganizada = ativoDrive && estadoDrive.parceiro.organizada;
+  const criando = semLink && pastaCliente?.situacao === "criando";
+  const { parou, atualizarAgora } = useAtualizarEnquantoCriando(criando);
+  const [confirmarCriar, setConfirmarCriar] = useState(false);
+  const [erroCriar, setErroCriar] = useState<string | null>(null);
+  const [criandoPedido, pedirCriar] = useTransition();
+  const mostrarCampo = !falhou && (!atual || editando) && !criando;
+
+  function criarPasta() {
+    setErroCriar(null);
+    pedirCriar(async () => {
+      const res = await criarPastaCliente(clienteId);
+      if (!res.ok) {
+        setErroCriar(res.erro);
+        return;
+      }
+      setConfirmarCriar(false);
+      router.refresh();
+    });
+  }
 
   function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -156,8 +190,8 @@ export function LinksDrive({
                 <span className="sr-only"> (abre em nova aba)</span>
               </a>
               <span className="text-base text-muted-foreground">
-                por {atual.origem === "equipe" ? "Equipe" : atual.criadoPorNome} ·{" "}
-                {formatarData(atual.criadoEm)}
+                por {atual.origem === "equipe" ? "Equipe" : atual.criadoPorNome}{" "}
+                · {formatarData(atual.criadoEm)}
               </span>
             </div>
             {atual.podeRemover && !editando ? (
@@ -191,7 +225,45 @@ export function LinksDrive({
           </div>
         ) : (
           <div className="grid gap-1.5">
-            <p className="text-base font-medium">Nenhum link ainda. Faça assim:</p>
+            {pastaCliente ? (
+              <div className="mb-2 grid gap-2">
+                {raizOrganizada ? (
+                  <div>
+                    <Button
+                      type="button"
+                      className="h-12 px-5 text-base"
+                      disabled={criando || criandoPedido}
+                      onClick={() => {
+                        setErroCriar(null);
+                        setConfirmarCriar(true);
+                      }}
+                    >
+                      <FolderPlus aria-hidden />
+                      Criar pasta deste cliente no Drive
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-base leading-snug text-muted-foreground">
+                    A equipe ainda está organizando a sua pasta no Drive.
+                    Enquanto isso, você pode colar o link da pasta do cliente
+                    abaixo.
+                  </p>
+                )}
+                <EstadoPasta
+                  estado={pastaCliente}
+                  textoCriando="Criando a pasta deste cliente. Leva de 30 a 60 segundos; pode ficar nesta tela."
+                  mostrarLink={false}
+                  mostrarAvisos={souEquipe}
+                  parou={parou}
+                  onAtualizarAgora={atualizarAgora}
+                />
+              </div>
+            ) : null}
+            <p className="text-base font-medium">
+              {pastaCliente
+                ? "Ou, se a pasta já existe, faça assim:"
+                : "Nenhum link ainda. Faça assim:"}
+            </p>
             <ol className="grid list-decimal gap-1.5 pl-6 text-base leading-snug">
               {souEquipe ? null : (
                 <li>
@@ -242,7 +314,11 @@ export function LinksDrive({
                   disabled={salvando}
                 />
                 <Button type="submit" className={BOTAO} disabled={salvando}>
-                  {salvando ? "Salvando…" : atual ? "Salvar novo link" : "Salvar link"}
+                  {salvando
+                    ? "Salvando…"
+                    : atual
+                      ? "Salvar novo link"
+                      : "Salvar link"}
                 </Button>
                 {editando ? (
                   <Button
@@ -274,6 +350,20 @@ export function LinksDrive({
         ) : null}
       </CardContent>
 
+      <DialogoConfirmacao
+        aberto={confirmarCriar}
+        titulo="Criar pasta deste cliente"
+        consequencia="O sistema cria a pasta deste cliente no seu Drive, com as subpastas padrão. Leva de 30 a 60 segundos."
+        rotuloConfirmar="Criar pasta"
+        rotuloConfirmando="Enviando…"
+        destrutivo={false}
+        confirmando={criandoPedido}
+        erro={erroCriar}
+        onConfirmar={criarPasta}
+        onCancelar={() => {
+          if (!criandoPedido) setConfirmarCriar(false);
+        }}
+      />
       <DialogoConfirmacao
         aberto={confirmarRemocao}
         titulo="Remover link do Drive"

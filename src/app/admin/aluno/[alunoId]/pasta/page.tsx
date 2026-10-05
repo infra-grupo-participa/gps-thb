@@ -6,12 +6,14 @@ import {
   contarMembrosDoAmbiente,
   getTutoriaisAtivo,
 } from "@/lib/data";
+import { getEstadoDrive } from "@/lib/data/drive";
 import { assistenciaNavItems, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { AssistBanner } from "@/components/admin/assist-banner";
 import { PastaView } from "@/components/pasta/pasta-view";
 import { PastaConfigForm } from "@/components/pasta/pasta-config-form";
+import { PastaDriveAdmin } from "@/components/pasta/pasta-drive-admin";
 
 /** Título da aba — sem isto, herdava o rótulo genérico do portal. */
 export const metadata = { title: "Pasta" };
@@ -29,10 +31,11 @@ export default async function AdminAlunoPastaPage({
   const ambiente = await getAmbiente(alunoId);
   if (!ambiente) notFound();
 
-  const [aluno, qtdMembros, tutoriaisAtivo] = await Promise.all([
+  const [aluno, qtdMembros, tutoriaisAtivo, estadoDrive] = await Promise.all([
     getAlunoById(alunoId),
     contarMembrosDoAmbiente(alunoId),
     getTutoriaisAtivo(),
+    getEstadoDrive(alunoId),
   ]);
 
   return (
@@ -56,6 +59,12 @@ export default async function AdminAlunoPastaPage({
         />
 
         <div className="grid gap-6">
+          <PastaDriveAdmin
+            alunoId={alunoId}
+            nome={aluno?.nome ?? ""}
+            estado={estadoDrive}
+            temLink={Boolean(ambiente.pasta_drive_url)}
+          />
           {/* PF4 — o campo de configuração é do admin e só existe aqui. */}
           <PastaConfigForm
             alunoId={alunoId}

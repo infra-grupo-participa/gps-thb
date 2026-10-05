@@ -18,6 +18,7 @@ import { ClienteFicha } from "@/components/clientes/cliente-ficha";
 import { estrelaTravada } from "@/components/clientes/clientes-manager/ordenacao";
 import { getMinutasDoCliente } from "@/lib/data/minutas";
 import { getCroquisDoCliente } from "@/lib/data/croquis";
+import { getEstadoDrive } from "@/lib/data/drive";
 import { getLinksDriveDoCliente } from "@/lib/data/links-drive";
 import { getTrajetoriaDoCliente } from "@/lib/data/trajetoria";
 import {
@@ -53,6 +54,7 @@ export default async function AdminAlunoClienteFichaPage({
     decisores,
     entrevistas,
     linksDrive,
+    estadoDrive,
     trajetoria,
   ] = await Promise.all([
     getAlunoById(alunoId),
@@ -79,6 +81,7 @@ export default async function AdminAlunoClienteFichaPage({
     // 🔑 Espelha a ficha do parceiro: no MESMO Promise.all. `souEquipe =
     // true` — só admin chega aqui (redirect acima).
     getLinksDriveDoCliente(clienteId, true),
+    getEstadoDrive(alunoId, clienteId),
     // 🔑 Espelha a ficha do parceiro: trajetória no MESMO Promise.all.
     getTrajetoriaDoCliente(clienteId),
   ]);
@@ -154,6 +157,7 @@ export default async function AdminAlunoClienteFichaPage({
           minutas={minutas}
           croquis={croquis}
           linksDrive={linksDrive}
+          estadoDrive={estadoDrive}
           trajetoria={trajetoria}
           contextoObrigatorio={contextoObrigatorio}
           alunoId={alunoId}

@@ -80,6 +80,7 @@ import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import type { ClienteCroqui } from "@/lib/croquis-tipos";
 import type { LinkDrive } from "@/lib/links-drive-tipos";
 import type { TrajetoriaCliente } from "@/lib/trajetoria-tipos";
+import type { EstadoDrive } from "@/lib/drive-tipos";
 import { LinksDrive } from "@/components/clientes/links-drive";
 import { FichaTrajetoria } from "@/components/clientes/ficha-trajetoria";
 import { FASES_CLIENTE } from "@/lib/etapa1";
@@ -138,6 +139,7 @@ export function ClienteFicha({
   minutas = [],
   croquis,
   linksDrive,
+  estadoDrive,
   trajetoria,
   contextoObrigatorio = false,
   painelEntrevista = null,
@@ -217,6 +219,8 @@ export function ClienteFicha({
    */
   /** `null` = a leitura falhou (a seção avisa; nunca vira "nenhum link"). */
   linksDrive: LinkDrive[] | null;
+  /** Criação automática da pasta (`getEstadoDrive`); `null` = a leitura falhou. */
+  estadoDrive: EstadoDrive | null;
   /**
    * Trajetória do cliente (`getTrajetoriaDoCliente`), resolvida no MESMO
    * `Promise.all` da page. Obrigatória pelo motivo de `croquis`; `null` = a
@@ -769,7 +773,12 @@ export function ClienteFicha({
 
       {/* Acima das abas: os links valem para a ficha inteira, não para uma
           folha. `souEquipe = admin` — a mesma prop que liga o modo assistência. */}
-      <LinksDrive clienteId={cliente.id} links={linksDrive} souEquipe={admin} />
+      <LinksDrive
+        clienteId={cliente.id}
+        links={linksDrive}
+        souEquipe={admin}
+        estadoDrive={estadoDrive}
+      />
 
       {/* O mapa do cliente: vale para a ficha inteira, então mora acima das
           abas, junto do Drive — e não desmonta ao trocar de folha. Grava na

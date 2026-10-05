@@ -2473,6 +2473,34 @@ Formato em **3 lugares idênticos**: CHECK `ambientes_pasta_drive_url_formato`, 
 Telas: parceiro em `/pasta` (`pasta-parceiro-form.tsx` → `salvarMinhaPasta`), admin em
 `/admin/aluno/[id]/pasta`. Prova: `supabase/verificacao-20260930180726.sql` (T1–T13).
 
+**Desde 05/10/2026 (migração `…347`, aplicada em 05/10/2026, chave `drive_provisionar_ativo` desligada; liga depois da credencial e do deploy da edge) o sistema CRIA a pasta**,
+pela conta joao@ (OAuth Interno do Calendar, refresh token próprio com escopo `drive`, secrets
+`GDRIVE_*`), dentro de "Implementação Assistida — Pastas dos Alunos" (`1CRSsOfNm…`). Fila
+`gps.drive_tarefas` + espelho `gps.drive_pastas` (só admin lê; escrita só pela edge
+`drive-provisionar` via RPCs service_role), cron `drive-provisionar-varrer` 1×/min, interruptor
+`gps.config.drive_provisionar_ativo` (nasce `false`). Parceiro: copia a matriz `1T-EiOQ…`, ou
+**adota** a pasta já ligada — e adotar só vale em tarefa `provisionar_parceiro` pedida por admin,
+com link de origem `equipe`, pasta DIRETAMENTE dentro da raiz, sem `gps_id` de outro aluno, fora
+do link de qualquer outro ambiente, nunca a matriz (edge **e** `gps.drive_pasta_registrar`;
+achado ALTO do kirad: o parceiro A colava o link da pasta de B e recebia acesso). Garante
+`5) CLIENTES`; grava o link com origem **`equipe`** só se o ambiente não tinha link (a origem
+`parceiro` **nunca** é rebaixada); compartilha com o login do titular (raiz reader,
+`1) DOCUMENTOS` e `5) CLIENTES` writer). Cliente: pasta + 6 subpastas em `5) CLIENTES`, link em
+`cliente_links_drive` como equipe; link colado pelo parceiro nunca é trocado; **nunca provisiona o
+parceiro** — sem raiz organizada pela equipe: "A pasta do parceiro ainda não foi organizada pela
+equipe."; teto de **20 pedidos por ambiente em 24 h**. Tarefa: 1 tentativa + **3 retentativas**.
+**Revogação:** `gps.drive_permissoes` guarda cada permissão que o sistema concedeu; gatilhos em
+`gps.membros` (titular trocado/removido/movido, ambiente excluído — cobre todas as funções que
+escrevem em `membros`) e em `gps.acessos_log` (`email_login_alterado`) marcam e enfileiram a
+tarefa `revogar` (sem `aluno_id`, sobrevive ao CASCADE). Permissão dada à mão pela equipe não é
+tocada. ⚠️ O titular NOVO não recebe acesso sozinho: a equipe pede "organizar/compartilhar" de novo.
+🔴 **Lacuna LGPD (aberta, decisão pendente):** excluir cliente (ou o ambiente) **não apaga nem
+arquiva** a pasta no Drive — a pasta do cliente, com documentos de terceiros, fica em "Pastas dos
+Alunos" e no espelho some só a linha (`drive_pastas` cascade). Nada é enfileirado por ora.
+Idempotência pelo `appProperties.gps_id` no Drive. Actions `src/app/drive/actions.ts`, leitura
+`src/lib/data/drive.ts` (`gps.drive_estado`), script OAuth `scripts/gdrive-ligar.mjs`, provas
+`supabase/verificacao-20261005000347.sql`.
+
 ## Onboarding do aluno (modelo definido)
 
 Alunos **não** são provisionados em massa e a base **não** é importada. Auto-cadastro padrão:

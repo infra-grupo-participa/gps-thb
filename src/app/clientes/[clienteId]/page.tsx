@@ -11,6 +11,7 @@ import { getMinutaContextoObrigatorio } from "@/lib/data/minutas";
 import { getMinutasDoCliente } from "@/lib/data/minutas";
 import { getCroquisDoCliente } from "@/lib/data/croquis";
 import { getLinksDriveDoCliente } from "@/lib/data/links-drive";
+import { getEstadoDrive } from "@/lib/data/drive";
 import { getTrajetoriaDoCliente } from "@/lib/data/trajetoria";
 import {
   getDecisoresPendentes,
@@ -49,6 +50,7 @@ export default async function ClienteFichaPage({
     entrevistas,
     linksDrive,
     trajetoria,
+    estadoDrive,
   ] = await Promise.all([
     getClienteById(clienteId),
     getAlunoById(alunoId),
@@ -73,6 +75,8 @@ export default async function ClienteFichaPage({
     // 🔑 No MESMO Promise.all: a trajetória depende só do `clienteId`. A RLS
     // guarda; cliente de outro ambiente é barrado pelo `notFound()` abaixo.
     getTrajetoriaDoCliente(clienteId),
+    // 🔑 No MESMO Promise.all: `alunoId` vem da sessão, `clienteId` dos params.
+    getEstadoDrive(alunoId, clienteId),
   ]);
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
@@ -133,6 +137,7 @@ export default async function ClienteFichaPage({
           minutas={minutas}
           croquis={croquis}
           linksDrive={linksDrive}
+          estadoDrive={estadoDrive}
           trajetoria={trajetoria}
           contextoObrigatorio={contextoObrigatorio}
           alunoId={alunoId}

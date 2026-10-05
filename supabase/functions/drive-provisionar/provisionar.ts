@@ -33,7 +33,7 @@
 // recusa com TS5097. O ignore vale só para esta linha.
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore TS5097 — import com extensão .ts é o padrão do Deno
-import { type ArquivoDrive, criarGdrive, extrairIdDoDrive, type Gdrive, GdriveErro, jaTemAcesso, limparNome, MIME_ATALHO, MIME_PASTA, nomePastaCliente, nomePastaParceiro, normalizarNome } from "../_shared/gdrive.ts";
+import { type ArquivoDrive, criarGdrive, ehIdDoDrive, extrairIdDoDrive, type Gdrive, GdriveErro, jaTemAcesso, limparNome, MIME_ATALHO, MIME_PASTA, nomePastaCliente, nomePastaParceiro, normalizarNome } from "../_shared/gdrive.ts";
 
 export const SCHEMA = "gps";
 export const HEADER_SEGREDO = "x-drive-segredo";
@@ -51,6 +51,9 @@ const LIMITE_REVOGACOES = 50;
 export const RAIZ_PADRAO = "1CRSsOfNm_PO944c3K05Nx0aI2oXehG7N";
 /** Matriz copiada para cada parceiro (25 subpastas + 54 arquivos em 05/10/2026). */
 export const MATRIZ_PADRAO = "1T-EiOQWQgu_qXK8rtbr7BzByNW_jzm3L";
+
+export const NOME_ARQUIVADOS = "_Arquivados";
+export const GPS_ID_ARQUIVADOS = "arquivados";
 
 export const NOME_DOCUMENTOS = "1) DOCUMENTOS";
 export const NOME_CLIENTES = "5) CLIENTES";
@@ -73,7 +76,7 @@ export const ESTRUTURA_CLIENTE: { chave: string; nome: string; filhas?: { chave:
   { chave: "06", nome: "06 Entrega" },
 ];
 
-const SEGREDO_MINIMO = 32;
+export const SEGREDO_MINIMO = 32;
 const LIMITE_TAREFAS = 3;
 /** Para antes do limite de parede da edge (150 s no plano gratuito). */
 export const ORCAMENTO_MS = 110_000;
@@ -89,6 +92,7 @@ export const FRASE = {
   homonimoCliente: "Já existe uma pasta com o nome deste cliente em 5) CLIENTES. Cole o link dela na ficha do cliente.",
   clienteSumiu: "Cliente não encontrado.",
   clienteComLink: "Este cliente já tem uma pasta ligada.",
+  arquivarInvalido: "Pasta a arquivar inválida.",
   linkNaoConferido:
     "A pasta ligada a este parceiro não foi conferida pela equipe. Salve o link pela equipe na tela Pasta e tente de novo.",
   linkAlheio:
@@ -98,7 +102,10 @@ export const FRASE = {
 
 export type Tarefa = {
   id: string;
-  tipo: "provisionar_parceiro" | "criar_pasta_cliente" | "compartilhar" | "revogar";
+  tipo: "provisionar_parceiro" | "criar_pasta_cliente" | "compartilhar" | "revogar" | "arquivar";
+  /** Só em 'arquivar': a pasta a mover para _Arquivados. */
+  payload?: { file_id?: string } | null;
+  file_id?: string | null;
   /** `null` só em 'revogar'. */
   aluno_id: string | null;
   cliente_id: string | null;
@@ -178,7 +185,7 @@ export async function segredoConfere(recebido: string, esperado: string): Promis
 
 // ------------------------------------------------------------- banco
 
-type Rpc = <T>(nome: string, args: Record<string, unknown>) => Promise<T>;
+export type Rpc = <T>(nome: string, args: Record<string, unknown>) => Promise<T>;
 
 /** Erro de RPC com a mensagem do `raise` quando é P0001 (frase nossa, sem PII). */
 export class ErroRpc extends Error {
@@ -190,7 +197,7 @@ export class ErroRpc extends Error {
   }
 }
 
-function rest(deps: Deps): { rpc: Rpc } {
+export function rest(deps: Deps): { rpc: Rpc } {
   const url = (deps.env("SUPABASE_URL") ?? "").replace(/\/+$/, "");
   const chave = deps.env("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!url || !chave) throw new Error("SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausente");
@@ -234,6 +241,8 @@ type Ctx = {
   agora: () => number;
   /** Listagens da matriz, uma vez por execução. */
   cacheMatriz: Map<string, ArquivoDrive[]>;
+  /** Id da pasta _Arquivados (achada/criada uma vez por execução). */
+  arquivados?: string;
 };
 
 function checarPrazo(ctx: Ctx): void {
@@ -490,6 +499,41 @@ export async function criarPastaDoCliente(ctx: Ctx, t: Tarefa): Promise<string[]
   return avisos;
 }
 
+/**
+ * Tarefa 'arquivar': move a pasta para `_Arquivados` (dentro da raiz; criada
+ * uma vez, achada por appProperties.gps_id='arquivados'). Idempotente: já
+ * está lá, sumiu ou foi para a lixeira = feito. Sem permissão para mover
+ * (arquivo de outro dono) = feito com aviso, nunca falha.
+ */
+export async function arquivarPasta(ctx: Ctx, t: Tarefa): Promise<string[]> {
+  const id = (t.payload?.file_id ?? t.file_id ?? "").trim();
+  if (!ehIdDoDrive(id)) throw new FalhaDeNegocio(FRASE.arquivarInvalido);
+  if (id === ctx.raiz || id === ctx.matriz || id === RAIZ_PADRAO || id === MATRIZ_PADRAO) {
+    throw new FalhaDeNegocio(FRASE.arquivarInvalido);
+  }
+  checarPrazo(ctx);
+  const pasta = await ctx.drive.obter(id);
+  if (!pasta || pasta.trashed) return ["pasta_ausente"];
+  if (pasta.mimeType !== MIME_PASTA) throw new FalhaDeNegocio(FRASE.arquivarInvalido);
+
+  if (!ctx.arquivados) {
+    const achada = await ctx.drive.buscarPorGpsId(ctx.raiz, GPS_ID_ARQUIVADOS);
+    ctx.arquivados = (achada ?? (await ctx.drive.criarPasta(ctx.raiz, NOME_ARQUIVADOS, GPS_ID_ARQUIVADOS))).id;
+  }
+  if (id === ctx.arquivados) throw new FalhaDeNegocio(FRASE.arquivarInvalido);
+
+  checarPrazo(ctx);
+  try {
+    await ctx.drive.moverPara(id, ctx.arquivados);
+  } catch (e) {
+    if (e instanceof GdriveErro && e.tipo === "nao_encontrado") return ["pasta_ausente"];
+    // 403 de pasta de outro dono: só avisa (credencial e rate limit têm outro tipo).
+    if (e instanceof GdriveErro && e.tipo === "outro" && e.status === 403) return ["sem_permissao_para_mover"];
+    throw e;
+  }
+  return [];
+}
+
 type Revogacao = { id: string; file_id: string; permission_id: string };
 
 /**
@@ -583,9 +627,11 @@ export async function executarLote(deps: Deps): Promise<{ status: number; corpo:
         continue;
       }
       const avisos =
-        t.tipo === "criar_pasta_cliente"
-          ? await criarPastaDoCliente(ctx, t)
-          : (await garantirParceiro(ctx, t)).avisos;
+        t.tipo === "arquivar"
+          ? await arquivarPasta(ctx, t)
+          : t.tipo === "criar_pasta_cliente"
+            ? await criarPastaDoCliente(ctx, t)
+            : (await garantirParceiro(ctx, t)).avisos;
       await concluir(t, "feito", { aviso: avisos.length ? [...new Set(avisos)].join(",") : undefined });
     } catch (e) {
       if (e instanceof Pausa) {

@@ -58,6 +58,7 @@ class Mundo {
   revogacoes: { id: string; file_id: string; permission_id: string }[] = [];
   resultadosRevogacao: { id: string; resultado: string }[] = [];
   falhaNoDelete = false;
+  recusaMover = false;
 
   novoId(): string {
     return `F${String(++this.seq).padStart(12, "0")}`;
@@ -165,6 +166,14 @@ function deps(m: Mundo): Deps {
     }
     const arq = m.arquivos.get(partes[1]);
     if (!arq) return resposta(404, { error: { errors: [{ reason: "notFound" }] } });
+    if (partes.length === 2 && metodo === "PATCH") {
+      m.escritas++;
+      if (m.recusaMover) return resposta(403, { error: { errors: [{ reason: "insufficientFilePermissions" }] } });
+      const rm = (url.searchParams.get("removeParents") ?? "").split(",").filter(Boolean);
+      const add = (url.searchParams.get("addParents") ?? "").split(",").filter(Boolean);
+      arq.parents = [...arq.parents.filter((x) => !rm.includes(x)), ...add];
+      return resposta(200, { id: arq.id, parents: arq.parents });
+    }
     if (partes.length === 2) return resposta(200, arq);
     if (partes[2] === "copy") {
       m.escritas++;
@@ -525,4 +534,63 @@ D.test("revogar com falha transitória: item volta e a tarefa repete", async () 
   igual(m.resultadosRevogacao.map((x) => x.resultado), ["transitorio"]);
   igual(m.conclusoes.at(-1)?.resultado, "transitorio");
   igual(totalPerms(m), 3, "nada removido");
+});
+
+// ── tarefa 'arquivar' ──
+const arquivar = (file_id: string) => tarefa({ tipo: "arquivar", aluno_id: null, payload: { file_id } });
+const arquivadosDe = (m: Mundo) => m.filhos(RAIZ_PADRAO).filter((f) => f.appProperties?.gps_id === "arquivados");
+
+D.test("arquivar: cria _Arquivados uma vez e move a pasta (sai do pai antigo)", async () => {
+  const m = new Mundo();
+  const alvo = m.add({ name: "Cliente X", mimeType: PASTA, parents: ["PAI000000000001"] });
+  const alvo2 = m.add({ name: "Cliente Y", mimeType: PASTA, parents: ["PAI000000000001"] });
+  m.fila.push(arquivar(alvo.id), arquivar(alvo2.id));
+  const r = await chamar(m);
+  igual(r.status, 200);
+  const arq = arquivadosDe(m);
+  igual(arq.length, 1, "criada uma só vez");
+  igual(arq[0].name, "_Arquivados");
+  igual(alvo.parents, [arq[0].id]);
+  igual(alvo2.parents, [arq[0].id]);
+  igual(m.conclusoes.map((c) => c.resultado), ["feito", "feito"]);
+});
+
+D.test("arquivar: idempotente — já em _Arquivados = feito sem escrita; reaproveita a pasta existente", async () => {
+  const m = new Mundo();
+  const arqPasta = m.add({ name: "_Arquivados", mimeType: PASTA, parents: [RAIZ_PADRAO], appProperties: { gps_id: "arquivados" } });
+  const alvo = m.add({ name: "Cliente X", mimeType: PASTA, parents: [arqPasta.id] });
+  m.fila.push(arquivar(alvo.id));
+  await chamar(m);
+  igual(m.escritas, 0, "nenhuma escrita");
+  igual(arquivadosDe(m).length, 1);
+  igual(m.conclusoes.map((c) => c.resultado), ["feito"]);
+});
+
+D.test("arquivar: pasta sumida ou na lixeira = feito com aviso", async () => {
+  const m = new Mundo();
+  const lixo = m.add({ name: "Velha", mimeType: PASTA, parents: ["PAI000000000001"], trashed: true });
+  m.fila.push(arquivar("NAOEXISTE00001"), arquivar(lixo.id));
+  await chamar(m);
+  igual(m.conclusoes.map((c) => [c.resultado, c.aviso]), [["feito", "pasta_ausente"], ["feito", "pasta_ausente"]]);
+  igual(m.escritas, 0);
+});
+
+D.test("arquivar: sem permissão para mover (outro dono) = feito com aviso, não falha", async () => {
+  const m = new Mundo();
+  const alvo = m.add({ name: "De outro dono", mimeType: PASTA, parents: ["PAI000000000001"] });
+  m.recusaMover = true;
+  m.fila.push(arquivar(alvo.id));
+  await chamar(m);
+  igual(m.conclusoes.map((c) => [c.resultado, c.aviso]), [["feito", "sem_permissao_para_mover"]]);
+  igual(alvo.parents, ["PAI000000000001"], "nada movido");
+});
+
+D.test("arquivar: recusa raiz, matriz, arquivo que não é pasta e id inválido", async () => {
+  const m = new Mundo();
+  const doc = m.add({ name: "a.pdf", mimeType: "application/pdf", parents: ["PAI000000000001"] });
+  m.fila.push(arquivar(RAIZ_PADRAO), arquivar(MATRIZ_PADRAO), arquivar(doc.id), arquivar("x"));
+  await chamar(m);
+  igual(m.conclusoes.map((c) => c.resultado), ["erro", "erro", "erro", "erro"]);
+  igual(m.escritas, 0);
+  igual(m.arquivos.get(RAIZ_PADRAO)!.parents, ["root"], "raiz intocada");
 });

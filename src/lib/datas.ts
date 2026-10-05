@@ -75,3 +75,36 @@ export function hojeSaoPaulo(): string {
   // en-CA formata como YYYY-MM-DD; timeZone garante o dia certo no Brasil.
   return new Intl.DateTimeFormat("en-CA", { timeZone: FUSO }).format(new Date());
 }
+
+/**
+ * "agora", "há 5 min", "há 2 h", "há 3 dias" — idade de um instante.
+ *
+ * Depende do relógio: chame no servidor e entregue a string pronta (um
+ * componente cliente recalcularia na hidratação e divergiria). Futuro (relógio
+ * adiantado) vira "agora", nunca número negativo. `iso` inválido → `null`.
+ *
+ * `extenso: true` escreve a unidade por inteiro ("há 5 minutos", "há 2 horas")
+ * para frase corrida lida pelo parceiro ("Minuta atualizada há 2 horas"); o
+ * padrão abreviado continua servindo coluna de tabela densa.
+ */
+export function formatarHaQuanto(
+  iso: string,
+  agora: number = Date.now(),
+  opcoes: { extenso?: boolean } = {},
+): string | null {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return null;
+  const min = Math.floor((agora - t) / 60_000);
+  if (min < 1) return "agora";
+  if (min < 60) {
+    if (!opcoes.extenso) return `há ${min} min`;
+    return min === 1 ? "há 1 minuto" : `há ${min} minutos`;
+  }
+  const h = Math.floor(min / 60);
+  if (h < 24) {
+    if (!opcoes.extenso) return `há ${h} h`;
+    return h === 1 ? "há 1 hora" : `há ${h} horas`;
+  }
+  const d = Math.floor(h / 24);
+  return d === 1 ? "há 1 dia" : `há ${d} dias`;
+}

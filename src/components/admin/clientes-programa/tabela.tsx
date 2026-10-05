@@ -28,10 +28,15 @@ import { CopiarContato } from "@/components/admin/copiar-contato";
 import { cn } from "@/lib/utils";
 import { formatarNome } from "@/lib/nomes";
 
+/** `cliente.id` → texto pronto ("há 2 h") + data completa para o `title`. */
+export type PastaPorCliente = Record<string, { rotulo: string; titulo: string }>;
+
 export function TabelaClientesPrograma({
   linhas,
+  pasta,
 }: {
   linhas: ClienteDoPrograma[];
+  pasta?: PastaPorCliente;
 }) {
   // Mesmo corte de "vencida" da RPC (`data < hoje`): comparação de string
   // YYYY-MM-DD, sem `Date` no meio (ver `datas.ts`). Uma vez, fora do loop.
@@ -56,6 +61,7 @@ export function TabelaClientesPrograma({
         <span>Telefone</span>
         <span>Grau · DISC</span>
         <span>Reunião</span>
+        <span>Pasta</span>
       </div>
       <ul className="divide-y">
         {linhas.map((c, i) => {
@@ -166,6 +172,14 @@ export function TabelaClientesPrograma({
               <span className="justify-self-end text-xs text-muted-foreground lg:order-5 lg:justify-self-start lg:text-sm lg:text-foreground">
                 {[grau, c.perfilDisc].filter(Boolean).join(" · ") || "—"}
               </span>
+
+              <span
+                className="whitespace-nowrap text-xs text-muted-foreground lg:order-7 lg:text-sm"
+                title={pasta?.[c.id]?.titulo}
+              >
+                <span className="sr-only">Pasta: </span>
+                {pasta?.[c.id]?.rotulo ?? "—"}
+              </span>
             </li>
             </Fragment>
           );
@@ -175,8 +189,8 @@ export function TabelaClientesPrograma({
   );
 }
 
-/** As seis colunas em tela larga — o cabeçalho e cada linha usam a mesma. */
+/** As sete colunas em tela larga — o cabeçalho e cada linha usam a mesma. */
 const COLUNAS =
-  "lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.3fr)_7rem_10rem_minmax(0,1fr)_6.5rem]";
+  "lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.3fr)_7rem_10rem_minmax(0,1fr)_6.5rem_5.5rem]";
 const GRADE = cn("grid gap-x-3", COLUNAS);
 const GRADE_LG = COLUNAS;

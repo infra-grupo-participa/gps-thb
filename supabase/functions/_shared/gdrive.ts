@@ -54,6 +54,29 @@ export type ArquivoDrive = {
   shortcutDetails?: { targetId?: string; targetMimeType?: string };
 };
 
+/** Item de `changes.list`. Sem `file` quando `removed` (ou quando o acesso foi perdido). */
+export type MudancaDrive = {
+  fileId?: string;
+  removed?: boolean;
+  file?: {
+    id?: string;
+    name?: string;
+    mimeType?: string;
+    parents?: string[];
+    trashed?: boolean;
+    modifiedTime?: string;
+    lastModifyingUser?: { displayName?: string };
+  };
+};
+
+export type PaginaMudancas = {
+  mudancas: MudancaDrive[];
+  /** Há mais páginas: ler de novo a partir dele. */
+  nextPageToken: string | null;
+  /** Só na última página: o token para a próxima rodada. */
+  newStartPageToken: string | null;
+};
+
 export type PermissaoDrive = {
   id: string;
   type?: string;
@@ -83,6 +106,8 @@ const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const API = "https://www.googleapis.com/drive/v3";
 const CAMPOS_ARQUIVO = "id,name,mimeType,parents,trashed,appProperties,shortcutDetails";
 const MAX_PAGINAS = 200;
+const CAMPOS_MUDANCAS =
+  "nextPageToken,newStartPageToken,changes(fileId,removed,file(id,name,mimeType,parents,trashed,modifiedTime,lastModifyingUser(displayName)))";
 
 // ------------------------------------------------------------------ puras
 
@@ -454,6 +479,77 @@ export function criarGdrive(cfg: GdriveConfig) {
         },
       );
       return await res.json();
+    },
+
+    /** Token a partir do qual `listarMudancas` passa a enxergar o que mudar daqui em diante. */
+    async obterTokenInicial(): Promise<string> {
+      const res = await api(
+        "GET",
+        `/changes/startPageToken?${qs({ ...DRIVES })}`,
+        "changes.startPageToken",
+        { escrita: false },
+      );
+      const j = await res.json();
+      if (typeof j?.startPageToken !== "string" || !j.startPageToken) {
+        throw new GdriveErro("outro", 0, "changes.startPageToken: resposta sem token");
+      }
+      return j.startPageToken;
+    },
+
+    /** UMA página de mudanças (o chamador aplica e avança o cursor página a página). */
+    async listarMudancas(pageToken: string): Promise<PaginaMudancas> {
+      if (!pageToken || pageToken.length > 2000) {
+        throw new GdriveErro("outro", 0, "changes.list: token inválido");
+      }
+      const res = await api(
+        "GET",
+        `/changes?${qs({
+          pageToken,
+          includeRemoved: "true",
+          restrictToMyDrive: "false",
+          pageSize: "1000",
+          includeItemsFromAllDrives: "true",
+          fields: CAMPOS_MUDANCAS,
+          ...DRIVES,
+        })}`,
+        "changes.list",
+        { escrita: false },
+      );
+      const j = await res.json();
+      return {
+        mudancas: Array.isArray(j?.changes) ? j.changes : [],
+        nextPageToken: typeof j?.nextPageToken === "string" && j.nextPageToken ? j.nextPageToken : null,
+        newStartPageToken:
+          typeof j?.newStartPageToken === "string" && j.newStartPageToken ? j.newStartPageToken : null,
+      };
+    },
+
+    /**
+     * Move `fileId` para `novoPai` (addParents/removeParents), lendo os pais atuais.
+     * Devolve `false` se já estava só lá (nada escrito). 404 → GdriveErro nao_encontrado.
+     */
+    async moverPara(fileId: string, novoPai: string): Promise<boolean> {
+      exigirId(fileId, "move");
+      exigirId(novoPai, "move");
+      const lido = await api(
+        "GET",
+        `/files/${encodeURIComponent(fileId)}?${qs({ fields: "id,parents", ...DRIVES })}`,
+        "move.get",
+        { escrita: false },
+      );
+      const atual = (await lido.json()) as { parents?: string[] };
+      const pais = atual.parents ?? [];
+      if (pais.length === 1 && pais[0] === novoPai) return false;
+      const params: Record<string, string> = { fields: "id,parents", ...DRIVES };
+      if (!pais.includes(novoPai)) params.addParents = novoPai;
+      const remover = pais.filter((p) => p !== novoPai);
+      if (remover.length) params.removeParents = remover.join(",");
+      const res = await api("PATCH", `/files/${encodeURIComponent(fileId)}?${qs(params)}`, "move", {
+        escrita: true,
+        corpo: {},
+      });
+      await res.body?.cancel();
+      return true;
     },
 
     async listarPermissoes(id: string): Promise<PermissaoDrive[]> {

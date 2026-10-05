@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { getClientesDoPrograma, getClientesReuniaoKpis } from "@/lib/data/clientes-admin";
+import { getUltimaModificacaoPasta } from "@/lib/data/clientes-pasta";
+import { formatarDataHora, formatarHaQuanto } from "@/lib/datas";
 import { adminNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
@@ -68,6 +70,15 @@ export default async function AdminClientesPage({
     getClientesReuniaoKpis(),
   ]);
 
+  // Depende dos ids da página, então vem logo DEPOIS (segunda consulta, uma
+  // só por página). Falha → mapa vazio + `logErro` lá dentro: coluna "—".
+  const pastaPorCliente = await getUltimaModificacaoPasta(linhas.map((l) => l.id));
+  const pasta: Record<string, { rotulo: string; titulo: string }> = {};
+  for (const [id, iso] of pastaPorCliente) {
+    const rotulo = formatarHaQuanto(iso);
+    if (rotulo) pasta[id] = { rotulo, titulo: formatarDataHora(iso) };
+  }
+
   return (
     <>
       <AppHeader
@@ -89,6 +100,7 @@ export default async function AdminClientesPage({
           erro={erro ?? null}
           estado={estado}
           kpis={kpis}
+          pasta={pasta}
           erroKpis={erroKpis ?? null}
         />
       </main>

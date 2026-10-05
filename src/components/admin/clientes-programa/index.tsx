@@ -63,7 +63,7 @@ import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
-import { TabelaClientesPrograma } from "./tabela";
+import { TabelaClientesPrograma, type PastaPorCliente } from "./tabela";
 import { ExportarClientesCsv } from "./exportar";
 import {
   ITENS_POR_PAGINA,
@@ -95,6 +95,7 @@ export function ClientesPrograma({
   estado,
   kpis,
   erroKpis,
+  pasta,
 }: {
   linhas: ClienteDoPrograma[];
   /** Universo do FILTRO (o `count(*) over()` da RPC) — nunca o da página. */
@@ -109,6 +110,8 @@ export function ClientesPrograma({
    */
   kpis?: ReuniaoKpis;
   erroKpis?: string | null;
+  /** Última modificação da pasta do Drive por `cliente.id` (texto pronto do servidor). Ausente = "—". */
+  pasta?: PastaPorCliente;
 }) {
   const inicio = total === 0 ? 0 : (estado.pagina - 1) * ITENS_POR_PAGINA + 1;
   const fim = Math.min(estado.pagina * ITENS_POR_PAGINA, total);
@@ -238,7 +241,7 @@ export function ClientesPrograma({
           descricao="Ajuste a busca ou os filtros de fase e grau de relação."
         />
       ) : (
-        <TabelaClientesPrograma linhas={linhas} />
+        <TabelaClientesPrograma linhas={linhas} pasta={pasta} />
       )}
 
       {totalPaginas > 1 ? (

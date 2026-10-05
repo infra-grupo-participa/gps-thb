@@ -21,6 +21,7 @@ import { getCroquisDoCliente } from "@/lib/data/croquis";
 import { getEstadoDrive } from "@/lib/data/drive";
 import { getLinksDriveDoCliente } from "@/lib/data/links-drive";
 import { getTrajetoriaDoCliente } from "@/lib/data/trajetoria";
+import { getAtividadeDriveDoCliente } from "@/lib/data/drive-atividade";
 import {
   getDecisoresPendentes,
   getEntrevistasDoCliente,
@@ -56,6 +57,7 @@ export default async function AdminAlunoClienteFichaPage({
     linksDrive,
     estadoDrive,
     trajetoria,
+    atividadeDrive,
   ] = await Promise.all([
     getAlunoById(alunoId),
     contarMembrosDoAmbiente(alunoId),
@@ -84,6 +86,8 @@ export default async function AdminAlunoClienteFichaPage({
     getEstadoDrive(alunoId, clienteId),
     // 🔑 Espelha a ficha do parceiro: trajetória no MESMO Promise.all.
     getTrajetoriaDoCliente(clienteId),
+    // 🔑 Espelha a ficha do parceiro: atividade da pasta no MESMO Promise.all.
+    getAtividadeDriveDoCliente(clienteId),
   ]);
   // 🔴 `estrelaTravada` desde 23/09/2026 (migração ...304): o que esconde a
   // estrela é o outro favorito cujo CASO já andou, não mais
@@ -159,6 +163,7 @@ export default async function AdminAlunoClienteFichaPage({
           linksDrive={linksDrive}
           estadoDrive={estadoDrive}
           trajetoria={trajetoria}
+          atividadeDrive={atividadeDrive}
           contextoObrigatorio={contextoObrigatorio}
           alunoId={alunoId}
           admin

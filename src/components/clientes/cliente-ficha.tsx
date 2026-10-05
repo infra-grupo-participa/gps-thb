@@ -80,9 +80,11 @@ import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import type { ClienteCroqui } from "@/lib/croquis-tipos";
 import type { LinkDrive } from "@/lib/links-drive-tipos";
 import type { TrajetoriaCliente } from "@/lib/trajetoria-tipos";
+import type { AtividadeDrive } from "@/lib/drive-atividade-tipos";
 import type { EstadoDrive } from "@/lib/drive-tipos";
 import { LinksDrive } from "@/components/clientes/links-drive";
 import { FichaTrajetoria } from "@/components/clientes/ficha-trajetoria";
+import { PastaAtividade } from "@/components/clientes/pasta-atividade";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import {
   mascaraCpfCnpj,
@@ -141,6 +143,7 @@ export function ClienteFicha({
   linksDrive,
   estadoDrive,
   trajetoria,
+  atividadeDrive,
   contextoObrigatorio = false,
   painelEntrevista = null,
   qtdDecisores = null,
@@ -227,6 +230,12 @@ export function ClienteFicha({
    * leitura falhou (o bloco avisa; nunca vira "nada marcado").
    */
   trajetoria: TrajetoriaCliente | null;
+  /**
+   * Atividade da pasta do cliente no Drive (`getAtividadeDriveDoCliente`), no
+   * MESMO `Promise.all` da page. Obrigatória pelo motivo de `croquis`; `null` =
+   * a leitura falhou (uma linha discreta; nunca "pasta vazia").
+   */
+  atividadeDrive: AtividadeDrive | null;
   /**
    * Interruptor `minuta_contexto_obrigatorio`, lido no servidor pela page.
    */
@@ -783,6 +792,12 @@ export function ClienteFicha({
       {/* O mapa do cliente: vale para a ficha inteira, então mora acima das
           abas, junto do Drive — e não desmonta ao trocar de folha. Grava na
           hora, por RPC; não passa pelo "Salvar ficha". */}
+      {/* Só com link de pasta: sem ele não há pasta para ler. Fica entre o
+          link e a trajetória porque a sugestão marca etapa dela. */}
+      {linkDrive ? (
+        <PastaAtividade clienteId={cliente.id} atividade={atividadeDrive} />
+      ) : null}
+
       <FichaTrajetoria clienteId={cliente.id} trajetoria={trajetoria} />
 
       <FichaAbas

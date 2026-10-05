@@ -13,6 +13,7 @@ import { getCroquisDoCliente } from "@/lib/data/croquis";
 import { getLinksDriveDoCliente } from "@/lib/data/links-drive";
 import { getEstadoDrive } from "@/lib/data/drive";
 import { getTrajetoriaDoCliente } from "@/lib/data/trajetoria";
+import { getAtividadeDriveDoCliente } from "@/lib/data/drive-atividade";
 import {
   getDecisoresPendentes,
   getEntrevistasDoCliente,
@@ -51,6 +52,7 @@ export default async function ClienteFichaPage({
     linksDrive,
     trajetoria,
     estadoDrive,
+    atividadeDrive,
   ] = await Promise.all([
     getClienteById(clienteId),
     getAlunoById(alunoId),
@@ -77,6 +79,9 @@ export default async function ClienteFichaPage({
     getTrajetoriaDoCliente(clienteId),
     // 🔑 No MESMO Promise.all: `alunoId` vem da sessão, `clienteId` dos params.
     getEstadoDrive(alunoId, clienteId),
+    // 🔑 No MESMO Promise.all: a atividade da pasta depende só do `clienteId`.
+    // A view é `security_invoker` (RLS); cliente alheio é barrado abaixo.
+    getAtividadeDriveDoCliente(clienteId),
   ]);
   if (!cliente || cliente.aluno_id !== alunoId) notFound();
 
@@ -139,6 +144,7 @@ export default async function ClienteFichaPage({
           linksDrive={linksDrive}
           estadoDrive={estadoDrive}
           trajetoria={trajetoria}
+          atividadeDrive={atividadeDrive}
           contextoObrigatorio={contextoObrigatorio}
           alunoId={alunoId}
           outroConfirmadoNome={outroConfirmadoNome}

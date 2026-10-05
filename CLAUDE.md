@@ -2494,9 +2494,41 @@ equipe."; teto de **20 pedidos por ambiente em 24 h**. Tarefa: 1 tentativa + **3
 escrevem em `membros`) e em `gps.acessos_log` (`email_login_alterado`) marcam e enfileiram a
 tarefa `revogar` (sem `aluno_id`, sobrevive ao CASCADE). Permissão dada à mão pela equipe não é
 tocada. ⚠️ O titular NOVO não recebe acesso sozinho: a equipe pede "organizar/compartilhar" de novo.
-🔴 **Lacuna LGPD (aberta, decisão pendente):** excluir cliente (ou o ambiente) **não apaga nem
-arquiva** a pasta no Drive — a pasta do cliente, com documentos de terceiros, fica em "Pastas dos
-Alunos" e no espelho some só a linha (`drive_pastas` cascade). Nada é enfileirado por ora.
+**Arquivar (migração `…350`, 05/10/2026 — fecha a lacuna LGPD):** excluir cliente ou ambiente
+**move a pasta para `_Arquivados`** (dentro de `1CRSsOfNm…`, `gps_id` `arquivados`, criada uma vez
+pela edge). Tarefa `arquivar` em `drive_tarefas` com `aluno_id`/`cliente_id` **nulos** (sobrevive ao
+cascade, como a `revogar`) e a pasta em `drive_tarefas.file_id`, que `drive_tarefa_pegar` devolve
+(chave `file_id`). Gatilhos BEFORE DELETE: `trg_etapa1_clientes_drive_arquivar` (arquiva a
+`raiz_cliente`, nome → `(cliente excluído)`) e `trg_ambientes_drive_arquivar` (arquiva a
+`raiz_parceiro`, nome → `(parceiro excluído)`, marca para revogar as permissões vivas do ambiente
+e **absorve** as tarefas de cliente do mesmo ambiente: excluir o ambiente = **UMA** tarefa).
+🔑 `etapa1_clientes.aluno_id` referencia `thb_alunos`, **não** `gps.ambientes`: `admin_excluir_acesso`
+e `admin_converter_titular_em_socio` apagam os clientes ANTES do ambiente — por isso a absorção
+mora no gatilho do ambiente e **nenhuma função de acesso foi recriada** (nem há `set_config`
+`gps.excluindo_ambiente`). `drive_pastas`: FKs `aluno_id`/`cliente_id` viraram **ON DELETE SET
+NULL** + `arquivada_em` (a linha fica como trilha). Os gatilhos **engolem erro** (warning): a
+exclusão nunca depende do Drive; no do ambiente, arquivar e revogar são **dois blocos** (`…351`) e a
+falha de um não impede o outro. Pior caso: pasta com `arquivada_em` nulo e `cliente_id`/`aluno_id` null. Throughput: o `pegar` serve **uma** tarefa sem `aluno_id` por vez (arquivar e revogar
+dividem a vez). Provas `supabase/verificacao-20261005000350.sql`.
+**Atividade nas pastas dos clientes (migração `…349`, Fase 2; nasce DESLIGADA:
+`gps.config.drive_atividade_ativo = 'false'`).** A edge `drive-atividade` (cron `drive-atividade`,
+`*/5`, `gps.drive_atividade_chamar()`, mesmo segredo do Vault `gps_drive_segredo`) lê o
+`changes.list` da conta joao@ e entrega cada página a `gps.drive_atividade_aplicar(p_itens,
+p_token_lido, p_token_novo, p_erro default null)`, que grava `gps.drive_arquivos` (pai em
+`drive_pastas` raiz/sub de cliente vivo, ou pasta do usuário já em `drive_arquivos`; fora da árvore
+descarta; `removed`/`trashed` → removido com a subárvore; movido → subpasta acompanha) e avança o
+cursor `gps.drive_cursor` na MESMA transação, só se o token atual = `p_token_lido` (P0001).
+`drive_atividade_pegar()` → `null` (desligado/travado 10 min) ou `{page_token}`; `page_token` null =
+1ª vez: a edge aplica `[]`, `null` → token inicial. **O que existia antes de ligar não é
+inventariado** (arquivo antigo só aparece quando muda; pasta criada pelo usuário antes de ligar fica
+invisível até mudar). `drive_pastas.sub_chave` é coluna **gerada** do nome fixo (`01`, `01p/i/e`,
+`02`..`06`). Leitura: view **`gps.vw_cliente_drive_atividade`** (`security_invoker`; RLS de
+`drive_arquivos` = cópia da de `cliente_trajetoria`): `cliente_id, subpasta, arquivos, pastas,
+ultima_modificacao_em, ultima_modificacao_por` (só nome; texto com `@` vira null),
+`ultima_alteracao_03_em`, `sugere_etapa` (03 → `elaboracao_minutas`, 05 → `junta_comercial`,
+06 → `entrega_pasta`, só com arquivo e etapa não marcada; **sugere, nunca marca**). Item removido perde o `nome` (`…351`; null só em removido). Pai que é pasta do MESMO lote
+espera ser processado antes do filho (`…351`). Excluir cliente
+apaga a lista dele (cascade). Provas `supabase/verificacao-20261005000349.sql`.
 Idempotência pelo `appProperties.gps_id` no Drive. Actions `src/app/drive/actions.ts`, leitura
 `src/lib/data/drive.ts` (`gps.drive_estado`), script OAuth `scripts/gdrive-ligar.mjs`, provas
 `supabase/verificacao-20261005000347.sql`.

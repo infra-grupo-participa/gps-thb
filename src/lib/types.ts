@@ -246,6 +246,18 @@ export const REGIMES_TRIBUTARIOS = [
 
 export type RegimeTributario = (typeof REGIMES_TRIBUTARIOS)[number]["valor"];
 
+/**
+ * Funil por onde o cliente entrou (migração `…345`, 05/10/2026). Catálogo
+ * FECHADO, espelho do CHECK `chk_etapa1_clientes_funil_origem`. `null` = não
+ * informado (sem backfill). Independente de `fase` e da trajetória.
+ */
+export const FUNIS_ORIGEM = [
+  { valor: "reuniao_preliminar", rotulo: "Reunião Preliminar" },
+  { valor: "sessao_viabilidade", rotulo: "Sessão de Viabilidade" },
+] as const;
+
+export type FunilOrigem = (typeof FUNIS_ORIGEM)[number]["valor"];
+
 export interface ClienteEtapa1 {
   id: string;
   aluno_id: string;
@@ -379,6 +391,8 @@ export interface ClienteEtapa1 {
   ramo_atividade: string | null;
   /** Catálogo FECHADO (`REGIMES_TRIBUTARIOS`), espelho do CHECK do banco. */
   regime_tributario: RegimeTributario | null;
+  /** Funil de origem (…345). Catálogo fechado `FUNIS_ORIGEM`; `null` = não informado. */
+  funil_origem: FunilOrigem | null;
   /**
    * `null` = o ALUNO é dono da estrela (comportamento de sempre). PREENCHIDO =
    * a EQUIPE confirmou que está acompanhando este cliente, e o banco passa a
@@ -640,6 +654,13 @@ export const TIPOS_EVENTO = [
   // nunca a url nem o nome do link.
   "cliente_link_drive_adicionado",
   "cliente_link_drive_removido",
+  // Trajetória do cliente (…345, 05/10/2026): detalhe {etapa_codigo, cliente_id};
+  // gravados só por `gps.cliente_trajetoria_marcar`/`_desmarcar` (no-op não grava).
+  "cliente_etapa_marcada",
+  "cliente_etapa_desmarcada",
+  // Funil de origem (…345): detalhe {de, para}; trigger própria
+  // `trg_aluno_eventos_funil_origem`.
+  "cliente_funil_origem_definido",
 ] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 

@@ -27,8 +27,11 @@ import {
 import { logErro } from "@/lib/log";
 import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import {
+  TIPO_CROQUI_ESTRUTURAL,
   TIPO_ENTREVISTA_PREVIA,
   TIPO_REUNIAO_PRELIMINAR,
+  TIPO_SESSAO_VIABILIDADE,
+  posicaoDoTipoSessao,
 } from "@/lib/sessoes-tipos";
 // `HorarioLivre` e `SessaoTipo` saíram daqui com `BlocoDeTipo`, que agora mora
 // em `causa-do-vazio.ts` — a página só continua lendo `SessaoAgendamento`.
@@ -161,8 +164,9 @@ interface DiscDoCliente {
  * o valor passa a vir junto da sessão.
  *
  * Custo: uma ida ao PostgREST por abertura de `/sessoes`, sobre no máximo
- * 2 ids (o índice `sessao_aluno_tipo_viva` garante 1 sessão viva por tipo, e
- * o catálogo tem 2 linhas por desenho). Não cresce com a base.
+ * 4 ids (o índice `sessao_aluno_tipo_viva` garante 1 sessão viva por tipo, e
+ * o catálogo tem 4 tipos ativos: Entrevista Prévia, Reunião Preliminar,
+ * Sessão de Viabilidade e Croqui Estrutural). Não cresce com a base.
  *
  * 🔴 Erro devolve mapa VAZIO, e a tela lê a ausência como "não é da equipe" —
  * o parceiro tenta e, se a RPC recusar, lê a frase dela. O contrário (assumir
@@ -211,9 +215,11 @@ export default async function SessoesPage() {
     getSessoesDoAmbiente({ estados: ["agendado"] }),
   ]);
 
-  // Uma consulta de elegibilidade + uma de grade POR TIPO (hoje 2). Não é
-  // N+1 por tela: é N por CATÁLOGO, e o catálogo tem 2 linhas por desenho
-  // (§6.1). As chamadas saem em paralelo, não em sequência.
+  // Uma consulta de grade POR TIPO ativo (hoje 4) e, para os tipos que têm
+  // etapa (Entrevista Prévia e Reunião Preliminar), mais uma de elegibilidade.
+  // Não é N+1 por tela: é N por CATÁLOGO, e o catálogo tem 4 linhas por
+  // desenho (§6.1). Os tipos saem em paralelo; dentro de cada tipo com etapa,
+  // grade e elegibilidade também.
   const blocos = await Promise.all(
     tipos.map(async (tipo) => {
       const jaMarcada = sessoes.find((s) => s.tipo_id === tipo.id) ?? null;
@@ -224,7 +230,36 @@ export default async function SessoesPage() {
       // seria oferecer botões que só existem para falhar. Uma ida ao banco a
       // menos, e uma promessa a menos.
       if (jaMarcada) {
-        return { tipo, jaMarcada, elegivel: null, horarios: [], erro: undefined };
+        return {
+          tipo,
+          jaMarcada,
+          elegivel: null,
+          horarios: [],
+          erro: undefined,
+        };
+      }
+
+      // 🔑 Tipo SEM etapa (`etapa_id` null: Sessão de Viabilidade e Croqui
+      // Estrutural) não tem gate de elegibilidade: com a grade vazia a causa é
+      // sempre "sem-horario" (`causaDoVazio`) e a elegibilidade não muda a tela.
+      // Pede a grade primeiro e só pergunta a elegibilidade se houver horário
+      // a mostrar (ela dá o nome do cliente na confirmação). Grade vazia ou com
+      // erro = 1 ida ao banco, não 2. Tipos 1 e 2 seguem com as duas em
+      // paralelo: a causa do vazio deles (`nao-elegivel`/`etapa-fechada`)
+      // depende da elegibilidade.
+      if (tipo.etapa_id === null) {
+        const grade = await getHorariosLivres({ tipoId: tipo.id });
+        const elegibilidade =
+          grade.erro || grade.horarios.length === 0
+            ? null
+            : await getClienteElegivel(alunoId, tipo.id);
+        return {
+          tipo,
+          jaMarcada: null,
+          elegivel: elegibilidade,
+          horarios: grade.horarios,
+          erro: grade.erro,
+        };
       }
 
       const [elegibilidade, grade] = await Promise.all([
@@ -259,53 +294,63 @@ export default async function SessoesPage() {
   // `getNomesEDiscLeve`: ali a tela mostra apenas o nome na confirmação, e
   // puxar 3 campos de até 2.000 caracteres para quem nem sessão tem seria
   // pagar egress por texto que ninguém lê.
-  const idsComSessao = new Set(blocos.filter((b) => b.jaMarcada).map((b) => b.jaMarcada!.cliente_id));
+  const idsComSessao = new Set(
+    blocos.filter((b) => b.jaMarcada).map((b) => b.jaMarcada!.cliente_id),
+  );
   const idsSoNaGrade = [...idsDeCliente].filter((id) => !idsComSessao.has(id));
 
   // 🔑 O cliente ELEGÍVEL é um só por parceiro (o favorito), então isto é
   // UMA chamada, não uma por linha. Vai no mesmo `Promise.all` — em cascata
   // custaria uma viagem a mais por abertura de tela.
-  const idElegivel = blocos.find((b) => b.elegivel?.clienteId)?.elegivel?.clienteId ?? null;
+  const idElegivel =
+    blocos.find((b) => b.elegivel?.clienteId)?.elegivel?.clienteId ?? null;
 
-  const [nomesDaGrade, discDasSessoes, papelDoLink, decisoresDoElegivel, responsaveis] =
-    await Promise.all([
-      // 🔑 `getNomesEDiscLeve`: nome + a LETRA do DISC, sem os 3 campos ricos
-      // (até 2.000 caracteres cada). A letra é o que a Zona 1 precisa para a
-      // linha "Perfil DISC", e custa ~1 byte por linha — o raciocínio de
-      // egress acima continua valendo.
-      getNomesEDiscLeve(idsSoNaGrade),
-      getDiscDosClientes([...idsComSessao]),
-      getPapelDoLink(blocos.filter((b) => b.jaMarcada).map((b) => b.jaMarcada!.id)),
-      idElegivel ? getDecisoresPendentes(idElegivel) : Promise.resolve(null),
-      // ═══════════════════════════════════════════════════════════════════
-      // 🔴 A 5ª CONSULTA — EXCEÇÃO CONSCIENTE AO "SALDO ZERO" DO PRD §5.4
-      // ═══════════════════════════════════════════════════════════════════
-      // Decisão do orquestrador em 24/09, registrada aqui para ninguém a
-      // desfazer por reflexo ao ler "saldo de queries: ZERO".
-      //
-      // O que ela compra: a linha **"Com quem"** do card da sessão marcada,
-      // que é o PRD §9 D5 literal (*"a tela mostra o nome"*). Sem ela a tela
-      // imprimiria uuid ou inventaria rótulo — as duas coisas que o front
-      // corretamente se recusa a fazer. `responsavel_nome` NÃO é coluna de
-      // `sessao_agendamentos` (seria desnormalizar `public.perfis` e ter duas
-      // verdades sobre o mesmo nome), e o aluno não alcança `perfis`: a
-      // policy `gps_block_aluno` é `using (gps.aluno_atual() is null)`, então
-      // TODO aluno com ambiente é bloqueado. Só esta RPC `SECURITY DEFINER`
-      // chega ao nome.
-      //
-      // O que ela custa: **2 linhas, 0,927 ms MEDIDO** na `…292` (`Seq Scan`
-      // aceito e justificado lá: a tabela é pequena por natureza, e o índice
-      // custaria escrita em todo agendamento para servir 1 ms que roda uma
-      // vez por tela). Não cresce com a base. Sai no mesmo `Promise.all`, em
-      // paralelo — não acrescenta viagem em cascata.
-      //
-      // 🔑 Chamada UMA vez e casada por id em memória, nunca uma por linha de
-      // agendamento (é exatamente o N+1 que o protocolo manda evitar).
-      // 🔴 Erro devolve mapa VAZIO (`getMapaDeResponsaveis` já loga), e a
-      // linha cai em "Equipe jurídica". Falha de leitura não vira nome
-      // errado.
-      getMapaDeResponsaveis(),
-    ]);
+  const [
+    nomesDaGrade,
+    discDasSessoes,
+    papelDoLink,
+    decisoresDoElegivel,
+    responsaveis,
+  ] = await Promise.all([
+    // 🔑 `getNomesEDiscLeve`: nome + a LETRA do DISC, sem os 3 campos ricos
+    // (até 2.000 caracteres cada). A letra é o que a Zona 1 precisa para a
+    // linha "Perfil DISC", e custa ~1 byte por linha — o raciocínio de
+    // egress acima continua valendo.
+    getNomesEDiscLeve(idsSoNaGrade),
+    getDiscDosClientes([...idsComSessao]),
+    getPapelDoLink(
+      blocos.filter((b) => b.jaMarcada).map((b) => b.jaMarcada!.id),
+    ),
+    idElegivel ? getDecisoresPendentes(idElegivel) : Promise.resolve(null),
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔴 A 5ª CONSULTA — EXCEÇÃO CONSCIENTE AO "SALDO ZERO" DO PRD §5.4
+    // ═══════════════════════════════════════════════════════════════════
+    // Decisão do orquestrador em 24/09, registrada aqui para ninguém a
+    // desfazer por reflexo ao ler "saldo de queries: ZERO".
+    //
+    // O que ela compra: a linha **"Com quem"** do card da sessão marcada,
+    // que é o PRD §9 D5 literal (*"a tela mostra o nome"*). Sem ela a tela
+    // imprimiria uuid ou inventaria rótulo — as duas coisas que o front
+    // corretamente se recusa a fazer. `responsavel_nome` NÃO é coluna de
+    // `sessao_agendamentos` (seria desnormalizar `public.perfis` e ter duas
+    // verdades sobre o mesmo nome), e o aluno não alcança `perfis`: a
+    // policy `gps_block_aluno` é `using (gps.aluno_atual() is null)`, então
+    // TODO aluno com ambiente é bloqueado. Só esta RPC `SECURITY DEFINER`
+    // chega ao nome.
+    //
+    // O que ela custa: **2 linhas, 0,927 ms MEDIDO** na `…292` (`Seq Scan`
+    // aceito e justificado lá: a tabela é pequena por natureza, e o índice
+    // custaria escrita em todo agendamento para servir 1 ms que roda uma
+    // vez por tela). Não cresce com a base. Sai no mesmo `Promise.all`, em
+    // paralelo — não acrescenta viagem em cascata.
+    //
+    // 🔑 Chamada UMA vez e casada por id em memória, nunca uma por linha de
+    // agendamento (é exatamente o N+1 que o protocolo manda evitar).
+    // 🔴 Erro devolve mapa VAZIO (`getMapaDeResponsaveis` já loga), e a
+    // linha cai em "Equipe jurídica". Falha de leitura não vira nome
+    // errado.
+    getMapaDeResponsaveis(),
+  ]);
 
   // Mapa único de nomes para a tela inteira, vindo das duas leituras.
   const clientes = new Map<string, string>();
@@ -391,7 +436,7 @@ export type { BlocoDeTipo } from "@/components/sessoes/causa-do-vazio";
  *   3. **O que acontece depois** — só quando há desfecho.
  *
  * 🔴 ZERO CONSULTA NOVA NESTA REORDENAÇÃO. Todas as três zonas leem o MESMO
- * array `blocos` que a página já montou; o `sort` é em memória, sobre 2
+ * array `blocos` que a página já montou; o `sort` é em memória, sobre 4
  * elementos. Nenhum componente daqui para baixo tem hook, estado ou `fetch` —
  * a única exceção continua sendo `MinhaSessao`/`GradeHorarios`, que são
  * `"use client"` porque ESCREVEM (agendar, cancelar, colar link), e recebem
@@ -440,7 +485,9 @@ function CorpoSessoes({
   // de um tipo de sessão. Onde não há elegível, o id da sessão marcada serve
   // — é o mesmo cliente, por definição do índice `sessao_aluno_tipo_viva`.
   const clienteDaZona1 =
-    idElegivel ?? blocos.find((b) => b.jaMarcada)?.jaMarcada?.cliente_id ?? null;
+    idElegivel ??
+    blocos.find((b) => b.jaMarcada)?.jaMarcada?.cliente_id ??
+    null;
 
   // 🔴 `falhou` só quando NENHUM tipo conseguiu responder e nenhum cliente
   // apareceu por outro caminho. Um tipo que falhou enquanto o outro devolveu
@@ -480,32 +527,12 @@ function CorpoSessoes({
   );
 
   // ── ZONA 2: ordem por ESTADO, sobre o array já carregado ────────────────
-  // 🔑 `sort` em memória sobre 2 elementos. Zero consulta, zero rede.
+  // 🔑 `sort` em memória sobre 4 elementos. Zero consulta, zero rede.
   const ordenados = [...blocos].sort((a, b) => pesoDoBloco(a) - pesoDoBloco(b));
 
-  // 🔴 UM `SemHorario` SÓ QUANDO OS DOIS TIPOS TÊM A MESMA CAUSA. Repetir a
-  // mesma frase ("a equipe não tem horário nas próximas 8 semanas") duas vezes
-  // seguidas, com títulos diferentes em cima, faz a tela parecer quebrada — e
-  // faz o parceiro procurar a diferença entre dois parágrafos idênticos.
-  // A fusão só vale se TODOS os blocos estiverem vazios PELA MESMA razão.
-  //
-  // 🔴 `etapa-fechada` NUNCA FUNDE, e isto não é exceção arbitrária (24/09).
-  // As outras duas causas produzem UMA frase idêntica para qualquer tipo ("a
-  // equipe não tem horário nas próximas 8 semanas", "escolha o cliente") — por
-  // isso repeti-las lado a lado parecia tela quebrada. `etapa-fechada` é o
-  // contrário: a frase nomeia a ETAPA daquele tipo (`sessao_tipos.etapa_id`,
-  // 1 para a Entrevista e 2 para a Preliminar), então os dois blocos dizem
-  // coisas DIFERENTES. Fundi-los obrigaria a tela a escolher um número de
-  // etapa para valer pelos dois — que é exatamente o tipo de invenção que este
-  // conserto está desfazendo.
-  const causas = ordenados.map((b) => causaDoVazio(b, clienteDaZona1 != null));
-  const causaUnica =
-    causas.length > 1 &&
-    causas[0] !== null &&
-    causas[0] !== "etapa-fechada" &&
-    causas.every((c) => c === causas[0])
-      ? causas[0]
-      : null;
+  // 🔑 NÃO FUNDE blocos vazios. Com 4 etapas, cada tipo mantém a sua seção e o
+  // seu título (Entrevista → Preliminar → Viabilidade → Croqui), mesmo que a
+  // causa do vazio seja a mesma. (A fusão antiga valia para 2 tipos.)
 
   // ── ZONA 3: só quando há desfecho ───────────────────────────────────────
   // `DesfechoDaSessao` já devolve `null` em `agendado`; o filtro aqui é para
@@ -520,7 +547,9 @@ function CorpoSessoes({
     <div className="grid gap-8">
       <PreRequisitos
         clienteId={clienteDaZona1}
-        clienteNome={clienteDaZona1 ? (clientes.get(clienteDaZona1) ?? null) : null}
+        clienteNome={
+          clienteDaZona1 ? (clientes.get(clienteDaZona1) ?? null) : null
+        }
         elegibilidadeFalhou={elegibilidadeFalhou}
         letraDisc={letraDoCliente}
         decisores={decisoresDoElegivel}
@@ -530,44 +559,40 @@ function CorpoSessoes({
       />
 
       <section aria-labelledby="zona-reuniao">
-        <h2 id="zona-reuniao" className="font-heading titulo-h2 text-foreground">
+        <h2
+          id="zona-reuniao"
+          className="font-heading titulo-h2 text-foreground"
+        >
           A sua reunião
         </h2>
 
         <div className="mt-4 grid gap-6">
-          {causaUnica ? (
-            // Os dois tipos, a mesma causa: uma explicação só, sem título de
-            // tipo em cima — a causa não é de um tipo, é da situação.
-            <SemHorario
-              motivo={causaUnica}
-              semanas={SEMANAS_DA_JANELA}
-              href={clienteDaZona1 ? `/clientes/${clienteDaZona1}/entrevista` : null}
+          {ordenados.map((b) => (
+            <BlocoDoTipo
+              key={b.tipo.id}
+              bloco={b}
+              clientes={clientes}
+              clienteDaZona1={clienteDaZona1}
+              temCliente={clienteDaZona1 != null}
+              responsavelNome={
+                b.jaMarcada
+                  ? (responsaveis.get(b.jaMarcada.responsavel_id) ?? null)
+                  : null
+              }
+              linkPorEquipe={
+                b.jaMarcada ? (papelDoLink.get(b.jaMarcada.id) ?? null) : null
+              }
             />
-          ) : (
-            ordenados.map((b) => (
-              <BlocoDoTipo
-                key={b.tipo.id}
-                bloco={b}
-                clientes={clientes}
-                clienteDaZona1={clienteDaZona1}
-                temCliente={clienteDaZona1 != null}
-                responsavelNome={
-                  b.jaMarcada
-                    ? (responsaveis.get(b.jaMarcada.responsavel_id) ?? null)
-                    : null
-                }
-                linkPorEquipe={
-                  b.jaMarcada ? (papelDoLink.get(b.jaMarcada.id) ?? null) : null
-                }
-              />
-            ))
-          )}
+          ))}
         </div>
       </section>
 
       {comDesfecho.length > 0 ? (
         <section aria-labelledby="zona-depois">
-          <h2 id="zona-depois" className="font-heading titulo-h2 text-foreground">
+          <h2
+            id="zona-depois"
+            className="font-heading titulo-h2 text-foreground"
+          >
             O que acontece depois
           </h2>
           {/* 🔴 SEM O TEXTO DO RESUMO (P4/LGPD). O parceiro vê QUE houve
@@ -586,19 +611,13 @@ function CorpoSessoes({
 }
 
 /**
- * ORDEM POR ESTADO, não por id de catálogo: **marcada → com horário → sem
- * horário**. O que exige ação do parceiro vem primeiro; o que só pede espera
- * vai para o fim.
- *
- * ⚠️ `erro` entra junto do "com horário" (peso 1) de propósito: é uma coisa
- * que pede atenção agora ("atualize a página"), não um estado de espera. Pôr
- * uma falha de leitura no fim da tela é o mesmo que escondê-la.
+ * ORDEM DO FLUXO, não de estado: Entrevista Prévia → Reunião Preliminar →
+ * Sessão de Viabilidade → Croqui Estrutural (`ORDEM_TIPOS_SESSAO`). Cada etapa
+ * é uma seção com título fixo; sessão marcada ou sem horário não muda o lugar.
+ * Falha de leitura continua visível no próprio bloco do tipo.
  */
 function pesoDoBloco(b: BlocoDeTipo): number {
-  if (b.jaMarcada) return 0;
-  if (b.erro || b.elegivel?.falhou) return 1;
-  if (b.horarios.length > 0) return 1;
-  return 2;
+  return posicaoDoTipoSessao(b.tipo.id);
 }
 
 /** Um tipo de sessão dentro da Zona 2 — marcada, com grade, ou explicando o vazio. */
@@ -641,7 +660,10 @@ function BlocoDoTipo({
     // quando aconteceu o primeiro é a mentira que este portal já pagou caro (a
     // tela que dizia "não há pedido registrado" para quem tinha acesso, 16/09).
     return (
-      <p role="alert" className="border border-borda-fina px-4 py-4 corpo-sm text-destructive">
+      <p
+        role="alert"
+        className="border border-borda-fina px-4 py-4 corpo-sm text-destructive"
+      >
         {erro}
       </p>
     );
@@ -649,7 +671,10 @@ function BlocoDoTipo({
 
   if (elegivel?.falhou) {
     return (
-      <p role="alert" className="border border-borda-fina px-4 py-4 corpo-sm text-destructive">
+      <p
+        role="alert"
+        className="border border-borda-fina px-4 py-4 corpo-sm text-destructive"
+      >
         Não deu para conferir agora se você já pode marcar esta reunião.
         Atualize a página e tente de novo.
       </p>
@@ -660,14 +685,16 @@ function BlocoDoTipo({
   if (causa) {
     return (
       <div>
-        <h3 className="font-heading corpo font-semibold text-foreground">
+        <h3 className="font-heading text-base font-semibold text-foreground">
           {tipo.nome}
         </h3>
         <div className="mt-2">
           <SemHorario
             motivo={causa}
             semanas={SEMANAS_DA_JANELA}
-            href={clienteDaZona1 ? `/clientes/${clienteDaZona1}/entrevista` : null}
+            href={
+              clienteDaZona1 ? `/clientes/${clienteDaZona1}/entrevista` : null
+            }
             // 🔑 DADO, nunca literal: a frase de `etapa-fechada` nomeia o tipo
             // e a ETAPA dele. `etapa_id` vem de `gps.sessao_tipos` (1 para a
             // Entrevista, 2 para a Preliminar — `…292:139-140`), e ajustar é
@@ -688,10 +715,12 @@ function BlocoDoTipo({
           que também mostra sessão marcada e pendências, onde não há horário
           nenhum a escolher. Colada na grade, a instrução volta a ser verdade,
           e só aparece quando de fato há o que escolher. */}
-      <h3 className="font-heading corpo font-semibold text-foreground">
+      <h3 className="font-heading text-base font-semibold text-foreground">
         Marque sua {tipo.nome}
       </h3>
-      <p className="mt-0.5 corpo-sm text-muted-foreground">Escolha um horário</p>
+      <p className="mt-0.5 corpo-sm text-muted-foreground">
+        Escolha um horário
+      </p>
       {tipo.id === TIPO_ENTREVISTA_PREVIA ? (
         <p className="mt-0.5 max-w-[62ch] corpo-sm text-muted-foreground">
           Aqui você pede à equipe que conduza a Entrevista Prévia com o seu
@@ -708,6 +737,15 @@ function BlocoDoTipo({
             "abra a Entrevista Prévia na ficha do seu cliente"
           )}
           .
+        </p>
+      ) : null}
+      {tipo.id === TIPO_SESSAO_VIABILIDADE ||
+      tipo.id === TIPO_CROQUI_ESTRUTURAL ? (
+        <p className="mt-0.5 max-w-[62ch] text-base text-muted-foreground">
+          {tipo.id === TIPO_SESSAO_VIABILIDADE
+            ? "Aqui a equipe analisa se a holding é viável para o seu cliente."
+            : "Aqui a equipe apresenta o croqui da estrutura da holding do seu cliente."}{" "}
+          Quem conduz é a Cristiane.
         </p>
       ) : null}
       <div className="mt-2">

@@ -179,6 +179,19 @@ test.describe("Zona 2 de /sessoes · a causa do vazio @estatico", () => {
     ).toBe("sem-horario");
   });
 
+  test("tipos 3 e 4 (etapa_id null) sem horário ⇒ 'sem-horario', com ou sem favorito, nunca 'etapa-fechada'", () => {
+    for (const id of [3, 4]) {
+      const tipo = { id, nome: "T", etapa_id: null } as SessaoTipo;
+      for (const temCliente of [true, false]) {
+        expect(causaDoVazio(bloco({ tipo }), temCliente)).toBe("sem-horario");
+        expect(
+          causaDoVazio(bloco({ tipo, elegivel: { clienteId: "c1", falhou: false } }), temCliente),
+        ).toBe("sem-horario");
+      }
+      expect(causaDoVazio(bloco({ tipo, erro: "x" }), true)).toBeNull();
+    }
+  });
+
   test("falha de leitura NUNCA vira causa de vazio — ela tem frase própria com role=alert", () => {
     expect(
       causaDoVazio(bloco({ erro: "não deu para conferir" }), true),
@@ -264,19 +277,14 @@ test.describe("Zona 2 de /sessoes · a causa do vazio @estatico", () => {
     ).toContain("ehAEntrevista");
   });
 
-  test("🔴 `causaUnica` não funde 'etapa-fechada' — os dois tipos dizem etapas diferentes", () => {
-    // 🔑 Lido do arquivo porque a fusão mora em `CorpoSessoes` (`page.tsx`), e
-    // importar aquele módulo arrasta `app-header` -> `server-only`, que não
-    // resolve fora do bundler do Next. Ver o cabeçalho deste arquivo.
-    const fonte = readFileSync(join(RAIZ, PAGE), "utf8");
+  test("🔴 blocos vazios NÃO se fundem — cada etapa (4 tipos) mantém seu título", () => {
+    // Lido do arquivo: importar `page.tsx` arrasta `server-only` (ver cabeçalho).
+    const fonte = copyDe(PAGE);
     expect(
       fonte,
-      "REGRA: as outras causas produzem UMA frase idêntica para qualquer tipo, " +
-        "então fundir evita parágrafo repetido. `etapa-fechada` nomeia a ETAPA " +
-        "daquele tipo (1 para a Entrevista, 2 para a Preliminar) — fundir " +
-        "obrigaria a tela a escolher um número de etapa para valer pelos dois, " +
-        "que é a mesma invenção que este conserto desfaz.",
-    ).toContain('causas[0] !== "etapa-fechada"');
+      "REGRA: com 4 etapas, a fusão `causaUnica` some e cada tipo é uma seção própria.",
+    ).not.toContain("causaUnica");
+    expect(fonte).toContain("posicaoDoTipoSessao(b.tipo.id)");
   });
 
   test("🔴 com favorito, a tela NUNCA pode dizer 'Escolha o cliente'", () => {

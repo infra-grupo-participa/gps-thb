@@ -796,6 +796,7 @@ const CAMPO_POR_CONSTRAINT: Array<{
     campo: "regime_tributario",
   },
   { contem: "chk_etapa1_clientes_grau_relacao", campo: "grau_relacao" },
+  { contem: "chk_etapa1_clientes_funil_origem", campo: "funil_origem" },
   { contem: "chk_etapa1_clientes_contrato_url", campo: "contrato_url" },
   { contem: "chk_etapa1_clientes_honorarios", campo: "valor_honorarios" },
   { contem: "chk_etapa1_clientes_fase", campo: "fase" },

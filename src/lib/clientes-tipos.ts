@@ -68,5 +68,7 @@ export type PatchCliente = Partial<
     | "cnpj"
     | "ramo_atividade"
     | "regime_tributario"
+    // Funil de origem (migração `…345`). MESMA linha em `CHAVES_PATCH_CLIENTE`.
+    | "funil_origem"
   >
 >;

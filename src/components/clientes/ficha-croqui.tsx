@@ -56,6 +56,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { VisorDocumento } from "@/components/clientes/visor-documento";
+import { AvisoRevisaoDrive } from "@/components/clientes/aviso-revisao-drive";
 import { cn } from "@/lib/utils";
 
 const ACCEPT = ".pdf,application/pdf";
@@ -94,9 +95,12 @@ export function FichaCroqui({
   croquis,
   podeAnexar = true,
   desabilitado = false,
+  linkDrive = null,
   aoMudar,
 }: {
   clienteId: string;
+  /** URL da pasta do Drive do cliente (`cliente_links_drive`); null = sem link. */
+  linkDrive?: string | null;
   /** Histórico completo, mais recente primeiro. `[]` = nenhum croqui ainda. */
   croquis: readonly ClienteCroqui[];
   /** Dono do ambiente (titular/sócio) OU admin — mesma regra da minuta.
@@ -239,6 +243,8 @@ export function FichaCroqui({
 
   return (
     <div className="grid gap-2">
+      {podeAnexar ? <AvisoRevisaoDrive linkDrive={linkDrive} /> : null}
+
       {/* O botão nativo do `<input type="file">` escreve "Choose File" no
           idioma da INTERFACE do navegador, não no da página. Por isso o input
           fica fora da tabulação e quem recebe o foco é o botão abaixo. */}

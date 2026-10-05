@@ -55,6 +55,12 @@ export function causaDoVazio(
 ): CausaDoVazio | null {
   if (b.jaMarcada) return null;
   if (b.erro || b.elegivel?.falhou) return null;
+  // 🔑 Tipo SEM etapa (`etapa_id` null: Sessão de Viabilidade e Croqui
+  // Estrutural, migration `…346`) não tem gate de etapa. Sem horário na grade
+  // própria dele a causa é só "sem horário" — nunca `etapa-fechada` (que
+  // nomearia uma etapa inexistente) nem `nao-elegivel` (pré-requisito).
+  // `=== null`, não `== null`: `undefined` = tipo que a tela não conhece.
+  if (b.tipo.etapa_id === null && b.horarios.length === 0) return "sem-horario";
   if (!b.elegivel?.clienteId) {
     // ═══════════════════════════════════════════════════════════════════
     // 🔑 A MESMA lista vazia do banco, DUAS causas diferentes — e a segunda

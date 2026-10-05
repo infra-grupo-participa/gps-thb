@@ -74,6 +74,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { VisorDocumento } from "@/components/clientes/visor-documento";
+import { AvisoRevisaoDrive } from "@/components/clientes/aviso-revisao-drive";
 import {
   MinutaParecerForm,
   MinutaAndamento,
@@ -127,9 +128,12 @@ export function MinutasAnexo({
   contextoObrigatorio,
   equipe = false,
   desabilitado = false,
+  linkDrive = null,
   aoMudar,
 }: {
   clienteId: string;
+  /** URL da pasta do Drive do cliente (`cliente_links_drive`); null = sem link. */
+  linkDrive?: string | null;
   /** Histórico completo, mais recente primeiro. `[]` = nenhuma minuta ainda. */
   minutas: ClienteMinuta[];
   /** Quem pode enviar uma versão nova — aluno OU equipe. Desde 17/09 os dois
@@ -333,6 +337,8 @@ export function MinutasAnexo({
         Deixe em <strong>vermelho</strong> o que mudou em relação à minuta
         anterior. Envie <strong>uma minuta por vez</strong>.
       </p>
+
+      {podeAnexar ? <AvisoRevisaoDrive linkDrive={linkDrive} /> : null}
 
       {/* O botão nativo do `<input type="file">` escreve "Choose File" no
           idioma da INTERFACE do navegador, não no da página. Por isso o input

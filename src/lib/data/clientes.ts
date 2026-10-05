@@ -83,7 +83,7 @@ const COLUNAS_CLIENTE_LISTA =
  *   constantes é o que a mantém honesta.
  */
 const COLUNAS_CLIENTE_FICHA =
-  "id, aluno_id, nome, telefone, problemas, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, disc_consciencia, disc_gatilhos, disc_relacionamento, disc_atualizado_em, disc_atualizado_por, acompanhado_equipe, ordem, valor_honorarios, contrato_url, grau_relacao, acompanhamento_confirmado_em, acompanhamento_confirmado_por, contrato_path, contrato_nome, contrato_mime, contrato_tamanho, contrato_anexado_em, selecionado_entrevista, entrevista_resultado, entrevista_observacoes, entrevista_em, entrevista_por, razao_social, cnpj, ramo_atividade, regime_tributario";
+  "id, aluno_id, nome, telefone, problemas, registro_contato, mensagem_padrao_enviada, estudo_caso_enviado, ligacao_realizada, status, fase, data_reuniao_preliminar, aderiu_reuniao, perfil_disc, disc_consciencia, disc_gatilhos, disc_relacionamento, disc_atualizado_em, disc_atualizado_por, acompanhado_equipe, ordem, valor_honorarios, contrato_url, grau_relacao, acompanhamento_confirmado_em, acompanhamento_confirmado_por, contrato_path, contrato_nome, contrato_mime, contrato_tamanho, contrato_anexado_em, selecionado_entrevista, entrevista_resultado, entrevista_observacoes, entrevista_em, entrevista_por, razao_social, cnpj, ramo_atividade, regime_tributario, funil_origem";
 /** `gps.etapa3_agendamentos` → `Etapa3Agendamento`. */
 const COLUNAS_ETAPA3_AGENDAMENTO =
   "id, aluno_id, cliente_id, descricao, data, horario, equipe_participa, criado_em";

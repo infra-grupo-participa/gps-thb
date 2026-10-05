@@ -70,11 +70,18 @@
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
+import type {
+  ClienteEtapa1,
+  FaseCliente,
+  FunilOrigem,
+  GrauRelacao,
+} from "@/lib/types";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import type { ClienteCroqui } from "@/lib/croquis-tipos";
 import type { LinkDrive } from "@/lib/links-drive-tipos";
+import type { TrajetoriaCliente } from "@/lib/trajetoria-tipos";
 import { LinksDrive } from "@/components/clientes/links-drive";
+import { FichaTrajetoria } from "@/components/clientes/ficha-trajetoria";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import {
   mascaraCpfCnpj,
@@ -131,6 +138,7 @@ export function ClienteFicha({
   minutas = [],
   croquis,
   linksDrive,
+  trajetoria,
   contextoObrigatorio = false,
   painelEntrevista = null,
   qtdDecisores = null,
@@ -210,6 +218,12 @@ export function ClienteFicha({
   /** `null` = a leitura falhou (a seção avisa; nunca vira "nenhum link"). */
   linksDrive: LinkDrive[] | null;
   /**
+   * Trajetória do cliente (`getTrajetoriaDoCliente`), resolvida no MESMO
+   * `Promise.all` da page. Obrigatória pelo motivo de `croquis`; `null` = a
+   * leitura falhou (o bloco avisa; nunca vira "nada marcado").
+   */
+  trajetoria: TrajetoriaCliente | null;
+  /**
    * Interruptor `minuta_contexto_obrigatorio`, lido no servidor pela page.
    */
   contextoObrigatorio?: boolean;
@@ -223,6 +237,10 @@ export function ClienteFicha({
     cliente.telefone ? mascaraTelefone(cliente.telefone) : "",
   );
   const [grau, setGrau] = useState<string>(cliente.grau_relacao ?? "");
+  // Funil de origem (…345). `""` = Não informado; vai como `null`.
+  const [funilOrigem, setFunilOrigem] = useState<string>(
+    cliente.funil_origem ?? "",
+  );
   // ── PESSOA JURÍDICA (migração `…308`) ────────────────────────────────
   // 🔴 `cnpj` mora MASCARADO no estado e vai em DÍGITOS PUROS ao banco (o
   // CHECK é `^[0-9]{14}$`). A conversão está em `salvar()` e repetida na
@@ -323,6 +341,9 @@ export function ClienteFicha({
   const [discFoco, setDiscFoco] = useState<string | null>(null);
 
   const wpp = linkWhatsapp(telefone);
+  // O aviso de revisão (minuta e croqui) aponta para a pasta do Drive deste
+  // cliente. Um link por cliente; `null` (sem link ou leitura falhou) = só texto.
+  const linkDrive = linksDrive?.[0]?.url ?? null;
   const contratoLimpo = contratoUrl.trim();
   const faseAtual = FASES_CLIENTE.find((f) => f.id === fase);
 
@@ -389,6 +410,7 @@ export function ClienteFicha({
     nome,
     telefone,
     grau,
+    funilOrigem,
     razaoSocial,
     cnpj,
     ramo,
@@ -620,6 +642,7 @@ export function ClienteFicha({
         // `""` (campo esvaziado) vira `null` = NÃO INFORMADO. A action repete
         // esta normalização — aqui é para o `alterado` acima não mentir.
         grau_relacao: (grau as GrauRelacao) || null,
+        funil_origem: (funilOrigem as FunilOrigem) || null,
         // 🔴 PJ: `null` quando vazio (o CHECK recusa string vazia) e o CNPJ em
         // DÍGITOS PUROS — a máscara é só da tela.
         razao_social: razaoSocial.trim() || null,
@@ -748,6 +771,11 @@ export function ClienteFicha({
           folha. `souEquipe = admin` — a mesma prop que liga o modo assistência. */}
       <LinksDrive clienteId={cliente.id} links={linksDrive} souEquipe={admin} />
 
+      {/* O mapa do cliente: vale para a ficha inteira, então mora acima das
+          abas, junto do Drive — e não desmonta ao trocar de folha. Grava na
+          hora, por RPC; não passa pelo "Salvar ficha". */}
+      <FichaTrajetoria clienteId={cliente.id} trajetoria={trajetoria} />
+
       <FichaAbas
         aba={aba}
         onAba={irParaAba}
@@ -762,6 +790,8 @@ export function ClienteFicha({
             onTelefone={setTelefone}
             grau={grau}
             onGrau={setGrau}
+            funilOrigem={funilOrigem}
+            onFunilOrigem={setFunilOrigem}
             razaoSocial={razaoSocial}
             onRazaoSocial={setRazaoSocial}
             cnpj={cnpj}
@@ -821,6 +851,7 @@ export function ClienteFicha({
             podeAnexar
             desabilitado={pending}
             aoMudar={() => router.refresh()}
+            linkDrive={linkDrive}
           />
         }
         fechamento={
@@ -837,6 +868,7 @@ export function ClienteFicha({
             contratoInvalido={contratoInvalido}
             faseRotulo={faseAtual?.rotulo}
             minutas={minutas}
+            linkDrive={linkDrive}
             contextoObrigatorio={contextoObrigatorio}
             pending={pending}
             aoMudar={() => router.refresh()}

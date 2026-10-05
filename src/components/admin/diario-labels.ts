@@ -105,6 +105,9 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   cliente_documento_lido: "Equipe abriu um documento do cliente na ficha",
   cliente_link_drive_adicionado: "Colocou um link do Drive na ficha do cliente",
   cliente_link_drive_removido: "Removeu um link do Drive da ficha do cliente",
+  cliente_etapa_marcada: "Marcou uma etapa na trajetória do cliente",
+  cliente_etapa_desmarcada: "Desmarcou uma etapa na trajetória do cliente",
+  cliente_funil_origem_definido: "Informou o funil de origem do cliente",
 };
 
 export const ROTULO_ATOR: Record<AtorEvento, string> = {

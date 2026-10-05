@@ -34,6 +34,33 @@ export const TIPO_ENTREVISTA_PREVIA = 1;
 /** Id do tipo "Reunião Preliminar" (semente da …291). Par do de cima. */
 export const TIPO_REUNIAO_PRELIMINAR = 2;
 
+/**
+ * Ids dos tipos conduzidos pela Cristiane, cada um com grade PRÓPRIA
+ * (migration `20261005000346`). `etapa_id` null: a etapa 3 está travada e
+ * colide com `etapa3_agendamentos`, então estes tipos NÃO exigem etapa.
+ * Sem faixa com o `tipo_id` deles, `sessao_horarios_livres` devolve vazio.
+ */
+export const TIPO_SESSAO_VIABILIDADE = 3;
+export const TIPO_CROQUI_ESTRUTURAL = 4;
+
+/**
+ * Ordem das seções em `/sessoes`: o fluxo do programa (Entrevista → Reunião
+ * Preliminar → Viabilidade → Croqui). Tipo fora da lista vai para o fim, por
+ * id — um tipo novo no catálogo aparece sem deploy.
+ */
+export const ORDEM_TIPOS_SESSAO: readonly number[] = [
+  TIPO_ENTREVISTA_PREVIA,
+  TIPO_REUNIAO_PRELIMINAR,
+  TIPO_SESSAO_VIABILIDADE,
+  TIPO_CROQUI_ESTRUTURAL,
+];
+
+/** Posição do tipo na ordem das seções; desconhecido = depois de todos. */
+export function posicaoDoTipoSessao(tipoId: number): number {
+  const i = ORDEM_TIPOS_SESSAO.indexOf(tipoId);
+  return i === -1 ? ORDEM_TIPOS_SESSAO.length + tipoId : i;
+}
+
 export const ESTADOS_SESSAO = ["agendado", "realizado", "cancelado", "falta"] as const;
 export type EstadoSessao = (typeof ESTADOS_SESSAO)[number];
 

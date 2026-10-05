@@ -43,6 +43,7 @@ export function FichaAbaFechamento({
   contratoInvalido,
   faseRotulo,
   minutas,
+  linkDrive = null,
   contextoObrigatorio,
   pending,
   aoMudar,
@@ -61,6 +62,8 @@ export function FichaAbaFechamento({
   contratoInvalido: boolean;
   faseRotulo: string | undefined;
   minutas: readonly ClienteMinuta[];
+  /** URL da pasta do Drive do cliente, para o aviso de revisão da minuta. */
+  linkDrive?: string | null;
   contextoObrigatorio: boolean;
   pending: boolean;
   /** `router.refresh()` do index — o dado do anexo vem do servidor. */
@@ -127,6 +130,7 @@ export function FichaAbaFechamento({
           equipe={admin}
           desabilitado={pending}
           aoMudar={aoMudar}
+          linkDrive={linkDrive}
         />
       </Secao>
     </div>

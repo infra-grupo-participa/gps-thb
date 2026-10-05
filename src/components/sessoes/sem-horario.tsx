@@ -136,7 +136,10 @@ export function SemHorario({
     // o que a tela acabou de dizer que não abriu. `etapa_id = 1` é o tipo 1.
     const ehAEntrevista = etapaDoTipo === 1;
     const rotulo = nomeDoTipo ?? "Esta reunião";
-    const etapa = etapaDoTipo != null ? `a Etapa ${String(etapaDoTipo).padStart(2, "0")}` : "esta etapa";
+    const etapa =
+      etapaDoTipo != null
+        ? `a Etapa ${String(etapaDoTipo).padStart(2, "0")}`
+        : "os horários";
 
     return (
       <div className="border border-borda-fina px-4 py-4">
@@ -155,7 +158,8 @@ export function SemHorario({
             este bloco corrige. */}
         {href && !ehAEntrevista ? (
           <p className="mt-1 corpo-sm text-muted-foreground">
-            Enquanto isso, você pode fazer a Entrevista Prévia você mesmo, com o seu cliente.
+            Enquanto isso, você pode fazer a Entrevista Prévia você mesmo, com o
+            seu cliente.
           </p>
         ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
@@ -186,8 +190,8 @@ export function SemHorario({
         </p>
         <p className="mt-1 corpo-sm text-muted-foreground">
           Os horários são oferecidos para um cliente específico — o que você
-          marcar na aba Clientes como o que a equipe acompanha. Se já escolheu
-          o cliente e ainda vê esta mensagem, a equipe ainda não liberou esta
+          marcar na aba Clientes como o que a equipe acompanha. Se já escolheu o
+          cliente e ainda vê esta mensagem, a equipe ainda não liberou esta
           etapa para você — fale com ela pelo Suporte.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -208,15 +212,27 @@ export function SemHorario({
     );
   }
 
+  // Tipo sem etapa (`etapa_id` null — Viabilidade, Croqui): sem horário na
+  // grade própria. Frase curta, 16px, SEM botão — não há o que agendar.
+  if (etapaDoTipo === null) {
+    return (
+      <div className="border border-borda-fina px-4 py-4">
+        <p className="text-base font-medium text-foreground">
+          Sem horários disponíveis no momento
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="border border-borda-fina px-4 py-4">
       <p className="corpo font-medium text-foreground">
         A equipe não tem horário nas próximas {semanas} semanas.
       </p>
       <p className="mt-1 corpo-sm text-muted-foreground">
-        Os horários são publicados pela própria equipe jurídica e são poucos
-        por semana. Volte a abrir esta tela nos próximos dias — assim que um
-        bloco for publicado ou liberado por um cancelamento, ele aparece aqui.
+        Os horários são publicados pela própria equipe jurídica e são poucos por
+        semana. Volte a abrir esta tela nos próximos dias — assim que um bloco
+        for publicado ou liberado por um cancelamento, ele aparece aqui.
       </p>
       {href && etapaDoTipo === 1 ? (
         <p className="mt-1 corpo-sm text-muted-foreground">

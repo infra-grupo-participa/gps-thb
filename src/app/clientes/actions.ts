@@ -18,7 +18,7 @@ import {
   ehAnexoMime,
   nomeDeArquivoSeguro,
 } from "@/lib/chamados-tipos";
-import { GRAUS_RELACAO, REGIMES_TRIBUTARIOS } from "@/lib/types";
+import { FUNIS_ORIGEM, GRAUS_RELACAO, REGIMES_TRIBUTARIOS } from "@/lib/types";
 // `ClienteEtapa1` saiu daqui em 24/09/2026 junto com `PatchCliente`: era ele
 // quem alimentava o `Pick<>`, e o tipo agora mora em `@/lib/clientes-tipos`.
 import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
@@ -103,6 +103,9 @@ const CHAVES_PATCH_CLIENTE: ReadonlySet<string> = new Set([
   "cnpj",
   "ramo_atividade",
   "regime_tributario",
+  // Funil de origem (migração 20261005000345). Mesma armadilha: só no `Pick`
+  // o filtro descartaria o campo em silêncio.
+  "funil_origem",
 ]);
 
 /**
@@ -300,6 +303,19 @@ function validarPatch(patch: PatchCliente): {
       !REGIMES_TRIBUTARIOS.some((r) => r.valor === v)
     ) {
       return { erro: "Escolha um regime tributário da lista.", campo: "regime_tributario" };
+    }
+  }
+
+  if ("funil_origem" in saida) {
+    const v = saida.funil_origem;
+    if (v === null || v === undefined || v === "") {
+      // Esvaziado na tela = NÃO INFORMADO; `''` cairia no CHECK.
+      saida.funil_origem = null;
+    } else if (
+      typeof v !== "string" ||
+      !FUNIS_ORIGEM.some((f) => f.valor === v)
+    ) {
+      return { erro: "Escolha um funil de origem da lista.", campo: "funil_origem" };
     }
   }
 

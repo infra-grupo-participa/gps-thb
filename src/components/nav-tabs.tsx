@@ -17,6 +17,7 @@ import {
   LifeBuoy,
   Stethoscope,
   GraduationCap,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -317,13 +318,29 @@ function NavTabLink({
       </span>
       {item.novaAba ? <span className="sr-only"> (abre em nova aba)</span> : null}
       {mostraBadge ? (
-        <Badge
-          variant={item.badgeRotulo ? "default" : "danger"}
-          icone={false}
-          className="h-5 px-1.5 text-[10px]"
-        >
-          {item.badgeRotulo ?? item.badge}
-        </Badge>
+        // Selo de respostas (aba Suporte do parceiro): ícone + número + palavra,
+        // em 14 px. O nome acessível do link já diz "N respostas da equipe
+        // esperando você" (`aria-label` acima); o selo é só o reflexo visual.
+        // O selo numérico das filas do admin continua pequeno e vermelho.
+        // No celular fica compacto (sem ícone): o trilho do parceiro não pode
+        // ganhar rolagem lateral (veto do João, 03/10).
+        item.badgeRotulo ? (
+          <Badge
+            variant="default"
+            icone={MessageCircle}
+            className="h-5 px-1.5 text-xs font-semibold max-sm:[&>svg]:hidden sm:h-6 sm:px-2 sm:text-sm sm:[&>svg]:size-4!"
+          >
+            {item.badgeRotulo}
+          </Badge>
+        ) : (
+          <Badge
+            variant="danger"
+            icone={false}
+            className="h-5 px-1.5 text-[10px]"
+          >
+            {item.badge}
+          </Badge>
+        )
       ) : null}
     </Link>
   );

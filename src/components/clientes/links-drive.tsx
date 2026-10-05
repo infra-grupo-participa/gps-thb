@@ -3,6 +3,7 @@
 import { useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { AlertCircle, ExternalLink, Trash2 } from "lucide-react";
 
 import {
   adicionarLinkDrive,
@@ -20,6 +21,10 @@ import {
   type LinkDrive,
 } from "@/lib/links-drive-tipos";
 import { EMAILS_EQUIPE_PASTA, normalizarUrlDoDrive } from "@/lib/pasta";
+
+// Público mais velho: texto em 16 px e botão com 44 px de altura.
+// (`corpo` é 15 px; por isso `text-base`.)
+const BOTAO = "h-11 px-4 text-base";
 
 /**
  * O link do Drive DESTE cliente — UM por cliente (João, 02/10/2026: "é um link
@@ -121,17 +126,21 @@ export function LinksDrive({
         >
           Link do Drive deste cliente
         </CardTitle>
-        <p className="corpo-sm text-muted-foreground">
+        <p className="text-base leading-snug text-muted-foreground">
           A pasta com os documentos <strong>deste cliente</strong>. A pasta do
-          escritório fica na aba Pasta. Salvo à parte, no botão daqui — não
-          depende do botão &quot;Salvar ficha&quot;.
+          escritório fica na aba Pasta. Este botão salva à parte: não precisa
+          clicar em &quot;Salvar ficha&quot;.
         </p>
       </CardHeader>
       <CardContent className="grid gap-3">
         {falhou ? (
-          <p role="alert" className="corpo-sm text-risco-foreground">
-            Não deu para carregar o link agora. Recarregue a página antes de
-            colar um link novo.
+          <p
+            role="alert"
+            className="flex items-start gap-1.5 text-base font-medium text-risco-foreground"
+          >
+            <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+            Não deu para carregar o link. Recarregue a página antes de colar um
+            link novo.
           </p>
         ) : atual ? (
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -140,50 +149,72 @@ export function LinksDrive({
                 href={atual.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="corpo-sm truncate font-medium text-accent-foreground underline underline-offset-2"
+                className="inline-flex min-h-11 items-center gap-2 text-base font-semibold text-accent-foreground underline underline-offset-2"
               >
+                <ExternalLink aria-hidden className="size-5 shrink-0" />
                 Abrir a pasta no Drive
                 <span className="sr-only"> (abre em nova aba)</span>
               </a>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-base text-muted-foreground">
                 por {atual.origem === "equipe" ? "Equipe" : atual.criadoPorNome} ·{" "}
                 {formatarData(atual.criadoEm)}
               </span>
             </div>
             {atual.podeRemover && !editando ? (
               <div className="flex gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={abrirTroca}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={BOTAO}
+                  onClick={abrirTroca}
+                >
                   Trocar link
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
+                  className={BOTAO}
                   onClick={() => {
                     setErroRemover(null);
                     setConfirmarRemocao(true);
                   }}
                 >
+                  <Trash2 aria-hidden />
                   Remover
                 </Button>
               </div>
             ) : !atual.podeRemover ? (
-              <span className="text-xs text-muted-foreground">
-                Colocado pela equipe. Precisa trocar? Fale com a equipe.
+              <span className="text-base text-muted-foreground">
+                Link colocado pela equipe. Para trocar, fale com a equipe.
               </span>
             ) : null}
           </div>
         ) : (
-          <p className="corpo-sm text-muted-foreground">
-            Nenhum link ainda. Compartilhe a pasta do cliente com a equipe, copie
-            o link no Drive e cole abaixo.
-          </p>
+          <div className="grid gap-1.5">
+            <p className="text-base font-medium">Nenhum link ainda. Faça assim:</p>
+            <ol className="grid list-decimal gap-1.5 pl-6 text-base leading-snug">
+              {souEquipe ? null : (
+                <li>
+                  No Drive, compartilhe a pasta do cliente com estes e-mails:
+                  <ul className="mt-1 select-all">
+                    {EMAILS_EQUIPE_PASTA.map((email) => (
+                      <li key={email} className="font-medium">
+                        {email}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              )}
+              <li>No Drive, copie o link da pasta.</li>
+              <li>Cole o link abaixo e clique em &quot;Salvar link&quot;.</li>
+            </ol>
+          </div>
         )}
 
         {mostrarCampo ? (
           <form onSubmit={enviar} noValidate className="grid gap-2">
-            {souEquipe ? null : (
-              <div className="corpo-sm text-muted-foreground">
+            {souEquipe || !atual ? null : (
+              <div className="text-base leading-snug text-muted-foreground">
                 Antes, compartilhe a pasta com a equipe:
                 <ul className="mt-0.5 select-all">
                   {EMAILS_EQUIPE_PASTA.map((email) => (
@@ -193,8 +224,8 @@ export function LinksDrive({
               </div>
             )}
             <div className="grid gap-1">
-              <Label htmlFor={`${id}-url`}>
-                {atual ? "Novo link do Drive" : "Link do Drive"}
+              <Label htmlFor={`${id}-url`} className="text-base leading-snug">
+                {atual ? "Novo link do Drive" : "Link do Drive"} (obrigatório)
               </Label>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
@@ -204,19 +235,20 @@ export function LinksDrive({
                   onChange={(e) => setUrl(e.target.value)}
                   aria-invalid={erro ? true : undefined}
                   aria-describedby={erro ? `${id}-erro` : undefined}
-                  placeholder="drive.google.com/…"
+                  className="h-11 text-base md:text-base"
+                  placeholder="Ex.: https://drive.google.com/drive/folders/…"
                   autoComplete="off"
                   inputMode="url"
                   disabled={salvando}
                 />
-                <Button type="submit" size="sm" disabled={salvando}>
-                  {salvando ? "Salvando…" : atual ? "Trocar" : "Salvar link"}
+                <Button type="submit" className={BOTAO} disabled={salvando}>
+                  {salvando ? "Salvando…" : atual ? "Salvar novo link" : "Salvar link"}
                 </Button>
                 {editando ? (
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
+                    className={BOTAO}
                     disabled={salvando}
                     onClick={() => {
                       setEditando(false);
@@ -231,8 +263,9 @@ export function LinksDrive({
                 <p
                   id={`${id}-erro`}
                   role="alert"
-                  className="corpo-sm font-medium text-risco-foreground"
+                  className="flex items-start gap-1.5 text-base font-medium text-risco-foreground"
                 >
+                  <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
                   {erro}
                 </p>
               ) : null}

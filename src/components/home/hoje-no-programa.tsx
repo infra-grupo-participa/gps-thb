@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { ArrowRight, ExternalLink } from "lucide-react";
 import { Secao } from "@/components/ui/secao";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { formatarDataHora } from "@/lib/datas";
 import { faixaHorario, rotuloData } from "@/lib/plantao";
 import {
@@ -63,17 +66,19 @@ export function HojeNoPrograma({ dados, className }: { dados: Dados; className?:
             <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
               {atalhos.map((a) => (
                 <li key={`${a.rotulo}|${a.url}`} className="min-w-0">
+                  {/* `min-h-11`: alvo de toque de 44 px; o ícone diz "sai do portal". */}
                   <a
                     href={a.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium break-words text-accent-foreground underline-offset-4 hover:underline"
+                    className="inline-flex min-h-11 items-center gap-1.5 font-medium break-words text-accent-foreground underline underline-offset-4"
                   >
                     {a.rotulo}
+                    <ExternalLink aria-hidden className="size-4 shrink-0" />
                     <span className="sr-only"> (abre em nova aba)</span>
                   </a>
                   {a.descricao ? (
-                    <span className="block break-words corpo-sm text-muted-foreground">
+                    <span className="block break-words text-muted-foreground">
                       {a.descricao}
                     </span>
                   ) : null}
@@ -89,20 +94,19 @@ export function HojeNoPrograma({ dados, className }: { dados: Dados; className?:
 
 function Linha({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-x-4 gap-y-1 px-4 py-3 text-sm sm:grid-cols-[12rem_minmax(0,1fr)]">
+    <div className="grid gap-x-4 gap-y-1 px-4 py-3 corpo sm:grid-cols-[12rem_minmax(0,1fr)]">
       <h3 className="font-semibold text-foreground">{titulo}</h3>
-      <div className="min-w-0 space-y-1">{children}</div>
+      <div className="min-w-0 space-y-2">{children}</div>
     </div>
   );
 }
 
+/** A ação da linha — uma só, em botão de 44 px com verbo (não link de texto). */
 function LinkInterno({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link
-      href={href}
-      className="inline-block font-medium text-accent-foreground underline-offset-4 hover:underline"
-    >
+    <Link href={href} className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-11")}>
       {children}
+      <ArrowRight aria-hidden />
     </Link>
   );
 }
@@ -137,7 +141,7 @@ function ConteudoPlantao({
         </p>
         <p className="text-muted-foreground">
           {sala === "aberta"
-            ? "A sala já está liberada: pegue o link no Plantão."
+            ? "A sala já abriu. Entre pelo Plantão."
             : "O link da sala aparece 1h antes, no Plantão."}
         </p>
         <LinkInterno href="/plantao">
@@ -151,7 +155,7 @@ function ConteudoPlantao({
     return (
       <>
         <p className="text-muted-foreground">Nenhum plantão publicado por enquanto.</p>
-        <LinkInterno href="/plantao">Ver o Plantão</LinkInterno>
+        <LinkInterno href="/plantao">Abrir o Plantão</LinkInterno>
       </>
     );
   }

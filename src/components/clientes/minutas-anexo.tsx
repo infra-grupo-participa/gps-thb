@@ -48,7 +48,14 @@
  */
 
 import { useId, useRef, useState, useTransition } from "react";
-import { Download, Eye, FileText, Paperclip, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  Download,
+  Eye,
+  FileText,
+  Paperclip,
+  Trash2,
+} from "lucide-react";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import {
   MINUTA_TAMANHO_MAXIMO,
@@ -69,8 +76,8 @@ import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { VisorDocumento } from "@/components/clientes/visor-documento";
 import {
   MinutaParecerForm,
+  MinutaAndamento,
   MinutaParecerLeitura,
-  MinutaSeloStatus,
 } from "@/components/clientes/minuta-parecer";
 
 /** Teto por campo de contexto — decisão do Marcio (17/09). Independente de
@@ -82,6 +89,14 @@ const CONTEXTO_MAXIMO = 2000;
 type CampoContexto = "caso" | "oQueFoiFeito" | "pontoDeAjuda" | "oQueMudou";
 
 const ACCEPT = ".pdf,application/pdf";
+
+// Público mais velho: texto em 16 px, campo e botão com 44 px de altura.
+// (`corpo` é 15 px; por isso `text-base`.)
+const ROTULO = "text-base leading-snug";
+const CAMPO = "text-base md:text-base";
+const BOTAO = "h-11 px-4 text-base [&_svg:not([class*='size-'])]:size-5";
+const CLASSE_ERRO =
+  "flex items-start gap-1.5 text-base leading-snug font-medium text-risco-foreground";
 
 /** Frase própria para cada falha do Storage — `error.message` cru não vai à tela. */
 function fraseDoErroDeUpload(erro: { message?: string } | null): string {
@@ -303,7 +318,18 @@ export function MinutasAnexo({
           o sistema não valida nem compara nada e nada bloqueia o próximo
           envio. Ficam no corpo da tela, ANTES do botão de anexar. Peso
           rebaixado (2026-09-23, pedido do Marcio): é observação, não aviso. */}
-      <p className="text-xs leading-snug text-muted-foreground">
+      {podeAnexar ? (
+        <ol className="grid list-decimal gap-1 pl-6 text-base leading-snug">
+          <li>Preencha {primeira ? "os 3 campos" : "o campo"} abaixo.</li>
+          <li>
+            Clique em &quot;
+            {minutas.length > 0 ? "Enviar nova versão" : "Escolher arquivo"}
+            &quot;.
+          </li>
+          <li>Escolha o PDF. Ele é enviado na hora.</li>
+        </ol>
+      ) : null}
+      <p className="text-base leading-snug text-muted-foreground">
         Deixe em <strong>vermelho</strong> o que mudou em relação à minuta
         anterior. Envie <strong>uma minuta por vez</strong>.
       </p>
@@ -334,12 +360,14 @@ export function MinutasAnexo({
           {primeira ? (
             <>
               <div className="grid gap-1.5">
-                <Label htmlFor={idCaso}>
+                <Label htmlFor={idCaso} className={ROTULO}>
                   Descreva o caso
                   {contextoObrigatorio ? " (obrigatório)" : ""}
                 </Label>
                 <Textarea
                   id={idCaso}
+                  className={CAMPO}
+                  placeholder="Ex.: Família com 3 imóveis em Belém e uma empresa de comércio."
                   value={caso}
                   onChange={(e) => setCaso(e.target.value)}
                   disabled={ocupado}
@@ -350,19 +378,21 @@ export function MinutasAnexo({
                   }
                 />
                 {excedido("caso") ? (
-                  <p id={`${idCaso}-erro`} className="corpo-sm text-destructive">
+                  <p id={`${idCaso}-erro`} className={CLASSE_ERRO}>
                     Até {CONTEXTO_MAXIMO} caracteres ({caso.trim().length}{" "}
                     digitados).
                   </p>
                 ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor={idOQueFoiFeito}>
+                <Label htmlFor={idOQueFoiFeito} className={ROTULO}>
                   O que foi feito
                   {contextoObrigatorio ? " (obrigatório)" : ""}
                 </Label>
                 <Textarea
                   id={idOQueFoiFeito}
+                  className={CAMPO}
+                  placeholder="Ex.: Escrevi a minuta com a divisão das cotas e a cláusula de herança."
                   value={oQueFoiFeito}
                   onChange={(e) => setOQueFoiFeito(e.target.value)}
                   disabled={ocupado}
@@ -377,7 +407,7 @@ export function MinutasAnexo({
                 {excedido("oQueFoiFeito") ? (
                   <p
                     id={`${idOQueFoiFeito}-erro`}
-                    className="corpo-sm text-destructive"
+                    className={CLASSE_ERRO}
                   >
                     Até {CONTEXTO_MAXIMO} caracteres (
                     {oQueFoiFeito.trim().length} digitados).
@@ -385,12 +415,14 @@ export function MinutasAnexo({
                 ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor={idPontoDeAjuda}>
-                  Qual o primeiro ponto que você precisa de ajuda
+                <Label htmlFor={idPontoDeAjuda} className={ROTULO}>
+                  Em que ponto você precisa de ajuda primeiro?
                   {contextoObrigatorio ? " (obrigatório)" : ""}
                 </Label>
                 <Textarea
                   id={idPontoDeAjuda}
+                  className={CAMPO}
+                  placeholder="Ex.: Não sei como escrever a cláusula de usufruto."
                   value={pontoDeAjuda}
                   onChange={(e) => setPontoDeAjuda(e.target.value)}
                   disabled={ocupado}
@@ -405,7 +437,7 @@ export function MinutasAnexo({
                 {excedido("pontoDeAjuda") ? (
                   <p
                     id={`${idPontoDeAjuda}-erro`}
-                    className="corpo-sm text-destructive"
+                    className={CLASSE_ERRO}
                   >
                     Até {CONTEXTO_MAXIMO} caracteres (
                     {pontoDeAjuda.trim().length} digitados).
@@ -415,12 +447,14 @@ export function MinutasAnexo({
             </>
           ) : (
             <div className="grid gap-1.5">
-              <Label htmlFor={idOQueMudou}>
-                O que foi alterado em relação à minuta anterior
+              <Label htmlFor={idOQueMudou} className={ROTULO}>
+                O que mudou em relação à minuta anterior?
                 {contextoObrigatorio ? " (obrigatório)" : ""}
               </Label>
               <Textarea
                 id={idOQueMudou}
+                className={CAMPO}
+                placeholder="Ex.: Troquei a cláusula 5 e incluí o nome da sócia."
                 value={oQueMudou}
                 onChange={(e) => setOQueMudou(e.target.value)}
                 disabled={ocupado}
@@ -431,7 +465,7 @@ export function MinutasAnexo({
                 }
               />
               {excedido("oQueMudou") ? (
-                <p id={`${idOQueMudou}-erro`} className="corpo-sm text-destructive">
+                <p id={`${idOQueMudou}-erro`} className={CLASSE_ERRO}>
                   Até {CONTEXTO_MAXIMO} caracteres ({oQueMudou.trim().length}{" "}
                   digitados).
                 </p>
@@ -441,8 +475,8 @@ export function MinutasAnexo({
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant="outline"
-              size="sm"
+              variant={faltaObrigatorio ? "outline" : "default"}
+              className={BOTAO}
               disabled={botaoDesabilitado}
               aria-busy={enviando !== null || undefined}
               aria-describedby={idAjuda}
@@ -452,18 +486,17 @@ export function MinutasAnexo({
               {minutas.length > 0 ? "Enviar nova versão" : "Escolher arquivo"}
             </Button>
             {faltaObrigatorio ? (
-              <span className="corpo-sm text-muted-foreground">
-                Preencha os campos acima para anexar.
+              <span className="text-base text-muted-foreground">
+                Preencha os campos acima para liberar o botão.
               </span>
             ) : null}
           </div>
         </div>
       ) : null}
 
-      <p id={idAjuda} className="corpo-sm text-muted-foreground">
+      <p id={idAjuda} className="text-base leading-snug text-muted-foreground">
         Só PDF, até {minutaTamanhoLegivel(MINUTA_TAMANHO_MAXIMO)}. Cada envio
-        vira uma versão nova no histórico — as anteriores continuam listadas,
-        com data.
+        é uma versão nova. As anteriores continuam na lista.
       </p>
 
       {minutas.length > 0 ? (
@@ -476,33 +509,32 @@ export function MinutasAnexo({
             return (
               <li
                 key={minuta.id}
-                className="grid gap-1.5 rounded-lg bg-superficie-afundada px-2.5 py-2"
+                className="grid gap-2.5 rounded-lg bg-superficie-afundada px-3 py-3"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <FileText
                     aria-hidden
                     className="size-4 shrink-0 text-muted-foreground"
                   />
-                  <span className="shrink-0 corpo-sm text-muted-foreground">
+                  <span className="shrink-0 text-base font-semibold">
                     Versão {versao}
                   </span>
-                  <MinutaSeloStatus status={minuta.status} />
-                  <span className="order-first basis-full truncate corpo-sm font-medium sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto">
+                  <span className="order-first basis-full truncate text-base font-medium sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto">
                     {minuta.nome}
                   </span>
                   {minuta.tamanho ? (
-                    <span className="numero shrink-0 corpo-sm text-muted-foreground">
+                    <span className="numero shrink-0 text-base text-muted-foreground">
                       {minutaTamanhoLegivel(minuta.tamanho)}
                     </span>
                   ) : null}
-                  <span className="shrink-0 corpo-sm text-muted-foreground">
+                  <span className="shrink-0 text-base text-muted-foreground">
                     enviada em {formatarDataHora(minuta.enviado_em)}
                     {minuta.enviado_pela_equipe ? " · pela equipe" : ""}
                   </span>
                   <Button
                     type="button"
                     variant="outline"
-                    size="xs"
+                    className={BOTAO}
                     disabled={removendoAgora}
                     aria-pressed={visualizandoId === minuta.id}
                     aria-label={`Pré-visualizar minuta de ${formatarDataHora(minuta.enviado_em)}`}
@@ -518,7 +550,7 @@ export function MinutasAnexo({
                   <Button
                     type="button"
                     variant="outline"
-                    size="xs"
+                    className={BOTAO}
                     disabled={baixandoId || removendoAgora}
                     aria-busy={baixandoId || undefined}
                     aria-label={`Baixar minuta de ${formatarDataHora(minuta.enviado_em)}`}
@@ -530,7 +562,7 @@ export function MinutasAnexo({
                     <Button
                       type="button"
                       variant="ghost-danger"
-                      size="xs"
+                      className={BOTAO}
                       disabled={ocupado || removendoAgora}
                       aria-label={`Remover minuta de ${formatarDataHora(minuta.enviado_em)}`}
                       onClick={() => {
@@ -543,51 +575,49 @@ export function MinutasAnexo({
                   ) : null}
                 </div>
 
+                <MinutaAndamento status={minuta.status} />
+
                 {/* Leitura densa e chapada: rótulo pequeno em
                     text-muted-foreground, valor abaixo — hierarquia por
                     POSIÇÃO, sem card por campo nem ícone decorativo. */}
                 {minuta.caso ? (
                   <div className="grid gap-1">
-                    <p className="corpo-sm text-muted-foreground">
-                      Descreva o caso
-                    </p>
-                    <p className="corpo-sm whitespace-pre-wrap">{minuta.caso}</p>
+                    <p className="text-base font-semibold">O caso</p>
+                    <p className="text-base leading-relaxed whitespace-pre-wrap">{minuta.caso}</p>
                   </div>
                 ) : null}
                 {minuta.o_que_foi_feito ? (
                   <div className="grid gap-1">
-                    <p className="corpo-sm text-muted-foreground">
-                      O que foi feito
-                    </p>
-                    <p className="corpo-sm whitespace-pre-wrap">
+                    <p className="text-base font-semibold">O que foi feito</p>
+                    <p className="text-base leading-relaxed whitespace-pre-wrap">
                       {minuta.o_que_foi_feito}
                     </p>
                   </div>
                 ) : null}
                 {minuta.ponto_de_ajuda ? (
                   <div className="grid gap-1">
-                    <p className="corpo-sm text-muted-foreground">
-                      Qual o primeiro ponto que você precisa de ajuda
+                    <p className="text-base font-semibold">
+                      Onde precisa de ajuda primeiro
                     </p>
-                    <p className="corpo-sm whitespace-pre-wrap">
+                    <p className="text-base leading-relaxed whitespace-pre-wrap">
                       {minuta.ponto_de_ajuda}
                     </p>
                   </div>
                 ) : null}
                 {minuta.o_que_mudou ? (
                   <div className="grid gap-1">
-                    <p className="corpo-sm text-muted-foreground">
-                      Alterado nesta versão
+                    <p className="text-base font-semibold">
+                      O que mudou nesta versão
                     </p>
-                    <p className="corpo-sm whitespace-pre-wrap">
+                    <p className="text-base leading-relaxed whitespace-pre-wrap">
                       {minuta.o_que_mudou}
                     </p>
                   </div>
                 ) : null}
                 {minuta.notas ? (
                   <div className="grid gap-1">
-                    <p className="corpo-sm text-muted-foreground">Notas</p>
-                    <p className="corpo-sm whitespace-pre-wrap">{minuta.notas}</p>
+                    <p className="text-base font-semibold">Notas</p>
+                    <p className="text-base leading-relaxed whitespace-pre-wrap">{minuta.notas}</p>
                   </div>
                 ) : null}
 
@@ -615,7 +645,7 @@ export function MinutasAnexo({
           })}
         </ul>
       ) : (
-        <p className="corpo-sm text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Nenhuma minuta enviada ainda.
         </p>
       )}
@@ -625,8 +655,8 @@ export function MinutasAnexo({
       <div aria-live="polite" className="grid gap-1.5 empty:hidden">
         {enviando ? (
           <>
-            <p className="corpo-sm text-muted-foreground">
-              Enviando {enviando}…
+            <p className="text-base font-medium">
+              Enviando {enviando}… Aguarde.
             </p>
             {/* Barra indeterminada: o SDK não reporta progresso, e uma barra
                 determinada mentiria sobre quanto falta. */}
@@ -644,9 +674,14 @@ export function MinutasAnexo({
       {/* Sempre montado, mas CALADO enquanto o diálogo de remover está
           aberto: lá o mesmo erro já aparece, e anunciá-lo duas vezes é pior
           do que anunciá-lo uma. */}
-      <p role="alert" className="corpo-sm text-destructive empty:hidden">
-        {removendoId ? "" : erro}
-      </p>
+      <div role="alert" className="empty:hidden">
+        {!removendoId && erro ? (
+          <p className={CLASSE_ERRO}>
+            <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+            {erro}
+          </p>
+        ) : null}
+      </div>
 
       {removendoMinuta ? (
         <DialogoConfirmacao

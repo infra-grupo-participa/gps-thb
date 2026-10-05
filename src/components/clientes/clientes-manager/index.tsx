@@ -470,7 +470,7 @@ export function ClientesManager({
           acao={
             // `flex-wrap`: no celular os botões quebram linha; sem ele a fila
             // empurrava o card e cortava o texto à direita (medido em 390 px).
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <div className="flex rounded-lg border p-0.5">
                 <ViewButton
                   ativo={view === "lista"}
@@ -487,6 +487,8 @@ export function ClientesManager({
               </div>
               <Button
                 variant="outline"
+                size="lg"
+                className="h-11"
                 onClick={() => setSelecionandoEntrevista(true)}
                 disabled={pending || clientes.length === 0}
               >
@@ -498,14 +500,16 @@ export function ClientesManager({
               {!admin ? (
                 <Button
                   variant="outline"
+                  size="lg"
+                  className="h-11"
                   onClick={() => setColarAberto(true)}
                   disabled={pending}
                 >
                   <ClipboardPaste aria-hidden /> Colar lista
                 </Button>
               ) : null}
-              <Button onClick={abrirNovo} disabled={pending}>
-                Adicionar
+              <Button size="lg" className="h-11" onClick={abrirNovo} disabled={pending}>
+                <Plus aria-hidden /> Adicionar cliente
               </Button>
             </div>
           }
@@ -627,18 +631,23 @@ export function ClientesManager({
               <p className="font-heading titulo-h2">
                 Comece pela sua lista de 30
               </p>
-              <p className="corpo-sm text-muted-foreground">
+              <p className="corpo text-muted-foreground">
                 São {META_CLIENTES} pessoas do seu círculo de relacionamento.
                 Basta <strong>nome e telefone</strong> para cada uma contar — o
                 resto você preenche depois, quando souber.
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <Button onClick={abrirNovo}>
+              <Button onClick={abrirNovo} size="lg" className="h-11">
                 <Plus aria-hidden /> Cadastrar o primeiro cliente
               </Button>
               {!admin ? (
-                <Button variant="outline" onClick={() => setColarAberto(true)}>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-11"
+                  onClick={() => setColarAberto(true)}
+                >
                   <ClipboardPaste aria-hidden /> Já tenho a lista: colar
                 </Button>
               ) : null}
@@ -647,7 +656,7 @@ export function ClientesManager({
                   travou, não escondido na 7ª aba do header. */}
               <Link
                 href={`${basePath}/chamados`}
-                className="corpo-sm text-muted-foreground underline-offset-4 hover:text-accent-foreground hover:underline"
+                className="inline-flex min-h-11 items-center corpo text-muted-foreground underline underline-offset-4 hover:text-accent-foreground"
               >
                 Travou? Fale com a equipe
               </Link>
@@ -663,7 +672,7 @@ export function ClientesManager({
           />
         ) : listaOrdenada.length === 0 ? (
           <div className="rounded-lg border border-dashed bg-superficie-afundada p-8 text-center text-sm text-muted-foreground">
-            Nenhum cliente encontrado com esse filtro/busca.
+            Nenhum cliente encontrado. Limpe a busca ou o filtro.
           </div>
         ) : (
           <>
@@ -729,7 +738,7 @@ export function ClientesManager({
           erro={erroDialogo}
           confirmacao={
             ultimoSalvo
-              ? `✓ ${ultimoSalvo} salvo — ${clientes.length} ${clientes.length === 1 ? "cadastrado" : "cadastrados"} · ${comDados} de ${META_CLIENTES} com nome e telefone.`
+              ? `${ultimoSalvo} foi salvo. ${comDados} de ${META_CLIENTES} com nome e telefone.`
               : null
           }
           salvosNaSequencia={salvosNaSequencia}

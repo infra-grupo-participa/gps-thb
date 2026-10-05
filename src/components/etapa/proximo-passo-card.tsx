@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PlayCircle, ArrowRight, Lock } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { ProximoPasso } from "@/lib/etapas";
 
 /**
@@ -73,13 +74,12 @@ export function ProximoPassoCard({
             Destrave o próximo passo
           </div>
           <div className="font-heading titulo-h2 text-balance">{bloqueio}</div>
-          <div className="corpo-sm text-muted-foreground">
-            Depois disso, o passo {passo.codigo} ({passo.titulo}) abre na Etapa{" "}
-            {String(passo.etapa).padStart(2, "0")}.
+          <div className="corpo text-muted-foreground">
+            Feito isso, abre o passo {passo.codigo}: {passo.titulo}.
           </div>
         </div>
         <span
-          className={`${buttonVariants({ variant: "default" })} ml-auto shrink-0`}
+          className={cn(buttonVariants({ variant: "default", size: "lg" }), "ml-auto h-12 shrink-0")}
         >
           Ir para Clientes
           <ArrowRight
@@ -116,14 +116,14 @@ export function ProximoPassoCard({
         <div className="font-heading titulo-h2 text-balance">
           {passo.codigo}. {passo.titulo}
         </div>
-        <div className="corpo-sm text-muted-foreground">
+        <div className="corpo text-muted-foreground">
           {vaiParaClientes
-            ? "Os 30 clientes se cadastram na aba Clientes — é de lá que a Etapa 01 anda."
+            ? "Cadastre nome e telefone de 30 pessoas na aba Clientes."
             : `Etapa ${String(passo.etapa).padStart(2, "0")} — ${passo.etapaNome}`}
         </div>
       </div>
       <span
-        className={`${buttonVariants({ variant: "default" })} ml-auto shrink-0`}
+        className={cn(buttonVariants({ variant: "default", size: "lg" }), "ml-auto h-12 shrink-0")}
       >
         {/* "Continuar" para quem nunca começou é uma promessa falsa: não há
             de onde continuar. Quem vai para Clientes recebe o verbo da ação. */}

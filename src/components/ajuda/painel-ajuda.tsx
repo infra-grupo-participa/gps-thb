@@ -18,7 +18,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { CircleHelp } from "lucide-react";
+import { CircleHelp, MessageSquare, Search } from "lucide-react";
 import { buscarAjuda, registrarFeedbackAjuda } from "@/app/ajuda/actions";
 import {
   buscaAjudaValida,
@@ -28,7 +28,8 @@ import {
   type ResultadoBuscaAjuda,
 } from "@/lib/ajuda-tipos";
 import { ArtigoAjudaItem } from "@/components/ajuda/artigo-ajuda";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -50,12 +51,12 @@ type RespostaBusca =
   | { termo: string; ok: true; resultados: ResultadoBuscaAjuda[] }
   | { termo: string; ok: false; erro: string };
 
+// Botão de verdade (alvo de 44 px, ícone + verbo), não link de 13 px no
+// meio da frase: é a saída de quem não achou resposta.
 const linkChamado = (
-  <Link
-    href="/chamados"
-    className="corpo-sm text-accent-foreground underline-offset-4 hover:underline"
-  >
-    Abrir um chamado com a equipe
+  <Link href="/chamados" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-11")}>
+    <MessageSquare aria-hidden />
+    Abrir chamado
   </Link>
 );
 
@@ -64,15 +65,13 @@ export function PainelAjuda({ rota, artigos }: { rota: string; artigos: ArtigoAj
     <Dialog>
       <DialogTrigger
         render={
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11"
-            aria-label="Como faço? Ajuda desta tela"
-          />
+          <Button type="button" variant="outline" size="lg" className="h-11" />
         }
       >
+        {/* Texto SEMPRE visível: no celular era só o ícone, e o parceiro não
+            reconhece "?" como botão. O nome acessível é o texto visível. */}
         <CircleHelp aria-hidden />
+        <span className="sm:hidden">Ajuda</span>
         <span className="hidden sm:inline">Como faço?</span>
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
@@ -89,6 +88,10 @@ function ConteudoAjuda({ rota, artigos }: { rota: string; artigos: ArtigoAjuda[]
   const [resposta, setResposta] = useState<RespostaBusca | null>(null);
   const seq = useRef(0);
   const ultimaVazia = useRef<string | null>(null);
+  // Botão "Buscar"/Enter: pula a espera de 400 ms. Mesma busca, mesmo
+  // registro — só o atraso muda.
+  const [pedido, setPedido] = useState(0);
+  const imediato = useRef(false);
 
   // Ao fechar o painel: registra só a ÚLTIMA busca sem resultado.
   useEffect(() => {
@@ -114,6 +117,8 @@ function ConteudoAjuda({ rota, artigos }: { rota: string; artigos: ArtigoAjuda[]
   useEffect(() => {
     const minha = ++seq.current;
     if (!valida) return;
+    const espera = imediato.current ? 0 : DEBOUNCE_MS;
+    imediato.current = false;
     const t = setTimeout(async () => {
       let r: Awaited<ReturnType<typeof buscarAjuda>>;
       try {
@@ -128,15 +133,25 @@ function ConteudoAjuda({ rota, artigos }: { rota: string; artigos: ArtigoAjuda[]
       }
       setResposta({ termo, ok: true, resultados: r.resultados });
       ultimaVazia.current = r.resultados.length === 0 ? termo : null;
-    }, DEBOUNCE_MS);
+    }, espera);
     return () => clearTimeout(t);
-  }, [termo, valida, rota]);
+  }, [termo, valida, rota, pedido]);
+
+  function buscarAgora(e: React.FormEvent) {
+    e.preventDefault();
+    // Já respondida com sucesso (ou inválida): nada a refazer. Se a busca
+    // FALHOU, "Buscar"/Enter tenta de novo — é o que o aviso pede.
+    if (!valida || (atual !== null && atual.ok)) return;
+    if (atual !== null) setResposta(null);
+    imediato.current = true;
+    setPedido((n) => n + 1);
+  }
 
   const status = buscando
     ? "Buscando…"
     : atual?.ok
       ? atual.resultados.length === 0
-        ? `Nada encontrado para “${atual.termo}”.`
+        ? `Nada encontrado para “${atual.termo}”. Tente outra palavra.`
         : atual.resultados.length === 1
           ? "1 resultado."
           : `${atual.resultados.length} resultados.`
@@ -148,30 +163,38 @@ function ConteudoAjuda({ rota, artigos }: { rota: string; artigos: ArtigoAjuda[]
     <>
       <DialogHeader>
         <DialogTitle>Como faço?</DialogTitle>
-        <DialogDescription>
-          Respostas da equipe para esta tela. Não achou o que precisa? Busque abaixo ou abra
-          um chamado.
+        <DialogDescription className="corpo">
+          Toque numa dúvida para ver a resposta.
         </DialogDescription>
       </DialogHeader>
 
-      <div className="grid gap-2">
-        <Label htmlFor={idBusca}>Buscar na ajuda</Label>
-        <Input
-          id={idBusca}
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          maxLength={AJUDA_TERMO_MAXIMO}
-          placeholder="Ex.: cadastrar cliente"
-          autoComplete="off"
-        />
-        <p role="status" className="corpo-sm text-muted-foreground empty:hidden">
+      <form role="search" onSubmit={buscarAgora} className="grid gap-2">
+        <Label htmlFor={idBusca} className="corpo">
+          Não está na lista? Escreva sua dúvida:
+        </Label>
+        <div className="flex gap-2">
+          <Input
+            id={idBusca}
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            maxLength={AJUDA_TERMO_MAXIMO}
+            placeholder="Ex.: cadastrar cliente"
+            autoComplete="off"
+            className="h-11 md:text-base"
+          />
+          <Button type="submit" size="lg" className="h-11 shrink-0">
+            <Search aria-hidden />
+            Buscar
+          </Button>
+        </div>
+        <p role="status" className="corpo text-muted-foreground empty:hidden">
           {status}
         </p>
-        <p role="alert" className="corpo-sm text-destructive empty:hidden">
+        <p role="alert" className="corpo text-destructive empty:hidden">
           {atual && !atual.ok ? atual.erro : null}
         </p>
-      </div>
+      </form>
 
       {valida ? (
         atual?.ok && atual.resultados.length > 0 ? (
@@ -189,11 +212,11 @@ function ConteudoAjuda({ rota, artigos }: { rota: string; artigos: ArtigoAjuda[]
       ) : (
         <section aria-labelledby={`${idBusca}-tela`}>
           <h2 id={`${idBusca}-tela`} className="rotulo text-muted-foreground">
-            Nesta tela
+            Dúvidas desta tela
           </h2>
           {artigos.length === 0 ? (
-            <p className="corpo-sm py-2 text-muted-foreground">
-              Ainda não há artigo para esta tela. Use a busca acima.
+            <p className="corpo py-2 text-muted-foreground">
+              Ainda não há respostas para esta tela. Use a busca acima.
             </p>
           ) : (
             artigos.map((a) => (
@@ -203,9 +226,10 @@ function ConteudoAjuda({ rota, artigos }: { rota: string; artigos: ArtigoAjuda[]
         </section>
       )}
 
-      <p className="corpo-sm border-t pt-3 text-muted-foreground">
-        Não resolveu? {linkChamado}.
-      </p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-3">
+        <p className="corpo text-muted-foreground">Não achou? Fale com a equipe.</p>
+        {linkChamado}
+      </div>
     </>
   );
 }

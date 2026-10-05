@@ -271,7 +271,7 @@ export function ViewButton({
       className={
         // `bg-primary` com texto branco dá 2,98:1 em 12 px e reprovava o
         // WCAG 1.4.3. `marca-acao` (#C74600) com branco: 4,88:1, medido.
-        "foco-visivel inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition " +
+        "foco-visivel inline-flex min-h-10 items-center gap-1.5 rounded-md px-3 py-2 corpo font-medium transition " +
         (ativo
           ? "bg-marca-acao text-white"
           : "text-muted-foreground hover:text-foreground")

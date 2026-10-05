@@ -16,6 +16,7 @@
  */
 
 import { useState, useTransition } from "react";
+import { Check, ChevronRight, X } from "lucide-react";
 import { registrarFeedbackAjuda } from "@/app/ajuda/actions";
 import {
   paragrafosDoCorpo,
@@ -69,16 +70,17 @@ export function ArtigoAjudaItem({
         if (e.currentTarget.open) registrarVista(artigo.id, origem);
       }}
     >
-      <summary className="foco-visivel flex list-none [&::-webkit-details-marker]:hidden min-h-11 cursor-pointer items-center gap-2 py-2 corpo-sm font-medium">
-        <span aria-hidden className="inline-block w-3 shrink-0 text-muted-foreground group-open:rotate-90">
-          ›
-        </span>
+      <summary className="foco-visivel flex list-none [&::-webkit-details-marker]:hidden min-h-12 cursor-pointer items-center gap-2 py-2 corpo font-medium hover:text-accent-foreground">
+        <ChevronRight
+          aria-hidden
+          className="size-5 shrink-0 text-muted-foreground group-open:rotate-90"
+        />
         <span className="min-w-0">{artigo.titulo}</span>
       </summary>
 
-      <div className="grid gap-2 pb-3 pl-5">
+      <div className="grid gap-3 pb-4 pl-7">
         {paragrafos.map((p, i) => (
-          <p key={i} className="corpo-sm">
+          <p key={i} className="corpo">
             {p}
           </p>
         ))}
@@ -86,37 +88,45 @@ export function ArtigoAjudaItem({
         <div className="flex flex-wrap items-center gap-2 pt-1">
           {voto === null ? (
             <>
-              <span className="corpo-sm text-muted-foreground">Isso resolveu?</span>
+              <span className="corpo font-medium">Isso resolveu?</span>
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 min-w-16"
+                size="lg"
+                className="h-11 min-w-20"
                 disabled={pendente}
                 onClick={() => votar(true)}
               >
+                <Check aria-hidden />
                 Sim
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 min-w-16"
+                size="lg"
+                className="h-11 min-w-20"
                 disabled={pendente}
                 onClick={() => votar(false)}
               >
+                <X aria-hidden />
                 Não
               </Button>
             </>
           ) : null}
-          <p role="status" className="corpo-sm text-muted-foreground empty:hidden">
-            {voto === true
-              ? "Obrigado. Registramos que isso resolveu."
-              : voto === false
-                ? "Obrigado pelo retorno."
-                : null}
+          <p role="status" className="corpo empty:hidden">
+            {pendente
+              ? "Enviando…"
+              : voto === true
+                ? "Que bom! Obrigado por avisar."
+                : voto === false
+                  ? depoisDoNao
+                    ? "Obrigado por avisar. A equipe pode ajudar:"
+                    : "Obrigado por avisar."
+                  : null}
           </p>
           {voto === false && depoisDoNao ? depoisDoNao : null}
         </div>
-        <p role="alert" className="corpo-sm text-destructive empty:hidden">
+        <p role="alert" className="corpo text-destructive empty:hidden">
           {erro}
         </p>
       </div>

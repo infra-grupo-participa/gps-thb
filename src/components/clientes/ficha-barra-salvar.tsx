@@ -26,6 +26,8 @@
  * ícone: quem usa esta tela é gente de mais idade, e ícone sozinho não se lê.
  */
 
+import { AlertCircle, ArrowDown, Save } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 export function FichaBarraSalvar({
@@ -61,11 +63,15 @@ export function FichaBarraSalvar({
         // estado de pendência não. E não some sozinha em 4 segundos, que é a
         // razão de não ser um toast — a frase traduzida do banco é a única
         // pista do que aconteceu.
-        <p role="alert" className="mr-auto corpo-sm text-destructive">
+        <p
+          role="alert"
+          className="mr-auto flex items-start gap-1.5 text-base leading-snug font-medium text-risco-foreground"
+        >
+          <AlertCircle aria-hidden className="mt-0.5 size-5 shrink-0" />
           {erroSalvar}
         </p>
       ) : (
-        <p aria-live="polite" className="mr-auto corpo-sm text-muted-foreground">
+        <p aria-live="polite" className="mr-auto text-base leading-snug text-foreground">
           {aviso}
         </p>
       )}
@@ -77,15 +83,22 @@ export function FichaBarraSalvar({
           `salvar()` recusa, a barra diz o motivo **e a ficha puxa a pessoa
           para o campo**. */}
       {onIrParaCampo ? (
-        <Button variant="outline" onClick={onIrParaCampo}>
+        <Button
+          variant="outline"
+          className="h-11 px-5 text-base"
+          onClick={onIrParaCampo}
+        >
+          <ArrowDown aria-hidden />
           Ir para o campo
         </Button>
       ) : null}
       <Button
+        className="h-11 px-6 text-base"
         onClick={onSalvar}
         disabled={pending}
         aria-busy={salvando || undefined}
       >
+        <Save aria-hidden />
         {salvando ? "Salvando…" : "Salvar ficha"}
       </Button>
     </div>

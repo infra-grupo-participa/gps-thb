@@ -24,6 +24,7 @@
  */
 
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
+import { Check, CircleCheck, X } from "lucide-react";
 import { analisarListaColada, TETO_LOTE } from "@/lib/colar-clientes";
 import { cadastrarClientesEmLote } from "@/app/clientes/lote-actions";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,12 @@ import {
 } from "@/components/ui/dialog";
 
 type Passo = "colar" | "previa" | "resultado";
+
+const NUMERO_DO_PASSO: Record<Passo, string> = {
+  colar: "Passo 1 de 3: colar a lista",
+  previa: "Passo 2 de 3: conferir",
+  resultado: "Passo 3 de 3: pronto",
+};
 
 interface Resultado {
   inseridos: number;
@@ -133,11 +140,16 @@ export function DialogoColarLista({
             </strong>{" "}
             com nome e telefone.
           </DialogDescription>
+          {/* Onde a pessoa está na sequência — sem isso a troca de conteúdo
+              do diálogo parece outra tela. */}
+          <p className="rotulo text-muted-foreground">{NUMERO_DO_PASSO[passo]}</p>
         </DialogHeader>
 
         {passo === "colar" ? (
           <div className="grid gap-2">
-            <Label htmlFor={idTexto}>Uma pessoa por linha</Label>
+            <Label htmlFor={idTexto} className="corpo">
+              Cole aqui, uma pessoa por linha
+            </Label>
             <Textarea
               id={idTexto}
               value={texto}
@@ -146,15 +158,20 @@ export function DialogoColarLista({
               rows={8}
               autoFocus
               spellCheck={false}
-              className="max-h-[40dvh] min-h-40 font-mono text-sm"
+              className="max-h-[40dvh] min-h-40 font-mono text-base"
               placeholder={"Maria da Silva - (11) 98888-7777\nJoão Souza; 21 99999-0000\nAna Lima"}
             />
-            <p id={idAjuda} className="text-xs leading-snug text-muted-foreground">
-              Escreva o nome e, se tiver, o telefone com DDD, separados por
-              hífen, ponto e vírgula ou vírgula. Também dá para copiar as duas
-              colunas (nome e telefone) de uma planilha e colar aqui. Sem
-              telefone a pessoa entra, mas só conta para os {meta} quando você
-              preencher o telefone na ficha.
+            <ol
+              id={idAjuda}
+              className="grid list-decimal gap-1 pl-5 corpo text-muted-foreground"
+            >
+              <li>Escreva o nome e, se tiver, o telefone com DDD.</li>
+              <li>Separe com hífen, vírgula ou ponto e vírgula.</li>
+              <li>Ou copie as colunas nome e telefone de uma planilha.</li>
+              <li>Toque em “Conferir a lista”. Nada é gravado antes disso.</li>
+            </ol>
+            <p className="corpo text-muted-foreground">
+              Sem telefone a pessoa entra, mas só conta para os {meta} depois.
             </p>
           </div>
         ) : null}
@@ -169,7 +186,7 @@ export function DialogoColarLista({
               Confira antes de cadastrar
             </h3>
             {/* Região viva: o número muda quando a pessoa volta e corrige. */}
-            <p aria-live="polite" className="corpo-sm">
+            <p aria-live="polite" className="corpo">
               <strong>{validas}</strong>{" "}
               {validas === 1 ? "pessoa vai entrar" : "pessoas vão entrar"}
               {invalidas > 0 ? (
@@ -189,16 +206,16 @@ export function DialogoColarLista({
               </AvisoInline>
             ) : null}
             {analise.linhas.length === 0 ? (
-              <p className="corpo-sm text-muted-foreground">
+              <p className="corpo text-muted-foreground">
                 Nenhuma linha com conteúdo. Volte e cole a lista.
               </p>
             ) : (
               <div className="max-h-[45dvh] overflow-auto rounded-md border">
-                <table className="w-full text-left text-sm">
+                <table className="w-full text-left corpo">
                   <caption className="sr-only">
                     Prévia da lista colada: linha, nome, telefone e situação
                   </caption>
-                  <thead className="sticky top-0 bg-muted text-xs text-muted-foreground">
+                  <thead className="sticky top-0 bg-muted rotulo text-muted-foreground">
                     <tr>
                       <th scope="col" className="px-2 py-1.5 font-medium">Linha</th>
                       <th scope="col" className="px-2 py-1.5 font-medium">Nome</th>
@@ -223,7 +240,14 @@ export function DialogoColarLista({
                               : "px-2 py-1.5 text-destructive"
                           }
                         >
-                          {l.valida ? "Entra" : `Fica de fora: ${l.motivo}`}
+                          <span className="inline-flex items-start gap-1.5">
+                            {l.valida ? (
+                              <Check aria-hidden className="mt-1 size-4 shrink-0" />
+                            ) : (
+                              <X aria-hidden className="mt-1 size-4 shrink-0" />
+                            )}
+                            <span>{l.valida ? "Entra" : `Fica de fora: ${l.motivo}`}</span>
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -239,20 +263,21 @@ export function DialogoColarLista({
             <h3
               ref={tituloPasso}
               tabIndex={-1}
-              className="font-heading text-base font-semibold outline-none"
+              className="flex items-center gap-2 font-heading text-base font-semibold outline-none"
             >
+              <CircleCheck aria-hidden className="size-5 shrink-0 text-sucesso-foreground" />
               {resultado.inseridos === 1
                 ? "1 cliente cadastrado"
                 : `${resultado.inseridos} clientes cadastrados`}
             </h3>
             {resultado.ignorados.length > 0 ? (
               <>
-                <p className="corpo-sm">
+                <p className="corpo">
                   {resultado.ignorados.length === 1
                     ? "1 não entrou:"
                     : `${resultado.ignorados.length} não entraram:`}
                 </p>
-                <ul className="grid max-h-[40dvh] gap-1 overflow-auto rounded-md border p-2 corpo-sm">
+                <ul className="grid max-h-[40dvh] gap-1 overflow-auto rounded-md border p-2 corpo">
                   {resultado.ignorados.map((ig) => {
                     const nome = nomeDaLinha(ig.linha);
                     return (
@@ -266,30 +291,31 @@ export function DialogoColarLista({
                 </ul>
               </>
             ) : null}
-            <p className="corpo-sm text-muted-foreground">
-              Eles já estão na sua lista. Para contar para os {meta}, cada um
-              precisa de nome e telefone — quem entrou sem telefone, complete
-              na ficha.
+            <p className="corpo text-muted-foreground">
+              Já estão na sua lista. Quem entrou sem telefone: complete na
+              ficha para contar nos {meta}.
             </p>
           </div>
         ) : null}
 
         {/* Sempre montado: região viva que nasce com o texto não é anunciada. */}
-        <p role="alert" className="text-xs text-destructive empty:hidden">
+        <p role="alert" className="corpo text-destructive empty:hidden">
           {erro}
         </p>
 
         <DialogFooter>
           {passo === "colar" ? (
             <>
-              <Button variant="outline" onClick={onFechar}>
+              <Button variant="outline" size="lg" className="h-11" onClick={onFechar}>
                 Cancelar
               </Button>
               <Button
+                size="lg"
+                className="h-11"
                 onClick={() => setPasso("previa")}
                 disabled={texto.trim() === ""}
               >
-                Ver prévia
+                Conferir a lista
               </Button>
             </>
           ) : null}
@@ -297,6 +323,8 @@ export function DialogoColarLista({
             <>
               <Button
                 variant="outline"
+                size="lg"
+                className="h-11"
                 onClick={() => {
                   setErro(null);
                   setPasso("colar");
@@ -306,6 +334,8 @@ export function DialogoColarLista({
                 Voltar e corrigir
               </Button>
               <Button
+                size="lg"
+                className="h-11"
                 onClick={confirmar}
                 disabled={pending || validas === 0}
                 aria-busy={pending || undefined}
@@ -319,7 +349,9 @@ export function DialogoColarLista({
             </>
           ) : null}
           {passo === "resultado" ? (
-            <Button onClick={onFechar}>Fechar</Button>
+            <Button size="lg" className="h-11" onClick={onFechar}>
+              Fechar
+            </Button>
           ) : null}
         </DialogFooter>
       </DialogContent>

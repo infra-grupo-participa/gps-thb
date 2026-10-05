@@ -40,6 +40,7 @@
  */
 
 import { useEffect, useId, useRef } from "react";
+import { CircleCheck } from "lucide-react";
 import { mascaraTelefone } from "@/lib/masks";
 import type { FaseCliente } from "@/lib/types";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
@@ -143,8 +144,8 @@ export function DialogoNovoCliente({
                 que decide se a ficha CONTA para os 30 (ficha completa = nome +
                 telefone). 18 fichas em 9 ambientes ficaram sem telefone; duas
                 pessoas estão a uma ficha de destravar a Etapa 01. */}
-            Nome e telefone são o que faz a ficha contar para os 30. O resto
-            você preenche depois, na ficha.
+            Nome e telefone fazem a ficha contar para os 30. O resto
+            você preenche depois.
           </DialogDescription>
         </DialogHeader>
 
@@ -159,6 +160,7 @@ export function DialogoNovoCliente({
               value={nome}
               onChange={(e) => onNome(e.target.value)}
               placeholder="Como você chama esta pessoa"
+              className="h-11 md:text-base"
               autoFocus
               // Enter cria, como em qualquer formulário de uma linha só.
               onKeyDown={(e) => {
@@ -178,6 +180,7 @@ export function DialogoNovoCliente({
               inputMode="tel"
               autoComplete="off"
               placeholder="(11) 98888-7777"
+              className="h-11 md:text-base"
               aria-describedby={idTelefoneAjuda}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && nomeOk && !pending)
@@ -187,10 +190,9 @@ export function DialogoNovoCliente({
             />
             <p
               id={idTelefoneAjuda}
-              className="text-xs leading-snug text-muted-foreground"
+              className="corpo text-muted-foreground"
             >
-              Pode deixar em branco e preencher depois — mas sem telefone a
-              ficha ainda não conta para os 30.
+              Pode ficar em branco. Sem telefone, a ficha não conta para os 30.
             </p>
           </div>
 
@@ -202,7 +204,11 @@ export function DialogoNovoCliente({
             >
               {/* Função de render obrigatória: sem ela o Base UI imprime o
                   VALOR do banco (`prospeccao`), minúsculo e sem acento. */}
-              <SelectTrigger id={idFase} aria-describedby={idFaseAjuda}>
+              <SelectTrigger
+                id={idFase}
+                aria-describedby={idFaseAjuda}
+                className="h-11 w-full text-base"
+              >
                 <SelectValue>
                   {(v: FaseCliente) =>
                     FASES_CLIENTE.find((f) => f.id === v)?.rotulo ?? v
@@ -219,7 +225,7 @@ export function DialogoNovoCliente({
             </Select>
             <p
               id={idFaseAjuda}
-              className="text-xs leading-snug text-muted-foreground"
+              className="corpo text-muted-foreground"
             >
               {faseAtual?.ajuda}
             </p>
@@ -228,7 +234,11 @@ export function DialogoNovoCliente({
           <div className="grid gap-2">
             <Label htmlFor={idGrau}>Grau de relação</Label>
             <Select value={grau} onValueChange={(v) => onGrau(v ?? "")}>
-              <SelectTrigger id={idGrau} aria-describedby={idGrauAjuda}>
+              <SelectTrigger
+                id={idGrau}
+                aria-describedby={idGrauAjuda}
+                className="h-11 w-full text-base"
+              >
                 {/* `""` mostra o placeholder, que diz "Não informado" — NUNCA
                     "Lead": a ausência de resposta sobre um terceiro não vira
                     palpite sobre a vida dele. */}
@@ -249,10 +259,10 @@ export function DialogoNovoCliente({
             </Select>
             <p
               id={idGrauAjuda}
-              className="text-xs leading-snug text-muted-foreground"
+              className="corpo text-muted-foreground"
             >
               {grauAtual?.ajuda ??
-                "Como você conhece esta pessoa. Fica “Não informado” enquanto você não escolher — dá para preencher depois, na ficha."}
+                "Como você conhece esta pessoa. Pode escolher depois, na ficha."}
             </p>
           </div>
         </div>
@@ -261,27 +271,41 @@ export function DialogoNovoCliente({
             anunciada por parte dos leitores de tela. */}
         <p
           aria-live="assertive"
-          className="text-xs text-destructive empty:hidden"
+          className="corpo text-destructive empty:hidden"
         >
           {erro}
         </p>
         {/* A confirmação do "adicionar outro". `polite`: não interrompe quem já
             está digitando o próximo nome. Some quando há erro, para as duas
             frases não se contradizerem. */}
-        <p
-          role="status"
-          aria-live="polite"
-          className="corpo-sm font-medium text-foreground empty:hidden"
-        >
-          {erro ? null : confirmacao}
-        </p>
+        {/* Ícone + texto + o próximo passo: depois de salvar, a pessoa
+            precisa saber que deu certo E o que fazer agora. */}
+        <div role="status" aria-live="polite" className="empty:hidden">
+          {!erro && confirmacao ? (
+            <div className="flex gap-2 rounded-md bg-sucesso px-3 py-2 corpo text-sucesso-foreground">
+              <CircleCheck aria-hidden className="mt-1 size-4 shrink-0" />
+              <p>
+                <span className="font-medium">{confirmacao}</span> Digite o
+                próximo nome ou toque em Fechar.
+              </p>
+            </div>
+          ) : null}
+        </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onCancelar} disabled={pending}>
+          <Button
+            variant="outline"
+            size="lg"
+            className="h-11"
+            onClick={onCancelar}
+            disabled={pending}
+          >
             {salvosNaSequencia > 0 ? "Fechar" : "Cancelar"}
           </Button>
           <Button
             variant="outline"
+            size="lg"
+            className="h-11"
             onClick={onSalvarEOutro}
             disabled={pending || !nomeOk}
             aria-busy={(pending && emCurso === "outro") || undefined}
@@ -294,6 +318,8 @@ export function DialogoNovoCliente({
               recusar. A razão fica no texto abaixo do campo, não num toast
               que só aparece depois do clique. */}
           <Button
+            size="lg"
+            className="h-11"
             onClick={onCriar}
             disabled={pending || !nomeOk}
             aria-busy={(pending && emCurso === "ficha") || undefined}

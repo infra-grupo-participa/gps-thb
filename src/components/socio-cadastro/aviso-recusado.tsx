@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TriangleAlert } from "lucide-react";
 import { useCallback, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -54,15 +55,23 @@ export function AvisoCpfRecusado() {
       aria-live="polite"
       className="fixed inset-x-4 bottom-20 z-40 mx-auto grid max-w-lg gap-3 rounded-xl border border-borda-forte bg-atencao p-4 text-atencao-foreground shadow-(--shadow-hover)"
     >
-      <p className="corpo-sm">
-        Seu CPF já está em outro cadastro da base. A equipe vai ligar você ao
-        cadastro certo; se preferir, abra um chamado no{" "}
-        <Link href="/chamados" className="font-medium underline underline-offset-4">
-          Suporte
-        </Link>
-        .
+      <p className="flex items-start gap-2 text-base leading-snug">
+        <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
+        <span>
+          <strong>Seu CPF já está em outro cadastro.</strong> A equipe vai ligar
+          você ao cadastro certo. Se preferir, abra um chamado no{" "}
+          <Link href="/chamados" className="font-semibold underline underline-offset-4">
+            Suporte
+          </Link>
+          .
+        </span>
       </p>
-      <Button type="button" variant="outline" className="justify-self-end" onClick={dispensar}>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 justify-self-end px-5 text-base"
+        onClick={dispensar}
+      >
         Entendi
       </Button>
     </div>

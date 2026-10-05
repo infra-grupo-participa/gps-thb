@@ -44,9 +44,8 @@ export function SequenciaMensagens({ bloqueada }: { bloqueada: boolean }) {
           o parceiro achava que "não existe modelo"). `bloqueada` só muda o
           aviso — a conclusão do passo segue travada pelos 30 em `etapas.ts`. */}
       {bloqueada ? (
-        <p className="mb-2 corpo-sm text-muted-foreground">
-          Você vai usar estes modelos quando concluir a lista de 30 clientes.
-          Pode ler e copiar desde já.
+        <p className="mb-2 corpo text-muted-foreground">
+          Você envia estes modelos depois da lista de 30. Já pode ler e copiar.
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
@@ -55,9 +54,9 @@ export function SequenciaMensagens({ bloqueada }: { bloqueada: boolean }) {
             key={m.id}
             type="button"
             onClick={() => setAberta(m)}
-            className="inline-flex items-center gap-2 rounded-lg border border-borda-fina bg-card px-3 py-1.5 text-left corpo-sm transition hover:border-marca-acao hover:bg-primary/[0.04] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-borda-forte bg-card px-3 py-2 text-left corpo transition hover:border-marca-acao hover:bg-primary/[0.04] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
-            <MessageSquareText aria-hidden className="size-4 shrink-0 text-primary" />
+            <MessageSquareText aria-hidden className="size-5 shrink-0 text-accent-foreground" />
             <span>
               <span className="font-medium">Mensagem {m.ordem}</span>
               <span className="text-muted-foreground"> — {m.titulo}</span>
@@ -82,18 +81,24 @@ export function SequenciaMensagens({ bloqueada }: { bloqueada: boolean }) {
 
 function CorpoDaMensagem({ mensagem }: { mensagem: MensagemDaSequencia }) {
   const [copiado, setCopiado] = useState(false);
+  // O BOTÃO volta a "Copiar mensagem" em 2,5 s; a FRASE de próximo passo
+  // fica — quem lê devagar não perde o "cole no WhatsApp".
+  const [resultadoCopia, setResultadoCopia] = useState<"ok" | "falhou" | null>(null);
 
   async function copiar() {
     try {
       await navigator.clipboard.writeText(mensagem.texto);
       setCopiado(true);
+      setResultadoCopia("ok");
       // Volta ao estado normal: um "Copiado" permanente faz a pessoa achar
       // que o botão parou de funcionar quando ela quiser copiar de novo.
       setTimeout(() => setCopiado(false), 2500);
     } catch {
       // `clipboard` exige contexto seguro e pode ser negado pelo navegador.
-      // O texto está na tela e é selecionável — o caminho manual continua.
+      // O texto está na tela e é selecionável — o caminho manual continua,
+      // e agora a tela DIZ isso em vez de não fazer nada.
       setCopiado(false);
+      setResultadoCopia("falhou");
     }
   }
 
@@ -115,7 +120,7 @@ function CorpoDaMensagem({ mensagem }: { mensagem: MensagemDaSequencia }) {
                 {mensagem.texto.length.toLocaleString("pt-BR")} caracteres
               </span>
             </span>
-            <Button type="button" variant="outline" size="sm" onClick={copiar}>
+            <Button type="button" size="lg" className="h-11" onClick={copiar}>
               {copiado ? (
                 <>
                   <Check aria-hidden className="size-4" /> Copiado
@@ -141,16 +146,32 @@ function CorpoDaMensagem({ mensagem }: { mensagem: MensagemDaSequencia }) {
               aluno conferir na tela o que vai mandar.
 
               `select-all` para quem preferir copiar à mão. */}
-          <div className="max-h-80 space-y-3 overflow-y-auto rounded-xl border border-borda-fina bg-superficie-afundada p-4 corpo-sm leading-relaxed select-all">
+          <div className="max-h-80 space-y-3 overflow-y-auto rounded-xl border border-borda-fina bg-superficie-afundada p-4 corpo leading-relaxed select-all">
             {mensagem.texto.split(/\n{2,}/).map((paragrafo, i) => (
               <p key={i}>{paragrafo}</p>
             ))}
           </div>
 
-          <p aria-live="polite" className="corpo-sm text-muted-foreground">
-            {copiado
-              ? "Copiada. Cole no WhatsApp e troque o [Nome] antes de enviar."
-              : "Os *asteriscos* viram negrito no WhatsApp — cole do jeito que está."}
+          <p
+            aria-live="polite"
+            className={
+              resultadoCopia === "ok"
+                ? "flex items-start gap-1.5 corpo font-medium text-sucesso-foreground"
+                : resultadoCopia === "falhou"
+                  ? "corpo font-medium text-risco-foreground"
+                  : "corpo text-muted-foreground"
+            }
+          >
+            {resultadoCopia === "ok" ? (
+              <>
+                <Check aria-hidden className="mt-1 size-4 shrink-0" />
+                <span>Copiada. Cole no WhatsApp e troque o [Nome] antes de enviar.</span>
+              </>
+            ) : resultadoCopia === "falhou" ? (
+              "Não deu para copiar. Toque no texto acima e copie à mão."
+            ) : (
+              "Os *asteriscos* viram negrito no WhatsApp. Cole do jeito que está."
+            )}
           </p>
         </div>
 
@@ -158,7 +179,7 @@ function CorpoDaMensagem({ mensagem }: { mensagem: MensagemDaSequencia }) {
           <span className="rotulo text-muted-foreground">Instruções de envio</span>
           <ul className="grid gap-2">
             {mensagem.instrucoes.map((i, idx) => (
-              <li key={idx} className="flex gap-2 corpo-sm">
+              <li key={idx} className="flex gap-2 corpo">
                 <span aria-hidden className="shrink-0 text-primary">
                   →
                 </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { AlertCircle, TriangleAlert } from "lucide-react";
 
 import {
   Dialog,
@@ -27,6 +28,14 @@ import type {
 import { UFS_BRASIL } from "@/lib/socio-cadastro-tipos";
 import { buscarCep } from "@/lib/viacep";
 import { razaoParaTravar } from "./travas";
+
+// Público mais velho: rótulo e campo em 16 px, alvo de toque de 44 px.
+// (`corpo` é 15 px; por isso `text-base` aqui.)
+const ROTULO = "text-base leading-snug";
+const CAMPO = "h-11 text-base md:text-base";
+const CLASSE_ERRO =
+  "flex items-start gap-1.5 text-base leading-snug font-medium text-risco-foreground";
+const ICONE_ERRO = "mt-0.5 size-4 shrink-0";
 
 /**
  * O diálogo de cadastro obrigatório do sócio convidado.
@@ -230,41 +239,46 @@ export function SocioCadastro({
           <DialogTitle className="font-heading titulo-h2">
             Complete o seu cadastro
           </DialogTitle>
-          <DialogDescription>
-            Você foi convidado por {dados.titularNome} · {dados.titularEmail}.
-            São os dados do seu próprio cadastro no programa — é só uma vez.
+          <DialogDescription className="text-base leading-snug">
+            Você foi convidado por {dados.titularNome} ({dados.titularEmail}).
+            Preencha seus dados. É só uma vez.
           </DialogDescription>
         </DialogHeader>
 
         <form action={formAction} className="grid gap-5">
-          <p className="corpo-sm text-muted-foreground">
-            Só o nome e o CPF são obrigatórios. O resto ajuda a equipe a falar com você.
+          <p className="text-base leading-snug text-foreground">
+            Só <strong>nome</strong> e <strong>CPF</strong> são obrigatórios.
+            O resto é opcional.
           </p>
 
           <Secao nivel="h3" titulo="Identificação" classeConteudo="grid gap-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-nome">Nome completo</Label>
+                <Label htmlFor="sc-nome" className={ROTULO}>Nome completo (obrigatório)</Label>
                 <Input
+                  className={CAMPO}
                   id="sc-nome"
                   name="nome"
                   maxLength={120}
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   onBlur={() => marcarVisitado("nome")}
+                  placeholder="Ex.: Maria da Silva"
                   autoComplete="name"
                   aria-invalid={erroDeCampo.nome ? true : undefined}
                   aria-describedby={erroDeCampo.nome ? "sc-nome-erro" : undefined}
                 />
                 {erroDeCampo.nome ? (
-                  <p id="sc-nome-erro" className="corpo-sm text-destructive">
+                  <p id="sc-nome-erro" className={CLASSE_ERRO}>
+                    <AlertCircle aria-hidden className={ICONE_ERRO} />
                     {erroDeCampo.nome}
                   </p>
                 ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-doc">CPF</Label>
+                <Label htmlFor="sc-doc" className={ROTULO}>CPF (obrigatório)</Label>
                 <Input
+                  className={CAMPO}
                   id="sc-doc"
                   name="documento"
                   value={documento}
@@ -276,25 +290,33 @@ export function SocioCadastro({
                   aria-describedby={erroDeCampo.documento ? "sc-doc-erro" : undefined}
                 />
                 {erroDeCampo.documento ? (
-                  <p id="sc-doc-erro" className="corpo-sm text-destructive">
+                  <p id="sc-doc-erro" className={CLASSE_ERRO}>
+                    <AlertCircle aria-hidden className={ICONE_ERRO} />
                     {erroDeCampo.documento}
                   </p>
                 ) : null}
               </div>
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="sc-email">E-mail (do seu acesso)</Label>
-              <Input id="sc-email" value={emailLogin} readOnly disabled />
-              <p className="corpo-sm text-muted-foreground">
-                É o e-mail do seu acesso — por isso não pode ser alterado aqui.
+              <Label htmlFor="sc-email" className={ROTULO}>E-mail de acesso</Label>
+              <Input
+                className={CAMPO}
+                id="sc-email"
+                value={emailLogin}
+                readOnly
+                disabled
+              />
+              <p className="text-base leading-snug text-muted-foreground">
+                É o e-mail do seu login. Não dá para mudar aqui.
               </p>
             </div>
           </Secao>
 
           <Secao nivel="h3" titulo="Contato" classeConteudo="grid gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="sc-tel">Telefone / WhatsApp (opcional)</Label>
+              <Label htmlFor="sc-tel" className={ROTULO}>Telefone com WhatsApp (opcional)</Label>
               <Input
+                className={CAMPO}
                 id="sc-tel"
                 name="telefone"
                 value={telefone}
@@ -306,7 +328,8 @@ export function SocioCadastro({
                 aria-describedby={erroDeCampo.telefone ? "sc-tel-erro" : undefined}
               />
               {erroDeCampo.telefone ? (
-                <p id="sc-tel-erro" className="corpo-sm text-destructive">
+                <p id="sc-tel-erro" className={CLASSE_ERRO}>
+                  <AlertCircle aria-hidden className={ICONE_ERRO} />
                   {erroDeCampo.telefone}
                 </p>
               ) : null}
@@ -316,8 +339,9 @@ export function SocioCadastro({
           <Secao nivel="h3" titulo="Endereço" classeConteudo="grid gap-3">
             <div className="grid gap-3 sm:grid-cols-[1fr_2fr_auto]">
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-cep">CEP (opcional)</Label>
+                <Label htmlFor="sc-cep" className={ROTULO}>CEP (opcional)</Label>
                 <Input
+                  className={CAMPO}
                   id="sc-cep"
                   name="cep"
                   value={cep}
@@ -336,52 +360,56 @@ export function SocioCadastro({
                     usa leitor de tela no meio da digitação. */}
                 <p
                   aria-live="polite"
-                  className="corpo-sm text-muted-foreground"
+                  className="text-base text-muted-foreground empty:hidden"
                 >
-                  {buscandoCep ? "Buscando endereço…" : ""}
+                  {buscandoCep ? "Buscando o endereço…" : ""}
                 </p>
                 {erroDeCampo.cep ? (
-                  <p id="sc-cep-erro" className="corpo-sm text-destructive">
+                  <p id="sc-cep-erro" className={CLASSE_ERRO}>
+                    <AlertCircle aria-hidden className={ICONE_ERRO} />
                     {erroDeCampo.cep}
                   </p>
                 ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-cidade">Cidade (opcional)</Label>
+                <Label htmlFor="sc-cidade" className={ROTULO}>Cidade (opcional)</Label>
                 <Input
+                  className={CAMPO}
                   id="sc-cidade"
                   name="cidade"
                   maxLength={120}
                   value={cidade}
                   onChange={(e) => setCidade(e.target.value)}
                   onBlur={() => marcarVisitado("cidade")}
+                  placeholder="Ex.: Belém"
                   aria-invalid={erroDeCampo.cidade ? true : undefined}
                   aria-describedby={
                     erroDeCampo.cidade ? "sc-cidade-erro" : undefined
                   }
                 />
                 {erroDeCampo.cidade ? (
-                  <p id="sc-cidade-erro" className="corpo-sm text-destructive">
+                  <p id="sc-cidade-erro" className={CLASSE_ERRO}>
+                    <AlertCircle aria-hidden className={ICONE_ERRO} />
                     {erroDeCampo.cidade}
                   </p>
                 ) : null}
               </div>
-              <div className="grid w-20 gap-1.5">
-                <Label htmlFor="sc-uf">UF</Label>
+              <div className="grid sm:w-28 gap-1.5">
+                <Label htmlFor="sc-uf" className={ROTULO}>Estado (opcional)</Label>
                 <select
                   id="sc-uf"
                   name="estado"
                   value={estado}
                   onChange={(e) => setEstado(e.target.value)}
                   onBlur={() => marcarVisitado("estado")}
-                  className="foco-visivel h-9 rounded-md border border-input bg-card px-2 corpo-sm aria-invalid:border-destructive"
+                  className="foco-visivel h-11 rounded-md border border-input bg-card px-2 text-base aria-invalid:border-destructive"
                   aria-invalid={erroDeCampo.estado ? true : undefined}
                   aria-describedby={
                     erroDeCampo.estado ? "sc-uf-erro" : undefined
                   }
                 >
                   {/* Selecionável: a UF é opcional desde a 338. */}
-                  <option value="">—</option>
+                  <option value="">Escolher</option>
                   {UFS_BRASIL.map((sigla) => (
                     <option key={sigla} value={sigla}>
                       {sigla}
@@ -389,7 +417,8 @@ export function SocioCadastro({
                   ))}
                 </select>
                 {erroDeCampo.estado ? (
-                  <p id="sc-uf-erro" className="corpo-sm text-destructive">
+                  <p id="sc-uf-erro" className={CLASSE_ERRO}>
+                    <AlertCircle aria-hidden className={ICONE_ERRO} />
                     {erroDeCampo.estado}
                   </p>
                 ) : null}
@@ -397,42 +426,47 @@ export function SocioCadastro({
             </div>
             <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-logradouro">Endereço (opcional)</Label>
+                <Label htmlFor="sc-logradouro" className={ROTULO}>Rua ou avenida (opcional)</Label>
                 <Input
+                  className={CAMPO}
                   id="sc-logradouro"
                   name="logradouro"
                   maxLength={200}
                   value={logradouro}
                   onChange={(e) => setLogradouro(e.target.value)}
                   onBlur={() => marcarVisitado("logradouro")}
-                  placeholder="Rua ..."
+                  placeholder="Ex.: Rua das Flores"
                   aria-invalid={erroDeCampo.logradouro ? true : undefined}
                   aria-describedby={
                     erroDeCampo.logradouro ? "sc-logradouro-erro" : undefined
                   }
                 />
                 {erroDeCampo.logradouro ? (
-                  <p id="sc-logradouro-erro" className="corpo-sm text-destructive">
+                  <p id="sc-logradouro-erro" className={CLASSE_ERRO}>
+                    <AlertCircle aria-hidden className={ICONE_ERRO} />
                     {erroDeCampo.logradouro}
                   </p>
                 ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-numero">Número (opcional)</Label>
+                <Label htmlFor="sc-numero" className={ROTULO}>Número (opcional)</Label>
                 <Input
+                  className={CAMPO}
                   id="sc-numero"
                   name="numero"
                   maxLength={20}
                   value={numero}
                   onChange={(e) => setNumero(e.target.value)}
                   onBlur={() => marcarVisitado("numero")}
+                  placeholder="Ex.: 120"
                   aria-invalid={erroDeCampo.numero ? true : undefined}
                   aria-describedby={
                     erroDeCampo.numero ? "sc-numero-erro" : undefined
                   }
                 />
                 {erroDeCampo.numero ? (
-                  <p id="sc-numero-erro" className="corpo-sm text-destructive">
+                  <p id="sc-numero-erro" className={CLASSE_ERRO}>
+                    <AlertCircle aria-hidden className={ICONE_ERRO} />
                     {erroDeCampo.numero}
                   </p>
                 ) : null}
@@ -440,28 +474,32 @@ export function SocioCadastro({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-bairro">Bairro (opcional)</Label>
+                <Label htmlFor="sc-bairro" className={ROTULO}>Bairro (opcional)</Label>
                 <Input
+                  className={CAMPO}
                   id="sc-bairro"
                   name="bairro"
                   maxLength={120}
                   value={bairro}
                   onChange={(e) => setBairro(e.target.value)}
                   onBlur={() => marcarVisitado("bairro")}
+                  placeholder="Ex.: Centro"
                   aria-invalid={erroDeCampo.bairro ? true : undefined}
                   aria-describedby={
                     erroDeCampo.bairro ? "sc-bairro-erro" : undefined
                   }
                 />
                 {erroDeCampo.bairro ? (
-                  <p id="sc-bairro-erro" className="corpo-sm text-destructive">
+                  <p id="sc-bairro-erro" className={CLASSE_ERRO}>
+                    <AlertCircle aria-hidden className={ICONE_ERRO} />
                     {erroDeCampo.bairro}
                   </p>
                 ) : null}
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="sc-pais">País (opcional)</Label>
+                <Label htmlFor="sc-pais" className={ROTULO}>País (opcional)</Label>
                 <Input
+                  className={CAMPO}
                   id="sc-pais"
                   name="pais"
                   maxLength={60}
@@ -474,7 +512,8 @@ export function SocioCadastro({
                   }
                 />
                 {erroDeCampo.pais ? (
-                  <p id="sc-pais-erro" className="corpo-sm text-destructive">
+                  <p id="sc-pais-erro" className={CLASSE_ERRO}>
+                    <AlertCircle aria-hidden className={ICONE_ERRO} />
                     {erroDeCampo.pais}
                   </p>
                 ) : null}
@@ -483,7 +522,8 @@ export function SocioCadastro({
           </Secao>
 
           {state.erro ? (
-            <p role="alert" aria-live="assertive" className="corpo-sm text-destructive">
+            <p role="alert" aria-live="assertive" className={CLASSE_ERRO}>
+              <AlertCircle aria-hidden className={ICONE_ERRO} />
               {state.erro}
             </p>
           ) : null}
@@ -496,18 +536,23 @@ export function SocioCadastro({
               que leu (fechar sozinho esconderia o aviso no mesmo instante em
               que ele nasce). */}
           {precisaAvisar ? (
-            <div className="grid gap-2 rounded-lg bg-atencao p-3 text-atencao-foreground">
-              <p role="alert" aria-live="polite" className="corpo-sm">
+            <div className="grid gap-3 rounded-lg bg-atencao p-4 text-atencao-foreground">
+              <p
+                role="alert"
+                aria-live="polite"
+                className="flex items-start gap-2 text-base leading-snug font-medium"
+              >
+                <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
                 Este CPF já está em outro cadastro. Fale com a equipe pelo
                 Suporte.
               </p>
               <Button
                 type="button"
                 variant="outline"
-                className="justify-self-start"
+                className="h-11 justify-self-start px-5 text-base"
                 onClick={() => setAvisoConfirmado(true)}
               >
-                Continuar
+                Entendi, continuar
               </Button>
             </div>
           ) : null}
@@ -519,7 +564,11 @@ export function SocioCadastro({
                 corrigir todos os campos visitados mas ainda faltar algo à
                 frente (não visitado), ela é o único aviso disponível. */}
             {razaoTravado && Object.keys(erroDeCampo).length === 0 ? (
-              <p aria-live="polite" className="corpo-sm text-atencao-foreground">
+              <p
+                aria-live="polite"
+                className="flex items-start gap-1.5 text-base leading-snug font-medium text-atencao-foreground"
+              >
+                <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
                 {razaoTravado}
               </p>
             ) : null}
@@ -530,6 +579,7 @@ export function SocioCadastro({
               <LogoutButton linkStyle />
               <Button
                 type="submit"
+                className="h-11 px-6 text-base"
                 disabled={Boolean(razaoTravado) || pendente}
                 aria-busy={pendente || undefined}
               >

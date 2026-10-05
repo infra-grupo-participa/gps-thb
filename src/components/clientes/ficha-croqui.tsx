@@ -29,7 +29,14 @@
  */
 
 import { useId, useRef, useState, useTransition } from "react";
-import { Download, Eye, FileText, Paperclip, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  Download,
+  Eye,
+  FileText,
+  Paperclip,
+  Trash2,
+} from "lucide-react";
 import type { ClienteCroqui } from "@/lib/croquis-tipos";
 import {
   CROQUI_OBSERVACOES_MAXIMO,
@@ -52,6 +59,13 @@ import { VisorDocumento } from "@/components/clientes/visor-documento";
 import { cn } from "@/lib/utils";
 
 const ACCEPT = ".pdf,application/pdf";
+
+// Público mais velho: texto em 16 px, campo e botão com 44 px de altura.
+// (`corpo` é 15 px; por isso `text-base`.)
+const ROTULO = "text-base leading-snug";
+const BOTAO = "h-11 px-4 text-base [&_svg:not([class*='size-'])]:size-5";
+const CLASSE_ERRO =
+  "flex items-start gap-1.5 text-base leading-snug font-medium text-risco-foreground";
 
 /** Frase própria para cada falha do Storage — `error.message` cru não vai à tela. */
 function fraseDoErroDeUpload(erro: { message?: string } | null): string {
@@ -248,21 +262,27 @@ export function FichaCroqui({
           só então preencheria o contexto. */}
       {podeAnexar ? (
         <div className="grid gap-3">
-          <div className="grid gap-1.5 sm:max-w-56">
-            <Label htmlFor={idApresentadoEm}>Apresentado em (opcional)</Label>
+          <div className="grid gap-1.5 sm:max-w-64">
+            <Label htmlFor={idApresentadoEm} className={ROTULO}>
+              Data da apresentação (opcional)
+            </Label>
             <input
               id={idApresentadoEm}
               type="date"
               value={apresentadoEm}
               onChange={(e) => setApresentadoEm(e.target.value)}
               disabled={ocupado}
-              className="flex h-9 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm"
+              className="flex h-11 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm"
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor={idObservacoes}>Observações (opcional)</Label>
+            <Label htmlFor={idObservacoes} className={ROTULO}>
+              Observações (opcional)
+            </Label>
             <Textarea
               id={idObservacoes}
+              className="text-base md:text-base"
+              placeholder="Ex.: Cliente pediu para trocar a ordem das empresas."
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
               disabled={ocupado}
@@ -274,9 +294,9 @@ export function FichaCroqui({
             />
             <p
               className={cn(
-                "corpo-sm",
+                "text-base",
                 observacoesExcedidas
-                  ? "text-destructive"
+                  ? "font-medium text-risco-foreground"
                   : "text-muted-foreground",
               )}
               id={observacoesExcedidas ? `${idObservacoes}-erro` : undefined}
@@ -287,8 +307,8 @@ export function FichaCroqui({
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant="outline"
-              size="sm"
+              variant="default"
+              className={BOTAO}
               disabled={ocupado || observacoesExcedidas}
               aria-busy={enviando !== null || undefined}
               aria-describedby={idAjuda}
@@ -301,15 +321,14 @@ export function FichaCroqui({
         </div>
       ) : null}
 
-      <p id={idAjuda} className="corpo-sm text-muted-foreground">
+      <p id={idAjuda} className="text-base leading-snug text-muted-foreground">
         Só PDF, até {croquiTamanhoLegivel(CROQUI_TAMANHO_MAXIMO)}. Cada envio
-        vira uma versão nova no histórico — as anteriores continuam listadas,
-        com data.{" "}
+        é uma versão nova. As anteriores continuam na lista.{" "}
         {/* Onda 1.5 (02/10/2026): o croqui grava no envio do arquivo. Sem
             isto, a pessoa anexava, clicava "Salvar ficha" achando que era o
             que gravava — ou deixava de anexar esperando o botão. */}
         <strong className="font-medium text-foreground">
-          Salvo à parte, assim que o arquivo sobe — não depende do botão
+          O arquivo é salvo assim que sobe. Não precisa clicar em
           &quot;Salvar ficha&quot;.
         </strong>
       </p>
@@ -326,32 +345,32 @@ export function FichaCroqui({
             return (
               <li
                 key={croqui.id}
-                className="grid gap-1.5 rounded-lg bg-superficie-afundada px-2.5 py-2"
+                className="grid gap-2.5 rounded-lg bg-superficie-afundada px-3 py-3"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <FileText
                     aria-hidden
                     className="size-4 shrink-0 text-muted-foreground"
                   />
-                  <span className="shrink-0 corpo-sm text-muted-foreground">
+                  <span className="shrink-0 text-base font-semibold">
                     Versão {versao} de {croquis.length}
                   </span>
-                  <span className="order-first basis-full truncate corpo-sm font-medium sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto">
+                  <span className="order-first basis-full truncate text-base font-medium sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto">
                     {croqui.nome}
                   </span>
                   {croqui.tamanho ? (
-                    <span className="numero shrink-0 corpo-sm text-muted-foreground">
+                    <span className="numero shrink-0 text-base text-muted-foreground">
                       {croquiTamanhoLegivel(croqui.tamanho)}
                     </span>
                   ) : null}
-                  <span className="shrink-0 corpo-sm text-muted-foreground">
+                  <span className="shrink-0 text-base text-muted-foreground">
                     enviado em {formatarDataHora(croqui.enviado_em)}
                     {croqui.enviado_pela_equipe ? " · pela equipe" : " · por você"}
                   </span>
                   <Button
                     type="button"
                     variant="outline"
-                    size="xs"
+                    className={BOTAO}
                     disabled={removendoAgora}
                     aria-pressed={emVisualizacao}
                     aria-label={`Pré-visualizar croqui de ${formatarDataHora(croqui.enviado_em)}`}
@@ -364,7 +383,7 @@ export function FichaCroqui({
                   <Button
                     type="button"
                     variant="outline"
-                    size="xs"
+                    className={BOTAO}
                     disabled={baixandoId || removendoAgora}
                     aria-busy={baixandoId || undefined}
                     aria-label={`Baixar croqui de ${formatarDataHora(croqui.enviado_em)}`}
@@ -376,7 +395,7 @@ export function FichaCroqui({
                     <Button
                       type="button"
                       variant="ghost-danger"
-                      size="xs"
+                      className={BOTAO}
                       disabled={ocupado || removendoAgora}
                       aria-label={`Remover croqui de ${formatarDataHora(croqui.enviado_em)}`}
                       onClick={() => {
@@ -393,17 +412,13 @@ export function FichaCroqui({
                     text-muted-foreground, valor abaixo — hierarquia por
                     POSIÇÃO, sem card por campo nem ícone decorativo. */}
                 <div className="grid gap-1">
-                  <p className="corpo-sm text-muted-foreground">
-                    Apresentado em
-                  </p>
-                  <p className="corpo-sm">{apresentado ?? "não informado"}</p>
+                  <p className="text-base font-semibold">Apresentado em</p>
+                  <p className="text-base">{apresentado ?? "não informado"}</p>
                 </div>
                 {croqui.observacoes ? (
                   <div className="grid gap-1">
-                    <p className="corpo-sm text-muted-foreground">
-                      Observações
-                    </p>
-                    <p className="corpo-sm whitespace-pre-wrap">
+                    <p className="text-base font-semibold">Observações</p>
+                    <p className="text-base leading-relaxed whitespace-pre-wrap">
                       {croqui.observacoes}
                     </p>
                   </div>
@@ -423,7 +438,7 @@ export function FichaCroqui({
           })}
         </ul>
       ) : (
-        <p className="corpo-sm text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Nenhum croqui enviado ainda.
         </p>
       )}
@@ -433,8 +448,8 @@ export function FichaCroqui({
       <div aria-live="polite" className="grid gap-1.5 empty:hidden">
         {enviando ? (
           <>
-            <p className="corpo-sm text-muted-foreground">
-              Enviando {enviando}…
+            <p className="text-base font-medium">
+              Enviando {enviando}… Aguarde.
             </p>
             {/* Barra indeterminada: o SDK não reporta progresso, e uma barra
                 determinada mentiria sobre quanto falta. */}
@@ -452,9 +467,14 @@ export function FichaCroqui({
       {/* Sempre montado, mas CALADO enquanto o diálogo de remover está
           aberto: lá o mesmo erro já aparece, e anunciá-lo duas vezes é pior
           do que anunciá-lo uma. */}
-      <p role="alert" className="corpo-sm text-destructive empty:hidden">
-        {removendoId ? "" : erro}
-      </p>
+      <div role="alert" className="empty:hidden">
+        {!removendoId && erro ? (
+          <p className={CLASSE_ERRO}>
+            <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+            {erro}
+          </p>
+        ) : null}
+      </div>
 
       {removendoCroqui ? (
         <DialogoConfirmacao

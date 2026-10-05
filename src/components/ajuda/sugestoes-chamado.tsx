@@ -68,10 +68,13 @@ export function SugestoesChamado({
   if (artigos.length === 0) return null;
 
   return (
-    <section aria-labelledby={idTitulo} className="rounded-md border px-3 pt-2">
-      <h3 id={idTitulo} className="rotulo text-muted-foreground">
-        Talvez isto resolva antes de abrir o chamado
+    <section aria-labelledby={idTitulo} className="rounded-md border px-3 pt-3">
+      <h3 id={idTitulo} className="corpo font-semibold">
+        Isto pode responder sua dúvida
       </h3>
+      <p className="corpo text-muted-foreground">
+        Toque para ler. Se não resolver, envie o chamado normalmente.
+      </p>
       {artigos.map((a) => (
         <ArtigoAjudaItem key={a.id} artigo={a} origem="chamado" />
       ))}

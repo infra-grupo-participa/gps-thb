@@ -74,7 +74,7 @@ test.describe("Links do Drive na ficha", () => {
     // Trocar: um link só por cliente; o novo substitui o atual.
     await card.getByRole("button", { name: "Trocar link" }).click();
     await card.getByLabel("Novo link do Drive").fill("drive.google.com/drive/folders/qa-e2e-2");
-    await card.getByRole("button", { name: "Trocar", exact: true }).click();
+    await card.getByRole("button", { name: "Salvar novo link" }).click();
     await expect(abrir).toHaveAttribute("href", /qa-e2e-2/, { timeout: 20_000 });
     await expect(abrir).toHaveCount(1);
 

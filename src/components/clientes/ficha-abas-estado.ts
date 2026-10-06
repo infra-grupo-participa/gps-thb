@@ -66,10 +66,8 @@ export const ROTULO_DA_ABA: Record<AbaFicha, string> = {
   // jurídica e vive em `/sessoes`.
   preliminar: "Reunião preliminar",
   croqui: "Croqui",
-  // 🔴 "Fechamento da Holding", literal do Marcio (24/09/2026). O rótulo é
-  // maior que os outros três de propósito: a faixa de abas rola por dentro no
-  // celular (medido em 390 px), então o texto inteiro cabe sem cortar a
-  // primeira aba.
+  // 🔴 "Fechamento da Holding", literal do Marcio (24/09/2026). Em 390 px a
+  // aba quebra em duas linhas dentro da grade (`ficha-abas.tsx`), sem cortar.
   fechamento: "Fechamento da Holding",
 };
 
@@ -977,81 +975,4 @@ export function fraseDaBarra(args: {
   const extra =
     outras > 0 ? ` E em mais ${outras} ${outras === 1 ? "aba" : "abas"}.` : "";
   return `Você tem alterações não salvas em ${ROTULO_DA_ABA[primeira]}.${extra}`;
-}
-
-/**
- * ═══════════════════════════════════════════════════════════════════════
- * O `scrollLeft` que põe a ABA ATIVA inteira dentro da faixa
- * ═══════════════════════════════════════════════════════════════════════
- *
- * A régua das abas rola por dentro no celular (medido em 390 px:
- * `scrollWidth = 622` contra `clientWidth = 366`) e nasce em `scrollLeft = 0`.
- * A aba ativa NÃO é necessariamente a primeira — `abaPadraoPorFase` abre em
- * "Fechamento da Holding" para quem já contratou, e `?aba=` chega de fora.
- * Sem esta conta, a pessoa via três rótulos e **nenhum marcado**: a régua
- * laranja existia, fora do campo de visão.
- *
- * Entrada em pixels, tudo relativo ao CONTEÚDO da faixa (não ao viewport):
- * `inicio`/`fim` são as bordas do trigger ativo medidas a partir do começo do
- * conteúdo rolável. Quem converte de `getBoundingClientRect` é o componente —
- * aqui não há DOM, e é isso que torna a regra conferível sem montar a tela.
- *
- * Devolve `null` quando **nada precisa mudar**: o alvo já está inteiro na
- * janela visível. É o caso da aba 1, que é o comum — e a diferença entre
- * "não mexer" e "escrever o mesmo valor" importa, porque escrever
- * `scrollLeft` num container é um efeito colateral observável (dispara
- * `scroll`) e não se paga sem necessidade.
- *
- * 🔴 **Alinha pela borda mais próxima, nunca centraliza.** Centralizar moveria
- * a faixa mesmo com a aba já visível e esconderia as vizinhas — a régua é um
- * mapa das cinco folhas, não um carrossel de uma.
- *
- * 🔴 **O resultado é grampeado em `[0, scrollWidth - clientWidth]`.** Sem
- * isso, aba mais larga que a janela (rótulo "Fechamento da Holding" em
- * viewport muito estreito) pediria um `scrollLeft` maior que o máximo; o
- * navegador grampearia sozinho, mas o valor devolvido mentiria para quem o
- * confere em teste. Quando o alvo é mais largo que a janela, o `Math.min`
- * abaixo faz vencer o alinhamento pela ESQUERDA — começo do rótulo visível
- * vale mais que o fim dele.
- */
-export function rolarAbaAtivaParaDentro(args: {
-  /** Borda esquerda do trigger ativo, a partir do início do conteúdo. */
-  inicio: number;
-  /** Borda direita do trigger ativo, a partir do início do conteúdo. */
-  fim: number;
-  /** `scrollLeft` atual da faixa. */
-  scrollLeft: number;
-  /** Largura VISÍVEL da faixa. */
-  clientWidth: number;
-  /** Largura TOTAL do conteúdo da faixa. */
-  scrollWidth: number;
-}): number | null {
-  const { inicio, fim, scrollLeft, clientWidth, scrollWidth } = args;
-
-  // Faixa que não rola (1366 px: as cinco abas cabem) não tem o que ajustar.
-  const maximo = Math.max(0, scrollWidth - clientWidth);
-  if (maximo === 0) return null;
-
-  const visivelInicio = scrollLeft;
-  const visivelFim = scrollLeft + clientWidth;
-
-  let destino: number;
-  if (inicio < visivelInicio) {
-    // Cortado à esquerda: encosta o começo do rótulo na borda esquerda.
-    destino = inicio;
-  } else if (fim > visivelFim) {
-    // Cortado à direita: encosta o fim do rótulo na borda direita — e, se o
-    // rótulo for mais largo que a janela, o `min` devolve `inicio` (a
-    // esquerda vence).
-    destino = Math.min(inicio, fim - clientWidth);
-  } else {
-    return null;
-  }
-
-  const grampeado = Math.max(0, Math.min(maximo, destino));
-  // Arredondar para inteiro: `scrollLeft` fracionário em Chromium volta
-  // arredondado na leitura, e o teste que compara ida com volta veria
-  // diferença de sub-pixel sem nenhum defeito por trás.
-  const final = Math.round(grampeado);
-  return final === Math.round(scrollLeft) ? null : final;
 }

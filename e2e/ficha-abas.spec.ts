@@ -1194,35 +1194,39 @@ function suiteDaFicha(opts: {
         });
 
         /**
-         * 🔴 A FOLHA ABERTA TEM DE ESTAR À VISTA NA RÉGUA (achado do João,
-         * 24/09, it. 2). Em 390/412 px a faixa de abas transborda (~607 px
-         * para ~334 de janela) e rola por dentro; sem `rolarAbaAtivaParaDentro`
-         * (`ficha-abas-estado.ts`, ligada pelo `useEffect` de `ficha-abas.tsx`)
-         * a aba "Fechamento da Holding" nascia fora da janela e a pessoa não
-         * via etiqueta nenhuma selecionada. Esta asserção é a única prova no
-         * repositório dessa junção helper → ref → DOM: `boundingBox()` da aba
-         * ativa contido no da `tablist` (1 px de tolerância). No `desktop` a
-         * faixa não rola e isto prova o ramo `null` (nada se move).
+         * 🔴 A RÉGUA NÃO ROLA (João, 06/10/2026). Em 390 px a faixa tinha
+         * `scrollWidth 622` contra `clientWidth 366` e obrigava a arrastar
+         * para o lado; virou grade (`ficha-abas.tsx`). Prova nos DOIS
+         * tamanhos-alvo, independente do projeto: nada transborda na
+         * `tablist` da ficha (1 px de tolerância de arredondamento). Sem
+         * rolagem, a aba ativa está sempre à vista. Escopada à `tablist` que
+         * CONTÉM a aba: `.first()` poderia pegar a do header.
          */
-        await expect
-          .poll(
-            async () => {
-              const faixa = await page.getByRole("tablist").first().boundingBox();
-              const ativa = await aba(page, id).boundingBox();
-              if (!faixa || !ativa) return "sem caixa";
-              const dentro =
-                ativa.x >= faixa.x - 1 &&
-                ativa.x + ativa.width <= faixa.x + faixa.width + 1;
-              return dentro
-                ? "dentro"
-                : `fora: aba ${Math.round(ativa.x)}..${Math.round(ativa.x + ativa.width)} × faixa ${Math.round(faixa.x)}..${Math.round(faixa.x + faixa.width)}`;
-            },
-            {
-              message: `folha "${id}" (${papel}): a aba ativa tem de estar dentro da faixa — rolarAbaAtivaParaDentro não agiu`,
-              timeout: 5_000,
-            },
-          )
-          .toBe("dentro");
+        const viewportOriginal = page.viewportSize();
+        for (const tamanho of [
+          { width: 390, height: 844 },
+          { width: 1366, height: 900 },
+        ]) {
+          await page.setViewportSize(tamanho);
+          await expect
+            .poll(
+              async () =>
+                page
+                  .getByRole("tablist")
+                  .filter({ has: aba(page, id) })
+                  .evaluate((el) =>
+                    el.scrollWidth <= el.clientWidth + 1
+                      ? "cabe"
+                      : `rola: scrollWidth ${el.scrollWidth} × clientWidth ${el.clientWidth}`,
+                  ),
+              {
+                message: `folha "${id}" em ${tamanho.width}px: a régua de abas não pode rolar para o lado`,
+                timeout: 5_000,
+              },
+            )
+            .toBe("cabe");
+        }
+        if (viewportOriginal) await page.setViewportSize(viewportOriginal);
 
         await semRolagemHorizontal(page);
         await contrasteAprovado(page, `ficha · folha "${id}" (${papel})`);

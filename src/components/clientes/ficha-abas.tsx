@@ -14,12 +14,11 @@
  * `useState` do formulário.
  *
  * ── DENSO E CHAPADO ────────────────────────────────────────────────────────
- * Abas como APARADORES de pasta: régua laranja de 2 px na folha ativa (o
- * mesmo `TabsList variant="line"` do header e do painel do admin), uma linha
- * fina separando, corpo em `bg-card`. Sem sombra, sem gradiente, sem fonte
- * grande. Hierarquia por POSIÇÃO. Tipografia pelas `@utility` (`rotulo`,
- * `corpo-sm`) — **nunca** `text-*` custom, que o `tailwind-merge` trata como
- * COR e descarta.
+ * Abas como botões de uma grade: borda de 2 px + `bg-card` na folha ativa
+ * (o `TabsList variant="line"` do header, com a forma sobrescrita só aqui),
+ * corpo em `bg-card`. Sem sombra, sem gradiente. Rótulo em `text-base`
+ * (16 px, escala padrão do Tailwind — o `tailwind-merge` a reconhece como
+ * tamanho). **Nunca** `text-*` custom, que ele trata como COR e descarta.
  *
  * ── 🔴 ÍCONES: IDENTIDADE E ESTADO, NUNCA ENFEITE (Marcio, 29/09/2026) ─────
  * A ficha é usada por pessoas de mais idade, e o pedido foi literal:
@@ -31,9 +30,9 @@
  *     `PenTool` Croqui · `FilePenLine` Fechamento (o `FileSignature` do
  *     pedido virou `FilePenLine` no lucide 1.x). Sempre o mesmo por folha,
  *     para o olho achar a folha sem ler;
- *   · **estado** (`estadoDaAba`) — `CircleAlert` "N para corrigir"
- *     (vermelho), `TriangleAlert` sugestão (âmbar), `CircleCheck` "Completa"
- *     (verde, só em Dados).
+ *   · **estado** — só `CircleAlert` "N para corrigir", o único que barra o
+ *     salvar. Sugestão e "Completa" saíram da aba (João, 06/10/2026: "ninguém
+ *     vai ler esses textos"); continuam no nome acessível.
  * Todo ícone é `aria-hidden` e vem SEMPRE com texto ao lado (WCAG 1.4.1:
  * nunca só cor, nunca só forma). Cor de texto só pelos pares semânticos do
  * `globals.css` (`risco`/`atencao`/`sucesso`-foreground, ≥5,8:1) e
@@ -67,11 +66,14 @@
  * Escrever `?aba=preliminar` só porque a fase é "prospecção" congelaria num
  * link uma fase que muda.
  *
- * ── 🔴 CONTADOR NO RÓTULO DE TODA ABA ──────────────────────────────────────
- * "Recolhido não pode ser invisível": aba inativa É conteúdo escondido. Cada
- * rótulo carrega o que tem dentro (`contadorDaAba`), em `Badge
- * variant="neutral"` — texto, nunca cor sozinha. A única aba que pode ficar
- * sem badge é "Dados básicos" sem razão social, e aí não há fato a esconder.
+ * ── 🔴 ABA = ÍCONE + RÓTULO, 16 px (João, 06/10/2026) ─────────────────────
+ * Público mais velho, "tem que ser simples, ninguém vai ler esses textos". O
+ * contador (`contadorDaAba`), o estado não bloqueante e o "não salvo" saíram
+ * da VISTA; ficam em `sr-only` DENTRO do botão, depois do rótulo: o leitor de
+ * tela ouve "Dados básicos, 1 para corrigir, PJ" e `e2e/ficha-abas.spec.ts`
+ * (teste 2, `innerText`) continua achando o contador. À vista, só o selo
+ * "N para corrigir" — o que impede salvar. O "não salvo" de cada folha já é
+ * nomeado pela barra de salvar (`fraseDaBarra`).
  *
  * ── 🔴 `keepMounted`: POR QUE O CONTEÚDO NÃO DESMONTA ───────────────────────
  * `TabsPanel` do Base UI é `keepMounted = false` por padrão — o conteúdo
@@ -92,56 +94,30 @@
  * dentro de pai oculto dá verde falso. Quem prova é `offsetParent`, em
  * navegador que pinta.
  *
- * ── 🔴 A FAIXA ROLA ATÉ A ABA ATIVA (medido em 390 px, 24/09/2026) ─────────
- * A `TabsList` tem `overflow-x-auto` e, em 390 px, `scrollWidth = 622` contra
- * `clientWidth = 366`. Ela nasce com `scrollLeft = 0` — e a aba ativa NEM
- * SEMPRE é a primeira: cliente em fase `contratado` abre em "Fechamento da
- * Holding" (`abaPadraoPorFase`), e `?aba=croqui` / `?aba=fechamento` também
- * chegam de fora. Nesses casos o trigger ativo começava depois dos 366 px e a
- * pessoa via "Dados básicos | Reunião preliminar | Cro…" **sem nenhuma
- * etiqueta marcada**: a régua laranja existia, fora do campo de visão.
- *
- * `rolarAbaAtivaParaDentro` (puro, em `ficha-abas-estado.ts`) calcula o
- * `scrollLeft` mínimo e o efeito o aplica na montagem e a cada troca.
- *
- * 🔴 **Por que NÃO `scrollIntoView`**: ele age sobre TODOS os ancestrais
- * roláveis. Mesmo com `block: "nearest"` (que não mexe no eixo vertical de
- * elemento já visível), o `inline: "nearest"` sobe até o
- * `documentElement` — e numa página com rolagem horizontal residual ele a
- * moveria. Escrever `scrollLeft` do container toca UM elemento, por
- * construção, e é a razão de o teste medir `scrollY` e `scrollWidth` da
- * página junto.
- *
- * 🔴 **Sem `behavior: "smooth"`**: a rolagem da montagem não é resposta a um
- * gesto — animá-la é movimento não solicitado (WCAG 2.3.3), exatamente o que
- * `prefers-reduced-motion` pede para não existir. Atribuição direta de
- * `scrollLeft` é instantânea e honra a preferência sem precisar consultá-la.
- *
- * ⚠️ `useEffect`, não `useLayoutEffect`: nada aqui é medido para pintar o
- * React — o efeito escreve no DOM e pronto. `useLayoutEffect` só trocaria um
- * frame de rolagem por bloqueio síncrono da pintura, e ainda avisaria no SSR.
+ * ── 🔴 GRADE, NÃO FAIXA QUE ROLA (João, 06/10/2026) ───────────────────────
+ * Em 390 px a faixa tinha `scrollWidth 622` contra `clientWidth 366` e
+ * obrigava a arrastar para o lado. Agora é grade: 2 colunas no celular (a
+ * Trajetória ocupa a linha inteira), 5 a partir de `md` (768). Em `sm`
+ * (640) as 5 colunas davam 111 px e "Fechamento" com ícone pede 124:
+ * `scrollWidth 630` × `clientWidth 608`, medido. Nada rola, então
+ * a aba ativa está sempre à vista — a rolagem até a aba ativa saiu.
  */
 
-import { useEffect, useRef } from "react";
 import {
   CalendarClock,
   CircleAlert,
-  CircleCheck,
   FilePenLine,
   PenTool,
   Route,
-  TriangleAlert,
   User,
   type LucideIcon,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   ABAS_FICHA,
   ROTULO_DA_ABA,
-  rolarAbaAtivaParaDentro,
   type AbaFicha,
   type EstadoDaAba,
 } from "@/components/clientes/ficha-abas-estado";
@@ -153,16 +129,6 @@ const ICONE_DA_ABA: Record<AbaFicha, LucideIcon> = {
   preliminar: CalendarClock,
   croqui: PenTool,
   fechamento: FilePenLine,
-};
-
-/** O ícone e a cor de cada ESTADO. Cor sempre com texto junto. */
-const VISUAL_DO_ESTADO: Record<
-  NonNullable<EstadoDaAba>["tipo"],
-  { Icone: LucideIcon; cor: string }
-> = {
-  corrigir: { Icone: CircleAlert, cor: "text-risco-foreground" },
-  sugestao: { Icone: TriangleAlert, cor: "text-atencao-foreground" },
-  completa: { Icone: CircleCheck, cor: "text-sucesso-foreground" },
 };
 
 export function FichaAbas({
@@ -205,39 +171,6 @@ export function FichaAbas({
     fechamento,
   };
 
-  /** A faixa que rola (`overflow-x-auto`). */
-  const faixaRef = useRef<HTMLDivElement | null>(null);
-  /** Um nó por aba — o efeito só precisa do da aba ATIVA. */
-  const triggersRef = useRef(new Map<AbaFicha, HTMLElement>());
-
-  useEffect(() => {
-    const faixa = faixaRef.current;
-    const alvo = triggersRef.current.get(aba);
-    if (!faixa || !alvo) return;
-
-    // `offsetLeft` é relativo ao pai posicionado. A `TabsList` não tem
-    // `position` declarada, então o `offsetParent` do trigger pode ser um
-    // ancestral acima dela — por isso a conta sai de `getBoundingClientRect`,
-    // que é absoluta em viewport nos DOIS elementos, e a diferença entre eles
-    // é a posição do alvo dentro da faixa JÁ rolada.
-    const faixaBox = faixa.getBoundingClientRect();
-    const alvoBox = alvo.getBoundingClientRect();
-    const inicio = alvoBox.left - faixaBox.left + faixa.scrollLeft;
-    const fim = inicio + alvoBox.width;
-
-    const destino = rolarAbaAtivaParaDentro({
-      inicio,
-      fim,
-      scrollLeft: faixa.scrollLeft,
-      clientWidth: faixa.clientWidth,
-      scrollWidth: faixa.scrollWidth,
-    });
-
-    // `null` = já está inteiro dentro. Escrever `scrollLeft` igual ao atual
-    // seria inofensivo, mas a guarda deixa o "não mexer" explícito.
-    if (destino !== null) faixa.scrollLeft = destino;
-  }, [aba]);
-
   return (
     <Tabs
       value={aba}
@@ -259,94 +192,59 @@ export function FichaAbas({
          só a medição no tamanho alvo pega isto. */
       className="min-w-0 gap-0"
     >
-      {/* 🔴 `justify-start`, pela MESMA razão medida em `abas-painel.tsx`: a
-          `TabsList` nasce `justify-center` e, quando as cinco abas não cabem
-          (390 px — e aqui cada rótulo ainda carrega um badge), o conteúdo
-          centralizado transborda para os DOIS lados; a primeira folha ficaria
-          cortada e INALCANÇÁVEL, porque `scrollLeft` já está em 0. Alinhada à
-          esquerda, o excesso sai só pela direita e a faixa rola até ele.
-
-          `items-end`: os rótulos com badge são mais altos que os sem, e sem
-          isto as réguas de 2 px ficariam em alturas diferentes — o aparador
-          da pasta tem de assentar numa linha só.
-
-          🔴 `w-full!` derruba o `w-fit` da base, e a razão foi MEDIDA em
-          Chromium: com `w-fit`, a faixa dimensiona pelo CONTEÚDO e o
-          `max-w-full` da base resolve contra o `Tabs` já encolhido pelo
-          `min-w-0`. Em **1366** a lista ficava com `clientWidth = 448` num
-          espaço de 896 — ela rolava com folga de sobra, nascia com
-          `scrollLeft = 86` e a **primeira aba aparecia cortada** ("…cos" no
-          lugar de "Dados básicos"), exatamente o defeito que `abas-painel.tsx`
-          documenta. Com `w-full`, a faixa ocupa a largura disponível e só rola
-          quando de fato não cabe (390 px). Medido depois: `scrollLeft = 0` e
-          primeira aba inteira nas 5 abas, nos 2 tamanhos. */}
+      {/* 🔴 GRADE (ver o cabeçalho). `grid` e `overflow-visible` vencem o
+          `inline-flex`/`overflow-x-auto` do variant `line` pelo
+          `tailwind-merge` (último da mesma família vence) — conferido no
+          HTML. `items-stretch`: botões da mesma linha com a mesma altura.
+          `ui/tabs.tsx` fica intacto: header e painéis usam o mesmo variant. */}
       <TabsList
-        ref={faixaRef}
         variant="line"
-        className="w-full! items-end justify-start"
+        className="grid w-full! grid-cols-2 items-stretch gap-2 overflow-visible pb-2 md:grid-cols-5"
       >
         {ABAS_FICHA.map((id) => {
           const contador = contadores[id];
           const alterada = abasAlteradas.includes(id);
           const estado = estados[id];
           const IconeAba = ICONE_DA_ABA[id];
-          const visual = estado ? VISUAL_DO_ESTADO[estado.tipo] : null;
+          const bloqueia = estado?.tipo === "corrigir";
           return (
             <TabsTrigger
               key={id}
               value={id}
-              ref={(n) => {
-                if (n) triggersRef.current.set(id, n);
-                else triggersRef.current.delete(id);
-              }}
-              className="h-auto! flex-col items-start gap-0.5 py-1.5"
+              className={cn(
+                // Alvo ≥ 44 px, texto quebra em vez de cortar.
+                "h-auto! min-h-11 flex-col items-start justify-center gap-1 whitespace-normal px-3 py-2 text-left text-base",
+                // Ativa: borda de 2 px + fundo de card + peso (Base UI põe
+                // `aria-selected`). Inativa tem a mesma borda em cinza, para
+                // não pular 1 px na troca. A régua `after:` do variant sai —
+                // somaria 4 px embaixo. `marca-solida` (#B04300) e não
+                // `primary`: dá 3:1 contra o card (WCAG 1.4.11).
+                "rounded-md border-2 border-borda-fina after:hidden",
+                "data-active:border-marca-solida data-active:bg-card!",
+                id === "trajetoria" && "col-span-2 md:col-span-1",
+              )}
             >
-              <span className="flex items-center gap-1.5">
-                <IconeAba aria-hidden className="size-4 shrink-0" />
+              <span className="flex items-center gap-2">
+                <IconeAba aria-hidden className="size-5 shrink-0" />
                 {ROTULO_DA_ABA[id]}
-                {/* O ESTADO — ícone + texto, depois do rótulo. O `" "` não
-                    aparece (espaço solto num flex some) mas separa as palavras
-                    no nome acessível: sem ele o leitor diria "Dados
-                    básicosCompleta". */}
-                {estado && visual ? " " : null}
-                {estado && visual ? (
-                  <span
-                    className={cn(
-                      "flex items-center gap-1 corpo-sm font-medium",
-                      visual.cor,
-                    )}
-                  >
-                    <visual.Icone aria-hidden className="size-4 shrink-0" />
-                    {estado.texto}
-                  </span>
-                ) : null}
-                {/* 🔴 A MARCA DE ALTERAÇÃO — era um ponto de 6 px; virou
-                    TEXTO, que se lê sem saber o que o ponto significa. O
-                    visível é curto ("não salvo") e fica fora da árvore de
-                    acessibilidade; o leitor de tela ouve a forma longa, a
-                    mesma que `e2e/ficha-abas.spec.ts` confere. */}
-                {alterada ? " " : null}
-                {alterada ? (
-                  <span className="corpo-sm font-medium text-accent-foreground">
-                    <span aria-hidden>não salvo</span>
-                    <span className="sr-only">(alterações não salvas)</span>
-                  </span>
-                ) : null}
               </span>
-              {/* O contador. `Badge variant="neutral"` (cinza com ícone de
-                  cadeado desligado): o que informa é o TEXTO. */}
-              {contador ? (
-                <Badge
-                  variant="neutral"
-                  icone={false}
-                  className={cn(
-                    "h-auto rounded-sm border-0 bg-transparent px-0 py-0",
-                    "corpo-sm font-normal text-muted-foreground",
-                  )}
-                >
-                  {contador}
-                </Badge>
+              {/* O SELO — só quando algo barra o salvar. Texto + ícone, nunca
+                  só cor. Vem DEPOIS do rótulo: o nome acessível começa pelo
+                  rótulo (`^dados b(á|a)sicos` no spec). */}
+              {bloqueia ? (
+                <span className="flex items-center gap-1 rounded-sm bg-risco px-1.5 font-semibold text-risco-foreground">
+                  <CircleAlert aria-hidden className="size-4 shrink-0" />
+                  <span className="sr-only">, </span>
+                  {estado.texto}
+                </span>
               ) : null}
+              {/* Só para leitor de tela (e para o teste 2, que lê
+                  `innerText`). A vírgula vira pausa na leitura. */}
+              <span className="sr-only">
+                {estado && !bloqueia ? `, ${estado.texto}` : null}
+                {alterada ? ", alterações não salvas" : null}
+                {contador ? `, ${contador}` : null}
+              </span>
             </TabsTrigger>
           );
         })}

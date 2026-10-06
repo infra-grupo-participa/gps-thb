@@ -2,8 +2,9 @@
 
 /**
  * "Adicionar" cliente — antes um clique que criava uma linha vazia e jogava a
- * pessoa na ficha. Agora pergunta as TRÊS coisas que o aluno já sabe no momento
- * em que cadastra:
+ * pessoa na ficha. Agora pergunta o que o aluno já sabe no momento em que
+ * cadastra (a escolha de FASE saiu daqui: o cliente nasce em Prospecção e a
+ * fase passou a ser calculada pela trajetória):
  *
  *   · **Nome** — obrigatório. 🔴 MEDIDO EM 10/09/2026: existiam **21 fichas
  *     sem nome nenhum, em 18 ambientes**, a mais antiga de 15/07 — uma delas
@@ -40,7 +41,7 @@
  */
 
 import { useEffect, useId, useRef } from "react";
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, Phone, User } from "lucide-react";
 import { mascaraTelefone } from "@/lib/masks";
 import { GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { Button } from "@/components/ui/button";
@@ -136,8 +137,11 @@ export function DialogoNovoCliente({
                 que decide se a ficha CONTA para os 30 (ficha completa = nome +
                 telefone). 18 fichas em 9 ambientes ficaram sem telefone; duas
                 pessoas estão a uma ficha de destravar a Etapa 01. */}
-            Nome e telefone fazem a ficha contar para os 30. O resto
-            você preenche depois.
+            {/* A frase da fase morava solta entre os campos, sem campo seu (a
+                escolha de fase saiu deste diálogo). É contexto do cadastro,
+                não um campo: mora aqui. */}
+            Nome e telefone fazem a ficha contar para os 30. O cliente começa
+            em Prospecção; o resto você preenche depois, na ficha.
           </DialogDescription>
         </DialogHeader>
 
@@ -145,56 +149,73 @@ export function DialogoNovoCliente({
           {/* 🔑 O NOME VEM PRIMEIRO e é obrigatório. Sem ele a ficha nasce
               fantasma (21 casos medidos em 10/09) e não conta para os 30. */}
           <div className="grid gap-2">
-            <Label htmlFor={idNome}>Nome</Label>
-            <Input
-              id={idNome}
-              ref={refNome}
-              value={nome}
-              onChange={(e) => onNome(e.target.value)}
-              placeholder="Como você chama esta pessoa"
-              className="h-11 md:text-base"
-              autoFocus
-              // Enter cria, como em qualquer formulário de uma linha só.
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && nomeOk && !pending)
-                  // Em sequência ("adicionar outro"), Enter continua a sequência.
-                  (salvosNaSequencia > 0 ? onSalvarEOutro : onCriar)();
-              }}
-            />
+            {/* Rótulo, ícone e ajuda no MESMO desenho da aba Dados da ficha
+                (`ficha-aba-dados.tsx`): o cliente nasce aqui e continua lá. */}
+            <Label htmlFor={idNome}>
+              Nome <span className="rotulo">(obrigatório)</span>
+            </Label>
+            <div className="relative">
+              <User
+                aria-hidden
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                id={idNome}
+                ref={refNome}
+                value={nome}
+                onChange={(e) => onNome(e.target.value)}
+                placeholder="Nome do cliente"
+                className="h-11 pl-9 md:text-base"
+                autoFocus
+                // Enter cria, como em qualquer formulário de uma linha só.
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && nomeOk && !pending)
+                    // Em sequência ("adicionar outro"), Enter continua a sequência.
+                    (salvosNaSequencia > 0 ? onSalvarEOutro : onCriar)();
+                }}
+              />
+            </div>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor={idTelefone}>Telefone (com DDD)</Label>
-            <Input
-              id={idTelefone}
-              value={telefone}
-              onChange={(e) => onTelefone(mascaraTelefone(e.target.value))}
-              inputMode="tel"
-              autoComplete="off"
-              placeholder="(11) 98888-7777"
-              className="h-11 md:text-base"
-              aria-describedby={idTelefoneAjuda}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && nomeOk && !pending)
-                  // Em sequência ("adicionar outro"), Enter continua a sequência.
-                  (salvosNaSequencia > 0 ? onSalvarEOutro : onCriar)();
-              }}
-            />
-            <p
-              id={idTelefoneAjuda}
-              className="corpo text-muted-foreground"
-            >
-              Pode ficar em branco. Sem telefone, a ficha não conta para os 30.
+            <Label htmlFor={idTelefone}>
+              Telefone com DDD{" "}
+              <span className="rotulo text-muted-foreground">(opcional)</span>
+            </Label>
+            <div className="relative">
+              <Phone
+                aria-hidden
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                id={idTelefone}
+                value={telefone}
+                onChange={(e) => onTelefone(mascaraTelefone(e.target.value))}
+                inputMode="tel"
+                autoComplete="off"
+                placeholder="(00) 00000-0000"
+                className="h-11 pl-9 md:text-base"
+                aria-describedby={idTelefoneAjuda}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && nomeOk && !pending)
+                    // Em sequência ("adicionar outro"), Enter continua a sequência.
+                    (salvosNaSequencia > 0 ? onSalvarEOutro : onCriar)();
+                }}
+              />
+            </div>
+            {/* Mesma frase da ficha, que acompanha o preenchimento. */}
+            <p id={idTelefoneAjuda} className="corpo-sm text-muted-foreground">
+              {telefone.trim()
+                ? "Com nome e telefone, esta ficha conta para os 30 da Etapa 01."
+                : "Sem o telefone, esta ficha ainda não conta para os 30 da Etapa 01."}
             </p>
           </div>
 
-          <p className="corpo text-muted-foreground">
-            Começa em Prospecção; a fase muda conforme você marca as etapas na
-            ficha.
-          </p>
-
           <div className="grid gap-2">
-            <Label htmlFor={idGrau}>Grau de relação</Label>
+            <Label htmlFor={idGrau}>
+              Grau de relação{" "}
+              <span className="rotulo text-muted-foreground">(opcional)</span>
+            </Label>
             <Select value={grau} onValueChange={(v) => onGrau(v ?? "")}>
               <SelectTrigger
                 id={idGrau}
@@ -219,10 +240,7 @@ export function DialogoNovoCliente({
                 ))}
               </SelectContent>
             </Select>
-            <p
-              id={idGrauAjuda}
-              className="corpo text-muted-foreground"
-            >
+            <p id={idGrauAjuda} className="corpo-sm text-muted-foreground">
               {grauAtual?.ajuda ??
                 "Como você conhece esta pessoa. Pode escolher depois, na ficha."}
             </p>

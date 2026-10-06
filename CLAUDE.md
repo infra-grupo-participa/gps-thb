@@ -826,7 +826,7 @@ reversível). Nenhuma dependência nova; nas partes de polimento o saldo de cód
 
 #### (a) Design system mínimo — `src/components/ui/`
 
-**O quê:** `PageHeader`, `EmptyState`, `KpiCard`/`KpiLinha`/`IconeChip`, `ListaSkeleton`,
+**O quê:** `PageHeader`, `EmptyState`, `KpiCard`/`IconeChip` (`KpiLinha` saiu em 06/10/2026 com a home nova), `ListaSkeleton`,
 `ErroPainel`. **Por quê:** o cabeçalho de página estava escrito à mão **17 vezes** (com `mt-2`
 em 5 e não nas outras 12), o "chip de ícone" existia em **4 cópias e 2 tamanhos**, e o
 `pt-5`/`pt-6` colado no `CardContent` **somava** ao `py-(--card-spacing)` que o `Card` já paga —
@@ -1397,7 +1397,7 @@ novas permitidas: legenda do calendário, "parado há N dias", "N de N passos").
 - `Card` (`elevacao="flat|raised"`, `interativo`, `size="lg"`), `Badge` (`success|warning|danger|
   neutral` com ícone; `default` passou de 2,98 para 5,75:1), `Secao` (eyebrow + título + régua —
   substituiu os 15 `uppercase tracking-wide`), `KpiCard` (absorveu o `MetricCard` da Etapa 01;
-  `KpiLinha empilhado`), `PageHeader` (28 px Space Grotesk + `eyebrow`), `Progress` h-2,
+  `KpiLinha` removido em 06/10/2026), `PageHeader` (28 px Space Grotesk + `eyebrow`), `Progress` h-2,
   `BarraMarcos`, `EmptyState` `raised`, `PadraoTrilha` (SVG inline ~700 B, `currentColor`).
 - Header em **2 linhas sempre** (medido 99 px em 1366 com 8 abas; era 4 linhas), aba ativa com
   régua de 2 px, fade no scroller; `AuthLayout` laranja sólido + padrão de trilha (saíram o

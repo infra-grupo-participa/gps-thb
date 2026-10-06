@@ -21,7 +21,7 @@ export const metadata = { title: "Equipe" };
  * O portal já é compartilhado (clientes, tarefas e progresso são do
  * AMBIENTE); hoje só a equipe adicionava sócio. Esta aba dá esse poder ao
  * titular, e resolve a assimetria da home: o sócio já via o nome do
- * titular no banner (`AmbienteCompartilhadoBanner`); o titular não via o
+ * titular no selo da home ("Ambiente de …", `home-aluno.tsx`); o titular não via o
  * nome do sócio em lugar nenhum.
  *
  * 🔴 NADA DE FINANCEIRO nesta aba (B7-b): nem "contratante", nem valor, nem

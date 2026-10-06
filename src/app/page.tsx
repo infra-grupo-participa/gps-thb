@@ -1,4 +1,3 @@
-import { Map } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getContextoSessao, ehEquipeDaEsteira } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -11,9 +10,7 @@ import {
   getClientesEtapa1,
   getProgressoAluno,
   getMinhaSolicitacao,
-  getMembroDoUsuario,
   getMembrosDoAmbiente,
-  getTurmaCodigo,
   getClienteEquipe,
   alunoJaTemCliente,
   getTutoriaisAtivo,
@@ -28,19 +25,9 @@ import {
 import { calcularMetricasEtapa1, resumoHonorarios } from "@/lib/etapa1";
 import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
-import { PageHeader } from "@/components/ui/page-header";
-import { Secao } from "@/components/ui/secao";
-import { EtapasOverview } from "@/components/etapas-overview";
-import { FavoritoDestaque } from "@/components/etapa/favorito-destaque";
-import { ProximoPassoCard } from "@/components/etapa/proximo-passo-card";
-import { TudoEmDiaCard } from "@/components/etapa/tudo-em-dia-card";
-import { HomeResumo } from "@/components/home-resumo";
-import { PerfilHero } from "@/components/perfil/perfil-hero";
 import { ThbLogo } from "@/components/thb-logo";
-import { AmbienteCompartilhadoBanner } from "@/components/ambiente-compartilhado-banner";
-import { HojeNoPrograma } from "@/components/home/hoje-no-programa";
+import { HomeAluno } from "@/components/home/home-aluno";
 import { getHojeNoPrograma } from "@/lib/data/hoje";
-import type { Aluno } from "@/lib/types";
 
 /**
  * O root layout traz `title.template = "%s | Programa de Implementação
@@ -205,15 +192,17 @@ export default async function HomePage() {
   const souSocio = ctx.papelMembro === "socio";
   // Identidade da PESSOA logada: o titular já é `alunoAmbiente`; o sócio
   // busca o próprio cadastro por `membroAlunoId` (não reaproveita o do
-  // titular). Essa busca NÃO depende de nenhuma das outras, então entra no
-  // mesmo lote — antes era um await em série pendurado no fim do caminho
-  // crítico (~44 ms de round-trip a sa-east-1 só para o sócio).
+  // titular), no mesmo lote das outras leituras.
+  //
+  // Saíram com o card de perfil (06/10/2026): `getMembroDoUsuario` (perfil
+  // público: profissão, cidade, redes) e `getTurmaCodigo` (o único `await` em
+  // série da página). Nada na home nova lê esses dados — o perfil vive em
+  // `/perfil`.
   const [
     etapasEOverrides,
     alunoAmbiente,
     clientes,
     progressoTodas,
-    membro,
     favorito,
     membros,
     alunoSocio,
@@ -223,11 +212,8 @@ export default async function HomePage() {
   ] = await Promise.all([
     // Liberação POR ALUNO: `coalesce(override, global)`. O override
     // (`gps.etapa_liberacao_aluno`) manda nos dois sentidos — libera quem está
-    // adiantado e trava quem precisa refazer. As duas leituras vão juntas para
-    // não virar `await` em série no caminho crítico da home.
-    // Os overrides seguem VIVOS depois de resolver a liberação: `EtapasOverview`
-    // precisa deles para dizer POR QUE uma etapa está travada (ou aberta) só
-    // para este aluno — a decisão da equipe vem com motivo escrito.
+    // adiantado e trava quem precisa refazer. Os overrides seguem vivos para a
+    // trilha dizer POR QUE uma etapa está travada (ou aberta) só para ele.
     Promise.all([getEtapas(), getEtapasLiberadasPara(alunoId)]).then(
       ([todas, overrides]) => ({
         etapas: etapasComLiberacaoDoAluno(todas, overrides),
@@ -237,7 +223,6 @@ export default async function HomePage() {
     getAlunoById(alunoId),
     getClientesEtapa1(alunoId),
     getProgressoAluno(alunoId),
-    getMembroDoUsuario(ctx.user.id),
     getClienteEquipe(alunoId),
     getMembrosDoAmbiente(alunoId),
     souSocio && ctx.membroAlunoId
@@ -245,25 +230,13 @@ export default async function HomePage() {
       : Promise.resolve(null),
     alunoJaTemCliente(alunoId),
     getTutoriaisAtivo(),
-    // "Hoje no programa" (item 1.6): Plantão, próxima sessão e atalhos, no
-    // MESMO lote — as 4 idas dele também são paralelas entre si. Nunca
+    // "Hoje no programa": Plantão e próxima sessão, no MESMO lote. Nunca
     // lança: fonte que falha some sozinha (ver `src/lib/data/hoje.ts`).
     getHojeNoPrograma(alunoId, Boolean(ctx.pessoaAlunoId)),
   ]);
   const { etapas, overrides } = etapasEOverrides;
   const aluno = souSocio ? alunoSocio : alunoAmbiente;
-  // `alunoSocio` já é `getAlunoById(ctx.membroAlunoId)` — o nome do sócio vem
-  // dali. O `?? ctx.membroNome` que existia aqui era o último consumidor de um
-  // campo que ficou SEMPRE null em 10/09 (o `ilike` em `thb_alunos.email` saiu
-  // do contexto de sessão), ou seja: um fallback que nunca mais caía.
   const nomeExibicao = aluno?.nome ?? null;
-  // PF3 — único estágio 2 que sobrou, e ele FICA. Depende de `aluno.turma_id`,
-  // que só existe depois do lote acima, e o aluno é `alunoAmbiente` OU
-  // `alunoSocio` conforme o papel: não há como saber a turma antes de saber de
-  // quem é a ficha. Resolver isto exige um join `thb_alunos → thb_turmas` em
-  // `getAlunoById`, que é consulta de outra camada (`src/lib/data/alunos.ts`) e
-  // muda o contrato de quem mais a chama — feature, não ajuste de onda.
-  const turma = await getTurmaCodigo(aluno?.turma_id);
 
   const pcts = pctPorEtapa(clientes, progressoTodas);
   // `temFavorito` decide se os passos 4-8 da Etapa 01 contam como próximo
@@ -281,32 +254,20 @@ export default async function HomePage() {
   for (const p of progressoTodas.filter((p) => p.etapa === 1))
     manual1[p.tarefa] = p.concluida;
   const m1 = calcularMetricasEtapa1(clientes, manual1);
-  // Meta de faturamento (B8): mesma lista de clientes já carregada acima —
-  // zero query nova. A regra mora em `resumoHonorarios` para que a home, a aba
-  // Clientes e o painel do admin mostrem o MESMO número.
+  // Meta de faturamento (B8): a regra mora em `resumoHonorarios` para que a
+  // home, a aba Clientes e o painel do admin mostrem o MESMO número.
   const honorarios = resumoHonorarios(clientes);
-  // 🔑 Progresso geral = média das etapas LIBERADAS (decisão de produto de
-  // 09/09/2026), não das seis. Dividindo por 6, a Etapa 01 inteira — tudo o
-  // que o aluno TEM como fazer hoje — aparecia como 17%, e ele lia isso como
-  // "quase nada feito". A régua vai escrita na tela ("1 de 6 etapas"), e
-  // `pctPorEtapa` continua igual: o número POR etapa não mudou.
   const liberadas = etapas.filter((e) => e.liberada);
-  const valoresPct = liberadas.map((e) => pcts[e.id] ?? 0);
-  const progressoGeral = valoresPct.length
-    ? Math.round(valoresPct.reduce((a, b) => a + b, 0) / valoresPct.length)
-    : 0;
 
-  // A etapa que o hero anuncia é a do próximo passo; sem passo pendente (tudo
-  // em dia), é a liberada mais avançada. Nunca inventa etapa: sem nenhuma
-  // liberada, o hero fica só com a identidade.
-  // A próxima etapa que ainda não abriu para ele — só para a frase de
-  // expectativa do "tudo em dia". `null` quando as seis já estão liberadas.
+  // A próxima etapa que ainda não abriu — só para a frase do "tudo em dia".
   const proximaBloqueada =
     [...etapas]
       .sort((a, b) => a.ordem - b.ordem)
       .find((e) => !e.liberada) ?? null;
 
-  const etapaDoHero =
+  // A etapa atual é a do próximo passo; sem passo pendente (tudo em dia), a
+  // liberada mais avançada. Nunca inventa etapa.
+  const etapaAtual =
     (passo ? etapas.find((e) => e.id === passo.etapa) : null) ??
     [...liberadas].sort((a, b) => b.ordem - a.ordem)[0] ??
     null;
@@ -320,93 +281,31 @@ export default async function HomePage() {
         navItems={navDoAluno(ctx)}
         navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
-      {/* `pb-16`: o conteúdo encostava no fim da viewport (B.3 do plano). */}
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
-        <PageHeader
-          titulo="Seu programa"
-          descricao="Onde você está e o que fazer agora."
-          className="mb-4"
-        />
-
-        {membros.length > 1 ? (
-          <AmbienteCompartilhadoBanner
-            nomeTitular={alunoAmbiente?.nome ?? null}
-            souSocio={souSocio}
-          />
-        ) : null}
-
-        <PerfilHero
-          aluno={(aluno ?? { id: ctx.membroAlunoId ?? alunoId }) as Aluno}
-          turma={turma}
-          perfil={membro?.perfil ?? {}}
-          editHref="/perfil"
-          programa={
-            etapaDoHero
-              ? {
-                  etapaOrdem: etapaDoHero.ordem,
-                  etapaNome: etapaDoHero.nome,
-                  pct: pcts[etapaDoHero.id] ?? 0,
-                  honorariosTotal: honorarios.total,
-                }
-              : undefined
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-6 pb-16">
+        <HomeAluno
+          primeiroNome={nomeExibicao?.trim().split(/\s+/)[0] || null}
+          compartilhado={
+            membros.length > 1
+              ? { souSocio, nomeTitular: alunoAmbiente?.nome ?? null }
+              : null
           }
+          etapaAtual={etapaAtual}
+          passo={passo}
+          proximaBloqueada={proximaBloqueada}
+          numeros={{
+            // `comDados` (nome + telefone): é o que a tarefa 1 cobra.
+            clientes: m1.comDados,
+            reunioes: m1.agendados,
+            faturamento: honorarios.total,
+          }}
+          acompanhado={
+            favorito ? { id: favorito.id, nome: favorito.nome } : null
+          }
+          hoje={hoje}
+          etapas={etapas}
+          pctPorEtapa={pcts}
+          overrides={overrides}
         />
-
-        {/* O lugar mais forte da home nunca fica vazio: com passo pendente é o
-            `ProximoPassoCard`; sem nenhum, o card diz que está tudo em dia e o
-            que esperar. Antes o bloco simplesmente sumia. */}
-        <div className="mt-6">
-          {passo ? (
-            <ProximoPassoCard passo={passo} basePath="" />
-          ) : (
-            <TudoEmDiaCard proximaEtapa={proximaBloqueada} />
-          )}
-        </div>
-
-        {/* "Hoje no programa" logo abaixo da ação: o que acontece hoje
-            (Plantão, sessão marcada) e onde fica cada coisa. Fica ANTES do
-            grid para não ser a última coisa da página no celular — a queixa
-            era justamente "achei o Plantão por acaso". Sem nenhuma parte, o
-            componente devolve `null` (e o `mt-6` vai junto). */}
-        <HojeNoPrograma dados={hoje} className="mt-6" />
-
-        {/* Conteúdo: jornada (principal) + resumo (apoio) lado a lado.
-            🔑 No CELULAR o resumo sobe (`order-first`): a home mobile tinha
-            5.350 px e o painel com progresso, meta e números do aluno era a
-            ÚLTIMA coisa da página — ele rolava seis cards de etapa (≈900 px)
-            para chegar aos próprios números. `order-*` no grid, sem duplicar
-            DOM: um só `<aside>`, que no desktop volta para a direita. */}
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            {favorito ? (
-              <FavoritoDestaque cliente={favorito} basePath="" />
-            ) : null}
-
-            <Secao titulo="Seu caminho" icone={<Map />}>
-              <EtapasOverview
-                etapas={etapas}
-                basePath=""
-                pctPorEtapa={pcts}
-                overrides={overrides}
-                dense
-              />
-            </Secao>
-          </div>
-
-          <aside className="order-first lg:order-none lg:col-span-1">
-            <div className="lg:sticky lg:top-6">
-              <HomeResumo
-                progressoGeral={progressoGeral}
-                etapasLiberadas={liberadas.length}
-                totalEtapas={etapas.length}
-                clientes={m1.preenchidos}
-                clientesComDados={m1.comDados}
-                agendados={m1.agendados}
-                honorarios={honorarios}
-              />
-            </div>
-          </aside>
-        </div>
       </main>
     </>
   );

@@ -474,8 +474,7 @@ function CorpoSessoes({
     // depende de vaga nenhuma.
     return (
       <p className="border border-borda-fina px-4 py-4 corpo-sm text-muted-foreground">
-        A equipe ainda não abriu nenhuma reunião para marcar. Se precisar falar
-        com ela agora, abra um chamado no Suporte.
+        A equipe ainda não abriu reunião para marcar.
       </p>
     );
   }
@@ -675,8 +674,7 @@ function BlocoDoTipo({
         role="alert"
         className="border border-borda-fina px-4 py-4 corpo-sm text-destructive"
       >
-        Não deu para conferir agora se você já pode marcar esta reunião.
-        Atualize a página e tente de novo.
+        Não deu para conferir agora. Atualize a página.
       </p>
     );
   }

@@ -40,15 +40,12 @@ export function TudoEmDiaCard({
         <div className="corpo-sm text-muted-foreground">
           {proximaEtapa ? (
             <>
-              Você concluiu todos os passos que estão abertos para você. A
-              próxima é a Etapa {String(proximaEtapa.ordem).padStart(2, "0")} —{" "}
-              {proximaEtapa.nome}: ela libera conforme sua turma avança, ou
-              quando a equipe abrir para você.
+              A próxima é a Etapa {String(proximaEtapa.ordem).padStart(2, "0")} —{" "}
+              {proximaEtapa.nome}.
             </>
           ) : (
             <>
-              Você concluiu todos os passos das etapas do programa. Se a equipe
-              abrir algo novo, ele aparece aqui.
+              Você concluiu todas as etapas.
             </>
           )}
         </div>

@@ -210,15 +210,13 @@ export function MinhaInscricaoCard({
             // um erro: a inscrição vale, só a sala ainda não foi definida.
             <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
               <p className="text-sm text-muted-foreground">
-                Sua vaga está garantida. O link da sala ainda não foi
-                divulgado — ele aparece aqui assim que a equipe publicar.
+                Vaga garantida. O link aparece aqui quando a equipe publicar.
               </p>
             </div>
           ) : (
             <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
               <p className="text-sm text-muted-foreground">
-                A sala está aberta até o fim do plantão. Ao entrar, sua
-                presença é confirmada.
+                Ao entrar, sua presença é confirmada.
               </p>
               {pedindo === "entrar" ? (
                 <div
@@ -292,8 +290,7 @@ export function MinhaInscricaoCard({
               às {inscricao.horaInicio}?
             </p>
             <p className="text-xs text-muted-foreground">
-              Você perde esta vaga. Dá para se inscrever de novo, neste ou em
-              outro plantão, até o horário de início.
+              Você perde esta vaga.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button

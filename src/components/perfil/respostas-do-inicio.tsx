@@ -79,7 +79,7 @@ export function RespostasDoInicio({
     <Secao
       icone={<FileText />}
       titulo="Suas respostas do início"
-      descricao="O que você contou quando entrou no programa. Mudou alguma coisa? Fale com a equipe pelo Suporte."
+      descricao="O que você contou ao entrar no programa."
     >
       <Card>
         <CardContent className="grid gap-4">

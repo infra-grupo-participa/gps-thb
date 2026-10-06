@@ -202,9 +202,7 @@ export function DialogoSelecaoEntrevista({
         <DialogHeader>
           <DialogTitle>Escolher os 5 da entrevista</DialogTitle>
           <DialogDescription>
-            A equipe faz uma entrevista prévia por telefone com até 5
-            clientes. A escolha é opcional e não interfere na estrela do
-            cliente da equipe.
+            Entrevista prévia por telefone com até 5 clientes. Opcional.
           </DialogDescription>
         </DialogHeader>
 

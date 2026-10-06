@@ -222,14 +222,7 @@ export function Etapa1Guide({
               A lista e a gestão dos clientes ficam na aba{" "}
               <span className="text-accent-foreground">Clientes</span>.
             </div>
-            {/* 🔴 O fichário de documentos por cliente saiu da UI em 07/2026 e
-                não volta: o documento do cliente vive no Drive. A aba Clientes
-                guarda UM arquivo, o contrato assinado (bucket
-                `gps-onboarding`), e é isso que a frase promete. */}
-            <p className="text-sm text-muted-foreground">
-              Aqui você acompanha o passo a passo; lá você cadastra, controla o
-              contato e anexa o contrato assinado.
-            </p>
+            {/* João 06/10: sem parágrafo sob o título. */}
           </div>
           {/* Era o ÚNICO botão laranja sólido da tela, acima do passo a
               passo: a CTA mais forte da Etapa 01 mandava o aluno EMBORA dela.
@@ -268,16 +261,14 @@ export function Etapa1Guide({
                 <p className="text-sm">
                   {semCliente ? (
                     <>
-                      <span className="font-medium">Do passo 4 em diante</span>,
-                      os passos abrem quando você escolher o cliente que a
-                      equipe vai acompanhar. Para isso, cadastre primeiro os
-                      seus clientes na aba Clientes.
+                      <span className="font-medium">Do passo 4 em diante</span>:
+                      cadastre seus clientes na aba Clientes.
                     </>
                   ) : (
                     <>
-                      <span className="font-medium">Do passo 4 em diante</span>,
-                      os passos abrem quando você escolher, na aba Clientes, o
-                      cliente que a equipe vai acompanhar (a{" "}
+                      <span className="font-medium">Do passo 4 em diante</span>:
+                      na aba Clientes, escolha o cliente que a equipe vai
+                      acompanhar (a{" "}
                       <span className="text-accent-foreground">estrela</span>).
                     </>
                   )}

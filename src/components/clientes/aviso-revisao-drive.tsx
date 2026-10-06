@@ -19,8 +19,7 @@ export function AvisoRevisaoDrive({
   return (
     <div className="grid gap-1">
       <AvisoInline icone={Info} className="text-base!">
-        Este anexo é só para a equipe revisar. O documento definitivo fica na
-        pasta do Drive deste cliente, compartilhada com ele.
+        Anexo só para a equipe revisar. O definitivo fica na pasta do Drive.
       </AvisoInline>
       {linkDrive ? (
         <a

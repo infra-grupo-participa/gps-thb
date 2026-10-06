@@ -283,8 +283,7 @@ export function PreRequisitos({
           uma orientação em catraca — e 28 dos 35 parceiros leriam uma catraca
           que o sistema não aplica. */}
       <p className="mt-1.5 max-w-[62ch] corpo-sm text-muted-foreground">
-        Nada aqui impede de marcar. É o que a equipe já pode adiantar sobre o
-        seu cliente — e o que dá para resolver enquanto você espera um horário.
+        Nada aqui impede de marcar.
       </p>
 
       <div className="mt-4 divide-y divide-borda-fina border border-borda-fina">

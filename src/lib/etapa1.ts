@@ -365,7 +365,7 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     codigo: "2",
     titulo: "Enviar a sequência de 3 mensagens",
     descricao:
-      "Envie a sequência de 3 mensagens para marcar a reunião preliminar: o problema (dia 1), a solução (dia 3) e a urgência com os dois horários (dia 5). O texto de cada uma está pronto abaixo — abra, copie e leia as instruções de envio antes de mandar.",
+      "Envie as 3 mensagens (dias 1, 3 e 5) para marcar a reunião preliminar.",
     exigeTarefa: 1,
   },
   {
@@ -373,7 +373,7 @@ export const TAREFAS_ETAPA1: TarefaDef[] = [
     codigo: "4",
     titulo: "Ligar e oferecer duas opções de agenda",
     descricao:
-      "No dia seguinte, ligue para cada um dos 30, retome a especialização e ofereça duas opções de agenda. Meta: agendar pelo menos 15 reuniões preliminares.",
+      "No dia seguinte, ligue para cada um dos 30 e ofereça duas opções de agenda.",
     exigeFavorito: true,
   },
   {

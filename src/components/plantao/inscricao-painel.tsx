@@ -157,14 +157,11 @@ export function InscricaoPainel({
             chamado em 25/09.
           */}
           <p className="rounded-lg border border-primary/30 bg-primary/[0.06] p-2.5 text-xs text-foreground">
-            <strong>Depois de cada plantão, o seguinte fica de fora</strong>{" "}
-            — você volta a partir do outro. Inscrições até{" "}
-            <strong>12h do dia anterior</strong>. Horários em{" "}
-            <strong>horário de Brasília</strong>.
+            <strong>Depois de cada plantão, o seguinte fica de fora.</strong>{" "}
+            Inscrições até <strong>12h da véspera</strong>.
           </p>
           <p className="rounded-lg border border-dashed bg-muted/40 p-2.5 text-xs text-muted-foreground">
-            Você pode cancelar a qualquer momento até 1 hora antes do início — a
-            partir daí a sala é liberada e o cancelamento não é mais possível.
+            Cancele até 1 hora antes do início.
           </p>
         </div>
       )}

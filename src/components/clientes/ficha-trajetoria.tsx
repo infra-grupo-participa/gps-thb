@@ -317,9 +317,7 @@ export function FichaTrajetoria({
       <div className="grid gap-1">
         <Titulo />
         <p className="text-sm leading-snug text-muted-foreground">
-          Marque as etapas que este cliente já fez. Salva na hora: não precisa
-          clicar em &quot;Salvar ficha&quot;. <strong>Pendente</strong> = etapa
-          que ficou para trás.
+          Marque as etapas que este cliente já fez. Salva na hora.
         </p>
       </div>
       {/* ── POR ONDE O LEAD ENTROU (funil de origem, …345) ─────────────── */}

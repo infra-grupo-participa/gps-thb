@@ -23,11 +23,10 @@ export function AmbienteCompartilhadoBanner({
             <span className="font-medium text-foreground">
               {nomeTitular ?? "outro parceiro"}
             </span>{" "}
-            — você está como sócio e compartilha os mesmos clientes e
-            progresso.
+            — clientes e progresso compartilhados.
           </>
         ) : (
-          "Este ambiente é compartilhado com um sócio: os clientes e o progresso são os mesmos para os dois."
+          "Ambiente compartilhado com um sócio."
         )}
       </span>
     </div>

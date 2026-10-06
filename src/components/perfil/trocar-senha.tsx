@@ -128,8 +128,7 @@ export function TrocarSenha() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Este login é o mesmo usado nos outros portais do Grupo Participa —
-            a senha nova vale para todos eles.
+            A senha nova vale em todos os portais do Grupo Participa.
           </p>
         </form>
       </CardContent>

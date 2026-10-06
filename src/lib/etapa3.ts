@@ -59,7 +59,7 @@ export const TAREFAS_ETAPA3: TarefaDef[] = [
     num: 9,
     titulo: "Confirmar a reunião e enviar o link no dia",
     descricao:
-      "No dia, confirme a reunião no horário agendado e envie o link de acesso, pedindo que o cliente entre com 15 minutos de antecedência para checar a conexão.",
+      "No dia, confirme a reunião e envie o link; peça que entre 15 minutos antes.",
   },
   {
     num: 10,
@@ -76,8 +76,8 @@ export const TAREFAS_ETAPA3: TarefaDef[] = [
     num: 12,
     titulo: "Enviar link de pagamento do sinal e o PDF do Croqui",
     descricao:
-      "Se o cliente avançou para a contratação da execução, envie no grupo o link para pagamento dos 10% do sinal e o PDF do Croqui Estrutural.",
-    info: "Acompanhe o pagamento: após 1h sem pagamento, pergunte se há dificuldade; até o fim do dia, avise que o prazo do benefício está encerrando; se ainda assim não avançar, envie o PDF do Croqui.",
+      "Se o cliente avançou, envie no grupo o link do sinal (10%) e o PDF do Croqui.",
+    info: "Sem pagamento após 1h, pergunte se há dificuldade.",
     modelo: {
       nome: "09 - Mensagens após a reunião de apresentação do Croqui Estrutural",
       url: "https://docs.google.com/document/d/1SsBh4sd7XVuNaGdnbQR_wWmqqbusm3rDztXURqXIEEs/edit",

@@ -158,8 +158,7 @@ export function DiscDialogo({
         <DialogHeader>
           <DialogTitle>Perfil do cliente</DialogTitle>
           <DialogDescription>
-            O que foi salvo aqui entra na ficha ao clicar em &quot;Salvar
-            ficha&quot;. Fechar esta janela não perde o que você digitou.
+            Entra na ficha ao clicar em &quot;Salvar ficha&quot;.
           </DialogDescription>
         </DialogHeader>
 

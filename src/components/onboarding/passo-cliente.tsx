@@ -193,8 +193,7 @@ export function PassoFase({
             depois pelo índice único. */}
         {ambienteJaTemFavorito ? (
           <AvisoInline>
-            A equipe já acompanha um cliente neste ambiente. Este cliente entra
-            na sua lista de clientes, sem trocar o que a equipe já acompanha.
+            A equipe já acompanha outro cliente. Este entra só na sua lista.
           </AvisoInline>
         ) : (
           // 🔴 A ASSIMETRIA QUE CUSTOU 4 DOS 5 CHAMADOS DO PRIMEIRO DIA
@@ -212,10 +211,8 @@ export function PassoFase({
           // marcando. Muda o que a pessoa SABE ao decidir, e diz onde se
           // troca depois, para o caminho não ser o Suporte.
           <AvisoInline>
-            Este será o <strong>cliente que a equipe vai acompanhar</strong> com
-            você até a sua primeira holding sair. Se depois você preferir outro,
-            troca a qualquer momento na aba Clientes, enquanto a equipe ainda
-            não tiver assumido.
+            Este será o <strong>cliente que a equipe vai acompanhar</strong>.
+            Para trocar, use a aba Clientes.
           </AvisoInline>
         )}
       </div>
@@ -290,8 +287,7 @@ export function PassoHonorarios({
             placeholder="R$ 0,00"
           />
           <p className="corpo-sm text-muted-foreground">
-            É o valor combinado com este cliente. Ele entra na sua meta de
-            faturamento do programa.
+            Entra na sua meta de faturamento.
           </p>
         </div>
       ) : null}

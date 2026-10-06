@@ -122,7 +122,7 @@ export default async function EtapaAlunoPage({
             // Sem promessa sobre o progresso: travar a etapa não mexe em
             // `gps.progresso`, mas a equipe tem uma ação SEPARADA de reabrir
             // que zera as tarefas — a tela não sabe qual das duas virá.
-            descricao="Quando a equipe liberar esta etapa de novo, ela volta a aparecer no seu caminho. As outras etapas liberadas continuam abertas."
+            descricao="Quando a equipe liberar, ela volta a aparecer aqui."
             acao={
               <Link href="/" className={buttonVariants({ variant: "outline" })}>
                 Voltar ao início

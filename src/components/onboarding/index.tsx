@@ -313,8 +313,7 @@ export function OnboardingPortal({
                 {FRASE_ABERTURA}
               </p>
               <p className="corpo text-muted-foreground">
-                São poucas perguntas para a equipe saber de onde você parte. No
-                fim, uma apresentação rápida de cada parte do portal.
+                Poucas perguntas e, no fim, uma apresentação do portal.
               </p>
             </div>
           ) : null}
@@ -405,10 +404,8 @@ export function OnboardingPortal({
                 </p>
               ) : favoritado === false ? (
                 <p className="corpo text-muted-foreground">
-                  O seu cliente 1 entrou na sua lista de clientes. Quando
-                  quiser, escolha na aba <strong>Clientes</strong> qual deles a
-                  equipe vai acompanhar de perto — é a estrela, e ela destrava
-                  os próximos passos da Etapa 01.
+                  Seu cliente 1 está na lista. Na aba <strong>Clientes</strong>,
+                  marque a estrela do que a equipe vai acompanhar.
                 </p>
               ) : null}
               {proximoPasso ? (

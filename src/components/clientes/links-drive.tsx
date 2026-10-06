@@ -169,9 +169,8 @@ export function LinksDrive({
           Pasta do cliente no Drive
         </h2>
         <p className="text-sm leading-snug text-muted-foreground">
-          A pasta com os documentos <strong>deste cliente</strong>. A pasta do
-          escritório fica na aba Pasta. Este botão salva à parte: não precisa
-          clicar em &quot;Salvar ficha&quot;.
+          A pasta com os documentos <strong>deste cliente</strong>. Salva à
+          parte da ficha.
         </p>
       </div>
         {falhou ? (
@@ -250,9 +249,7 @@ export function LinksDrive({
                   </div>
                 ) : (
                   <p className="text-sm leading-snug text-muted-foreground">
-                    A equipe ainda está organizando a sua pasta no Drive.
-                    Enquanto isso, você pode colar o link da pasta do cliente
-                    abaixo.
+                    A equipe ainda está organizando a pasta. Cole o link abaixo.
                   </p>
                 )}
                 <EstadoPasta

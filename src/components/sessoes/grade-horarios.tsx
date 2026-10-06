@@ -274,10 +274,8 @@ export function GradeHorarios({
               Você reserva o bloco inteiro de{" "}
               <strong>{formatarDuracao(escolhido.duracao_min)}</strong> (
               {horaDeTime(escolhido.hora_inicio)} –{" "}
-              {horaFimDeBloco(escolhido.hora_inicio, escolhido.duracao_min)}) —
-              a primeira parte é sobre o cliente, e a sessão segue na sequência,
-              sem intervalo. A sessão é sobre <strong>{clienteNome}</strong>.
-              Depois de marcada, você só cancela até 24 horas antes do início.
+              {horaFimDeBloco(escolhido.hora_inicio, escolhido.duracao_min)})
+              sobre <strong>{clienteNome}</strong>. Cancela até 24 horas antes.
             </>
           ) : null
         }

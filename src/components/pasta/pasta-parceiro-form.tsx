@@ -118,9 +118,7 @@ export function PastaParceiroForm({
           <Label htmlFor={idCampo}>Link da pasta do Drive</Label>
           <div id={idAjuda} className="grid gap-1 text-sm text-muted-foreground">
             <p>
-              Antes de colar o link, compartilhe a pasta no Drive (botão
-              &ldquo;Compartilhar&rdquo;, acesso de editor) com os e-mails da
-              equipe:
+              Antes de colar, compartilhe a pasta (editor) com:
             </p>
             <ul className="list-disc pl-5">
               {EMAILS_EQUIPE_PASTA.map((email) => (

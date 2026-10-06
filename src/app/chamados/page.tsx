@@ -120,7 +120,6 @@ export default async function ChamadosPage({
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Suporte"
-          descricao="Fale com a equipe por aqui. Abra um chamado, acompanhe a resposta e feche quando resolver."
           acao={dialogo}
         />
 
@@ -130,9 +129,7 @@ export default async function ChamadosPage({
             className="mb-6 flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground"
           >
             <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
-            O suporte por chamado está temporariamente fechado. Fale com a
-            equipe pelos canais de sempre. Os chamados que já existem continuam
-            recebendo resposta.
+            Suporte por chamado temporariamente fechado.
           </p>
         ) : null}
 
@@ -150,7 +147,6 @@ export default async function ChamadosPage({
           <EmptyState
             icone={<LifeBuoy />}
             titulo="Você ainda não abriu nenhum chamado."
-            descricao="Precisa de ajuda com o portal? Abra um chamado e a equipe responde por aqui."
             acao={dialogo}
           />
         ) : (

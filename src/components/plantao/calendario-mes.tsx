@@ -120,9 +120,7 @@ function AvisoCronograma() {
       <div className="grid gap-1">
         <p className="font-medium">Estamos montando o cronograma</p>
         <p className="text-sm text-muted-foreground">
-          As próximas datas do plantão ainda estão sendo definidas. Assim que
-          forem publicadas, elas aparecem aqui no calendário, e você pode se
-          inscrever. Fique tranquilo: você não perdeu nada.
+          As novas datas aparecem aqui em breve.
         </p>
       </div>
     </div>

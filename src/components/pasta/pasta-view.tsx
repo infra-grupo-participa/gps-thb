@@ -116,10 +116,6 @@ export function PastaView({
         </a>
       </CardHeader>
       <CardContent className="grid gap-1">
-        <p className="text-sm text-muted-foreground">
-          A pasta abre no Google Drive, em outra aba. Lá dá para ver e baixar
-          os documentos.
-        </p>
         {origem ? (
           <p className="text-sm text-muted-foreground">
             {textoProcedencia(origem, porNome, em)}

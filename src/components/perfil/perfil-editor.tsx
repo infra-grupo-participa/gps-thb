@@ -116,10 +116,6 @@ export function PerfilEditor({
 
       <CardHeader>
         <CardTitle className="text-base">Meus dados</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Complete seu cartão de identificação. Essas informações ajudam a
-          equipe a te conhecer melhor.
-        </p>
       </CardHeader>
       <CardContent className="grid gap-5">
         <div className="grid gap-5 sm:grid-cols-2">

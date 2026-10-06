@@ -222,11 +222,6 @@ export function FichaContrato({
             — não contam na meta enquanto o cliente estiver em{" "}
             {faseRotulo ?? "outra fase"}.
           </p>
-          <p className="text-xs">
-            Quando a Execução for marcada em &quot;Por onde o cliente
-            passou&quot;, o valor volta a contar na meta e a ser editável. Ele
-            não é apagado.
-          </p>
         </div>
       ) : (
         <p className="corpo-sm text-muted-foreground">

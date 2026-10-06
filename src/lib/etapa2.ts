@@ -20,7 +20,7 @@ export const TAREFAS_ETAPA2: TarefaDef[] = [
     num: 2,
     titulo: "Confirmar a presença do cliente com 24h de antecedência",
     descricao:
-      "Envie mensagem ao cliente com 24h de antecedência pedindo que ele confirme a presença na reunião preliminar e que o responsável pela tomada de decisão também esteja presente.",
+      "Peça ao cliente, 24h antes, que confirme presença e traga quem decide.",
     modelo: {
       nome: "10 - Mensagens após a contratação da Sessão de Viabilidade",
       url: "https://docs.google.com/document/d/1pAcqp5cOEL_U6YBR5PpR7-D2cEGWUQgdMl-yLk3CrqA/edit",

@@ -12,7 +12,6 @@ export default function ClientesLoading() {
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Clientes"
-          descricao="Cadastre e acompanhe seus clientes potenciais e o contato com eles."
         />
         <ListaSkeleton linhas={6} />
       </main>

@@ -43,8 +43,7 @@ export function PassoSenha({
           que é N. Uma frase de expectativa é a correção mais barata do
           funil inteiro. */}
       <p className="corpo-sm text-muted-foreground">
-        Depois dela são poucas perguntas rápidas, para a equipe saber de onde
-        você parte. Leva menos de dois minutos.
+        Depois, poucas perguntas rápidas (menos de dois minutos).
       </p>
       <AvisoInline>
         Esta senha vale para todos os portais do Time Holding Brasil.

@@ -189,10 +189,7 @@ export function SemHorario({
           Escolha o cliente que a equipe vai acompanhar.
         </p>
         <p className="mt-1 corpo-sm text-muted-foreground">
-          Os horários são oferecidos para um cliente específico — o que você
-          marcar na aba Clientes como o que a equipe acompanha. Se já escolheu o
-          cliente e ainda vê esta mensagem, a equipe ainda não liberou esta
-          etapa para você — fale com ela pelo Suporte.
+          Marque na aba Clientes qual a equipe vai acompanhar.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link
@@ -230,14 +227,11 @@ export function SemHorario({
         A equipe não tem horário nas próximas {semanas} semanas.
       </p>
       <p className="mt-1 corpo-sm text-muted-foreground">
-        Os horários são publicados pela própria equipe jurídica e são poucos por
-        semana. Volte a abrir esta tela nos próximos dias — assim que um bloco
-        for publicado ou liberado por um cancelamento, ele aparece aqui.
+        Novos horários aparecem aqui quando a equipe publicar.
       </p>
       {href && etapaDoTipo === 1 ? (
         <p className="mt-1 corpo-sm text-muted-foreground">
-          Não quer esperar? Você mesmo pode fazer a Entrevista Prévia com o seu
-          cliente, sem depender de horário da equipe.
+          Não quer esperar? Faça a Entrevista Prévia você mesmo.
         </p>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">

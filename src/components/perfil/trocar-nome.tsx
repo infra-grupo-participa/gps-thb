@@ -65,8 +65,7 @@ export function TrocarNome({ nomeAtual }: { nomeAtual: string | null }) {
             disabled={pendente}
           />
           <p className="corpo-sm text-muted-foreground">
-            É como você aparece para a equipe e nos e-mails. Ele vale para
-            todos os sistemas do Grupo Participa.
+            Aparece para a equipe e nos e-mails.
           </p>
         </div>
 

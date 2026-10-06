@@ -182,8 +182,7 @@ export function MinhaSessao({
           </p>
         ) : (
           <p className="corpo-sm text-muted-foreground">
-            O prazo para cancelar sozinho terminou (é até 24 horas antes). Fale
-            com a equipe pelo Suporte.
+            Prazo de cancelamento encerrado. Fale com a equipe pelo Suporte.
           </p>
         )}
         {podeCancelar ? (
@@ -207,9 +206,7 @@ export function MinhaSessao({
            e a fila é real (34 alunos elegíveis para 4 blocos por semana). */
         consequencia={
           <>
-            O horário volta para a lista e pode ser pego por outro parceiro —
-            não dá para desfazer. Para remarcar, você escolhe um novo horário
-            entre os que ainda estiverem livres.
+            O horário volta para a lista e outro parceiro pode pegá-lo.
           </>
         }
         rotuloConfirmar="Cancelar sessão"
@@ -356,8 +353,7 @@ function BlocoDoLink({
           </>
         ) : (
           <span className="text-muted-foreground">
-            Ainda sem link. Você pode colar o da sua sala, e a equipe também
-            pode definir o dela.
+            Ainda sem link.
           </span>
         )}
       </Linha>
@@ -449,8 +445,7 @@ function BlocoDoLink({
         descricao={`${rotuloDoDia(sessao.data)}, ${horaDeTime(sessao.hora_inicio)}`}
         consequencia={
           <>
-            A sessão fica sem link até alguém colar outro. Quem for entrar não
-            terá para onde ir — inclusive a equipe.
+            A sessão fica sem link até alguém colar outro.
           </>
         }
         rotuloConfirmar="Remover o link"

@@ -21,21 +21,9 @@ export function RegrasPlantao() {
         Como funciona a inscrição
       </h2>
       <ul className="mt-1.5 list-disc space-y-1 pl-5 text-muted-foreground">
-        <li>
-          <strong className="text-foreground">Um plantão por vez:</strong> você
-          escolhe o próximo depois que o atual acontecer.
-        </li>
-        <li>
-          <strong className="text-foreground">Intervalo:</strong> depois de
-          cada plantão, o seguinte fica de fora — você volta a partir do outro.
-          Ex.: com plantões na segunda, terça e quarta, quem foi na segunda
-          pode escolher a quarta em diante.
-        </li>
-        <li>
-          <strong className="text-foreground">Prazo:</strong> as inscrições
-          fecham às 12h do dia anterior ao plantão.
-        </li>
-        <li>Horários em horário de Brasília.</li>
+        <li>Um plantão por vez.</li>
+        <li>Depois de cada plantão, o seguinte fica de fora.</li>
+        <li>Inscrições fecham às 12h da véspera (horário de Brasília).</li>
       </ul>
     </section>
   );

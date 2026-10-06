@@ -54,7 +54,7 @@ async function marcarPrimeiroHorario(page: Page): Promise<string | null> {
  * Cancela pela EQUIPE, que é quem sempre pode.
  *
  * 🔑 O parceiro NEM SEMPRE consegue cancelar, e isso é regra de negócio, não
- * defeito: *"o prazo para cancelar sozinho terminou (é até 24 horas antes)"*.
+ * defeito: *"Prazo de cancelamento encerrado"*.
  * A primeira versão deste spec cancelava pelo parceiro e falhou justamente
  * porque o horário livre mais próximo era para o dia seguinte — dentro da
  * janela travada. O teste acusava o produto de um erro que o produto não

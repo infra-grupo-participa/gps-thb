@@ -271,8 +271,7 @@ export function FichaAbaPreliminar({
           // Sem `role="alert"`: a barra de salvar já anuncia. Aqui é a marca
           // visual ao lado do campo, para o olho achar onde voltar.
           <p id="f-problemas-erro" className="corpo-sm text-atencao-foreground">
-            Nenhum problema marcado — é o que qualifica um cliente de holding
-            (tarefa 1). A ficha salva mesmo assim; marque quando souber.
+            Nenhum problema marcado. A ficha salva mesmo assim.
           </p>
         ) : null}
       </fieldset>

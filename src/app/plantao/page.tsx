@@ -95,11 +95,6 @@ export default async function PlantaoLogadoPage({
         />
 
         <div className="grid gap-4">
-          <p className="rounded-lg border border-dashed bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            Você já está logado — a inscrição usa sua conta do Programa, sem
-            precisar informar nome ou e-mail.
-          </p>
-
           {minhaInscricao ? (
             <MinhaInscricaoCard
               inscricao={minhaInscricao}

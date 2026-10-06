@@ -7,7 +7,6 @@ import { formatarData } from "@/lib/datas";
 import { buttonVariants } from "@/components/ui/button";
 import {
   LinkTrocaPorChamado,
-  TEXTO_TROCA_LIVRE,
 } from "@/components/clientes/acompanhamento-equipe";
 
 /** Banner do cliente escolhido para o acompanhamento da equipe. */
@@ -41,15 +40,12 @@ export function ConfirmacaoEquipe({
           <p className="corpo-sm text-sucesso-foreground">
             {cliente.acompanhamento_confirmado_em ? (
               <>
-                Acompanhamento assumido pela equipe em{" "}
-                {formatarData(cliente.acompanhamento_confirmado_em)}. Os passos
-                4 a 8 da Etapa 01 seguem liberados.
+                Assumido pela equipe em{" "}
+                {formatarData(cliente.acompanhamento_confirmado_em)}.
               </>
             ) : (
               <>
-                Este é o cliente que a equipe vai acompanhar em todo o progresso
-                da sua primeira holding. Os próximos passos da Etapa 01 (do passo
-                4 em diante) estão liberados.
+                Passos 4 em diante da Etapa 01 liberados.
               </>
             )}
           </p>
@@ -64,15 +60,7 @@ export function ConfirmacaoEquipe({
             <p className="corpo-sm text-sucesso-foreground">
               <LinkTrocaPorChamado /> — a equipe faz a troca com você.
             </p>
-          ) : (
-            // 🔴 Enquanto a equipe não assumiu, a troca é do parceiro
-            // (11/09/2026). Este banner mandava abrir chamado já no instante
-            // da escolha, como o resto da copy do favorito.
-            <p className="corpo-sm text-sucesso-foreground">
-              {TEXTO_TROCA_LIVRE}: clique na estrela deste cliente ou marque
-              outro.
-            </p>
-          )}
+          ) : null /* João 06/10: sem parágrafo; a troca livre é pela estrela */}
         </div>
       </div>
       <Link

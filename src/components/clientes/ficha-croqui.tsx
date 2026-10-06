@@ -328,14 +328,12 @@ export function FichaCroqui({
       ) : null}
 
       <p id={idAjuda} className="text-base leading-snug text-muted-foreground">
-        Só PDF, até {croquiTamanhoLegivel(CROQUI_TAMANHO_MAXIMO)}. Cada envio
-        é uma versão nova. As anteriores continuam na lista.{" "}
+        Só PDF, até {croquiTamanhoLegivel(CROQUI_TAMANHO_MAXIMO)}.{" "}
         {/* Onda 1.5 (02/10/2026): o croqui grava no envio do arquivo. Sem
             isto, a pessoa anexava, clicava "Salvar ficha" achando que era o
             que gravava — ou deixava de anexar esperando o botão. */}
         <strong className="font-medium text-foreground">
-          O arquivo é salvo assim que sobe. Não precisa clicar em
-          &quot;Salvar ficha&quot;.
+          Salvo assim que sobe.
         </strong>
       </p>
 

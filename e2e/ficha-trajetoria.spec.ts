@@ -370,7 +370,7 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
       // abaixo é a prova de que o texto não está dentro de pai oculto.
       const aviso = page
         .getByRole("tabpanel")
-        .getByText(/Este anexo é só para a equipe revisar/);
+        .getByText(/Anexo só para a equipe revisar/);
       await expect(aviso, `Aviso ausente na aba ${aba}.`).toBeVisible({
         timeout: 15_000,
       });

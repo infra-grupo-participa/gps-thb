@@ -96,7 +96,7 @@ export default async function EquipePage() {
           <EmptyState
             icone={<UsersRound />}
             titulo="Convide seu sócio para este ambiente"
-            descricao="Vocês vão compartilhar o mesmo portal: os mesmos clientes, as mesmas tarefas e o mesmo progresso. Cada um entra com o seu próprio e-mail e senha."
+            descricao="Vocês compartilham clientes, tarefas e progresso."
             acao={
               conviteAtivo ? (
                 <div className="w-full max-w-md">
@@ -105,8 +105,7 @@ export default async function EquipePage() {
               ) : (
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Lock aria-hidden className="size-3.5" />
-                  O convite de sócio ainda não está liberado para o seu
-                  ambiente. Assim que abrir, o botão aparece aqui.
+                  Convite de sócio ainda não liberado.
                 </p>
               )
             }

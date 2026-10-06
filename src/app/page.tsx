@@ -324,7 +324,7 @@ export default async function HomePage() {
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Seu programa"
-          descricao="Onde você está no Programa de Implementação Assistida — e o que fazer agora."
+          descricao="Onde você está e o que fazer agora."
           className="mb-4"
         />
 

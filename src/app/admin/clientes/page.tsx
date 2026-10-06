@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getClientesDoPrograma, getClientesReuniaoKpis } from "@/lib/data/clientes-admin";
+import { getClientesAgendaKpis, getClientesDoPrograma } from "@/lib/data/clientes-admin";
 import { getUltimaModificacaoPasta } from "@/lib/data/clientes-pasta";
 import { formatarDataHora, formatarHaQuanto } from "@/lib/datas";
 import { adminNavItems } from "@/lib/nav";
@@ -24,11 +24,11 @@ export const metadata = { title: "Admin — Clientes" };
  * `getClientesDoPrograma` — não mexer nele. Esta página só lê `searchParams`
  * (allowlist fechada, `estado-na-url.ts`) e monta a tela.
  *
- * KPIs da aba "reunião agendada" (17/09/2026, migração `…282`): buscados em
- * PARALELO com a lista (`Promise.all`, nunca em cascata) via
- * `getClientesReuniaoKpis()` — uma chamada só para os 4 números (total,
- * marcadas, para vencer, vencidas), sempre do universo inteiro, não do
- * filtro ativo na tela.
+ * KPIs = etapa de cada cliente na agenda (06/10/2026): buscados em PARALELO
+ * com a lista (`Promise.all`, nunca em cascata) via `getClientesAgendaKpis()`
+ * — uma chamada só para os 5 tiles, sempre do universo inteiro, não do
+ * filtro ativo. Os 4 KPIs de reunião de 17/09 saíram da tela (a RPC
+ * `admin_clientes_reuniao_kpis` segue viva no banco só como reversão).
  *
  * 🔴 Rota PRÓPRIA, fora de `/admin` (decisão do Marcio): os 1.223 clientes só
  * custam consulta/payload para quem abre `/admin/clientes`, nunca para quem
@@ -47,6 +47,7 @@ export default async function AdminClientesPage({
     q?: string;
     pag?: string;
     reuniao?: string;
+    agenda?: string;
   }>;
 }) {
   const ctx = await getContextoSessao();
@@ -58,7 +59,7 @@ export default async function AdminClientesPage({
   // Lista (paginada, filtrada) e KPIs (universo inteiro, mesma chamada
   // única de sempre) são independentes — buscadas em PARALELO, nunca em
   // cascata (protocolo de sustentabilidade, pergunta "repetição").
-  const [{ linhas, total, erro }, { kpis, erro: erroKpis }] = await Promise.all([
+  const [{ linhas, total, erro }, kpisAgenda] = await Promise.all([
     getClientesDoPrograma({
       limite: ITENS_POR_PAGINA,
       offset: offsetDaPagina(estado.pagina),
@@ -66,9 +67,12 @@ export default async function AdminClientesPage({
       grau: estado.grau,
       busca: estado.busca || null,
       reuniao: estado.reuniao,
+      agenda: estado.agenda,
     }),
-    getClientesReuniaoKpis(),
+    // Falha vira aviso na faixa, nunca "0" nem a tela inteira no error.tsx.
+    getClientesAgendaKpis().catch(() => null),
   ]);
+  const erroKpis = kpisAgenda ? null : "Tente recarregar a página.";
 
   // Depende dos ids da página, então vem logo DEPOIS (segunda consulta, uma
   // só por página). Falha → mapa vazio + `logErro` lá dentro: coluna "—".
@@ -98,9 +102,9 @@ export default async function AdminClientesPage({
           total={total}
           erro={erro ?? null}
           estado={estado}
-          kpis={kpis}
+          kpis={kpisAgenda}
           pasta={pasta}
-          erroKpis={erroKpis ?? null}
+          erroKpis={erroKpis}
         />
       </main>
     </>

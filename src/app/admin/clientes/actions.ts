@@ -25,6 +25,7 @@ import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import { montarCsv, nomeDoArquivo } from "@/lib/csv";
 import { COLUNAS_CSV_CLIENTES } from "@/lib/csv-clientes";
 import { getClientesDoPrograma } from "@/lib/data/clientes-admin";
+import type { EtapaAgenda } from "@/lib/clientes-agenda-tipos";
 import type { FaseCliente, GrauRelacao } from "@/lib/types";
 import type { FiltroReuniao } from "@/components/admin/clientes-programa/estado-na-url";
 
@@ -54,6 +55,9 @@ export async function exportarClientesCsv(filtros?: {
   grau?: GrauRelacao | "_nulo" | null;
   busca?: string | null;
   reuniao?: FiltroReuniao;
+  /** (…355) Sem repassar, o CSV com `?agenda=` levaria a base inteira —
+   * o mesmo defeito de 17/09 com `reuniao`. */
+  agenda?: EtapaAgenda | null;
 }): Promise<{ csv?: string; linhas?: number; erro?: string }> {
   if (!(await ehAdmin())) return { erro: SEM_PERMISSAO };
 
@@ -64,6 +68,7 @@ export async function exportarClientesCsv(filtros?: {
     grau: filtros?.grau ?? null,
     busca: filtros?.busca ?? null,
     reuniao: filtros?.reuniao ?? null,
+    agenda: filtros?.agenda ?? null,
   });
 
   if (erro) return { erro };
@@ -77,6 +82,7 @@ export async function exportarClientesCsv(filtros?: {
       p_grau: filtros?.grau ?? null,
       p_busca: filtros?.busca ?? null,
       p_reuniao: filtros?.reuniao ?? null,
+      p_agenda: filtros?.agenda ?? null,
     });
 
   if (erroLog) {

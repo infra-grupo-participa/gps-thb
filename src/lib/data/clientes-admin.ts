@@ -3,6 +3,17 @@ import { ehAdmin } from "@/lib/auth";
 import { SEM_PERMISSAO, traduzirErroBanco } from "@/lib/erros";
 import type { FaseCliente, GrauRelacao } from "@/lib/types";
 import type { FiltroReuniao } from "@/components/admin/clientes-programa/estado-na-url";
+import {
+  ETAPAS_AGENDA,
+  ehEtapaAgenda,
+  estadoReuniao,
+  type EstadoReuniao,
+  type EtapaAgenda,
+} from "@/lib/clientes-agenda-tipos";
+
+// Vocabulário da agenda (…355) vive em módulo puro; reexportado aqui porque é
+// a linha do cliente que o carrega (contrato com a tela).
+export type { EstadoReuniao, EtapaAgenda } from "@/lib/clientes-agenda-tipos";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Lista consolidada de clientes do programa (item 3 dos 9, 14/09/2026).
@@ -36,6 +47,19 @@ export interface ClienteDoPrograma {
   aderiuReuniao: boolean;
   acompanhadoEquipe: boolean;
   criadoEm: string;
+  /** Entrevista Prévia (sessão tipo 1). `null` = nada. */
+  epEm: string | null;
+  epEstado: EstadoReuniao | null;
+  /** Reunião Preliminar (sessão tipo 2 ou 3 — Viabilidade = Preliminar — ou a data da ficha). */
+  rpEm: string | null;
+  rpEstado: EstadoReuniao | null;
+  /** Croqui (sessão tipo 4 ou `cliente_croquis.apresentado_em`). */
+  cqEm: string | null;
+  cqEstado: EstadoReuniao | null;
+  /** Reunião Inicial de Execução (sessão tipo 5). */
+  exEm: string | null;
+  exEstado: EstadoReuniao | null;
+  etapaAgenda: EtapaAgenda;
 }
 
 export interface FiltrosClientesDoPrograma {
@@ -49,6 +73,8 @@ export interface FiltrosClientesDoPrograma {
   busca?: string | null;
   /** `null`/ausente = todos. Ver `FiltroReuniao` em `estado-na-url.ts`. */
   reuniao?: FiltroReuniao;
+  /** `null`/ausente = todas as etapas. Ver `EtapaAgenda`. */
+  agenda?: EtapaAgenda | null;
 }
 
 /**
@@ -73,6 +99,7 @@ export async function getClientesDoPrograma(
     p_grau: opts?.grau ?? null,
     p_busca: opts?.busca ?? null,
     p_reuniao: opts?.reuniao ?? null,
+    p_agenda: opts?.agenda ?? null,
   });
 
   if (error) {
@@ -91,102 +118,54 @@ export async function getClientesDoPrograma(
   return { linhas, total };
 }
 
-/**
- * Os 4 números do painel de KPIs da aba "reunião agendada"
- * (`gps.admin_clientes_reuniao_kpis`, migração `…282`, 17/09/2026).
- *
- * 🔑 São do universo INTEIRO de `gps.etapa1_clientes` (não do filtro de
- * fase/grau/busca já ativo na tela) — o pedido do Marcio é o resumo fixo
- * da aba, não um recorte que muda com outro filtro.
- */
-export interface ReuniaoKpis {
-  totalComReuniao: number;
-  marcadas: number;
-  paraVencer: number;
-  vencidas: number;
-  /**
-   * Os mesmos 4 números, só dos clientes com ESTRELA (`acompanhado_equipe`),
-   * migração `…318` (28/09/2026). Pedido do Marcio: a métrica que manda na
-   * tela é a dos favoritados; os sem estrela aparecem como complemento.
-   */
-  favoritos: {
-    totalComReuniao: number;
-    marcadas: number;
-    paraVencer: number;
-    vencidas: number;
-  };
+/** Uma linha de `gps.admin_clientes_agenda_kpis()` (…355). */
+export interface AgendaKpi {
+  etapa: EtapaAgenda;
+  /** Clientes nesta etapa (com e sem estrela). */
+  total: number;
+  /** Só os com estrela (`acompanhado_equipe`) — o número grande do tile. */
+  estrela: number;
 }
 
-const KPIS_ZERADOS: ReuniaoKpis = {
-  totalComReuniao: 0,
-  marcadas: 0,
-  paraVencer: 0,
-  vencidas: 0,
-  favoritos: { totalComReuniao: 0, marcadas: 0, paraVencer: 0, vencidas: 0 },
-};
-
 /**
- * `gps.admin_clientes_reuniao_kpis()` → os 4 KPIs numa chamada só.
+ * `gps.admin_clientes_agenda_kpis()` → as 5 etapas, sempre nesta ordem:
+ * sem, entrevista, preliminar, croqui, execucao. Universo INTEIRO de
+ * `gps.etapa1_clientes` (não o filtro da tela); a soma de `total` é a base.
  *
- * `ehAdmin()` de guarda, mesmo padrão de `getClientesDoPrograma` — a
- * fronteira real é `gp_is_admin()` na RPC (42501).
+ * 🔴 LANÇA em erro, nunca devolve zeros: "0 em croqui" é afirmação sobre o
+ * mundo, e a busca ter falhado não prova conjunto vazio. Quem chama decide
+ * o aviso (`page.tsx` faz `.catch(() => null)`). Também lança se a RPC não
+ * devolver as 5 etapas do catálogo — linha faltando não vira zero.
  */
-export async function getClientesReuniaoKpis(): Promise<{
-  kpis: ReuniaoKpis;
-  erro?: string;
-}> {
-  if (!(await ehAdmin())) return { kpis: KPIS_ZERADOS, erro: SEM_PERMISSAO };
+export async function getClientesAgendaKpis(): Promise<AgendaKpi[]> {
+  if (!(await ehAdmin())) throw new Error(SEM_PERMISSAO);
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .schema("gps")
-    .rpc("admin_clientes_reuniao_kpis");
+  const { data, error } = await supabase.schema("gps").rpc("admin_clientes_agenda_kpis");
 
   if (error) {
-    return {
-      kpis: KPIS_ZERADOS,
-      erro: traduzirErroBanco("getClientesReuniaoKpis", error, {
-        rpc: "gps.admin_clientes_reuniao_kpis",
+    throw new Error(
+      traduzirErroBanco("getClientesAgendaKpis", error, {
+        rpc: "gps.admin_clientes_agenda_kpis",
       }),
-    };
+    );
   }
 
-  const linha = ((data ?? []) as Record<string, unknown>[])[0];
-  // 🔴 Sem linha NÃO é "tudo zero": a RPC devolve SEMPRE exatamente 1 linha
-  // (4 agregados sobre a tabela inteira; `count(*)` de tabela vazia é 0, não
-  // zero linhas). Vir vazio significa que algo entre o banco e aqui falhou —
-  // e "0 vencidas" é uma afirmação sobre o mundo que não se pode fazer sem
-  // dado. Devolver `erro` faz a faixa mostrar o aviso em vez dos números.
-  if (!linha) {
-    return {
-      kpis: KPIS_ZERADOS,
-      erro: "Não foi possível apurar os números de reunião agora.",
-    };
+  const porEtapa = new Map<EtapaAgenda, AgendaKpi>();
+  for (const d of (data ?? []) as Record<string, unknown>[]) {
+    if (!ehEtapaAgenda(d.etapa_agenda)) continue;
+    porEtapa.set(d.etapa_agenda, {
+      etapa: d.etapa_agenda,
+      total: Number(d.total ?? 0),
+      estrela: Number(d.estrela ?? 0),
+    });
   }
 
-  // 🔴 Mesma regra: coluna de favoritos ausente (banco sem a `…318`) não
-  // vira "0 com estrela" — seria afirmar que ninguém favoritado tem reunião.
-  if (!("fav_total_com_reuniao" in linha)) {
-    return {
-      kpis: KPIS_ZERADOS,
-      erro: "Não foi possível apurar os números dos clientes com estrela agora.",
-    };
+  const linhas = ETAPAS_AGENDA.map((e) => porEtapa.get(e));
+  if (linhas.some((l) => !l)) {
+    throw new Error("Não foi possível apurar as etapas da agenda agora.");
   }
-
-  return {
-    kpis: {
-      totalComReuniao: Number(linha.total_com_reuniao ?? 0),
-      marcadas: Number(linha.marcadas ?? 0),
-      paraVencer: Number(linha.para_vencer ?? 0),
-      vencidas: Number(linha.vencidas ?? 0),
-      favoritos: {
-        totalComReuniao: Number(linha.fav_total_com_reuniao ?? 0),
-        marcadas: Number(linha.fav_marcadas ?? 0),
-        paraVencer: Number(linha.fav_para_vencer ?? 0),
-        vencidas: Number(linha.fav_vencidas ?? 0),
-      },
-    },
-  };
+  return linhas as AgendaKpi[];
 }
 
 function mapearLinha(d: Record<string, unknown>): ClienteDoPrograma {
@@ -203,5 +182,15 @@ function mapearLinha(d: Record<string, unknown>): ClienteDoPrograma {
     aderiuReuniao: Boolean(d.aderiu_reuniao),
     acompanhadoEquipe: Boolean(d.acompanhado_equipe),
     criadoEm: String(d.criado_em ?? ""),
+    epEm: (d.ep_em as string | null) ?? null,
+    epEstado: estadoReuniao(d.ep_estado),
+    rpEm: (d.rp_em as string | null) ?? null,
+    rpEstado: estadoReuniao(d.rp_estado),
+    cqEm: (d.cq_em as string | null) ?? null,
+    cqEstado: estadoReuniao(d.cq_estado),
+    exEm: (d.ex_em as string | null) ?? null,
+    exEstado: estadoReuniao(d.ex_estado),
+    // Banco sem a …355 não devolve a coluna: cai em "sem", nunca quebra a linha.
+    etapaAgenda: ehEtapaAgenda(d.etapa_agenda) ? d.etapa_agenda : "sem",
   };
 }

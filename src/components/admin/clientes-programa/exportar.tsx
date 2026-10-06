@@ -45,6 +45,9 @@ export function ExportarClientesCsv({
         // exportar com "vencida" ativo devolvia o universo inteiro (1.636),
         // não as 39 vencidas. Ver `actions.ts` (`exportarClientesCsv`).
         reuniao: estado.reuniao,
+        // Sem isto o CSV com `?agenda=` ativo levaria a base inteira — o
+        // mesmo defeito de 17/09 com `reuniao`.
+        agenda: estado.agenda,
       });
 
       if (resultado.erro || !resultado.csv) {

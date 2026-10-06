@@ -55,7 +55,7 @@
 
 import Link from "next/link";
 import { Search, Users, AlertTriangle } from "lucide-react";
-import type { ClienteDoPrograma, ReuniaoKpis } from "@/lib/data/clientes-admin";
+import type { ClienteDoPrograma, EtapaAgenda } from "@/lib/data/clientes-admin";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { Card, CardContent } from "@/components/ui/card";
 import { FaixaMetricas } from "@/components/ui/faixa-metricas";
@@ -72,15 +72,18 @@ import {
   type FiltroReuniao,
 } from "./estado-na-url";
 
+/** Uma linha de `getClientesAgendaKpis()`. */
+type AgendaKpi = { etapa: EtapaAgenda; total: number; estrela: number };
+
 /** Catálogo fechado dos chips de reunião — mesma allowlist da RPC/URL.
  * 🔴 `para_vencer` entrou na migração `…282` (KPIs, 17/09/2026): faltava
  * aqui embora já estivesse na allowlist de `estado-na-url.ts` desde o item 5
  * do backlog — o chip nunca tinha sido acrescentado ao catálogo da tela. */
 const CHIPS_REUNIAO: { id: FiltroReuniao; rotulo: string }[] = [
-  // 🔑 Primeiro da fila: é o mais amplo (todos os que têm reunião, 42) e o
-  // destino do tile "Total". Sem ele aqui, quem chegasse pelo tile veria a
-  // lista filtrada sem nenhum chip aceso — e sem como desfazer o filtro por
-  // esta barra.
+  // 🔑 Primeiro da fila: é o mais amplo (todos os que têm data, em qualquer
+  // prazo). Os tiles de reunião saíram em 06/10/2026 (viraram as etapas da
+  // agenda); os chips ficam porque o PRAZO da data da ficha (para vencer,
+  // vencida) não aparece em nenhum tile novo.
   { id: "com_reuniao", rotulo: "Com reunião" },
   { id: "marcada", rotulo: "Marcada" },
   { id: "para_vencer", rotulo: "Para vencer" },
@@ -102,13 +105,8 @@ export function ClientesPrograma({
   total: number;
   erro: string | null;
   estado: EstadoClientesUrl;
-  /**
-   * Os 4 KPIs da aba "reunião agendada" (`gps.admin_clientes_reuniao_kpis`,
-   * 17/09/2026) — universo INTEIRO, não o do filtro ativo. Opcional só para
-   * não quebrar chamador antigo durante a integração; a tela real de KPIs
-   * (quais 4 números, onde clicam, o que filtram) é montagem à parte.
-   */
-  kpis?: ReuniaoKpis;
+  /** As 5 linhas de `getClientesAgendaKpis()` — universo INTEIRO, não o do filtro. */
+  kpis?: AgendaKpi[] | null;
   erroKpis?: string | null;
   /** Última modificação da pasta do Drive por `cliente.id` (texto pronto do servidor). Ausente = "—". */
   pasta?: PastaPorCliente;
@@ -144,7 +142,7 @@ export function ClientesPrograma({
         )}
       </p>
 
-      <FaixaKpisReuniao kpis={kpis} erro={erroKpis} estado={estado} />
+      <FaixaEtapasAgenda kpis={kpis} erro={erroKpis} estado={estado} />
 
       <Card>
         <CardContent className="grid gap-4">
@@ -160,6 +158,9 @@ export function ClientesPrograma({
               ) : null}
               {estado.reuniao ? (
                 <input type="hidden" name="reuniao" value={estado.reuniao} />
+              ) : null}
+              {estado.agenda ? (
+                <input type="hidden" name="agenda" value={estado.agenda} />
               ) : null}
               <Search
                 aria-hidden="true"
@@ -217,6 +218,9 @@ export function ClientesPrograma({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {/* Estes chips leem a data da preliminar na ficha; os tiles acima,
+                a agenda. O rótulo evita ler os dois "Sem reunião" como um só. */}
+            <span className="rotulo text-muted-foreground">Data da preliminar</span>
             <ChipFiltro
               rotulo="Todas"
               ativo={!estado.reuniao}
@@ -255,104 +259,72 @@ export function ClientesPrograma({
   );
 }
 
+/** Rótulo de cada etapa da agenda — ordem = ordem dos tiles. */
+const ETAPAS_AGENDA: { id: EtapaAgenda; rotulo: string }[] = [
+  { id: "entrevista", rotulo: "Entrevista prévia" },
+  { id: "preliminar", rotulo: "Reunião preliminar" },
+  { id: "croqui", rotulo: "Croqui" },
+  { id: "execucao", rotulo: "Inicial de execução" },
+  { id: "sem", rotulo: "Sem reunião" },
+];
+
 /**
- * **Faixa de métricas de reunião preliminar** (Marcio, 17/09/2026): total,
- * marcadas, para vencer, vencidas — acima da lista, sempre visível.
+ * **Etapa de cada cliente na agenda** (João, 06/10/2026): cada cliente conta
+ * em UM tile, o da reunião mais avançada (marcada ou feita); a soma dos 5 é
+ * a base inteira. Número grande = clientes com estrela (regra do Marcio,
+ * 28/09); o total sem estrela vai no detalhe.
  *
- * 🔑 Desde 17/09 usa `FaixaMetricas` (`ui/faixa-metricas.tsx`) em vez de
- * tiles próprios. A mudança não foi estética: o Marcio pediu a denominação
- * visual **justamente para pôr à prova o dia em que outra família de
- * métricas entrar nesta tela** (honorários, DISC, fase). Com tiles locais,
- * a segunda família seria mais uma parede de números iguais; com o
- * componente, é uma chamada a mais e a diferenciação vem de graça.
+ * Tom neutro em todos: etapa é posição, não urgência (`FaixaMetricas` usa
+ * cor só para urgência). Clicar filtra (`?agenda=`); clicar no ativo limpa.
  *
- * **A cor aqui diz URGÊNCIA, não categoria:**
- *   vencidas    → `risco`   (a reunião já passou e ninguém tratou)
- *   para vencer → `atencao` (≤ 7 dias: é onde a ação ainda muda o resultado)
- *   marcadas    → `neutro`  (> 7 dias, está em dia — nada a fazer hoje)
- *   com reunião → `neutro`  (é âncora de navegação, não estado)
- * Zero rebaixa qualquer tom a neutro dentro do componente — "0 vencidas"
- * não pode ser vermelho.
- *
- * 🔑 Mostrada SEMPRE, não só com o filtro ativo: a RPC
- * (`gps.admin_clientes_reuniao_kpis`, 2,7 ms medidos) já roda em paralelo na
- * `page.tsx` independente de filtro, então exibir custa zero a mais — e ver
- * as 39 vencidas sem precisar filtrar antes é o caso de uso mais forte.
- *
- * 🔴 `erroKpis` NUNCA vira "0" nos números — zero é uma afirmação sobre o
- * mundo, e a busca ter falhado não prova conjunto vazio. Falha mostra aviso
- * (`role="alert"`), nunca número. `kpis` undefined não mostra nada.
+ * 🔴 Erro ou contagem incompleta NUNCA vira "0": mostra aviso.
  */
-function FaixaKpisReuniao({
+function FaixaEtapasAgenda({
   kpis,
   erro,
   estado,
 }: {
-  kpis?: ReuniaoKpis;
+  kpis?: AgendaKpi[] | null;
   erro?: string | null;
   estado: EstadoClientesUrl;
 }) {
-  if (erro) {
+  const porEtapa = new Map((kpis ?? []).map((k) => [k.etapa, k]));
+  const incompleto = ETAPAS_AGENDA.some((e) => !porEtapa.has(e.id));
+  if (erro || (kpis && incompleto)) {
     return (
       <p
         role="alert"
         className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
       >
         <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
-        Não foi possível carregar os KPIs de reunião. {erro}
+        Não foi possível carregar as etapas da agenda. {erro ?? ""}
       </p>
     );
   }
-
   if (!kpis) return null;
 
-  // 🔑 (28/09/2026, Marcio) "A ordem de visualização e de metrificação
-  // sempre vai ser os favoritados." O número GRANDE de cada tile é o dos
-  // clientes com estrela; os sem estrela entram só no detalhe, como
-  // complemento. O tom (urgência) também segue o número dos com estrela —
-  // "0 vencidas com estrela" é neutro mesmo havendo vencidas sem estrela.
-  const fav = kpis.favoritos;
-  const semEstrela = (total: number, comEstrela: number) =>
-    `+${Math.max(total - comEstrela, 0)} sem estrela`;
+  const somaEstrela = kpis.reduce((s, k) => s + k.estrela, 0);
+  const somaTotal = kpis.reduce((s, k) => s + k.total, 0);
 
   return (
     <FaixaMetricas
-      titulo="Reunião preliminar — clientes com estrela"
-      resumo={`${fav.totalComReuniao} com estrela · ${kpis.totalComReuniao} no total`}
-      ativo={estado.reuniao}
-      metricas={[
-        {
-          id: "com_reuniao",
-          rotulo: "Com reunião",
-          valor: fav.totalComReuniao,
-          // Âncora de navegação, não estado: neutro de propósito.
-          href: hrefClientes({ reuniao: "com_reuniao", pagina: 1 }, estado),
-          detalhe: `qualquer prazo · ${semEstrela(kpis.totalComReuniao, fav.totalComReuniao)}`,
-        },
-        {
-          id: "marcada",
-          rotulo: "Marcadas",
-          valor: fav.marcadas,
-          href: hrefClientes({ reuniao: "marcada", pagina: 1 }, estado),
-          detalhe: `em mais de 7 dias · ${semEstrela(kpis.marcadas, fav.marcadas)}`,
-        },
-        {
-          id: "para_vencer",
-          rotulo: "Para vencer",
-          valor: fav.paraVencer,
-          tom: "atencao",
-          href: hrefClientes({ reuniao: "para_vencer", pagina: 1 }, estado),
-          detalhe: `nos próximos 7 dias · ${semEstrela(kpis.paraVencer, fav.paraVencer)}`,
-        },
-        {
-          id: "vencida",
-          rotulo: "Vencidas",
-          valor: fav.vencidas,
-          tom: "risco",
-          href: hrefClientes({ reuniao: "vencida", pagina: 1 }, estado),
-          detalhe: `data já passou · ${semEstrela(kpis.vencidas, fav.vencidas)}`,
-        },
-      ]}
+      titulo="Etapa na agenda — clientes com estrela"
+      resumo={`${somaEstrela} com estrela · ${somaTotal} no total`}
+      ativo={estado.agenda}
+      colunas={5}
+      metricas={ETAPAS_AGENDA.map((e) => {
+        const k = porEtapa.get(e.id)!;
+        return {
+          id: e.id,
+          rotulo: e.rotulo,
+          valor: k.estrela,
+          href: hrefClientes(
+            { agenda: estado.agenda === e.id ? null : e.id, pagina: 1 },
+            estado,
+          ),
+          detalhe: `+${Math.max(k.total - k.estrela, 0)} sem estrela`,
+        };
+      })}
     />
   );
 }

@@ -5,24 +5,23 @@
  * propósito: aquela tem um `<Select>` do Base UI POR LINHA (troca de fase) e
  * foi desenhada para o CRM do aluno, com no máximo ~30 clientes por ambiente.
  * Aqui a página inteira já pode ter 100 linhas — 100 instâncias de um
- * componente com portal (`Select` do Base UI monta um portal fora da árvore)
- * travariam a aba. Zero componente Radix/Base UI por linha aqui.
+ * componente com portal travariam a aba. Zero componente Radix/Base UI por linha.
  *
- * Server Component: a tela não escreve nada, só lê.
- *
- * 🔴 SEM ROLAGEM LATERAL (03/10/2026, cobrança do João): a versão anterior era
- * uma `<Table min-w-[56rem]>` dentro de `overflow-x-auto` — no notebook e no
- * celular o telefone, o DISC e a reunião ficavam atrás de um "arraste para o
- * lado". Agora é uma lista em grade: em tela larga, colunas; no estreito, o
- * mesmo item vira cartão de três linhas. Nenhum dado depende de rolar.
+ * 🔴 SEM ROLAGEM LATERAL (03/10/2026 e 06/10/2026, João): as quatro datas da
+ * agenda (Entrevista, Preliminar, Croqui, Execução) são o status do pessoal e
+ * precisam caber sem arrastar para o lado. Para abrir espaço, parceiro,
+ * telefone e grau/DISC deixaram de ser colunas e viraram a 2ª linha da célula
+ * do cliente. Conta a 1366 px (container útil ≈1.088): colunas fixas
+ * 7 + 4×6 + 5,5 = 36,5rem + 6 vãos de 0,75rem ≈ 656 px → sobram ≈ 390 px
+ * para o cliente. No estreito (<lg) a linha vira cartão com grade 2×2.
  */
 
 import { Fragment } from "react";
 import Link from "next/link";
-import { Star, TriangleAlert } from "lucide-react";
-import type { ClienteDoPrograma } from "@/lib/data/clientes-admin";
+import { Check, CircleAlert, Star, X } from "lucide-react";
+import type { ClienteDoPrograma, EstadoReuniao } from "@/lib/data/clientes-admin";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
-import { formatarDataSoDia, hojeSaoPaulo } from "@/lib/datas";
+import { FUSO } from "@/lib/datas";
 import { mascaraTelefone } from "@/lib/masks";
 import { CopiarContato } from "@/components/admin/copiar-contato";
 import { cn } from "@/lib/utils";
@@ -31,6 +30,14 @@ import { formatarNome } from "@/lib/nomes";
 /** `cliente.id` → texto pronto ("há 2 h") + data completa para o `title`. */
 export type PastaPorCliente = Record<string, { rotulo: string; titulo: string }>;
 
+/** Rótulo curto das 4 reuniões — o mesmo no cabeçalho e no cartão. */
+const REUNIOES = [
+  { chave: "ep", rotulo: "Entrevista" },
+  { chave: "rp", rotulo: "Preliminar" },
+  { chave: "cq", rotulo: "Croqui" },
+  { chave: "ex", rotulo: "Execução" },
+] as const;
+
 export function TabelaClientesPrograma({
   linhas,
   pasta,
@@ -38,12 +45,8 @@ export function TabelaClientesPrograma({
   linhas: ClienteDoPrograma[];
   pasta?: PastaPorCliente;
 }) {
-  // Mesmo corte de "vencida" da RPC (`data < hoje`): comparação de string
-  // YYYY-MM-DD, sem `Date` no meio (ver `datas.ts`). Uma vez, fora do loop.
-  const hoje = hojeSaoPaulo();
   // 🔑 (28/09/2026, Marcio) Estrela primeiro — a RPC já devolve os com estrela
-  // no topo (`…318`). Aqui só se marca a FRONTEIRA: uma faixa antes de cada
-  // grupo, e só quando os dois grupos aparecem na mesma página.
+  // no topo. Aqui só se marca a FRONTEIRA entre os dois grupos.
   const comFaixas =
     linhas.some((l) => l.acompanhadoEquipe) && linhas.some((l) => !l.acompanhadoEquipe);
   return (
@@ -51,16 +54,15 @@ export function TabelaClientesPrograma({
       <div
         aria-hidden
         className={cn(
-          GRADE,
-          "hidden border-b px-4 py-2 text-xs font-medium text-muted-foreground lg:grid",
+          COLUNAS,
+          "hidden gap-x-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground lg:grid",
         )}
       >
         <span>Cliente</span>
-        <span>Parceiro</span>
         <span>Fase</span>
-        <span>Telefone</span>
-        <span>Grau · DISC</span>
-        <span>Reunião</span>
+        {REUNIOES.map((r) => (
+          <span key={r.chave}>{r.rotulo}</span>
+        ))}
         <span>Pasta</span>
       </div>
       <ul className="divide-y">
@@ -75,112 +77,117 @@ export function TabelaClientesPrograma({
           const grau = c.grauRelacao
             ? GRAUS_RELACAO_UI.find((g) => g.id === c.grauRelacao)?.rotulo
             : null;
-          const dataReuniao = formatarDataSoDia(c.dataReuniaoPreliminar);
-          const reuniaoVencida = Boolean(
-            c.dataReuniaoPreliminar && c.dataReuniaoPreliminar < hoje,
-          );
+          const grauDisc = [grau, c.perfilDisc].filter(Boolean).join(" · ");
           const nome = formatarNome(c.clienteNome) || "Sem nome";
-          return (
-            <Fragment key={c.id}>
-            {faixa ? (
-              <li className="rotulo bg-superficie-afundada px-4 py-1.5 text-muted-foreground">
-                {faixa}
-              </li>
-            ) : null}
-            {/* Com estrela: fundo de marca + filete à esquerda + nome em
-                negrito. Sem estrela: texto no tom apagado (token
-                `muted-foreground`, contraste AA medido — nunca `opacity`). */}
-            <li
+          const datas = {
+            ep: { em: c.epEm, estado: c.epEstado },
+            rp: { em: c.rpEm, estado: c.rpEstado },
+            cq: { em: c.cqEm, estado: c.cqEstado },
+            ex: { em: c.exEm, estado: c.exEstado },
+          };
+          const seloFase = (
+            <span
               className={cn(
-                "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm",
-                GRADE_LG,
-                c.acompanhadoEquipe
-                  ? "bg-primary/5 shadow-[inset_3px_0_0_var(--color-primary)]"
-                  : "text-muted-foreground",
+                "rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+                fase?.cor ?? "bg-neutro text-neutro-foreground",
               )}
             >
-              {/* Cliente — estrela = acompanhado pela equipe (mesmo desenho de
-                  `aluno-card.tsx`); o nome ao lado continua sendo a pista. */}
-              <div
+              {fase?.rotulo ?? c.fase}
+            </span>
+          );
+          return (
+            <Fragment key={c.id}>
+              {faixa ? (
+                <li className="rotulo bg-superficie-afundada px-4 py-1.5 text-muted-foreground">
+                  {faixa}
+                </li>
+              ) : null}
+              {/* Com estrela: fundo de marca + filete à esquerda + nome em
+                  negrito. Sem estrela: tom apagado (token, nunca `opacity`). */}
+              <li
                 className={cn(
-                  "flex min-w-0 items-center gap-1.5",
-                  c.acompanhadoEquipe ? "font-semibold text-foreground" : "font-normal",
+                  "flex flex-col gap-1.5 px-4 py-2.5 text-sm lg:grid lg:items-center lg:gap-x-3 lg:gap-y-0",
+                  COLUNAS,
+                  c.acompanhadoEquipe
+                    ? "bg-primary/5 shadow-[inset_3px_0_0_var(--color-primary)]"
+                    : "text-muted-foreground",
                 )}
               >
-                {c.acompanhadoEquipe ? (
-                  <Star
-                    aria-label="Acompanhado pela equipe"
-                    className="size-3.5 shrink-0 fill-primary text-primary"
-                  />
-                ) : null}
-                <span className="truncate" title={nome}>
-                  {nome}
-                </span>
-              </div>
-
-              {/* No estreito a fase sobe para a direita do nome. */}
-              <span
-                className={cn(
-                  "justify-self-end rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap lg:order-3 lg:justify-self-start",
-                  fase?.cor ?? "bg-neutro text-neutro-foreground",
-                )}
-              >
-                {fase?.rotulo ?? c.fase}
-              </span>
-
-              <Link
-                href={`/admin/aluno/${c.alunoId}`}
-                className="min-w-0 truncate text-muted-foreground hover:text-accent-foreground hover:underline lg:order-2 lg:text-foreground"
-                title={c.parceiroNome ?? undefined}
-              >
-                <span className="sr-only">Parceiro: </span>
-                {formatarNome(c.parceiroNome) || "—"}
-              </Link>
-
-              <span
-                className={cn(
-                  "justify-self-end whitespace-nowrap lg:order-6 lg:justify-self-start",
-                  reuniaoVencida ? "text-destructive" : "text-muted-foreground lg:text-foreground",
-                )}
-              >
-                {dataReuniao ? (
-                  <span className="inline-flex items-center gap-1">
-                    {reuniaoVencida ? (
-                      <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+                {/* Cliente: nome (+ fase só no estreito) / parceiro · telefone · grau/DISC */}
+                <div className="grid min-w-0 gap-0.5">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div
+                      className={cn(
+                        "flex min-w-0 flex-1 items-center gap-1.5",
+                        c.acompanhadoEquipe ? "font-semibold text-foreground" : "font-normal",
+                      )}
+                    >
+                      {c.acompanhadoEquipe ? (
+                        <Star
+                          aria-label="Acompanhado pela equipe"
+                          className="size-3.5 shrink-0 fill-primary text-primary"
+                        />
+                      ) : null}
+                      <span className="truncate" title={nome}>
+                        {nome}
+                      </span>
+                    </div>
+                    <span className="shrink-0 lg:hidden">{seloFase}</span>
+                  </div>
+                  <div className="flex min-w-0 items-center gap-x-1.5 text-xs text-muted-foreground">
+                    <Link
+                      href={`/admin/aluno/${c.alunoId}`}
+                      className="min-w-0 truncate hover:text-accent-foreground hover:underline"
+                      title={c.parceiroNome ?? undefined}
+                    >
+                      <span className="sr-only">Parceiro: </span>
+                      {formatarNome(c.parceiroNome) || "—"}
+                    </Link>
+                    {c.telefone ? (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="shrink-0 whitespace-nowrap">
+                          <CopiarContato
+                            valor={c.telefone}
+                            rotuloAcessivel={`Copiar telefone de ${nome}`}
+                            formatar={mascaraTelefone}
+                          />
+                        </span>
+                      </>
                     ) : null}
-                    <span className="sr-only">Reunião: </span>
-                    {dataReuniao}
-                    {reuniaoVencida ? <span className="sr-only"> (vencida)</span> : null}
+                    {grauDisc ? (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="min-w-0 truncate" title={grauDisc}>
+                          {grauDisc}
+                        </span>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+
+                <span className="hidden lg:block">{seloFase}</span>
+
+                {/* Estreito: grade 2×2 (+ pasta). Largo: `contents` — cada
+                    célula vira coluna da linha. */}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 lg:contents">
+                  {REUNIOES.map((r) => (
+                    <CelulaData
+                      key={r.chave}
+                      rotulo={r.rotulo}
+                      em={datas[r.chave].em}
+                      estado={datas[r.chave].estado}
+                    />
+                  ))}
+                  <span
+                    className="whitespace-nowrap text-xs text-muted-foreground lg:text-sm"
+                    title={pasta?.[c.id]?.titulo}
+                  >
+                    <span className="lg:sr-only">Pasta </span>
+                    {pasta?.[c.id]?.rotulo ?? "—"}
                   </span>
-                ) : (
-                  <span aria-hidden>—</span>
-                )}
-              </span>
-
-              <span className="whitespace-nowrap lg:order-4">
-                {c.telefone ? (
-                  <CopiarContato
-                    valor={c.telefone}
-                    rotuloAcessivel={`Copiar telefone de ${nome}`}
-                    formatar={mascaraTelefone}
-                  />
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
-              </span>
-
-              <span className="justify-self-end text-xs text-muted-foreground lg:order-5 lg:justify-self-start lg:text-sm lg:text-foreground">
-                {[grau, c.perfilDisc].filter(Boolean).join(" · ") || "—"}
-              </span>
-
-              <span
-                className="whitespace-nowrap text-xs text-muted-foreground lg:order-7 lg:text-sm"
-                title={pasta?.[c.id]?.titulo}
-              >
-                <span className="sr-only">Pasta: </span>
-                {pasta?.[c.id]?.rotulo ?? "—"}
-              </span>
-            </li>
+                </div>
+              </li>
             </Fragment>
           );
         })}
@@ -189,8 +196,94 @@ export function TabelaClientesPrograma({
   );
 }
 
+/**
+ * Uma data da agenda. Estado por ícone + texto, nunca só cor:
+ * agendada = só a data · pendente = data + "não concluída" (âmbar) ·
+ * realizada = data + ✓ · faltou = data + "faltou" · sem sessão = "—".
+ */
+function CelulaData({
+  rotulo,
+  em,
+  estado,
+}: {
+  rotulo: string;
+  em: string | null;
+  estado: EstadoReuniao | null;
+}) {
+  const data = dataCurta(em);
+  return (
+    <div className="min-w-0 tabular-nums">
+      <span className="text-xs text-muted-foreground lg:sr-only">{rotulo} </span>
+      {data ? (
+        <>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 whitespace-nowrap",
+              estado === "pendente" && "text-atencao-foreground",
+              estado === "faltou" && "text-risco-foreground",
+            )}
+          >
+            {data}
+            {estado === "realizada" ? (
+              <Check aria-hidden className="size-3.5 shrink-0 text-sucesso-foreground" />
+            ) : null}
+            <span className="sr-only">{estado ? `, ${ROTULO_ESTADO[estado]}` : ""}</span>
+          </span>
+          {estado === "pendente" || estado === "faltou" ? (
+            <span
+              aria-hidden
+              className={cn(
+                "flex items-center gap-0.5 text-xs whitespace-nowrap",
+                estado === "pendente" ? "text-atencao-foreground" : "text-risco-foreground",
+              )}
+            >
+              {estado === "pendente" ? (
+                <CircleAlert className="size-3 shrink-0" />
+              ) : (
+                <X className="size-3 shrink-0" />
+              )}
+              {ROTULO_ESTADO[estado]}
+            </span>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <span aria-hidden>—</span>
+          <span className="sr-only">sem data</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+const ROTULO_ESTADO: Record<EstadoReuniao, string> = {
+  agendada: "agendada",
+  pendente: "não concluída",
+  realizada: "realizada",
+  faltou: "faltou",
+};
+
+const RE_SO_DIA = /^(\d{4})-(\d{2})-(\d{2})$/;
+const FORMATO_CURTO = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "2-digit",
+  timeZone: FUSO,
+});
+
+/**
+ * ISO → "06/10/26". `date` puro ("2026-10-06") por recorte de string (sem
+ * `Date`, que viraria o dia em UTC — ver `formatarDataSoDia`); `timestamptz`
+ * pelo fuso de São Paulo. Inválido → `null` (célula mostra "—").
+ */
+function dataCurta(iso: string | null): string | null {
+  if (!iso) return null;
+  const m = RE_SO_DIA.exec(iso);
+  if (m) return `${m[3]}/${m[2]}/${m[1].slice(2)}`;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : FORMATO_CURTO.format(d);
+}
+
 /** As sete colunas em tela larga — o cabeçalho e cada linha usam a mesma. */
 const COLUNAS =
-  "lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.3fr)_7rem_10rem_minmax(0,1fr)_6.5rem_5.5rem]";
-const GRADE = cn("grid gap-x-3", COLUNAS);
-const GRADE_LG = COLUNAS;
+  "lg:grid-cols-[minmax(0,1fr)_7rem_6rem_6rem_6rem_6rem_5.5rem]";

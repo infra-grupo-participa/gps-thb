@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Star, MessageCircle, ArrowRight } from "lucide-react";
 import type { ClienteEtapa1 } from "@/lib/types";
-import { FASES_CLIENTE } from "@/lib/etapa1";
+import { FASES_CLIENTE, faseContaHonorario } from "@/lib/etapa1";
 import { formatarData } from "@/lib/datas";
 import { mascaraTelefone } from "@/lib/masks";
 import { brl } from "@/lib/moeda";
@@ -79,13 +79,13 @@ export function FavoritoDestaque({
                   <span
                     className="tabular-nums"
                     title={
-                      cliente.fase === "contratado"
+                      faseContaHonorario(cliente.fase)
                         ? "Honorários contratados — contam na meta do ambiente"
-                        : "Honorários registrados — não contam na meta fora de Contratado"
+                        : "Honorários registrados — não contam na meta antes da Execução"
                     }
                   >
                     Honorários: {brl(cliente.valor_honorarios)}
-                    {cliente.fase === "contratado" ? null : " (fora da meta)"}
+                    {faseContaHonorario(cliente.fase) ? null : " (fora da meta)"}
                   </span>
                 ) : null}
               </div>

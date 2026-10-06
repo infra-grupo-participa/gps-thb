@@ -143,8 +143,11 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
     restaurar = async () => {
       await page.goto(`${base}?aba=dados`);
       await expect(regiao(page)).toBeVisible({ timeout: 15_000 });
-      // Uma por vez, filhas antes das mães não importa: nada propaga.
-      for (const nome of ETAPAS) await definir(page, nome, inicial[nome]);
+      // Uma por vez; nada propaga. Primeiro as que voltam MARCADAS, depois as
+      // que voltam desmarcadas: na ordem inversa a fase passaria por
+      // Prospecção no meio do caminho e a trava do favorito recusaria.
+      for (const nome of ETAPAS) if (inicial[nome]) await definir(page, nome, true);
+      for (const nome of ETAPAS) if (!inicial[nome]) await definir(page, nome, false);
       await page.reload();
       await expect(regiao(page)).toBeVisible({ timeout: 15_000 });
       expect(
@@ -153,9 +156,16 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
       ).toEqual(inicial);
     };
 
-    // Ponto de partida limpo: nada marcado (o fim devolve o original).
-    for (const nome of ETAPAS) await definir(page, nome, false);
-    await expect(linha(page, "Reunião Preliminar")).not.toContainText(
+    // Ponto de partida: só Prospecção + Reunião Preliminar (o fim devolve o
+    // original). 🔴 Desde 05/10 (…353) a trajetória CALCULA a fase, e o
+    // cliente de QA tem a estrela: zerar tudo levaria a fase a Prospecção e a
+    // trava do favorito recusa (42501). Com a Preliminar sempre marcada a
+    // fase nunca desce de Fechamento. As duas de base são marcadas ANTES de
+    // desmarcar o resto, pela mesma razão.
+    const BASE = new Set<NomeEtapa>(["Prospecção", "Reunião Preliminar"]);
+    for (const nome of BASE) await definir(page, nome, true);
+    for (const nome of ETAPAS) if (!BASE.has(nome)) await definir(page, nome, false);
+    await expect(linha(page, "Sessão de Viabilidade")).not.toContainText(
       "pendente",
     );
 
@@ -196,13 +206,13 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
       "false",
     );
 
-    // 3. Croqui sem Reunião Preliminar ⇒ "pendente" na Preliminar.
+    // 3. Croqui sem a Viabilidade ⇒ "pendente" na Viabilidade.
     await definir(page, "Croqui Estrutural", true);
-    await expect(linha(page, "Reunião Preliminar")).toContainText("pendente");
+    await expect(linha(page, "Sessão de Viabilidade")).toContainText("pendente");
     await expect(linha(page, "Croqui Estrutural")).not.toContainText(
       "pendente",
     );
-    await expect(caixa(page, "Reunião Preliminar")).toHaveAttribute(
+    await expect(caixa(page, "Sessão de Viabilidade")).toHaveAttribute(
       "aria-checked",
       "false",
     );
@@ -212,11 +222,11 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
       "aria-checked",
       "true",
     );
-    await expect(linha(page, "Reunião Preliminar")).toContainText("pendente");
+    await expect(linha(page, "Sessão de Viabilidade")).toContainText("pendente");
 
     // 4. Desmarcar o Croqui apaga o pendente.
     await definir(page, "Croqui Estrutural", false);
-    await expect(linha(page, "Reunião Preliminar")).not.toContainText(
+    await expect(linha(page, "Sessão de Viabilidade")).not.toContainText(
       "pendente",
     );
   });

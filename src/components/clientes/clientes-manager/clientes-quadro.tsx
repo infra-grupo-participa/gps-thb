@@ -1,17 +1,17 @@
 "use client";
 
 /**
- * Visão "Quadro": uma coluna por fase, com arrastar e soltar. O estado do
- * arraste (`arrastando`/`sobre`) é só daqui e desceu junto no corte da Onda 3.
+ * Visão "Quadro": uma coluna por fase (`FASES_CLIENTE`), só leitura: a fase é
+ * calculada pelo banco a partir das etapas marcadas na ficha, então não há
+ * arrastar para mudar.
  *
  * ⚠️ O quadro NÃO ordena: a coluna já é a ordem. Ele recebe a lista filtrada
  * pela busca, nunca a ordenada.
  */
 
-import { useState } from "react";
 import Link from "next/link";
-import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
-import { FASES_CLIENTE } from "@/lib/etapa1";
+import type { ClienteEtapa1 } from "@/lib/types";
+import { FASES_CLIENTE, faseContaHonorario } from "@/lib/etapa1";
 import { mascaraTelefone } from "@/lib/masks";
 import { brl } from "@/lib/moeda";
 import { linkWhatsapp } from "@/lib/whatsapp";
@@ -23,63 +23,30 @@ import {
   MarcaSemDados,
   WhatsappLink,
 } from "./clientes-chips";
-import { fasesDisponiveis, modoEstrela, type CtxEstrela } from "./ordenacao";
+import { modoEstrela, type CtxEstrela } from "./ordenacao";
 
 export function Kanban({
   clientes,
   fichaHref,
   ctxEstrela,
-  onMover,
   onToggleEquipe,
 }: {
   clientes: ClienteEtapa1[];
   fichaHref: (id: string) => string;
   /** Ver `ClientesTabela`: havendo favorito, a estrela some dos outros. */
   ctxEstrela: CtxEstrela;
-  onMover: (c: ClienteEtapa1, f: FaseCliente) => void;
   onToggleEquipe: (c: ClienteEtapa1) => void;
 }) {
-  const [arrastando, setArrastando] = useState<string | null>(null);
-  const [sobre, setSobre] = useState<FaseCliente | null>(null);
-
-  const emArraste = clientes.find((c) => c.id === arrastando) ?? null;
-  /**
-   * A coluna aceita o que está sendo arrastado? Cliente confirmado pela equipe
-   * não volta para "Prospecção" — o banco recusa com 42501. A coluna se recusa
-   * ANTES do solto, com a razão escrita: soltar e receber erro é o mesmo que um
-   * botão que falha.
-   */
-  const aceita = (fase: FaseCliente) =>
-    !emArraste || fasesDisponiveis(emArraste).some((f) => f.id === fase);
-
   return (
     <div className="overflow-x-auto pb-2">
       <div className="flex min-w-max gap-3">
         {FASES_CLIENTE.map((coluna) => {
           const itens = clientes.filter((c) => c.fase === coluna.id);
-          const recusa = !aceita(coluna.id);
-          const destaque = sobre === coluna.id && !recusa;
           return (
             <div
               key={coluna.id}
-              onDragOver={(e) => {
-                if (recusa) return;
-                e.preventDefault();
-                setSobre(coluna.id);
-              }}
-              onDragLeave={() => setSobre((s) => (s === coluna.id ? null : s))}
-              onDrop={() => {
-                const c = clientes.find((x) => x.id === arrastando);
-                if (c && !recusa) onMover(c, coluna.id);
-                setArrastando(null);
-                setSobre(null);
-              }}
               className={
-                "flex w-64 shrink-0 flex-col rounded-lg border bg-muted/30 p-2 transition " +
-                (destaque ? "border-primary ring-1 ring-primary " : "") +
-                // Estado "não aceita" por FORMA (borda tracejada), nunca por
-                // `opacity` na coluna inteira.
-                (recusa ? "border-dashed border-borda-forte" : "")
+                "flex w-64 shrink-0 flex-col rounded-lg border bg-muted/30 p-2"
               }
             >
               <div className="mb-2 px-1">
@@ -92,12 +59,6 @@ export function Kanban({
                 <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
                   {coluna.ajuda}
                 </p>
-                {recusa ? (
-                  <p className="mt-1 text-[11px] leading-snug font-medium text-atencao-foreground">
-                    A equipe acompanha este cliente — a fase não volta para
-                    Prospecção.
-                  </p>
-                ) : null}
               </div>
               <div className="flex flex-1 flex-col gap-2">
                 {itens.map((c) => {
@@ -105,11 +66,8 @@ export function Kanban({
                   return (
                     <div
                       key={c.id}
-                      draggable
-                      onDragStart={() => setArrastando(c.id)}
-                      onDragEnd={() => setArrastando(null)}
                       className={
-                        "cursor-grab rounded-md border bg-background p-2.5 shadow-sm active:cursor-grabbing " +
+                        "rounded-md border bg-background p-2.5 shadow-sm " +
                         (c.acompanhado_equipe ? "border-primary" : "")
                       }
                     >
@@ -145,7 +103,7 @@ export function Kanban({
                       {c.valor_honorarios != null ? (
                         <div className="mt-1 text-xs font-medium tabular-nums text-accent-foreground">
                           Honorários: {brl(c.valor_honorarios)}
-                          {c.fase === "contratado" ? "" : " (fora da meta)"}
+                          {faseContaHonorario(c.fase) ? "" : " (fora da meta)"}
                         </div>
                       ) : null}
                       <div className="mt-2 flex items-center gap-2">
@@ -161,7 +119,7 @@ export function Kanban({
                 })}
                 {itens.length === 0 ? (
                   <div className="rounded-md border border-dashed p-3 text-center text-[11px] text-muted-foreground">
-                    Arraste aqui
+                    Nenhum cliente nesta fase
                   </div>
                 ) : null}
               </div>

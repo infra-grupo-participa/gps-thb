@@ -51,7 +51,7 @@ export function FichaAbaFechamento({
 }: {
   cliente: ClienteEtapa1;
   admin: boolean;
-  /** `fase === "contratado"` — só aí os campos são editáveis. */
+  /** `cliente.fase === "contratado"` — só aí os campos são editáveis. */
   contratado: boolean;
   honorarios: string;
   onHonorarios: (v: string) => void;

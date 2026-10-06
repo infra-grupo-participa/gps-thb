@@ -180,6 +180,12 @@ export interface DashboardCaminho {
   prospeccao: number;
   fechamento: number;
   contratado: number;
+  /**
+   * Ambientes com cliente em `concluido` (Entrega da pasta; fase calculada
+   * pela trajetória desde 05/10/2026). A RPC só devolve `caminho.concluido`
+   * depois da migração do banco — até lá `n()` lê ausente como 0.
+   */
+  concluido: number;
   comValor: number;
 }
 
@@ -490,6 +496,8 @@ export function mapearDashboard(d: Record<string, unknown>): Dashboard {
       prospeccao: n(cam.prospeccao),
       fechamento: n(cam.fechamento),
       contratado: n(cam.contratado),
+      // Ausente até a migração do banco: `n(undefined)` = 0 (= `?? 0`).
+      concluido: n(cam.concluido),
       comValor: n(cam.com_valor),
     },
     atencao: {

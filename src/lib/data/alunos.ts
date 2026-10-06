@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { resumoEtapa1 } from "@/lib/etapa1";
+import { FASES_CLIENTE, resumoEtapa1 } from "@/lib/etapa1";
 import { logErro } from "@/lib/log";
 import { getSinaisDoPainel } from "@/lib/data/sinais-painel";
 import { CLASSES, type ClasseAluno } from "@/lib/types";
@@ -167,12 +167,13 @@ export interface AlunoGps {
   /** Maior `auth.users.last_sign_in_at` entre os membros. ISO. `null` = nunca entrou. */
   ultimoAcesso: string | null;
   /**
-   * Soma de `valor_honorarios` dos clientes em `fase='contratado'`, em reais.
+   * Soma de `valor_honorarios` dos clientes em `contratado`/`concluido`
+   * (o que a RPC devolver — a regra vive na CTE `cli` do banco), em reais.
    * `null` = nenhum contratado com valor registrado — NUNCA exibir como
    * `R$ 0,00` (a coluna nasceu vazia nas 879 linhas na migração ...090).
    */
   honorariosContratados: number | null;
-  /** Quantos clientes do ambiente estão em `fase='contratado'`. */
+  /** Quantos clientes do ambiente contam para honorários (vem da RPC). */
   contratados: number;
   /** Desses, quantos ainda sem `valor_honorarios`. */
   contratadosSemValor: number;
@@ -347,10 +348,8 @@ function mapearFavorito(
   fase: string | null | undefined,
 ): { nome: string; fase: FaseCliente } | null {
   if (!nome || !fase) return null;
-  if (fase !== "prospeccao" && fase !== "fechamento" && fase !== "contratado") {
-    return null;
-  }
-  return { nome, fase };
+  if (!FASES_CLIENTE.some((f) => f.id === fase)) return null;
+  return { nome, fase: fase as FaseCliente };
 }
 
 /**

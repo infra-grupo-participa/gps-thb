@@ -50,7 +50,6 @@ export type PatchCliente = Partial<
     | "mensagem_padrao_enviada"
     | "estudo_caso_enviado"
     | "ligacao_realizada"
-    | "fase"
     | "data_reuniao_preliminar"
     | "aderiu_reuniao"
     | "perfil_disc"

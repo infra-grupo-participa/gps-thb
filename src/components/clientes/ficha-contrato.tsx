@@ -17,7 +17,7 @@
  *
  * 🔑 Três regras herdadas, que continuam valendo aqui:
  *
- * 1. **O valor NÃO some quando a fase volta** (B9-b): fora de "Contratado" ele
+ * 1. **O valor NÃO some quando a fase volta** (B9-b): fora de Execução/Concluído ele
  *    vira leitura com o aviso de que saiu da meta. Esconder dado que o aluno
  *    digitou é perdê-lo em silêncio.
  * 2. **`null` nunca vira R$ 0,00.** "Não informado" é o texto.
@@ -73,7 +73,10 @@ export function FichaContrato({
   aoMudarAnexo,
   erros,
 }: {
-  /** `fase === "contratado"` — só aí os campos são editáveis. */
+  /**
+   * `faseContaHonorario(fase)` (src/lib/etapa1.ts): `contratado` OU
+   * `concluido` — só aí os campos são editáveis. Concluir não tira da meta.
+   */
   contratado: boolean;
   /** Valor mascarado ("R$ 1.234,56") em edição. */
   honorarios: string;
@@ -116,7 +119,7 @@ export function FichaContrato({
   // O anexo aparece SEMPRE, em qualquer fase: quem chega ao programa com o caso
   // já contratado precisa mandar a prova antes de ter mexido na fase, e o
   // arquivo é o que sustenta o sinal da equipe. Só os HONORÁRIOS seguem presos
-  // a "Contratado" (é a regra da meta, B8).
+  // a Execução/Concluído (é a regra da meta, B8 — `faseContaHonorario`).
   const anexo = (
     <ContratoAnexo
       clienteId={clienteId}
@@ -208,7 +211,7 @@ export function FichaContrato({
           />
         </div>
       ) : honorariosValor != null ? (
-        // Fora de "Contratado" o valor sobrevive, mas não conta na meta — e
+        // Fora de Execução/Concluído o valor sobrevive, mas não conta na meta — e
         // isso é ATENÇÃO, não decoração: o token semântico diz o estado.
         <div className="grid gap-1.5 rounded-lg bg-atencao p-3 text-atencao-foreground">
           <p className="text-sm">
@@ -220,13 +223,15 @@ export function FichaContrato({
             {faseRotulo ?? "outra fase"}.
           </p>
           <p className="text-xs">
-            Mova o cliente de volta para Contratado para editar e voltar a
-            contar na meta. O valor não é apagado.
+            Quando a Execução for marcada em &quot;Por onde o cliente
+            passou&quot;, o valor volta a contar na meta e a ser editável. Ele
+            não é apagado.
           </p>
         </div>
       ) : (
         <p className="corpo-sm text-muted-foreground">
-          Os honorários aparecem aqui quando o cliente entra na fase Contratado.
+          Os honorários aparecem aqui quando a Execução for marcada em
+          &quot;Por onde o cliente passou&quot;.
         </p>
       )}
 

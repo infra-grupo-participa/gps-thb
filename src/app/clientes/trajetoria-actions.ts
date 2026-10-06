@@ -27,6 +27,17 @@ import {
 function revalidarFichas(clienteId: string) {
   revalidatePath(`/clientes/${clienteId}`);
   revalidatePath("/admin/aluno/[alunoId]/clientes/[clienteId]", "page");
+  // 🔴 Desde 05/10 marcar/desmarcar MUDA `etapa1_clientes.fase` (gatilho da
+  // …353). Quem lê a fase fora da ficha também cai: lista e quadro
+  // (/clientes), meta de honorários (/etapa/1), favorito na home (/) e o
+  // espelho admin do parceiro. Mesmas rotas de `revalidarClientes`, que pede o
+  // alunoId — aqui o escritor pode ser o admin, sem alunoId na sessão, então
+  // a rota do admin vai pelo padrão dinâmico.
+  revalidatePath("/etapa/1");
+  revalidatePath("/clientes", "layout");
+  revalidatePath("/etapa", "layout");
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/aluno/[alunoId]", "layout");
 }
 
 /** `null` = pode seguir; string = recusa pronta para a tela. */

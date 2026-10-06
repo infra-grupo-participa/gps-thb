@@ -21,7 +21,7 @@ import {
 import { FUNIS_ORIGEM, GRAUS_RELACAO, REGIMES_TRIBUTARIOS } from "@/lib/types";
 // `ClienteEtapa1` saiu daqui em 24/09/2026 junto com `PatchCliente`: era ele
 // quem alimentava o `Pick<>`, e o tipo agora mora em `@/lib/clientes-tipos`.
-import type { ClienteEtapa1, FaseCliente, ModoEnfase } from "@/lib/types";
+import type { ClienteEtapa1, ModoEnfase } from "@/lib/types";
 import type { PatchCliente } from "@/lib/clientes-tipos";
 import { soDigitos } from "@/lib/masks";
 import { revalidarClientes } from "./revalidar";
@@ -69,7 +69,10 @@ const CHAVES_PATCH_CLIENTE: ReadonlySet<string> = new Set([
   "mensagem_padrao_enviada",
   "estudo_caso_enviado",
   "ligacao_realizada",
-  "fase",
+  // 🔴 `fase` SAIU em 05/10/2026 (decisão do Marcio): a fase é CALCULADA pelo
+  // banco a partir da trajetória ("Por onde o cliente passou"), por gatilho.
+  // Um gatilho de guarda recusa com 42501 todo UPDATE de `fase` que não venha
+  // do recálculo — este caminho tem de parar de gravar ANTES dessa migração.
   "data_reuniao_preliminar",
   "aderiu_reuniao",
   "perfil_disc",
@@ -124,6 +127,10 @@ const CHAVES_PATCH_CLIENTE: ReadonlySet<string> = new Set([
  * conveniência. `contrato_url` (o link do Drive, LEGADO) continua na lista:
  * ele nunca prometeu ser prova de nada.
  */
+
+/** Frase única para quem ainda tenta gravar `fase` (botão velho, chamada forjada). */
+const MSG_FASE_CALCULADA =
+  "A fase agora é calculada pelas etapas marcadas em 'Por onde o cliente passou'.";
 
 function filtrarPatch(patch: PatchCliente): PatchCliente {
   const limpo: Record<string, unknown> = {};
@@ -327,14 +334,16 @@ function revalidar(alunoId: string) {
 }
 
 /**
- * Cria o cliente. `inicial` (opcional) é o que o diálogo "Novo cliente" pede:
- * fase e grau de relação — validados aqui contra os catálogos (a allowlist do
- * `PatchCliente` vale para atualizar; criar tem a própria). Sem `inicial`
- * nasce em prospecção, sem vínculo, como sempre.
+ * Cria o cliente. `inicial` é o que o diálogo "Novo cliente" pede: nome e
+ * grau de relação — validados aqui contra os catálogos (a allowlist do
+ * `PatchCliente` vale para atualizar; criar tem a própria).
+ *
+ * 🔑 NÃO envia `fase` (05/10/2026): o cliente nasce `prospeccao` pelo default
+ * do banco, e daí em diante a fase é calculada pela trajetória.
  */
 export async function criarCliente(
   alunoId: string,
-  inicial?: { nome?: string; fase?: FaseCliente; grau_relacao?: string | null },
+  inicial?: { nome?: string; grau_relacao?: string | null },
 ) {
   // 🔴 O NOME É OBRIGATÓRIO AQUI, não só no diálogo (10/09/2026).
   //
@@ -352,9 +361,6 @@ export async function criarCliente(
   const nomeAbreviado = erroDeNomeAbreviado(nome);
   if (nomeAbreviado) return { erro: nomeAbreviado };
 
-  const fasesValidas: readonly string[] = ["prospeccao", "fechamento", "contratado"];
-  const fase = inicial?.fase ?? "prospeccao";
-  if (!fasesValidas.includes(fase)) return { erro: "Fase inválida." };
   const grau = inicial?.grau_relacao ? String(inicial.grau_relacao) : null;
   if (grau !== null && !(GRAUS_RELACAO as readonly string[]).includes(grau)) {
     return { erro: "Escolha um grau de relação da lista." };
@@ -378,7 +384,6 @@ export async function criarCliente(
       aluno_id: alunoId,
       nome: formatarNome(nome) ?? nome,
       ordem: proximaOrdem,
-      fase,
       grau_relacao: grau,
     })
     .select("id")
@@ -395,7 +400,12 @@ export async function atualizarCliente(
   patch: PatchCliente,
 ): Promise<{ erro?: string; campo?: keyof ClienteEtapa1 }> {
   const seguro = filtrarPatch(patch);
-  if (Object.keys(seguro).length === 0) return { erro: "Nada para salvar." };
+  if (Object.keys(seguro).length === 0) {
+    // Patch só com `fase` não é "nada para salvar": é um pedido que não existe
+    // mais. Diz por quê, em vez de sumir com ele.
+    if (patch && "fase" in patch) return { erro: MSG_FASE_CALCULADA };
+    return { erro: "Nada para salvar." };
+  }
   const {
     patch: validado,
     erro: erroValidacao,
@@ -438,27 +448,9 @@ export async function atualizarCliente(
   return {};
 }
 
-/**
- * Move o cliente de fase (prospeccao | fechamento | contratado). Substitui
- * `mudarStatusCliente`, removida na Fase 4 — as duas convivendo deixariam a
- * coluna congelada aberta a escrita por um caminho esquecido.
- *
- * Sem catraca: o cliente pode voltar de fase (o quadro arrasta nos dois
- * sentidos). A mudança é auditada no diário como `cliente_fase_mudou` pela
- * trigger gps.aluno_eventos_capturar_etapa1_clientes.
- *
- * A autorização é do banco, não daqui: a RLS de gps.etapa1_clientes só deixa
- * o dono do ambiente (gps.aluno_atual()) ou o admin (public.gp_is_admin())
- * atualizarem a linha — `alunoId` serve para revalidar as rotas certas, não
- * como credencial.
- */
-export async function mudarFaseCliente(
-  clienteId: string,
-  alunoId: string,
-  fase: FaseCliente,
-): Promise<{ erro?: string; campo?: keyof ClienteEtapa1 }> {
-  return atualizarCliente(clienteId, alunoId, { fase });
-}
+// `mudarFaseCliente` foi REMOVIDA em 05/10/2026 (zero importadores): a fase
+// é calculada pelo banco a partir da trajetória, e um gatilho de guarda recusa
+// com 42501 qualquer UPDATE de `fase` que não venha do recálculo.
 
 /**
  * Define (ou remove) o cliente acompanhado pela equipe — no máximo um por aluno.

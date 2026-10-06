@@ -333,11 +333,12 @@ export function PrecisaDeAtencao({
   /** O denominador da seção Clientes, da mesma consulta dos numeradores. */
   const totalClientes = passos.total;
 
-  /** As três fases — escada de estado real, uma fase por cliente. */
+  /** As quatro fases — escada de estado real, uma fase por cliente. */
   const porFase = [
     { fase: "prospeccao" as const, valor: caminho.prospeccao },
     { fase: "fechamento" as const, valor: caminho.fechamento },
     { fase: "contratado" as const, valor: caminho.contratado },
+    { fase: "concluido" as const, valor: caminho.concluido },
   ].map((f) => ({
     fase: f.fase,
     rotulo: FASES_CLIENTE.find((x) => x.id === f.fase)?.rotulo ?? f.fase,
@@ -345,7 +346,10 @@ export function PrecisaDeAtencao({
     tom: TOM_DA_FASE[f.fase],
   }));
   const totalNasFases =
-    caminho.prospeccao + caminho.fechamento + caminho.contratado;
+    caminho.prospeccao +
+    caminho.fechamento +
+    caminho.contratado +
+    caminho.concluido;
 
   const parcial = ambientesCarregados < programa.total;
 
@@ -517,7 +521,7 @@ export function PrecisaDeAtencao({
         </div>
 
         {/* Fases — escada de estado REAL: cada cliente está em uma fase só, e
-            as três somam o total. Não é funil mesmo assim: quem está em
+            as quatro somam o total. Não é funil mesmo assim: quem está em
             fechamento SAIU da prospecção, não é subconjunto dela, e nenhuma
             taxa de passagem é calculada. O `%` é sobre `totalNasFases`. */}
         <SubBloco titulo="Fases">

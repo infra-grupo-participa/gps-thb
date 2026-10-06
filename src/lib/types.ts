@@ -191,9 +191,25 @@ export type StatusCliente =
 
 /**
  * Fase de negócio do cliente (migração 20260909000060), no lugar dos 5
- * status. Sem catraca: o cliente pode voltar de fase.
+ * status.
+ *
+ * 🔑 Desde 05/10/2026 (decisão do Marcio) a fase é CALCULADA pelo banco a
+ * partir da trajetória ("Por onde o cliente passou"), mantida por gatilho.
+ * O front SÓ MOSTRA: nunca recalcula nem grava `fase` — um gatilho de guarda
+ * recusa com 42501 qualquer UPDATE de `fase` que não venha do recálculo.
+ * Regra (vive só no banco; aqui é comentário): etapa mais avançada marcada —
+ * nada/Prospecção → `prospeccao`; Reunião Preliminar/Viabilidade/Croqui →
+ * `fechamento`; Execução e subetapas → `contratado` (rótulo "Execução");
+ * Entrega da pasta → `concluido`.
+ *
+ * Para honorários/meta, `contratado` E `concluido` contam — use
+ * `faseContaHonorario` (src/lib/etapa1.ts), nunca `=== "contratado"`.
  */
-export type FaseCliente = "prospeccao" | "fechamento" | "contratado";
+export type FaseCliente =
+  | "prospeccao"
+  | "fechamento"
+  | "contratado"
+  | "concluido";
 
 export type PerfilDisc = "D" | "I" | "S" | "C";
 
@@ -311,7 +327,8 @@ export interface ClienteEtapa1 {
   /**
    * Honorários CONTRATADOS deste cliente, em reais (migração 20260909000090).
    * `null` = não informado, e isso **nunca** pode virar `R$ 0,00` na tela.
-   * Só entra na meta de R$ 150.000 enquanto `fase === "contratado"` — a regra
+   * Só entra na meta de R$ 150.000 com fase `contratado` ou `concluido`
+   * (`faseContaHonorario`) — a regra
    * vive em `resumoHonorarios` (src/lib/etapa1.ts) e em
    * `gps.admin_painel_alunos()`, nunca numa constraint da coluna: o valor
    * sobrevive a voltar de fase, apenas deixa de contar.

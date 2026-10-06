@@ -163,7 +163,6 @@ export function modoEstrela(c: ClienteEtapa1, ctx: CtxEstrela): ModoEstrela {
   return ctx.existeTravado ? "ausente" : "botao";
 }
 
-
 /**
  * "Excluir" pode ser oferecido?
  *
@@ -177,25 +176,6 @@ export function modoEstrela(c: ClienteEtapa1, ctx: CtxEstrela): ModoEstrela {
  */
 export function podeExcluirCliente(c: ClienteEtapa1): boolean {
   return !estrelaTravada(c);
-}
-
-/**
- * As fases que ESTE cliente ainda pode assumir.
- *
- * 🔴 A trigger recusa voltar para `prospeccao` **qualquer** cliente cujo caso
- * já andou — com ou sem estrela (é o que impediria "desandar" o caso para
- * destravar a troca). Por isso aqui é `travadoPelaEquipe` mesmo, e não
- * `estrelaTravada`.
- *
- * A exceção do `c.fase === "prospeccao"` não é detalhe: o cliente que está em
- * prospecção COM reunião marcada já conta como "andou", e sem ela ficaria com
- * um `Select` cujo valor atual não existe entre as opções — qualquer toque no
- * campo o moveria de fase sem querer. (A trigger também o deixa ficar onde
- * está: ela só recusa `new.fase = 'prospeccao'` quando `old.fase` era outra.)
- */
-export function fasesDisponiveis(c: ClienteEtapa1) {
-  if (!travadoPelaEquipe(c) || c.fase === "prospeccao") return FASES_CLIENTE;
-  return FASES_CLIENTE.filter((f) => f.id !== "prospeccao");
 }
 
 /** O grau de relação combina com o filtro escolhido? */

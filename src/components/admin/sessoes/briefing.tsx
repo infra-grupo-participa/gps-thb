@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 
 import { abrirBriefingDaSessao } from "@/app/admin/sessoes/actions";
 import { formatarData, formatarDataHora } from "@/lib/datas";
+import { FASES_CLIENTE } from "@/lib/etapa1";
 import type { LetraDisc } from "@/lib/entrevista-previa-perguntas";
 import { logErro } from "@/lib/log";
 import { montarParte, PARTES_SCRIPT, type ParteMontada } from "@/lib/script-reuniao";
@@ -171,7 +172,7 @@ export function CorpoBriefing({ b }: { b: SessaoBriefing }) {
         <Campo rotulo="Cliente" valor={txt(cliente.nome)} />
         <Campo rotulo="Telefone" valor={txt(cliente.telefone)} />
         <Campo rotulo="Grau de relação" valor={txt(cliente.grau_relacao)} />
-        <Campo rotulo="Fase" valor={txt(cliente.fase)} />
+        <Campo rotulo="Fase" valor={rotuloDaFase(cliente.fase)} />
         <Campo
           rotulo="Reunião preliminar"
           valor={
@@ -563,6 +564,12 @@ function txt(v: unknown): string {
   if (typeof v === "string" && v.trim() !== "") return v;
   if (Array.isArray(v) && v.length > 0) return v.map(String).join(", ");
   return "—";
+}
+
+/** O snapshot guarda o código (`contratado`); a tela mostra o rótulo (`Execução`). */
+function rotuloDaFase(v: unknown): string {
+  const f = FASES_CLIENTE.find((x) => x.id === v);
+  return f ? f.rotulo : txt(v);
 }
 
 function Campo({

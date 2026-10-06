@@ -23,13 +23,12 @@
 import Link from "next/link";
 import { Calendar } from "lucide-react";
 
-import type { FaseCliente } from "@/lib/types";
 import {
   idDoErro,
   type ErrosDaFicha,
 } from "@/components/clientes/ficha-abas-estado";
 import { CampoErro } from "@/components/ui/campo-erro";
-import { FASES_CLIENTE, PROBLEMAS_7 } from "@/lib/etapa1";
+import { PROBLEMAS_7 } from "@/lib/etapa1";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -37,21 +36,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DiscDialogo } from "@/components/clientes/disc-dialogo";
 import { DiscFicha } from "@/components/clientes/disc-ficha";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export function FichaAbaPreliminar({
-  fase,
-  onFase,
-  fasesDaFicha,
   faseAtual,
-  confirmado,
-  faseNoServidor,
   dataReuniao,
   onDataReuniao,
   msgPadrao,
@@ -82,14 +69,8 @@ export function FichaAbaPreliminar({
   fichaNova,
   erros,
 }: {
-  fase: FaseCliente;
-  onFase: (v: FaseCliente) => void;
-  /** As fases que o banco ainda aceita para este cliente (§B.5). */
-  fasesDaFicha: readonly (typeof FASES_CLIENTE)[number][];
-  faseAtual: (typeof FASES_CLIENTE)[number] | undefined;
-  confirmado: boolean;
-  /** `cliente.fase` (servidor), para a frase da trava não ler o estado local. */
-  faseNoServidor: FaseCliente | null;
+  /** A fase do cliente (calculada pelo banco), com rótulo, ajuda e cor. */
+  faseAtual: { rotulo: string; ajuda: string; cor: string } | undefined;
   dataReuniao: string;
   onDataReuniao: (v: string) => void;
   msgPadrao: boolean;
@@ -133,50 +114,21 @@ export function FichaAbaPreliminar({
           responde "esta reunião já aconteceu?" antes de qualquer detalhe. */}
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="f-fase">
-            Fase <span className="rotulo text-muted-foreground">(opcional)</span>
-          </Label>
-          <Select
-            value={fase}
-            onValueChange={(v) => onFase((v as FaseCliente) || "prospeccao")}
+          <span className="text-sm font-medium leading-none">Fase</span>
+          {/* Só leitura: o banco calcula a fase pelas etapas marcadas na
+              trajetória. Mesmo chip do topo da ficha. */}
+          <span
+            id="f-fase"
+            className={
+              "inline-flex h-8 w-fit items-center rounded-full px-3 text-xs font-semibold " +
+              (faseAtual?.cor ?? "bg-neutro text-neutro-foreground")
+            }
           >
-            <SelectTrigger
-              id="f-fase"
-              aria-invalid={erros?.fase ? "true" : undefined}
-              aria-describedby={
-                erros?.fase
-                  ? `f-fase-ajuda ${idDoErro("fase")}`
-                  : "f-fase-ajuda"
-              }
-            >
-              {/* Sem função de render o Base UI imprime o VALOR do banco: a
-                  ficha mostrava `quente`, `contratado` e `D`. */}
-              <SelectValue>
-                {(v: FaseCliente) =>
-                  FASES_CLIENTE.find((f) => f.id === v)?.rotulo ?? v
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {/* Cliente confirmado não oferece "Prospecção": o banco recusa a
-                  volta com 42501. Opção que só serve para falhar não é opção. */}
-              {fasesDaFicha.map((f) => (
-                <SelectItem key={f.id} value={f.id}>
-                  {f.rotulo}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p
-            id="f-fase-ajuda"
-            className="text-xs leading-snug text-muted-foreground"
-          >
-            {faseAtual?.ajuda}
-            {confirmado && faseNoServidor !== "prospeccao"
-              ? " A equipe está acompanhando este cliente, então a fase não volta para Prospecção."
-              : null}
+            {faseAtual?.rotulo ?? "—"}
+          </span>
+          <p className="text-xs leading-snug text-muted-foreground">
+            Calculada pelas etapas marcadas em &lsquo;Por onde o cliente passou&rsquo;.
           </p>
-          <CampoErro id={idDoErro("fase")} texto={erros?.fase} />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="f-data">

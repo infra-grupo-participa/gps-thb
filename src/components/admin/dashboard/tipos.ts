@@ -109,13 +109,14 @@ export const ROTULO_GRAU_RELACAO: Record<GrauRelacao, string> =
 
 /**
  * Tom do gráfico por fase do cliente — o MESMO significado de cor que
- * `FASES_CLIENTE.cor` já usa nos chips (cinza / âmbar / verde). Não é uma
+ * `FASES_CLIENTE.cor` já usa nos chips (cinza / âmbar / verde; Concluído = cor da marca). Não é uma
  * paleta nova: é o mesmo par semântico, dito no vocabulário do gráfico.
  */
 export const TOM_DA_FASE: Record<FaseCliente, TomGrafico> = {
   prospeccao: "neutro",
   fechamento: "atencao",
   contratado: "sucesso",
+  concluido: "marca",
 };
 
 /**

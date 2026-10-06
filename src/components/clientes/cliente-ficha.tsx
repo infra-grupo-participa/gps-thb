@@ -72,7 +72,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import type {
   ClienteEtapa1,
-  FaseCliente,
   FunilOrigem,
   GrauRelacao,
 } from "@/lib/types";
@@ -85,7 +84,7 @@ import type { EstadoDrive } from "@/lib/drive-tipos";
 import { LinksDrive } from "@/components/clientes/links-drive";
 import { FichaTrajetoria } from "@/components/clientes/ficha-trajetoria";
 import { PastaAtividade } from "@/components/clientes/pasta-atividade";
-import { FASES_CLIENTE } from "@/lib/etapa1";
+import { FASES_CLIENTE, faseContaHonorario } from "@/lib/etapa1";
 import {
   mascaraCpfCnpj,
   mascaraTelefone,
@@ -128,7 +127,6 @@ import {
   type ValoresDaFicha,
 } from "@/components/clientes/ficha-abas-estado";
 import {
-  fasesDisponiveis,
   estrelaTravada,
 } from "@/components/clientes/clientes-manager/ordenacao";
 
@@ -266,7 +264,6 @@ export function ClienteFicha({
   const [ramo, setRamo] = useState(cliente.ramo_atividade ?? "");
   const [regime, setRegime] = useState<string>(cliente.regime_tributario ?? "");
   const [problemas, setProblemas] = useState<string[]>(cliente.problemas ?? []);
-  const [fase, setFase] = useState<FaseCliente>(cliente.fase ?? "prospeccao");
   const [dataReuniao, setDataReuniao] = useState(
     cliente.data_reuniao_preliminar ?? "",
   );
@@ -358,7 +355,8 @@ export function ClienteFicha({
   // cliente. Um link por cliente; `null` (sem link ou leitura falhou) = só texto.
   const linkDrive = linksDrive?.[0]?.url ?? null;
   const contratoLimpo = contratoUrl.trim();
-  const faseAtual = FASES_CLIENTE.find((f) => f.id === fase);
+  // Só leitura: o banco calcula a fase pelas etapas da trajetória.
+  const faseAtual = FASES_CLIENTE.find((f) => f.id === cliente.fase);
 
   // ═══════════════════════════════════════════════════════════════════════
   // A FOLHA ABERTA — mora na URL (`?aba=`), com allowlist fechada
@@ -393,8 +391,6 @@ export function ClienteFicha({
    * local: a confirmação é escrita da equipe e não passa pelo formulário.
    */
   const confirmado = estrelaTravada(cliente);
-  /** As fases que o banco ainda aceita para este cliente (§B.5). */
-  const fasesDaFicha = fasesDisponiveis(cliente);
   /**
    * 🔴 Migração ...215 — a escolha do aluno é DEFINITIVA. A leitura é do dado
    * do SERVIDOR, nunca do `acompanhado` otimista: com o otimista, o botão
@@ -429,7 +425,6 @@ export function ClienteFicha({
     ramo,
     regime,
     problemas,
-    fase,
     dataReuniao,
     disc,
     discConsciencia,
@@ -448,7 +443,8 @@ export function ClienteFicha({
 
   const abasAlteradas = alteradoPorAba(camposAlterados);
 
-  const contratado = fase === "contratado";
+  // Execução e Concluído contam honorário: os campos seguem editáveis.
+  const contratado = faseContaHonorario(cliente.fase);
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🔑 FICHA RECÉM-CRIADA (decisões do Marcio, 10/09/2026)
@@ -666,7 +662,6 @@ export function ClienteFicha({
         problemas,
         // `status` congelou na migração 20260909000060 (é o caminho de volta):
         // nenhum caminho de escrita da aplicação pode tocar nele.
-        fase,
         data_reuniao_preliminar: dataReuniao || null,
         perfil_disc: (disc as ClienteEtapa1["perfil_disc"]) || null,
         // 🔴 `""` NUNCA vai ao banco: o CHECK é 3..2000 sobre `btrim` com
@@ -830,12 +825,7 @@ export function ClienteFicha({
         }
         preliminar={
           <FichaAbaPreliminar
-            fase={fase}
-            onFase={setFase}
-            fasesDaFicha={fasesDaFicha}
             faseAtual={faseAtual}
-            confirmado={confirmado}
-            faseNoServidor={cliente.fase ?? null}
             dataReuniao={dataReuniao}
             onDataReuniao={setDataReuniao}
             msgPadrao={msgPadrao}

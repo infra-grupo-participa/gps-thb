@@ -3,8 +3,14 @@
 // "pendente". Moram aqui, e não em `trajetoria-actions.ts`, porque arquivo
 // `"use server"` só pode exportar `async function`.
 //
-// 🔑 Trajetória ≠ `etapa1_clientes.fase`. São independentes: marcar etapa não
-// muda a fase e mudar a fase não marca etapa. Nada é marcado sozinho.
+// 🔑 A trajetória DECIDE `etapa1_clientes.fase` (decisão do Marcio, 05/10/2026;
+// supera o "trajetória ≠ fase" anterior). Um gatilho no banco recalcula a fase
+// a cada etapa marcada/desmarcada — a etapa mais avançada manda:
+// nada/Prospecção → `prospeccao`; Reunião Preliminar/Viabilidade/Croqui →
+// `fechamento`; Execução e subetapas → `contratado` (rótulo "Execução");
+// Entrega da pasta → `concluido`. A regra vive SÓ no banco; o front mostra e
+// nunca grava `fase` (o gatilho de guarda recusa com 42501). Marcar etapa
+// continua sendo só ato humano: nada é marcado sozinho.
 
 /**
  * Espelho EXATO das 11 linhas do catálogo no banco (…345). O banco é a fonte
@@ -172,9 +178,22 @@ export interface TrajetoriaCliente {
  * Frases das exceções de `gps.cliente_trajetoria_marcar`/`_desmarcar`,
  * repassadas a `traduzirErroBanco`. A chave é a `message` exata do `raise`.
  */
+/**
+ * Chave = `message` EXATA do `raise` de
+ * `gps.etapa1_clientes_acompanhamento_travado` (migração …305, linha 111).
+ * Com a fase calculada, quem a dispara é DESMARCAR etapa do favorito
+ * confirmado até o recálculo devolver `prospeccao`. Exportada para
+ * `FRASES_DO_BANCO` (erros.ts) usar o MESMO texto — uma frase, um lugar.
+ */
+export const RAISE_FAVORITO_FASE_NAO_VOLTA =
+  "A equipe está acompanhando este cliente — a fase não pode voltar para Prospecção.";
+export const FRASE_FAVORITO_FASE_NAO_VOLTA =
+  "Este cliente é o acompanhado pela equipe e já avançou: a fase dele não pode voltar para Prospecção. Para trocar, abra um chamado.";
+
 export const FRASES_TRAJETORIA: Record<string, string> = {
   "Sessão expirada. Entre de novo.": "Sessão expirada. Entre de novo.",
   "Cliente não encontrado.": "Cliente não encontrado.",
   "Etapa inválida.": "Etapa inválida.",
   "Sem permissão.": "Sem permissão para alterar a trajetória deste cliente.",
+  [RAISE_FAVORITO_FASE_NAO_VOLTA]: FRASE_FAVORITO_FASE_NAO_VOLTA,
 };

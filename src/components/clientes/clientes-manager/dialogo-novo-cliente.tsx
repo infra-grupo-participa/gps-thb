@@ -42,8 +42,7 @@
 import { useEffect, useId, useRef } from "react";
 import { CircleCheck } from "lucide-react";
 import { mascaraTelefone } from "@/lib/masks";
-import type { FaseCliente } from "@/lib/types";
-import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
+import { GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,7 +65,6 @@ import {
 export function DialogoNovoCliente({
   nome,
   telefone,
-  fase,
   grau,
   pending,
   erro,
@@ -75,7 +73,6 @@ export function DialogoNovoCliente({
   emCurso,
   onNome,
   onTelefone,
-  onFase,
   onGrau,
   onCriar,
   onSalvarEOutro,
@@ -84,7 +81,6 @@ export function DialogoNovoCliente({
   nome: string;
   /** Mascarado, como na ficha. `""` = não informado. */
   telefone: string;
-  fase: FaseCliente;
   /** `""` = não informado. Mesmo contrato do campo da ficha. */
   grau: string;
   pending: boolean;
@@ -103,7 +99,6 @@ export function DialogoNovoCliente({
   emCurso: "ficha" | "outro" | null;
   onNome: (v: string) => void;
   onTelefone: (v: string) => void;
-  onFase: (v: FaseCliente) => void;
   onGrau: (v: string) => void;
   onCriar: () => void;
   onSalvarEOutro: () => void;
@@ -120,13 +115,10 @@ export function DialogoNovoCliente({
   useEffect(() => {
     if (salvosNaSequencia > 0) refNome.current?.focus();
   }, [salvosNaSequencia]);
-  const idFase = `${uid}-fase`;
-  const idFaseAjuda = `${uid}-fase-ajuda`;
   const idGrau = `${uid}-grau`;
   const idGrauAjuda = `${uid}-grau-ajuda`;
 
   const nomeOk = nome.trim().length > 0;
-  const faseAtual = FASES_CLIENTE.find((f) => f.id === fase);
   const grauAtual = GRAUS_RELACAO_UI.find((g) => g.id === grau);
 
   return (
@@ -196,40 +188,10 @@ export function DialogoNovoCliente({
             </p>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor={idFase}>Fase</Label>
-            <Select
-              value={fase}
-              onValueChange={(v) => onFase((v as FaseCliente) || "prospeccao")}
-            >
-              {/* Função de render obrigatória: sem ela o Base UI imprime o
-                  VALOR do banco (`prospeccao`), minúsculo e sem acento. */}
-              <SelectTrigger
-                id={idFase}
-                aria-describedby={idFaseAjuda}
-                className="h-11 w-full text-base"
-              >
-                <SelectValue>
-                  {(v: FaseCliente) =>
-                    FASES_CLIENTE.find((f) => f.id === v)?.rotulo ?? v
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {FASES_CLIENTE.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.rotulo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p
-              id={idFaseAjuda}
-              className="corpo text-muted-foreground"
-            >
-              {faseAtual?.ajuda}
-            </p>
-          </div>
+          <p className="corpo text-muted-foreground">
+            Começa em Prospecção; a fase muda conforme você marca as etapas na
+            ficha.
+          </p>
 
           <div className="grid gap-2">
             <Label htmlFor={idGrau}>Grau de relação</Label>

@@ -59,8 +59,12 @@ export const NIVEIS_RELACIONAMENTO: {
 ];
 
 /**
- * As 3 fases de negócio do cliente (migração 20260909000060), no lugar dos 5
- * status. Sem catraca: o cliente pode voltar de fase a qualquer momento.
+ * As 4 fases de negócio do cliente, na ordem da jornada.
+ *
+ * 🔑 Desde 05/10/2026 a fase é CALCULADA pelo banco a partir das etapas
+ * marcadas em "Por onde o cliente passou" (gatilho). Esta lista só ROTULA:
+ * nenhuma tela escolhe fase, e o código `contratado` ficou — só o rótulo
+ * virou "Execução". `concluido` = Entrega da pasta marcada.
  */
 export const FASES_CLIENTE: {
   id: FaseCliente;
@@ -79,6 +83,9 @@ export const FASES_CLIENTE: {
    *   prospeccao  #5C5751 sobre #F1EEEA = **6,18:1**  (era 5,56:1)
    *   fechamento  #8A5300 sobre #FFF4E0 = **5,81:1**  (era 3,65:1 — reprovava)
    *   contratado  #186A3B sobre #E8F5EC = **5,91:1**  (era 3,77:1 — reprovava)
+   *   concluido   #FFFFFF sobre #186A3B = **6,64:1** (calculado, não medido
+   *               no DOM) — o verde da execução, sólido: mesmo significado,
+   *               um degrau adiante, sem token novo.
    * Mesma cor e mesmo significado de antes (cinza / âmbar / verde); o que
    * mudou é o tom, para passar AA, e a origem, que agora é o token.
    */
@@ -100,12 +107,31 @@ export const FASES_CLIENTE: {
   },
   {
     id: "contratado",
-    rotulo: "Contratado",
-    coluna: "Contratados",
-    ajuda: "Contrato fechado — segue para a execução.",
+    rotulo: "Execução",
+    coluna: "Execução",
+    ajuda: "Contrato fechado — em execução.",
     cor: "bg-sucesso text-sucesso-foreground",
   },
+  {
+    id: "concluido",
+    rotulo: "Concluído",
+    coluna: "Concluídos",
+    ajuda: "Pasta entregue ao cliente.",
+    cor: "bg-sucesso-foreground text-white",
+  },
 ];
+
+/**
+ * A fase conta para honorários (meta de R$ 150 mil, 2ª metade, contrato)?
+ *
+ * 🔑 ÚNICO lugar da regra no front. `contratado` E `concluido` contam:
+ * concluir um cliente (Entrega da pasta) não pode reduzir o faturado. O
+ * espelho em SQL é a CTE `cli` de `gps.admin_painel_alunos()` — mudar um
+ * lado obriga a mudar o outro.
+ */
+export function faseContaHonorario(fase: FaseCliente | null | undefined): boolean {
+  return fase === "contratado" || fase === "concluido";
+}
 
 /**
  * Rótulos do GRAU DE RELAÇÃO (migração 20260910000202), no molde de
@@ -170,6 +196,8 @@ export const GRAUS_RELACAO_UI: {
  * backfill de 08/09 seria desenhar sobre hipótese. A granularidade que se
  * perderia fica guardada em `gps.onboarding_respostas.fase_cliente1`, que é o
  * retrato do dia 0; o que a equipe precisa é o derivado `apto_ao_saldo`.
+ * (05/10/2026: `concluido` passou a existir como 4ª fase, CALCULADA pelo banco
+ * a partir da Entrega da pasta — o onboarding continua sem produzi-la.)
  */
 /**
  * 🔴 SÓ AS DUAS ÚLTIMAS SÃO OFERECIDAS (decisão do Marcio, 10/09/2026).
@@ -502,7 +530,7 @@ export interface ClienteHonorarios {
 export interface ResumoHonorarios {
   /** Soma dos contratados COM valor. `null` quando nenhum contratado tem valor. */
   total: number | null;
-  /** Quantos clientes estão em `fase === "contratado"`. */
+  /** Quantos clientes contam para honorários (`faseContaHonorario`). */
   contratados: number;
   /** Desses, quantos ainda com `valor_honorarios` nulo. */
   contratadosSemValor: number;
@@ -514,8 +542,8 @@ export interface ResumoHonorarios {
  * Contagem pura dos honorários a partir das linhas de cliente.
  *
  * Mesma razão de existir de `resumoEtapa1`: a tela do aluno e o painel do
- * admin têm de mostrar O MESMO número, e a regra ("só `fase = 'contratado'`
- * conta") não pode existir solta em SQL e em JS com liberdade de divergir.
+ * admin têm de mostrar O MESMO número, e a regra ("só `contratado` ou
+ * `concluido` conta" — `faseContaHonorario`) não pode existir solta em SQL e em JS com liberdade de divergir.
  * O espelho em SQL é a CTE `cli` de `gps.admin_painel_alunos()` (migração
  * 20260909000091) — mudar um lado obriga a mudar o outro.
  *
@@ -525,7 +553,7 @@ export interface ResumoHonorarios {
 export function resumoHonorarios(
   clientes: readonly ClienteHonorarios[],
 ): ResumoHonorarios {
-  const contratados = clientes.filter((c) => c.fase === "contratado");
+  const contratados = clientes.filter((c) => faseContaHonorario(c.fase));
   const comValor = contratados.filter((c) => c.valor_honorarios != null);
 
   const total = comValor.length
@@ -579,7 +607,7 @@ export interface ContratadoResumo {
  * `null` junto.
  */
 export interface ProgressoFaturamento {
-  /** Soma dos honorários dos clientes em `fase='contratado'`. */
+  /** Soma dos honorários dos clientes em `contratado`/`concluido`. */
   faturado: number | null;
   /** R$ 150.000 — bater é o objetivo do programa, o **AURUM**. */
   meta: number;
@@ -588,7 +616,7 @@ export interface ProgressoFaturamento {
   /** 0–100 sobre a meta. Teto 100. */
   pctMeta: number | null;
   nivelAtual: NivelFaturamento;
-  /** Quantos clientes estão em `fase='contratado'`. */
+  /** Quantos clientes estão em `contratado`/`concluido`. */
   contratados: number;
   /** Desses, quantos ainda sem `valor_honorarios` — vira aviso na tela. */
   contratadosSemValor: number;
@@ -617,7 +645,7 @@ export function progressoFaturamento(
   const faturado = resumo.total;
 
   const contratados = clientes
-    .filter((c) => c.fase === "contratado")
+    .filter((c) => faseContaHonorario(c.fase))
     .map<ContratadoResumo>((c) => ({
       clienteId: c.id,
       nome: c.nome,

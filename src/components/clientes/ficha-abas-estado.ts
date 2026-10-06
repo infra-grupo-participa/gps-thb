@@ -82,6 +82,7 @@ export function ehAbaFicha(v: string | null | undefined): v is AbaFicha {
 export function abaPadraoPorFase(fase: FaseCliente | null | undefined): AbaFicha {
   switch (fase) {
     case "contratado":
+    case "concluido":
       return "fechamento";
     case "prospeccao":
     case "fechamento":
@@ -249,7 +250,6 @@ export const CAMPOS_POR_ABA: Record<AbaFicha, readonly (keyof ClienteEtapa1)[]> 
       "regime_tributario",
     ],
     preliminar: [
-      "fase",
       "data_reuniao_preliminar",
       "problemas",
       "mensagem_padrao_enviada",
@@ -292,7 +292,6 @@ export interface ValoresDaFicha {
   ramo: string;
   regime: string;
   problemas: readonly string[];
-  fase: FaseCliente;
   dataReuniao: string;
   disc: string;
   discConsciencia: string;
@@ -360,7 +359,6 @@ export function camposAlteradosDaFicha(
     v.problemas.some((p) => !(cliente.problemas ?? []).includes(p))
   )
     campos.push("problemas");
-  if (v.fase !== (cliente.fase ?? "prospeccao")) campos.push("fase");
   if ((v.dataReuniao || null) !== (cliente.data_reuniao_preliminar ?? null))
     campos.push("data_reuniao_preliminar");
   if ((v.disc || null) !== (cliente.perfil_disc ?? null))
@@ -485,7 +483,6 @@ export const ID_DO_CAMPO = {
   cnpj: "f-cnpj",
   ramo_atividade: "f-ramo",
   regime_tributario: "f-regime",
-  fase: "f-fase",
   data_reuniao_preliminar: "f-data",
   registro_contato: "f-reg",
   perfil_disc: "f-disc",
@@ -744,7 +741,6 @@ export const ROTULO_DO_CAMPO: Partial<Record<keyof ClienteEtapa1, string>> = {
   cnpj: "CNPJ",
   ramo_atividade: "Ramo de atividade",
   regime_tributario: "Regime tributário",
-  fase: "Fase",
   data_reuniao_preliminar: "Data da reunião preliminar",
   problemas: "Problemas",
   mensagem_padrao_enviada: "Mensagem padrão enviada",
@@ -821,8 +817,6 @@ export function valorDoCampo(
       return v.ramo;
     case "regime_tributario":
       return v.regime;
-    case "fase":
-      return v.fase;
     case "data_reuniao_preliminar":
       return v.dataReuniao;
     case "problemas":

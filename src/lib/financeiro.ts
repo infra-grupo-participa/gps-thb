@@ -4,7 +4,8 @@
  * A aba é o **painel de progresso do aluno na mentoria**, não um extrato frio.
  * Duas perguntas, duas fontes que não se misturam:
  *
- * 1. **Quanto EU faturei** — honorários dos clientes em `fase='contratado'`,
+ * 1. **Quanto EU faturei** — honorários dos clientes em fase `contratado` ou
+ *    `concluido` (`faseContaHonorario`),
  *    do banco do GPS (`gps.etapa1_clientes`). Meta R$ 150.000 = o **AURUM**,
  *    o objetivo do programa e a única régua da tela. Vive em
  *    `progressoFaturamento` (`@/lib/etapa1`), reexportado aqui.

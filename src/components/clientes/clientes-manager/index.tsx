@@ -8,7 +8,7 @@
  * (CD5). Foi cortado POR RESPONSABILIDADE, sem uma linha de lógica nova:
  *
  *   clientes-tabela.tsx      a tabela do desktop
- *   clientes-quadro.tsx      o quadro por fase, com arrastar e soltar
+ *   clientes-quadro.tsx      o quadro por fase (só leitura: a fase é calculada pelo banco)
  *   cliente-card-lista.tsx   a mesma lista no celular
  *   clientes-chips.tsx       chip, estrela, WhatsApp, "Recusou", lista/quadro
  *   confirmacao-equipe.tsx   o banner verde do cliente acompanhado
@@ -17,7 +17,7 @@
  *   tipos.ts                 o tipo `Ordenacao`
  *
  * 🔑 Aqui ficou o que É compartilhado: a lista em estado (`clientes`), as
- * QUATRO escritas (criar, mudar fase, cliente da equipe, excluir) e os dois
+ * QUATRO escritas (criar, cliente da equipe, excluir) e os dois
  * diálogos de confirmação. Todas as escritas usam a MESMA `useTransition`,
  * para que o `pending` desabilite os botões das três visões enquanto uma
  * delas roda — e as duas com desfazer otimista (fase e estrela) revertem o
@@ -47,7 +47,6 @@ import {
   atualizarCliente,
   criarCliente,
   definirClienteEquipe,
-  mudarFaseCliente,
   removerCliente,
 } from "@/app/clientes/actions";
 import { MetaHonorarios } from "@/components/etapa1/meta-honorarios";
@@ -152,13 +151,12 @@ export function ClientesManager({
   /** Diálogo "Escolher os 5 da entrevista" aberto? */
   const [selecionandoEntrevista, setSelecionandoEntrevista] = useState(false);
   const [novoNome, setNovoNome] = useState("");
-  const [novaFase, setNovaFase] = useState<FaseCliente>("prospeccao");
   const [novoGrau, setNovoGrau] = useState<string>("");
   const [erroDialogo, setErroDialogo] = useState<string | null>(null);
   /**
-   * Falha de escrita FORA de diálogo (fase e estrela são um clique só). Fica na
+   * Falha de escrita FORA de diálogo (estrela é um clique só). Fica na
    * tela com `role="alert"` e com a frase que a action já traduziu do banco —
-   * "Erro ao mudar a fase" num toast apagaria justamente o que explica a trava.
+   * "Erro ao marcar a estrela" num toast apagaria justamente o que explica a trava.
    */
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -234,7 +232,6 @@ export function ClientesManager({
     setErroDialogo(null);
     setNovoNome("");
     setNovoTelefone("");
-    setNovaFase("prospeccao");
     setNovoGrau("");
     setSalvosNaSequencia(0);
     setUltimoSalvo(null);
@@ -242,7 +239,7 @@ export function ClientesManager({
   }
 
   /**
-   * Cria o cliente já com a fase e o vínculo escolhidos no diálogo.
+   * Cria o cliente (nasce em Prospecção) já com o vínculo escolhido no diálogo.
    *
    * `modo = "ficha"`: o de sempre — cria e abre a ficha.
    * `modo = "outro"`: cria, limpa nome e telefone e fica no diálogo.
@@ -265,7 +262,6 @@ export function ClientesManager({
     startTransition(async () => {
       const res = await criarCliente(alunoId, {
         nome,
-        fase: novaFase,
         grau_relacao: (novoGrau as GrauRelacao) || null,
       });
       if (res.erro || !res.id) {
@@ -292,24 +288,6 @@ export function ClientesManager({
         setErroDialogo(
           `${nome} foi salvo, mas o telefone não: ${erroTelefone} Preencha o telefone na ficha dele.`,
         );
-      }
-    });
-  }
-
-  function mudarFase(cliente: ClienteEtapa1, nova: FaseCliente) {
-    if (cliente.fase === nova) return;
-    const anterior = cliente.fase;
-    setErroLista(null);
-    setClientes((prev) =>
-      prev.map((c) => (c.id === cliente.id ? { ...c, fase: nova } : c)),
-    );
-    startTransition(async () => {
-      const res = await mudarFaseCliente(cliente.id, alunoId, nova);
-      if (res.erro) {
-        setClientes((prev) =>
-          prev.map((c) => (c.id === cliente.id ? { ...c, fase: anterior } : c)),
-        );
-        setErroLista(res.erro);
       }
     });
   }
@@ -667,7 +645,6 @@ export function ClientesManager({
             clientes={buscaFiltrada}
             fichaHref={fichaHref}
             ctxEstrela={ctxEstrela}
-            onMover={mudarFase}
             onToggleEquipe={toggleEquipe}
           />
         ) : listaOrdenada.length === 0 ? (
@@ -685,7 +662,6 @@ export function ClientesManager({
                   cliente={c}
                   fichaHref={fichaHref}
                   ctxEstrela={ctxEstrela}
-                  onFase={mudarFase}
                   onEquipe={toggleEquipe}
                   onExcluir={(c) => {
                     setErroDialogo(null);
@@ -700,7 +676,6 @@ export function ClientesManager({
               fichaHref={fichaHref}
               ctxEstrela={ctxEstrela}
               pending={pending}
-              mudarFase={mudarFase}
               toggleEquipe={toggleEquipe}
               setErroDialogo={setErroDialogo}
               setExcluindo={setExcluindo}
@@ -725,14 +700,13 @@ export function ClientesManager({
         />
       ) : null}
 
-      {/* "Novo cliente" — fase e grau ANTES de abrir a ficha. */}
+      {/* "Novo cliente" — grau ANTES de abrir a ficha. */}
       {novoAberto ? (
         <DialogoNovoCliente
           nome={novoNome}
           onNome={setNovoNome}
           telefone={novoTelefone}
           onTelefone={setNovoTelefone}
-          fase={novaFase}
           grau={novoGrau}
           pending={pending}
           erro={erroDialogo}
@@ -743,7 +717,6 @@ export function ClientesManager({
           }
           salvosNaSequencia={salvosNaSequencia}
           emCurso={emCurso}
-          onFase={setNovaFase}
           onGrau={setNovoGrau}
           onCriar={() => criarComFaseEGrau("ficha")}
           onSalvarEOutro={() => criarComFaseEGrau("outro")}

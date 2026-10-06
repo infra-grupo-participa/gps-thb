@@ -11,20 +11,13 @@
 
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
-import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
+import type { ClienteEtapa1 } from "@/lib/types";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import { formatarDataSoDia } from "@/lib/datas";
 import { mascaraTelefone } from "@/lib/masks";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -41,7 +34,6 @@ import {
   WhatsappLink,
 } from "./clientes-chips";
 import {
-  fasesDisponiveis,
   modoEstrela,
   podeExcluirCliente,
   type CtxEstrela,
@@ -52,7 +44,6 @@ export function ClientesTabela({
   fichaHref,
   ctxEstrela,
   pending,
-  mudarFase,
   toggleEquipe,
   setErroDialogo,
   setExcluindo,
@@ -67,7 +58,6 @@ export function ClientesTabela({
    */
   ctxEstrela: CtxEstrela;
   pending: boolean;
-  mudarFase: (c: ClienteEtapa1, nova: FaseCliente) => void;
   toggleEquipe: (c: ClienteEtapa1) => void;
   setErroDialogo: (erro: string | null) => void;
   setExcluindo: (c: ClienteEtapa1) => void;
@@ -142,37 +132,14 @@ export function ClientesTabela({
                 </div>
               </TableCell>
               <TableCell>
-                <Select
-                  value={c.fase}
-                  onValueChange={(v) =>
-                    v && mudarFase(c, v as FaseCliente)
+                <span
+                  className={
+                    "inline-flex h-6 w-fit items-center rounded-full px-2.5 text-xs font-semibold " +
+                    (FASES_CLIENTE.find((f) => f.id === c.fase)?.cor ?? "bg-neutro text-neutro-foreground")
                   }
                 >
-                  <SelectTrigger
-                    size="sm"
-                    className="h-7 w-[140px] text-xs"
-                    aria-label={`Fase de ${c.nome || "cliente sem nome"}`}
-                  >
-                    {/* Função de render obrigatória: sem ela o Base UI imprime o VALOR
-                        do banco, não o rótulo — a coluna mostrava
-                        `prospeccao`/`fechamento`/`contratado`, minúsculo e sem
-                        acento, na cara do aluno. */}
-                    <SelectValue>
-                      {(v: FaseCliente) =>
-                        FASES_CLIENTE.find((f) => f.id === v)?.rotulo ?? v
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {/* Confirmado pela equipe não oferece "Prospecção": o
-                        banco recusa a volta com 42501 (§B.5). */}
-                    {fasesDisponiveis(c).map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.rotulo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {FASES_CLIENTE.find((f) => f.id === c.fase)?.rotulo ?? c.fase}
+                </span>
               </TableCell>
               <TableCell className="whitespace-nowrap">
                 {formatarDataSoDia(c.data_reuniao_preliminar) ?? "—"}

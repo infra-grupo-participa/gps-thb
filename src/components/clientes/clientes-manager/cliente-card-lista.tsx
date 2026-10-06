@@ -11,19 +11,12 @@
 
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
-import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
+import type { ClienteEtapa1 } from "@/lib/types";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 import { formatarDataSoDia } from "@/lib/datas";
 import { mascaraTelefone } from "@/lib/masks";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   Estrela,
@@ -33,7 +26,6 @@ import {
   WhatsappLink,
 } from "./clientes-chips";
 import {
-  fasesDisponiveis,
   modoEstrela,
   podeExcluirCliente,
   type CtxEstrela,
@@ -43,7 +35,6 @@ export function ClienteCardLista({
   cliente: c,
   fichaHref,
   ctxEstrela,
-  onFase,
   onEquipe,
   onExcluir,
   pending,
@@ -52,7 +43,6 @@ export function ClienteCardLista({
   fichaHref: (id: string) => string;
   /** Ver `ClientesTabela`: havendo favorito, a estrela some dos outros. */
   ctxEstrela: CtxEstrela;
-  onFase: (c: ClienteEtapa1, f: FaseCliente) => void;
   onEquipe: (c: ClienteEtapa1) => void;
   onExcluir: (c: ClienteEtapa1) => void;
   pending: boolean;
@@ -104,29 +94,14 @@ export function ClienteCardLista({
       </div>
 
       <div className="mt-3 flex items-center gap-2">
-        <Select
-          value={c.fase}
-          onValueChange={(v) => v && onFase(c, v as FaseCliente)}
+        <span
+          className={
+            "inline-flex mr-auto h-6 items-center rounded-full px-2.5 text-xs font-semibold " +
+            (FASES_CLIENTE.find((f) => f.id === c.fase)?.cor ?? "bg-neutro text-neutro-foreground")
+          }
         >
-          <SelectTrigger
-            size="sm"
-            className="h-8 flex-1 text-xs"
-            aria-label={`Fase de ${c.nome || "cliente sem nome"}`}
-          >
-            <SelectValue>
-              {(v: FaseCliente) =>
-                FASES_CLIENTE.find((f) => f.id === v)?.rotulo ?? v
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {fasesDisponiveis(c).map((f) => (
-              <SelectItem key={f.id} value={f.id}>
-                {f.rotulo}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          {FASES_CLIENTE.find((f) => f.id === c.fase)?.rotulo ?? c.fase}
+        </span>
         <Link
           href={fichaHref(c.id)}
           className={buttonVariants({ variant: "outline", size: "sm" })}

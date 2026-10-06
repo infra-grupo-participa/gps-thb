@@ -14,7 +14,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * Barra da meta de faturamento do ambiente (B8): soma de `valor_honorarios`
- * dos clientes em `fase='contratado'`, programa inteiro, valor CONTRATADO.
+ * dos clientes em `contratado` OU `concluido` (`faseContaHonorario`, via
+ * `resumoHonorarios`), programa inteiro, valor CONTRATADO. Concluir um
+ * cliente não reduz o faturado.
  *
  * 🔴 O NOME "AURUM" NÃO APARECE PARA O ALUNO (decisão do Marcio, 10/09/2026):
  * a tela fala em META, e só. O nome interno do nível fica no código.
@@ -125,8 +127,9 @@ export function MetaHonorarios({
           {contratados === 0 ? (
             <>
               Nenhum cliente contratado ainda. A meta de{" "}
-              {brlInteiro(META_HONORARIOS)} começa a contar quando
-              você mover um cliente para Contratado.
+              {brlInteiro(META_HONORARIOS)} começa a contar quando um
+              cliente chegar à Execução (marcada em &quot;Por onde o cliente
+              passou&quot;).
             </>
           ) : (
             <>

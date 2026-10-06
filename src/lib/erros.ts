@@ -24,6 +24,10 @@
 
 import { logErro, type ContextoLog } from "@/lib/log";
 import type { ClienteEtapa1 } from "@/lib/types";
+import {
+  FRASE_FAVORITO_FASE_NAO_VOLTA,
+  RAISE_FAVORITO_FASE_NAO_VOLTA,
+} from "@/lib/trajetoria-tipos";
 
 /** Shape comum de `PostgrestError` e do erro de `rpc()`. */
 export interface ErroDeBanco {
@@ -225,8 +229,9 @@ const FRASES_DO_BANCO: Record<string, string> = {
     "A equipe está acompanhando este cliente. Para trocar, fale com a equipe pelo Suporte.",
   "A equipe está acompanhando este cliente — ele não pode ser excluído.":
     "A equipe está acompanhando este cliente, por isso ele não pode ser excluído. Fale com a equipe pelo Suporte.",
-  "A equipe está acompanhando este cliente — a fase não pode voltar para Prospecção.":
-    "A equipe está acompanhando este cliente, por isso a fase não volta para Prospecção. Fale com a equipe pelo Suporte.",
+  // Desde 05/10/2026 a fase é calculada pela trajetória: esta recusa chega ao
+  // desmarcar etapa do favorito confirmado. Texto único em trajetoria-tipos.ts.
+  [RAISE_FAVORITO_FASE_NAO_VOLTA]: FRASE_FAVORITO_FASE_NAO_VOLTA,
   "Só a equipe confirma ou libera o acompanhamento deste cliente.":
     "Só a equipe confirma ou libera o acompanhamento deste cliente.",
 
@@ -799,6 +804,8 @@ const CAMPO_POR_CONSTRAINT: Array<{
   { contem: "chk_etapa1_clientes_funil_origem", campo: "funil_origem" },
   { contem: "chk_etapa1_clientes_contrato_url", campo: "contrato_url" },
   { contem: "chk_etapa1_clientes_honorarios", campo: "valor_honorarios" },
+  // `fase` não é mais campo de formulário (calculada pelo banco desde
+  // 05/10/2026); fica mapeada só para o log apontar a coluna certa.
   { contem: "chk_etapa1_clientes_fase", campo: "fase" },
   {
     contem: "chk_etapa1_clientes_disc_consciencia",
@@ -811,7 +818,12 @@ const CAMPO_POR_CONSTRAINT: Array<{
   },
 ];
 
-/** Trecho da recusa da trigger de acompanhamento (42501) quando a fase volta. */
+/**
+ * Trecho da recusa da trigger de acompanhamento (42501) quando a fase volta.
+ * ⚠️ Desde 05/10/2026 a fase não se escolhe na ficha (é calculada pela
+ * trajetória) — apontar "fase" aqui só serve para a ficha não acusar outro
+ * campo; não existe input de fase para levar o foco.
+ */
 const TRECHO_FASE_NAO_VOLTA = "a fase não pode voltar para Prospecção";
 
 export function campoDoErroBanco(erro: ErroDeBanco): keyof ClienteEtapa1 | null {

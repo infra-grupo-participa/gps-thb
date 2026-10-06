@@ -17,7 +17,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeftIcon, ChevronRightIcon, CalendarDaysIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CalendarDaysIcon,
+  CalendarClockIcon,
+} from "lucide-react";
 import type { SlotPublico, MinhaInscricao, ResultadoAcao } from "@/lib/plantao-tipos";
 import { rotuloData, hojeSaoPaulo } from "@/lib/plantao";
 import {
@@ -101,6 +106,29 @@ function hrefMes(
   return `${base}?${qs.toString()}`;
 }
 
+/** O texto padrão de "ainda não há datas". Um lugar só — não reescrever em outra tela. */
+function AvisoCronograma() {
+  return (
+    <div
+      role="status"
+      className="flex gap-3 rounded-xl border bg-card p-4 shadow-sm"
+    >
+      <CalendarClockIcon
+        aria-hidden
+        className="mt-0.5 size-5 shrink-0 text-primary"
+      />
+      <div className="grid gap-1">
+        <p className="font-medium">Estamos montando o cronograma</p>
+        <p className="text-sm text-muted-foreground">
+          As próximas datas do plantão ainda estão sendo definidas. Assim que
+          forem publicadas, elas aparecem aqui no calendário, e você pode se
+          inscrever. Fique tranquilo: você não perdeu nada.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function CalendarioMes({
   ano,
   mes,
@@ -148,6 +176,15 @@ export function CalendarioMes({
   // mente o dia entre 21h e meia-noite no Brasil (lição registrada no projeto).
   const hojeIso = hojeSaoPaulo();
 
+  // 🔑 Aviso PADRÃO de "cronograma em montagem" (pedido do João, 06/10/2026):
+  // sem nenhum plantão por vir no mês E sem inscrição ativa, a pessoa via um
+  // calendário mudo (ou só bolinhas cinzas de plantões que já passaram) e não
+  // sabia se haveria mais. `encerrado` = o plantão já começou; um plantão com
+  // inscrição fechada ainda conta como "por vir". Um texto só, nas duas rotas
+  // (pública e aba logada), porque as duas usam este componente.
+  const temPlantaoPorVir = slots.some((s) => !s.encerrado);
+  const mostrarCronograma = !temPlantaoPorVir && !minhaInscricaoAtiva;
+
   const slotsDoDiaAberto = diaAberto ? (porDia.get(diaAberto) ?? []) : [];
   // Na aba logada (`aoInscrever` presente) não há e-mail/nome para pedir —
   // a sessão já identifica a pessoa, então o aviso de identificação nunca
@@ -193,10 +230,16 @@ export function CalendarioMes({
         </Link>
       </div>
 
+      {mostrarCronograma ? <AvisoCronograma /> : null}
+
       {slots.length === 0 ? (
-        <div className="rounded-lg border border-dashed bg-muted/40 p-6 text-center text-sm text-muted-foreground">
-          Nenhum plantão liberado neste mês ainda.
-        </div>
+        // Mês sem nenhum plantão: o aviso acima já diz tudo. Sobra só o caso
+        // de quem tem inscrição ativa em OUTRO mês e navegou até aqui.
+        mostrarCronograma ? null : (
+          <div className="rounded-lg border border-dashed bg-muted/40 p-6 text-center text-sm text-muted-foreground">
+            Nenhum plantão neste mês.
+          </div>
+        )
       ) : (
         <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           {/* Cabeçalho dos dias da semana — iniciais para caber em iframe estreito. */}

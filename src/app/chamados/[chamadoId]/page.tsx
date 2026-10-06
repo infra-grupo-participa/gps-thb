@@ -4,6 +4,7 @@ import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById, getTutoriaisAtivo } from "@/lib/data";
 import {
   getChamado,
+  getClientesParaChamado,
   getSolicitacaoDoChamado,
   getSuporteAberto,
 } from "@/lib/chamados-data";
@@ -15,9 +16,14 @@ import { Badge } from "@/components/ui/badge";
 import { ChamadoThread } from "@/components/chamados/chamado-thread";
 import { ChamadoResponder } from "@/components/chamados/chamado-responder";
 import { estadoDaResposta } from "@/components/chamados/estado-resposta";
+import { ClienteDoChamado } from "@/components/chamados/cliente-do-chamado";
 import { FaixaSolicitacao } from "@/components/chamados/faixa-solicitacao";
 
 export const metadata = { title: "Chamado" };
+
+function solicitacaoDeTroca(categoria: string | null): boolean {
+  return categoria === "troca_cliente" || categoria === "troca_socio";
+}
 
 /**
  * A thread de um chamado, na visão do aluno.
@@ -50,6 +56,13 @@ export default async function ChamadoPage({
     chamado.categoria === "troca_cliente" || chamado.categoria === "troca_socio"
       ? await getSolicitacaoDoChamado(chamadoId)
       : null;
+  // Troca de cliente/sócio já traz o alvo no pedido: o banco recusa ligar
+  // outro cliente nesses chamados (22023), então o bloco nem aparece.
+  const mostraCliente = !solicitacaoDeTroca(chamado.categoria);
+  const opcoesCliente =
+    chamado.status === "fechado" || !mostraCliente
+      ? []
+      : await getClientesParaChamado(ctx.alunoId);
   const estado = estadoDaResposta(
     chamado,
     mensagens.length,
@@ -87,6 +100,15 @@ export default async function ChamadoPage({
         />
 
         <div className="grid gap-6">
+          {mostraCliente ? (
+            <ClienteDoChamado
+              chamadoId={chamado.id}
+              clienteId={chamado.cliente_id}
+              clienteNome={chamado.cliente_nome}
+              fechado={chamado.status === "fechado"}
+              opcoes={opcoesCliente}
+            />
+          ) : null}
           {solicitacao ? <FaixaSolicitacao solicitacao={solicitacao} /> : null}
           <ChamadoThread mensagens={mensagens} visao="aluno" />
           <ChamadoResponder

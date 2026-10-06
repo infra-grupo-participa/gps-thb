@@ -721,6 +721,20 @@ const FRASES_DO_BANCO: Record<string, string> = {
   // falso — corrigido no veredito de 21/09/2026.)
   "confirmacao nao informada": FALTA_PARAMETRO,
   "ativo nao informado": FALTA_PARAMETRO,
+
+  // ── gps.chamado_definir_cliente (…356, 06/10/2026) — cliente de referência
+  // do chamado. Também alcançadas por gps.chamado_abrir(p_cliente_id), que
+  // chama a mesma RPC por dentro. "sem permissao" (inexistente/alheio) já é
+  // traduzida no mapa local de `src/app/chamados/actions.ts`.
+  // 42501
+  "Este chamado está fechado: o cliente de referência não pode mais ser alterado.":
+    "Este chamado está fechado, então o cliente não pode mais ser trocado.",
+  // 22023
+  "Chamado de troca de cliente ou de sócio não leva cliente de referência.":
+    "Chamados de troca de cliente ou de sócio não levam cliente de referência — o cliente da troca já está no pedido.",
+  // 22023
+  "O cliente escolhido não pertence a este ambiente.":
+    "Não encontramos este cliente neste ambiente. Atualize a página e escolha de novo.",
 };
 
 /**

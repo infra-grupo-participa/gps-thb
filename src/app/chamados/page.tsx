@@ -7,6 +7,7 @@ import { getClientesEtapa1, getClienteEquipe } from "@/lib/data/clientes";
 import {
   getChamadosCategoriasAtivo,
   getChamadosDoAmbiente,
+  getClientesParaChamado,
   getSuporteAberto,
 } from "@/lib/chamados-data";
 import {
@@ -65,15 +66,21 @@ export default async function ChamadosPage({
   const alunoId = ctx.alunoId;
   // `getAjudaAtiva` é `cache()` por requisição: o "Como faço?" do header lê
   // o mesmo interruptor e não paga a 2ª ida ao banco.
-  const [aluno, chamados, suporteAberto, categoriasAtivo, tutoriaisAtivo, ajudaAtiva] =
-    await Promise.all([
-      getAlunoById(alunoId),
-      getChamadosDoAmbiente(alunoId),
-      getSuporteAberto(),
-      getChamadosCategoriasAtivo(),
-      getTutoriaisAtivo(),
-      getAjudaAtiva(),
-    ]);
+  const [
+    aluno,
+    chamados,
+    suporteAberto,
+    categoriasAtivo,
+    tutoriaisAtivo,
+    ajudaAtiva,
+  ] = await Promise.all([
+    getAlunoById(alunoId),
+    getChamadosDoAmbiente(alunoId),
+    getSuporteAberto(),
+    getChamadosCategoriasAtivo(),
+    getTutoriaisAtivo(),
+    getAjudaAtiva(),
+  ]);
 
   // O formulário de troca só precisa de clientes/sócio quando a feature está
   // ligada — poupa duas idas ao banco no caminho comum (interruptor
@@ -85,6 +92,16 @@ export default async function ChamadosPage({
         getMembrosDoAmbiente(alunoId),
       ])
     : [[], null, []];
+
+  // Uma ida só a `etapa1_clientes`: com categorias ligadas a lista já veio
+  // acima e dela se deriva a do campo "É sobre algum cliente?".
+  const clientesParaChamado = categoriasAtivo
+    ? clientes.map((c) => ({
+        id: c.id,
+        nome: c.nome?.trim() || "Cliente sem nome",
+        favorito: c.acompanhado_equipe,
+      }))
+    : await getClientesParaChamado(alunoId);
 
   const socioAtual = membros.find((m) => m.papel === "socio") ?? null;
   const socioAtualNome = await nomeDoSocio(socioAtual?.pessoa_aluno_id ?? null);
@@ -101,6 +118,7 @@ export default async function ChamadosPage({
       categoriaInicial={categoriaInicial}
       categoriasAtivo={categoriasAtivo}
       clientes={clientes.map((c) => ({ id: c.id, nome: c.nome }))}
+      clientesParaChamado={clientesParaChamado}
       clienteAtualId={favorito?.id ?? null}
       clienteAtualNome={favorito?.nome ?? null}
       socioAtualNome={socioAtualNome}

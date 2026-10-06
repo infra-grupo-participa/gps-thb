@@ -28,10 +28,31 @@ import {
   type ChamadoMensagemComAutor,
   type ChamadoNaFila,
   type ChamadoSolicitacao,
+  type OpcaoClienteChamado,
 } from "@/lib/chamados-tipos";
 
+/**
+ * `cliente:` é EMBED pela FK `chamados_cliente_id_fkey` (migração …356): uma
+ * query só, sem N+1. O nome da FK vai explícito porque `gps.chamados` pode
+ * ganhar outra referência a `etapa1_clientes` e o PostgREST recusaria o embed
+ * ambíguo (PGRST201). A RLS de `etapa1_clientes` vale no embed: o parceiro só
+ * lê cliente do próprio ambiente — o mesmo do chamado, que a RPC garante.
+ * O resultado passa por `achatarChamado` (→ `cliente_nome`) antes de sair.
+ */
 const COLUNAS_CHAMADO =
-  "id, aluno_id, aberto_por, assunto, status, criado_em, ultima_mensagem_em, fechado_em, fechado_por, categoria";
+  "id, aluno_id, aberto_por, assunto, status, criado_em, ultima_mensagem_em, fechado_em, fechado_por, categoria, cliente_id, cliente_definido_em, cliente:etapa1_clientes!chamados_cliente_id_fkey(nome)";
+
+/** Linha crua do select acima: o embed vem aninhado (objeto ou null). */
+type LinhaChamado = Omit<Chamado, "cliente_nome"> & {
+  cliente: { nome: string | null } | { nome: string | null }[] | null;
+};
+
+/** Embed `cliente: { nome }` → `cliente_nome`, e o campo aninhado sai. */
+function achatarChamado(linha: LinhaChamado): Chamado {
+  const { cliente, ...resto } = linha;
+  const embed = Array.isArray(cliente) ? cliente[0] : cliente;
+  return { ...resto, cliente_nome: embed?.nome ?? null };
+}
 
 const COLUNAS_SOLICITACAO =
   "chamado_id, tipo, alvo_atual_id, alvo_novo_id, alvo_atual_rotulo, alvo_novo_rotulo, estado, decidida_em, motivo_decisao";
@@ -81,7 +102,7 @@ export async function getChamadosDoAmbiente(
     logErro("getChamadosDoAmbiente", error, { alunoId });
     return [];
   }
-  return (data ?? []) as Chamado[];
+  return ((data ?? []) as unknown as LinhaChamado[]).map(achatarChamado);
 }
 
 /**
@@ -114,7 +135,7 @@ export async function getChamado(chamadoId: string): Promise<{
     .limit(LIMITE_MENSAGENS);
 
   return {
-    chamado: chamado as Chamado,
+    chamado: achatarChamado(chamado as unknown as LinhaChamado),
     mensagens: await comNomesDeAutor(
       supabase,
       (mensagens ?? []) as ChamadoMensagem[],
@@ -149,6 +170,51 @@ export async function getSolicitacaoDoChamado(
     return null;
   }
   return (data as ChamadoSolicitacao) ?? null;
+}
+
+/**
+ * Clientes do ambiente para o seletor "Cliente de referência" do chamado.
+ *
+ * Serve o parceiro (`alunoId` = o próprio ambiente; a RLS já corta) e a
+ * equipe no modo assistência (admin vê tudo — o filtro por `aluno_id` é o que
+ * restringe). Quem barra cliente de OUTRO ambiente é a RPC
+ * `gps.chamado_definir_cliente` (22023), nunca esta lista.
+ * Servido por `etapa1_clientes_aluno_idx (aluno_id)`. Ordem final (estrela
+ * primeiro) é de `ordenarClientesDoChamado`, não do banco.
+ */
+const LIMITE_CLIENTES_CHAMADO = 500;
+
+export async function getClientesParaChamado(
+  alunoId: string,
+): Promise<OpcaoClienteChamado[]> {
+  if (!alunoId) return [];
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .schema("gps")
+    .from("etapa1_clientes")
+    .select("id, nome, acompanhado_equipe")
+    .eq("aluno_id", alunoId)
+    .order("nome", { ascending: true })
+    .limit(LIMITE_CLIENTES_CHAMADO);
+
+  if (error) {
+    logErro("getClientesParaChamado", error, { alunoId });
+    return [];
+  }
+
+  return (
+    (data ?? []) as {
+      id: string;
+      nome: string | null;
+      acompanhado_equipe: boolean | null;
+    }[]
+  ).map((c) => ({
+    id: c.id,
+    // `nome` é `not null default ''`: string vazia não pode virar opção muda.
+    nome: (c.nome ?? "").trim() || "Cliente sem nome",
+    favorito: c.acompanhado_equipe === true,
+  }));
 }
 
 /**
@@ -259,7 +325,9 @@ export async function getFilaChamados(): Promise<ChamadoNaFila[]> {
     return [];
   }
 
-  const chamados = (data ?? []) as Chamado[];
+  const chamados = ((data ?? []) as unknown as LinhaChamado[]).map(
+    achatarChamado,
+  );
   if (chamados.length === 0) return [];
 
   const alunoIds = [...new Set(chamados.map((c) => c.aluno_id))];

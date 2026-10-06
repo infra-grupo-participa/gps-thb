@@ -15,6 +15,8 @@ import {
 } from "@/lib/chamados-tipos";
 import { AnexoCampo } from "@/components/chamados/anexo-campo";
 import type { OpcaoCliente } from "@/components/chamados/seletor-cliente";
+import type { OpcaoClienteChamado } from "@/lib/chamados-tipos";
+import { CampoClienteReferencia } from "./campo-cliente-referencia";
 import { CampoCategoria } from "./campo-categoria";
 import { CampoTrocaCliente } from "./campo-troca-cliente";
 import { CampoTrocaSocio } from "./campo-troca-socio";
@@ -61,6 +63,7 @@ export function ChamadoNovoDialog({
   categoriaInicial = null,
   categoriasAtivo,
   clientes,
+  clientesParaChamado = [],
   clienteAtualId,
   clienteAtualNome,
   socioAtualNome,
@@ -81,6 +84,8 @@ export function ChamadoNovoDialog({
   categoriasAtivo: boolean;
   /** Clientes do ambiente, para o seletor de "Troca de cliente" (com busca). */
   clientes: OpcaoCliente[];
+  /** Clientes que o parceiro pode ligar ao chamado (favoritos primeiro). */
+  clientesParaChamado?: OpcaoClienteChamado[];
   clienteAtualId: string | null;
   clienteAtualNome: string | null;
   /**
@@ -106,6 +111,7 @@ export function ChamadoNovoDialog({
   const [assunto, setAssunto] = useState("");
   const [texto, setTexto] = useState("");
   const [clienteNovo, setClienteNovo] = useState<OpcaoCliente | null>(null);
+  const [clienteRef, setClienteRef] = useState<OpcaoClienteChamado | null>(null);
   const [motivoSocio, setMotivoSocio] = useState("");
   const [anexo, setAnexo] = useState<AnexoInput | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -150,6 +156,7 @@ export function ChamadoNovoDialog({
     setAssunto("");
     setTexto("");
     setClienteNovo(null);
+    setClienteRef(null);
     setMotivoSocio("");
     setAnexo(null);
     setTentou(false);
@@ -167,6 +174,7 @@ export function ChamadoNovoDialog({
         texto: textoEfetivo(),
         categoria: categoriasAtivo ? categoria : undefined,
         alvoNovoId: ehTrocaCliente ? clienteNovo?.id : undefined,
+        clienteId: ehTroca ? undefined : (clienteRef?.id ?? null),
         anexo: anexo ?? undefined,
       });
       if (!r.ok) {
@@ -285,6 +293,17 @@ export function ChamadoNovoDialog({
               </div>
             </>
           )}
+
+          {!ehTroca ? (
+            <CampoClienteReferencia
+              id={`${uid}-ref`}
+              rotulo="É sobre algum cliente seu? (opcional)"
+              clientes={clientesParaChamado}
+              valor={clienteRef}
+              onChange={setClienteRef}
+              desabilitado={pendente}
+            />
+          ) : null}
 
           {ajudaAtiva && !ehTroca ? (
             <SugestoesChamado

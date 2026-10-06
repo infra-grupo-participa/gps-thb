@@ -230,6 +230,12 @@ export async function abrirChamado(input: {
   categoria?: CategoriaChamado;
   /** Cliente NOVO — obrigatório só quando a categoria é `troca_cliente`. */
   alvoNovoId?: string;
+  /**
+   * Cliente de REFERÊNCIA (opcional, …356) — não confundir com `alvoNovoId`.
+   * `null`/ausente = "Nenhum cliente". Quem confere ambiente e categoria é
+   * `gps.chamado_definir_cliente`, chamada por dentro de `chamado_abrir`.
+   */
+  clienteId?: string | null;
   anexo?: AnexoInput;
 }): Promise<ResultadoAbrir> {
   const assunto = (input.assunto ?? "").trim();
@@ -271,6 +277,10 @@ export async function abrirChamado(input: {
     p_anexo_tamanho: input.anexo?.tamanho ?? null,
     p_categoria: categoria,
     p_alvo_novo_id: categoria === "troca_cliente" ? (input.alvoNovoId ?? null) : null,
+    // Só vai quando há cliente: sem ele, a chamada casa também com a
+    // assinatura antiga de 8 parâmetros (deploy do TS antes da …356 não
+    // derruba a abertura de chamado sem cliente).
+    ...(input.clienteId ? { p_cliente_id: input.clienteId } : {}),
   });
 
   if (error) return { ok: false, erro: traduzirErro("abrirChamado", error) };
@@ -391,6 +401,39 @@ export async function responderChamado(input: {
   revalidatePath(`/chamados/${input.chamadoId}`);
   revalidatePath("/admin/chamados");
   revalidatePath(`/admin/chamados/${input.chamadoId}`);
+  return { ok: true };
+}
+
+/**
+ * Define, troca ou limpa (`clienteId: null`) o cliente de referência de um
+ * chamado. Serve parceiro e equipe: quem decide se pode é
+ * `gps.chamado_definir_cliente` (admin OU membro do ambiente; fechado → 42501;
+ * troca_* ou cliente de outro ambiente → 22023). Não manda e-mail nem mexe na
+ * ordem da fila — não é mensagem.
+ */
+export async function definirClienteDoChamado(input: {
+  chamadoId: string;
+  clienteId: string | null;
+}): Promise<ResultadoAcao> {
+  const chamadoId = input?.chamadoId;
+  if (!chamadoId) return { ok: false, erro: "Chamado não encontrado." };
+  const clienteId = input.clienteId ? input.clienteId : null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .schema("gps")
+    .rpc("chamado_definir_cliente", {
+      p_chamado_id: chamadoId,
+      p_cliente_id: clienteId,
+    });
+
+  if (error) {
+    return { ok: false, erro: traduzirErro("definirClienteDoChamado", error) };
+  }
+
+  revalidatePath("/chamados", "layout");
+  revalidatePath("/admin/chamados", "layout");
+  revalidatePath("/admin/aluno/[alunoId]/chamados", "page");
   return { ok: true };
 }
 

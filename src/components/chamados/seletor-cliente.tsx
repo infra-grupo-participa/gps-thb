@@ -19,7 +19,7 @@
  */
 
 import { useId, useMemo, useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Star } from "lucide-react";
 import { casaTodosOsTermos } from "@/lib/texto";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,8 @@ import { cn } from "@/lib/utils";
 export interface OpcaoCliente {
   id: string;
   nome: string;
+  /** Cliente que a equipe acompanha: ganha a estrela na lista. */
+  favorito?: boolean;
 }
 
 const MAX_SUGESTOES = 8;
@@ -150,7 +152,7 @@ export function SeletorCliente({
           className="absolute top-full z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-borda-forte bg-card py-1 shadow-(--shadow-raised)"
         >
           {sugestoes.length === 0 ? (
-            <li className="px-3 py-1.5 text-sm text-muted-foreground">
+            <li className="px-3 py-1.5 text-base text-muted-foreground">
               {disponiveis.length === 0
                 ? "Nenhum outro cliente neste ambiente."
                 : "Nenhum cliente encontrado com este nome."}
@@ -166,7 +168,7 @@ export function SeletorCliente({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => escolher(c)}
                   className={cn(
-                    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition",
+                    "flex w-full items-center gap-2 px-3 py-2 text-left text-base transition",
                     i === indice
                       ? "bg-accent text-accent-foreground"
                       : "hover:bg-muted",
@@ -180,6 +182,12 @@ export function SeletorCliente({
                     )}
                   />
                   <span className="min-w-0 truncate">{c.nome}</span>
+                  {c.favorito ? (
+                    <Star
+                      aria-label="Cliente acompanhado pela equipe"
+                      className="ml-auto size-4 shrink-0 fill-current text-primary"
+                    />
+                  ) : null}
                 </button>
               </li>
             ))

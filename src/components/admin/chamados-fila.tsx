@@ -4,12 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatarDataHora } from "@/lib/datas";
+import { EtiquetaClienteChamado } from "@/components/chamados/chamados-lista";
 import {
   CATEGORIAS_CHAMADO,
   ROTULO_CATEGORIA_CHAMADO,
   rotuloCategoriaChamado,
   rotuloStatus,
   type CategoriaChamado,
+  hrefFichaCliente,
   type ChamadoNaFila,
 } from "@/lib/chamados-tipos";
 import { cn } from "@/lib/utils";
@@ -251,6 +253,16 @@ export function ChamadosFila({
                             {espera.texto}
                           </Badge>
                         ) : null}
+                        <EtiquetaClienteChamado
+                          clienteId={c.cliente_id}
+                          clienteNome={c.cliente_nome}
+                          href={
+                            c.cliente_id
+                              ? hrefFichaCliente(c.aluno_id, c.cliente_id)
+                              : null
+                          }
+                          className="text-xs"
+                        />
                         <p className="text-xs text-muted-foreground">
                           <time dateTime={c.ultima_mensagem_em}>
                             {formatarDataHora(c.ultima_mensagem_em)}

@@ -3,8 +3,12 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { getAlunoById } from "@/lib/data";
-import { getChamado, getSolicitacaoDoChamado } from "@/lib/chamados-data";
-import { rotuloStatus } from "@/lib/chamados-tipos";
+import {
+  getChamado,
+  getClientesParaChamado,
+  getSolicitacaoDoChamado,
+} from "@/lib/chamados-data";
+import { hrefFichaCliente, rotuloStatus } from "@/lib/chamados-tipos";
 import { adminNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
@@ -13,6 +17,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { ChamadoThread } from "@/components/chamados/chamado-thread";
 import { ChamadoResponder } from "@/components/chamados/chamado-responder";
 import { estadoDaResposta } from "@/components/chamados/estado-resposta";
+import { ClienteDoChamado } from "@/components/chamados/cliente-do-chamado";
 import { FaixaSolicitacao } from "@/components/chamados/faixa-solicitacao";
 import { AcoesSolicitacao } from "@/components/admin/chamados/acoes-solicitacao";
 
@@ -74,9 +79,12 @@ export default async function AdminChamadoPage({
   const { chamado, mensagens } = dados;
   const ehTroca =
     chamado.categoria === "troca_cliente" || chamado.categoria === "troca_socio";
-  const [aluno, solicitacao] = await Promise.all([
+  const [aluno, solicitacao, opcoesCliente] = await Promise.all([
     getAlunoById(chamado.aluno_id),
     ehTroca ? getSolicitacaoDoChamado(chamadoId) : Promise.resolve(null),
+    chamado.status === "fechado" || ehTroca
+      ? Promise.resolve([])
+      : getClientesParaChamado(chamado.aluno_id),
   ]);
   const estado = estadoDaResposta(chamado, mensagens.length, "admin", true);
 
@@ -123,6 +131,21 @@ export default async function AdminChamadoPage({
         />
 
         <div className="grid gap-6">
+          {/* Troca de cliente/sócio: o banco recusa ligar cliente (22023). */}
+          {ehTroca ? null : (
+            <ClienteDoChamado
+              chamadoId={chamado.id}
+              clienteId={chamado.cliente_id}
+              clienteNome={chamado.cliente_nome}
+              fechado={chamado.status === "fechado"}
+              opcoes={opcoesCliente}
+              hrefFicha={
+                chamado.cliente_id
+                  ? hrefFichaCliente(chamado.aluno_id, chamado.cliente_id)
+                  : null
+              }
+            />
+          )}
           {solicitacao ? (
             <div className="grid gap-3">
               <FaixaSolicitacao solicitacao={solicitacao} />

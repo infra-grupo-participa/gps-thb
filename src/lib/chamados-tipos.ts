@@ -79,6 +79,44 @@ export interface Chamado {
    * "Dificuldade no sistema" (`rotuloCategoriaChamado`), nunca como erro.
    */
   categoria: CategoriaChamado | null;
+  /**
+   * Cliente de referência (opcional, migração …356). `null` = "Nenhum
+   * cliente" — o padrão. Só muda por `gps.chamado_definir_cliente` (ou na
+   * abertura), e só enquanto o chamado não está fechado.
+   */
+  cliente_id: string | null;
+  /**
+   * Nome do cliente, achatado do embed `etapa1_clientes!chamados_cliente_id_fkey`
+   * em `chamados-data.ts`. `null` com `cliente_id` preenchido = a RLS não
+   * deixou ler (não deve acontecer: o cliente é do mesmo ambiente).
+   */
+  cliente_nome: string | null;
+  cliente_definido_em: string | null;
+}
+
+/**
+ * Opção do seletor "Cliente de referência" (abrir chamado / trocar depois).
+ * `favorito` = `acompanhado_equipe` (a estrela) — vai primeiro na lista.
+ */
+export interface OpcaoClienteChamado {
+  id: string;
+  nome: string;
+  favorito: boolean;
+}
+
+/** Estrela primeiro; depois nome em ordem alfabética pt-BR. Não muta a entrada. */
+export function ordenarClientesDoChamado(
+  lista: readonly OpcaoClienteChamado[],
+): OpcaoClienteChamado[] {
+  return [...lista].sort((a, b) => {
+    if (a.favorito !== b.favorito) return a.favorito ? -1 : 1;
+    return a.nome.localeCompare(b.nome, "pt-BR");
+  });
+}
+
+/** Ficha do cliente vista pela EQUIPE (modo assistência). */
+export function hrefFichaCliente(alunoId: string, clienteId: string): string {
+  return `/admin/aluno/${alunoId}/clientes/${clienteId}`;
 }
 
 /** Os dois tipos de solicitação de troca — mesmo fluxo de aprovação. */

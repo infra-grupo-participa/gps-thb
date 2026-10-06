@@ -10,7 +10,11 @@ import assert from "node:assert/strict";
 const {
   calcularPendentes,
   CATALOGO_TRAJETORIA,
+  comFunilOrigem,
   ehCodigoEtapaCliente,
+  FASE_DA_ETAPA,
+  FASES_DA_TRAJETORIA,
+  faseDaEtapa,
 } = await import("./trajetoria-tipos.ts");
 
 const cat = CATALOGO_TRAJETORIA;
@@ -90,4 +94,96 @@ test("ehCodigoEtapaCliente: allowlist de runtime", () => {
   assert.equal(ehCodigoEtapaCliente(""), false);
   assert.equal(ehCodigoEtapaCliente(null), false);
   assert.equal(ehCodigoEtapaCliente("prospeccao' or 1=1"), false);
+});
+
+// ── Fase de exibição (espelho de `cliente_etapa_tipos.fase`, …353) ───────
+
+test("FASE_DA_ETAPA: os 11 códigos, cada um na fase do banco", () => {
+  assert.deepEqual(
+    { ...FASE_DA_ETAPA },
+    {
+      prospeccao: "prospeccao",
+      reuniao_preliminar: "fechamento",
+      sessao_viabilidade: "fechamento",
+      croqui_estrutural: "fechamento",
+      execucao: "contratado",
+      reuniao_inicial_execucao: "contratado",
+      elaboracao_minutas: "contratado",
+      processamento_itcmd: "contratado",
+      processamento_itbi: "contratado",
+      junta_comercial: "contratado",
+      entrega_pasta: "concluido",
+    },
+  );
+  // Nenhum código do catálogo sem fase, nenhuma fase fora das 4.
+  for (const e of cat) {
+    assert.ok(FASES_DA_TRAJETORIA.includes(FASE_DA_ETAPA[e.codigo]), e.codigo);
+  }
+  assert.equal(Object.keys(FASE_DA_ETAPA).length, cat.length);
+});
+
+test("faseDaEtapa: código fora do espelho devolve null", () => {
+  assert.equal(faseDaEtapa("entrega_pasta"), "concluido");
+  assert.equal(faseDaEtapa("nao_existe"), null);
+  assert.equal(faseDaEtapa(""), null);
+});
+
+// ── Funil de origem na regra de pendente ──────────────────────────────────
+
+test("entrou pela Viabilidade: Reunião Preliminar nunca é pendente", () => {
+  assert.deepEqual(
+    calcularPendentes(cat, ["croqui_estrutural"], "sessao_viabilidade"),
+    ["prospeccao", "sessao_viabilidade"],
+  );
+  assert.deepEqual(
+    calcularPendentes(cat, ["sessao_viabilidade", "prospeccao"], "sessao_viabilidade"),
+    [],
+  );
+  assert.deepEqual(
+    calcularPendentes(cat, ["junta_comercial"], "sessao_viabilidade"),
+    ["prospeccao", "sessao_viabilidade", "croqui_estrutural"],
+  );
+});
+
+test("entrou pela Preliminar, null ou ausente: regra de sempre", () => {
+  const esperado = ["prospeccao", "reuniao_preliminar", "sessao_viabilidade"];
+  assert.deepEqual(calcularPendentes(cat, ["croqui_estrutural"], "reuniao_preliminar"), esperado);
+  assert.deepEqual(calcularPendentes(cat, ["croqui_estrutural"], null), esperado);
+  assert.deepEqual(calcularPendentes(cat, ["croqui_estrutural"], undefined), esperado);
+  assert.deepEqual(calcularPendentes(cat, ["croqui_estrutural"], "lixo"), esperado);
+});
+
+test("comFunilOrigem: recalcula pendentes e o flag de cada nó", () => {
+  const no = (e, marcadas) => ({
+    codigo: e.codigo,
+    nome: e.nome,
+    paiCodigo: e.paiCodigo,
+    ordem: e.ordem,
+    ativo: true,
+    marcada: marcadas.includes(e.codigo),
+    marcadoEm: null,
+    pendente: false,
+    filhas: [],
+  });
+  const marcadas = ["croqui_estrutural"];
+  const mapa = new Map(cat.map((e) => [e.codigo, no(e, marcadas)]));
+  for (const e of cat) if (e.paiCodigo) mapa.get(e.paiCodigo).filhas.push(mapa.get(e.codigo));
+  const t = {
+    etapas: cat.filter((e) => e.paiCodigo === null).map((e) => mapa.get(e.codigo)),
+    marcadas,
+    pendentes: [],
+  };
+  const r = comFunilOrigem(t, "sessao_viabilidade");
+  assert.deepEqual(r.pendentes, ["prospeccao", "sessao_viabilidade"]);
+  const rp = r.etapas.find((e) => e.codigo === "reuniao_preliminar");
+  const sv = r.etapas.find((e) => e.codigo === "sessao_viabilidade");
+  assert.equal(rp.pendente, false);
+  assert.equal(sv.pendente, true);
+  assert.deepEqual(comFunilOrigem(t, null).pendentes, [
+    "prospeccao",
+    "reuniao_preliminar",
+    "sessao_viabilidade",
+  ]);
+  // Não muta a entrada.
+  assert.deepEqual(t.pendentes, []);
 });

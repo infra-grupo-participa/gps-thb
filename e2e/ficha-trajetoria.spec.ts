@@ -13,8 +13,9 @@ import { entrar, exigeLogin } from "./apoio";
  *   · trajetória: marca/desmarca caixas na hora (`marcarEtapaCliente` /
  *     `desmarcarEtapaCliente`). Lê o estado das 11 caixas ANTES, zera, e
  *     devolve cada uma ao estado original no `afterEach` — uma por vez.
- *   · funil de origem: grava "Sessão de Viabilidade" pelo "Salvar ficha" e
- *     devolve ao valor que tinha (normalmente "Não informado" = null).
+ *   · funil de origem: grava "Sessão de Viabilidade" pelo controle "O lead
+ *     entrou por:" do card (na hora, `atualizarCliente`) e devolve a origem
+ *     e as caixas ao que eram.
  *
  * 🔑 Efeito EXTERNO conferido lendo as actions (`trajetoria-actions.ts`,
  * `atualizarCliente` em `clientes/actions.ts`): só RPC/UPDATE no banco. Nenhum
@@ -231,11 +232,11 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
     );
   });
 
-  test("funil de origem: salva, relê após reload e volta a Não informado", async ({
+  test("funil de origem no card: marca Viabilidade, relê, Preliminar sem pendente, limpa", async ({
     page,
   }, info) => {
     test.skip(info.project.name !== "desktop", "Uma vez só basta.");
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
 
     const base = await abrirFichaDeTeste(page);
     test.skip(
@@ -243,47 +244,99 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
       'Não há "CLIENTE DE TESTE (QA)" alcançável pela conta de QA.',
     );
 
-    const gatilho = page.locator("#f-funil");
-    await expect(gatilho).toBeVisible({ timeout: 15_000 });
-    const rotuloInicial = (
-      (await gatilho.innerText()) || "Não informado"
-    ).trim();
-
-    async function gravar(rotulo: string) {
-      await page.locator("#f-funil").click();
-      await page.getByRole("option", { name: rotulo, exact: true }).click();
-      await expect(page.locator("#f-funil")).toContainText(rotulo);
-      await page.getByRole("button", { name: "Salvar ficha" }).click();
-      await expect(
-        page.getByText(/Ficha salva/),
-        "O salvar não confirmou — a ficha pode ter recusado (ver alerta da barra).",
-      ).toBeVisible({ timeout: 20_000 });
-      await expect(
-        page.getByRole("button", { name: "Salvar ficha" }),
-      ).not.toHaveAttribute("aria-busy", "true");
+    /** Os 3 botões do "O lead entrou por:" (aria-pressed, não `<label>`). */
+    const origem = (rotulo: string) =>
+      regiao(page)
+        .getByRole("group", { name: "O lead entrou por:" })
+        .getByRole("button", { name: rotulo, exact: true });
+    const ROTULOS = ["Reunião Preliminar", "Sessão de Viabilidade", "Não sei"];
+    async function origemAtual(): Promise<string> {
+      for (const r of ROTULOS) {
+        if ((await origem(r).getAttribute("aria-pressed")) === "true") return r;
+      }
+      throw new Error("Nenhuma opção de origem marcada.");
     }
+
+    /** Clica e ESPERA a action responder (os botões ficam desabilitados em voo). */
+    async function escolher(rotulo: string) {
+      if ((await origemAtual()) === rotulo) return;
+      await origem(rotulo).click();
+      await expect(origem(rotulo)).toHaveAttribute("aria-pressed", "true");
+      await expect(origem(rotulo)).toBeEnabled({ timeout: 20_000 });
+      await expect(
+        regiao(page).getByRole("alert"),
+        `A action recusou a origem "${rotulo}".`,
+      ).toHaveCount(0);
+    }
+
+    await expect(regiao(page)).toBeVisible({ timeout: 15_000 });
+    const origemInicial = await origemAtual();
+    const inicial = await estadoDasCaixas(page);
 
     restaurar = async () => {
       await page.goto(`${base}?aba=dados`);
-      await expect(page.locator("#f-funil")).toBeVisible({ timeout: 15_000 });
-      const atual = ((await page.locator("#f-funil").innerText()) || "").trim();
-      if (atual !== rotuloInicial) await gravar(rotuloInicial);
+      await expect(regiao(page)).toBeVisible({ timeout: 15_000 });
+      // Primeiro as que voltam MARCADAS, depois as desmarcadas (trava do
+      // favorito: a fase não pode passar por Prospecção no meio).
+      for (const nome of ETAPAS) if (inicial[nome]) await definir(page, nome, true);
+      for (const nome of ETAPAS) if (!inicial[nome]) await definir(page, nome, false);
+      await escolher(origemInicial);
+      await page.reload();
+      await expect(regiao(page)).toBeVisible({ timeout: 15_000 });
+      expect(await origemAtual(), "Origem original não restaurada.").toBe(
+        origemInicial,
+      );
+      expect(
+        await estadoDasCaixas(page),
+        "Estado original não restaurado.",
+      ).toEqual(inicial);
     };
 
-    await gravar("Sessão de Viabilidade");
-    await page.reload();
-    await expect(page.locator("#f-funil")).toContainText(
-      "Sessão de Viabilidade",
-      {
-        timeout: 15_000,
-      },
+    // O select da aba Dados SAIU (05/10/2026): a origem mora só no card.
+    await expect(page.locator("#f-funil")).toHaveCount(0);
+
+    // Ponto de partida: Prospecção + Croqui marcados, Preliminar e
+    // Viabilidade desmarcadas ⇒ as duas ficam "pendente" com origem "Não sei".
+    // Croqui mantém a fase em Fechamento (trava do favorito).
+    await definir(page, "Prospecção", true);
+    await definir(page, "Croqui Estrutural", true);
+    await definir(page, "Reunião Preliminar", false);
+    await definir(page, "Sessão de Viabilidade", false);
+    await escolher("Não sei");
+    await expect(linha(page, "Reunião Preliminar")).toContainText("pendente");
+
+    // 1. Entrou pela Viabilidade ⇒ a Preliminar deixa de ser pendente na hora
+    //    (a Viabilidade, desmarcada, continua).
+    await escolher("Sessão de Viabilidade");
+    await expect(linha(page, "Reunião Preliminar")).not.toContainText(
+      "pendente",
+    );
+    await expect(linha(page, "Sessão de Viabilidade")).toContainText(
+      "pendente",
     );
 
-    await gravar("Não informado");
+    // 2. Persiste após reload.
     await page.reload();
-    await expect(page.locator("#f-funil")).toContainText("Não informado", {
-      timeout: 15_000,
-    });
+    await expect(regiao(page)).toBeVisible({ timeout: 15_000 });
+    await expect(origem("Sessão de Viabilidade")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(linha(page, "Reunião Preliminar")).not.toContainText(
+      "pendente",
+    );
+
+    // 3. Clicar de novo na opção marcada limpa (volta a "Não sei") e o
+    //    pendente da Preliminar volta.
+    await origem("Sessão de Viabilidade").click();
+    await expect(origem("Não sei")).toHaveAttribute("aria-pressed", "true");
+    await expect(origem("Não sei")).toBeEnabled({ timeout: 20_000 });
+    await expect(regiao(page).getByRole("alert")).toHaveCount(0);
+    await expect(linha(page, "Reunião Preliminar")).toContainText("pendente");
+    await page.reload();
+    await expect(regiao(page)).toBeVisible({ timeout: 15_000 });
+    await expect(origem("Não sei")).toHaveAttribute("aria-pressed", "true");
+    await expect(linha(page, "Reunião Preliminar")).toContainText("pendente");
   });
 
   test("aviso de revisão nos anexos de croqui e minuta", async ({

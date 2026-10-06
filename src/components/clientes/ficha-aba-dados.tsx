@@ -25,7 +25,6 @@
 import { Phone, User } from "lucide-react";
 
 import { GRAUS_RELACAO_UI } from "@/lib/etapa1";
-import { FUNIS_ORIGEM } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FichaPj } from "@/components/clientes/ficha-pj";
@@ -49,8 +48,6 @@ export function FichaAbaDados({
   onTelefone,
   grau,
   onGrau,
-  funilOrigem,
-  onFunilOrigem,
   razaoSocial,
   onRazaoSocial,
   cnpj,
@@ -68,9 +65,6 @@ export function FichaAbaDados({
   onTelefone: (v: string) => void;
   grau: string;
   onGrau: (v: string) => void;
-  /** Funil de origem (…345). `""` = Não informado. */
-  funilOrigem: string;
-  onFunilOrigem: (v: string) => void;
   razaoSocial: string;
   onRazaoSocial: (v: string) => void;
   cnpj: string;
@@ -192,57 +186,6 @@ export function FichaAbaDados({
             <CampoErro
               id={idDoErro("grau_relacao")}
               texto={erros?.grau_relacao}
-            />
-          </div>
-
-          {/* FUNIL DE ORIGEM (migração …345): por qual porta o cliente
-              entrou. Independente da fase e da trajetória. Mesmo molde do
-              grau: `""` mostra "Não informado" e vai ao banco como `null`. */}
-          <div className="grid gap-2">
-            <Label htmlFor="f-funil">
-              De onde veio este cliente?{" "}
-              <span className="rotulo text-muted-foreground">(opcional)</span>
-            </Label>
-            <Select
-              value={funilOrigem || null}
-              onValueChange={(v) => onFunilOrigem(v ?? "")}
-            >
-              <SelectTrigger
-                id="f-funil"
-                aria-invalid={erros?.funil_origem ? "true" : undefined}
-                aria-describedby={
-                  erros?.funil_origem
-                    ? `f-funil-ajuda ${idDoErro("funil_origem")}`
-                    : "f-funil-ajuda"
-                }
-              >
-                <SelectValue placeholder="Não informado">
-                  {(v: string | null) =>
-                    FUNIS_ORIGEM.find((f) => f.valor === v)?.rotulo ??
-                    "Não informado"
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {/* `null` volta a "Não informado" — sem esta opção, quem
-                    escolheu por engano não teria como desfazer. */}
-                <SelectItem value={null}>Não informado</SelectItem>
-                {FUNIS_ORIGEM.map((f) => (
-                  <SelectItem key={f.valor} value={f.valor}>
-                    {f.rotulo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p
-              id="f-funil-ajuda"
-              className="text-base leading-snug text-muted-foreground"
-            >
-              Por qual reunião este cliente entrou.
-            </p>
-            <CampoErro
-              id={idDoErro("funil_origem")}
-              texto={erros?.funil_origem}
             />
           </div>
         </div>

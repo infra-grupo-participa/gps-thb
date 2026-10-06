@@ -63,6 +63,10 @@ function montarTrajetoria(linhas: LinhaEtapa[]): TrajetoriaCliente {
     if (m) marcadoEm.set(l.codigo, m.marcado_em);
   }
   const marcadas = [...marcadoEm.keys()];
+  // ⚠️ SEM o funil de origem: esta leitura corre no mesmo `Promise.all` que a
+  // do cliente e não o conhece (buscar seria uma query a mais por ficha). A
+  // page aplica `comFunilOrigem(trajetoria, cliente.funil_origem)` depois — e a
+  // ficha recalcula de novo no client a cada clique, com a mesma função.
   const pendentes = calcularPendentes(
     linhas.map((l) => ({
       codigo: l.codigo,

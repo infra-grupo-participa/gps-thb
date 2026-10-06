@@ -3,35 +3,51 @@
 /**
  * "Por onde o cliente passou" — a TRAJETÓRIA do cliente (migração …345).
  *
- * Caixas de marcar, uma por etapa do catálogo; subetapas indentadas sob a mãe.
- * O parceiro marca quantas quiser: é o mapa para saber quem entrou direto na
- * Execução, quem passou por tudo e o que ficou para trás ("pendente").
+ * Desde 05/10/2026 (pedido do Marcio, prints da ficha) é um CAMINHO em 4
+ * fases, da esquerda para a direita no desktop e empilhado no celular:
+ * ① Captação · ② Fechamento · ③ Execução · ④ Concluído. O agrupamento é SÓ de
+ * exibição (`FASE_DA_ETAPA`, espelho de `cliente_etapa_tipos.fase`); quem
+ * calcula a fase do cliente é o gatilho do banco (…353).
  *
- * 🔑 Trajetória ≠ `fase`. Nada aqui passa pelo "Salvar ficha": cada caixa grava
- * na hora pela action (`marcarEtapaCliente`/`desmarcarEtapaCliente`).
+ * Dentro da fase, as etapas são uma lista vertical; subetapa fica PENDURADA na
+ * mãe por uma linha-guia (`border-l` no `<ul>` das filhas), nunca por recuo
+ * solto. "marcada em" e "pendente" ficam numa 2ª linha sob o nome — ao lado do
+ * nome era o que desalinhava a lista.
  *
- * 🔴 **Zero consulta própria.** A árvore vem da page (`getTrajetoriaDoCliente`,
- * no MESMO `Promise.all`) e desce por prop. Este bloco fica ACIMA das abas e
- * não desmonta ao trocar de folha — e mesmo assim não carrega nada no mount.
+ * No topo do card, "O lead entrou por:" grava `etapa1_clientes.funil_origem`
+ * na hora (`atualizarCliente`, patch `{ funil_origem }`) — saiu da aba Dados
+ * por ser ambíguo lá. Quem entrou pela Sessão de Viabilidade não fica com a
+ * Reunião Preliminar "pendente" (`calcularPendentes(…, funilOrigem)`).
+ *
+ * 🔑 Nada aqui passa pelo "Salvar ficha": cada caixa grava na hora pela action
+ * (`marcarEtapaCliente`/`desmarcarEtapaCliente`), e o funil por
+ * `atualizarCliente`.
+ *
+ * 🔴 **Zero consulta própria.** A árvore e o funil vêm da page (no MESMO
+ * `Promise.all`) e descem por prop. Este bloco fica ACIMA das abas e não
+ * desmonta ao trocar de folha — e mesmo assim não carrega nada no mount.
  *
  * 🔴 **Otimista com rollback.** O estado na tela = a prop do servidor + os
- * `ajustes` locais (o que a pessoa clicou). No erro, o ajuste volta ao valor de
+ * ajustes locais (o que a pessoa clicou). No erro, o ajuste volta ao valor de
  * antes do clique e a frase da action fica num `role="alert"`. Os `pendentes`
- * são recalculados na hora com a MESMA `calcularPendentes` do servidor — sem
- * isso, marcar a Execução não acenderia o "pendente" nas anteriores até um
- * refresh.
+ * são recalculados na hora com a MESMA `calcularPendentes` do servidor.
  *
- * ⚠️ A action chama `revalidatePath`, e o Next devolve a página nova junto
- * com a resposta: a prop `trajetoria` troca de identidade. Nessa hora os
- * ajustes são descartados (a prop já é a verdade), MENOS os das caixas ainda
- * em voo — senão um 2º clique rápido piscaria de volta até a resposta dele.
+ * ⚠️ As actions chamam `revalidatePath`, e o Next devolve a página nova junto
+ * com a resposta: as props trocam de identidade. Nessa hora os ajustes são
+ * descartados (a prop já é a verdade), MENOS os ainda em voo — senão um 2º
+ * clique rápido piscaria de volta até a resposta dele.
+ *
+ * 🔑 Contrato com `e2e/ficha-trajetoria.spec.ts`: cada etapa é um `<label>`
+ * que envolve a caixa e começa pelo nome da etapa. Os botões do funil NÃO são
+ * `<label>` (senão "Reunião Preliminar" casaria duas linhas).
  *
  * `null` = a leitura falhou: aviso, nunca "nada marcado".
  */
 
 import { useState } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Check } from "lucide-react";
 
+import { atualizarCliente } from "@/app/clientes/actions";
 import {
   desmarcarEtapaCliente,
   marcarEtapaCliente,
@@ -40,13 +56,19 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatarData } from "@/lib/datas";
+import { FASES_CLIENTE } from "@/lib/etapa1";
+import { cn } from "@/lib/utils";
 import {
   calcularPendentes,
   ehCodigoEtapaCliente,
+  FASES_DA_TRAJETORIA,
+  faseDaEtapa,
   type EtapaCatalogoBase,
   type EtapaTrajetoria,
+  type FaseDaTrajetoria,
   type TrajetoriaCliente,
 } from "@/lib/trajetoria-tipos";
+import { FUNIS_ORIGEM, type FunilOrigem } from "@/lib/types";
 
 interface EstadoEtapa {
   marcada: boolean;
@@ -54,18 +76,48 @@ interface EstadoEtapa {
 }
 
 const ID_TITULO = "trajetoria-titulo";
+const ID_ORIGEM = "trajetoria-origem";
+
+/**
+ * Rótulo da fase no caminho. É o de `FASES_CLIENTE`, MENOS a 1ª: lá ela é
+ * "Prospecção", o mesmo nome da única etapa dela — cabeçalho e etapa
+ * repetiriam a palavra um embaixo do outro. "Captação" é o nome da frente no
+ * programa e cabe na coluna estreita sem quebrar.
+ */
+function rotuloDaFase(f: FaseDaTrajetoria): string {
+  if (f === "prospeccao") return "Captação";
+  return FASES_CLIENTE.find((x) => x.id === f)?.rotulo ?? f;
+}
+
+/** As opções do "O lead entrou por:". `null` = não informado. */
+const OPCOES_ORIGEM: { valor: FunilOrigem | null; rotulo: string }[] = [
+  ...FUNIS_ORIGEM.map((f) => ({ valor: f.valor, rotulo: f.rotulo })),
+  { valor: null, rotulo: "Não sei" },
+];
 
 export function FichaTrajetoria({
   clienteId,
+  alunoId,
   trajetoria,
+  funilOrigem,
 }: {
   clienteId: string;
+  /** Ambiente do cliente — `atualizarCliente` revalida por ele. */
+  alunoId: string;
   /** `null` = a leitura falhou no servidor (a seção avisa). */
   trajetoria: TrajetoriaCliente | null;
+  /** `etapa1_clientes.funil_origem` como veio do servidor. `null` = não informado. */
+  funilOrigem: FunilOrigem | null;
 }) {
   const [ajustes, setAjustes] = useState<Record<string, EstadoEtapa>>({});
   const [emVoo, setEmVoo] = useState<ReadonlySet<string>>(() => new Set());
   const [erro, setErro] = useState<string | null>(null);
+
+  // Funil: `undefined` = sem ajuste local (vale a prop).
+  const [funilAjuste, setFunilAjuste] = useState<
+    FunilOrigem | null | undefined
+  >(undefined);
+  const [funilEmVoo, setFunilEmVoo] = useState(false);
 
   // Prop nova do servidor (revalidate/refresh) → ela é a verdade. Padrão
   // "estado derivado de prop" do React, sem `useEffect` (que pintaria um
@@ -76,6 +128,38 @@ export function FichaTrajetoria({
     setAjustes((a) =>
       Object.fromEntries(Object.entries(a).filter(([c]) => emVoo.has(c))),
     );
+  }
+  const [funilBase, setFunilBase] = useState(funilOrigem);
+  if (funilBase !== funilOrigem) {
+    setFunilBase(funilOrigem);
+    if (!funilEmVoo) setFunilAjuste(undefined);
+  }
+  const funil = funilAjuste === undefined ? funilOrigem : funilAjuste;
+
+  async function escolherOrigem(alvo: FunilOrigem | null) {
+    if (funilEmVoo) return;
+    // Clicar de novo na opção marcada desmarca (volta a "Não sei").
+    const novo = alvo === funil ? null : alvo;
+    if (novo === funil) return;
+    const anterior = funilAjuste;
+    const desfazer = (msg: string) => {
+      setFunilAjuste(anterior);
+      setErro(`Não deu para gravar por onde o lead entrou. ${msg}`);
+    };
+
+    setErro(null);
+    setFunilAjuste(novo);
+    setFunilEmVoo(true);
+    try {
+      const res = await atualizarCliente(clienteId, alunoId, {
+        funil_origem: novo,
+      });
+      if (res.erro) desfazer(res.erro);
+    } catch {
+      desfazer("Confira a internet e tente de novo.");
+    } finally {
+      setFunilEmVoo(false);
+    }
   }
 
   if (!trajetoria) {
@@ -100,23 +184,48 @@ export function FichaTrajetoria({
   const estadoDe = (e: EtapaTrajetoria): EstadoEtapa =>
     ajustes[e.codigo] ?? { marcada: e.marcada, marcadoEm: e.marcadoEm };
 
-  // Catálogo achatado (o que a árvore traz) + marcadas efetivas → pendentes.
+  // ── Agrupamento por fase (só exibição) ────────────────────────────────
+  // Cada nó cai na fase do espelho; código fora dele herda a do pai (no
+  // topo, a do topo anterior). Nó de fase DIFERENTE da do pai vira raiz da
+  // fase dele — é assim que "Entrega da pasta" (filha de Execução no
+  // catálogo) aparece em ④ Concluído e não pendurada na Execução.
+  const faseDoNo = new Map<string, FaseDaTrajetoria>();
+  const raizes: Record<FaseDaTrajetoria, EtapaTrajetoria[]> = {
+    prospeccao: [],
+    fechamento: [],
+    contratado: [],
+    concluido: [],
+  };
   const catalogo: EtapaCatalogoBase[] = [];
   const marcadas: string[] = [];
-  const visitar = (lista: EtapaTrajetoria[]) => {
-    for (const e of lista) {
-      catalogo.push({
-        codigo: e.codigo,
-        paiCodigo: e.paiCodigo,
-        ordem: e.ordem,
-        ativo: e.ativo,
-      });
-      if (estadoDe(e).marcada) marcadas.push(e.codigo);
-      visitar(e.filhas);
-    }
+  let faseAnterior: FaseDaTrajetoria = "prospeccao";
+  const andar = (e: EtapaTrajetoria, fasePai: FaseDaTrajetoria | null) => {
+    const f = faseDaEtapa(e.codigo) ?? fasePai ?? faseAnterior;
+    faseDoNo.set(e.codigo, f);
+    if (fasePai === null || f !== fasePai) raizes[f].push(e);
+    catalogo.push({
+      codigo: e.codigo,
+      paiCodigo: e.paiCodigo,
+      ordem: e.ordem,
+      ativo: e.ativo,
+    });
+    if (estadoDe(e).marcada) marcadas.push(e.codigo);
+    for (const filha of e.filhas) andar(filha, f);
   };
-  visitar(trajetoria.etapas);
-  const pendentes = new Set(calcularPendentes(catalogo, marcadas));
+  for (const e of trajetoria.etapas) {
+    andar(e, null);
+    faseAnterior = faseDoNo.get(e.codigo) ?? faseAnterior;
+  }
+  const pendentes = new Set(calcularPendentes(catalogo, marcadas, funil));
+
+  // Fase atual = a de maior posição com etapa marcada. Nada marcado =
+  // Captação, como o gatilho do banco (nada → `prospeccao`).
+  const posicaoAtual = Math.max(
+    0,
+    ...marcadas.map((c) =>
+      FASES_DA_TRAJETORIA.indexOf(faseDoNo.get(c) ?? "prospeccao"),
+    ),
+  );
 
   async function alternar(e: EtapaTrajetoria, marcar: boolean) {
     const codigo = e.codigo;
@@ -163,65 +272,50 @@ export function FichaTrajetoria({
     }
   }
 
-  const renderItem = (e: EtapaTrajetoria, nivel: number) => {
+  const renderItem = (e: EtapaTrajetoria, raiz: boolean) => {
     const est = estadoDe(e);
-    const pendente = nivel === 0 && pendentes.has(e.codigo);
+    const pendente = pendentes.has(e.codigo);
+    const fase = faseDoNo.get(e.codigo);
+    // Só as filhas da MESMA fase ficam penduradas aqui.
+    const filhas = e.filhas.filter((f) => faseDoNo.get(f.codigo) === fase);
     return (
       <li key={e.codigo}>
-        <label className="flex min-h-9 cursor-pointer items-center gap-2 py-0.5 text-sm leading-snug">
+        <label className="flex min-h-11 cursor-pointer items-start gap-2 py-1 text-sm leading-snug">
           <Checkbox
             checked={est.marcada}
             disabled={emVoo.has(e.codigo)}
             onCheckedChange={(v) => alternar(e, Boolean(v))}
-            className="foco-visivel"
+            className="foco-visivel mt-0.5"
           />
-          <span className="flex flex-wrap items-baseline gap-x-2">
-            <span className={nivel === 0 ? "font-medium" : undefined}>
-              {e.nome}
-            </span>
+          <span className="grid min-w-0 gap-0.5">
+            <span className={raiz ? "font-medium" : undefined}>{e.nome}</span>
             {est.marcada && est.marcadoEm ? (
               <span className="text-sm text-muted-foreground">
-                marcada em {formatarData(est.marcadoEm)}
+                marcada em{" "}
+                <span className="whitespace-nowrap">
+                  {formatarData(est.marcadoEm)}
+                </span>
               </span>
             ) : null}
             {pendente ? (
               <Badge
                 variant="warning"
                 icone={false}
-                className="h-auto text-sm"
+                className="h-auto justify-self-start text-sm"
               >
                 pendente
               </Badge>
             ) : null}
           </span>
         </label>
-        {e.filhas.length > 0 ? renderFilhas(e.filhas, nivel + 1) : null}
-      </li>
-    );
-  };
-
-  // Recuo uniforme (pl-7) por nível.
-  const renderFilhas = (lista: EtapaTrajetoria[], nivel: number) => (
-    <ul className="grid pl-7">{lista.map((e) => renderItem(e, nivel))}</ul>
-  );
-
-  // Nível 0: etapas sem filhas numa coluna; cada etapa com filhas, na sua.
-  const renderRaiz = (lista: EtapaTrajetoria[]) => {
-    const semFilhas = lista.filter((e) => e.filhas.length === 0);
-    const comFilhas = lista.filter((e) => e.filhas.length > 0);
-    return (
-      // Mesma caixa afundada das folhas ("Andamento do contato", "Problemas"):
-      // a ficha inteira fala uma língua só de caixa de marcar.
-      <div className="grid items-start gap-x-8 gap-y-1 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2">
-        {semFilhas.length > 0 ? (
-          <ul className="grid">{semFilhas.map((e) => renderItem(e, 0))}</ul>
-        ) : null}
-        {comFilhas.map((e) => (
-          <ul key={e.codigo} className="grid">
-            {renderItem(e, 0)}
+        {filhas.length > 0 ? (
+          // Linha-guia: o `border-l` sai do meio da caixa da mãe (ml-2 = metade
+          // dos 16 px da caixa) e as filhas ficam penduradas nela.
+          <ul className="ml-2 grid border-l border-borda-forte pl-3">
+            {filhas.map((f) => renderItem(f, false))}
           </ul>
-        ))}
-      </div>
+        ) : null}
+      </li>
     );
   };
 
@@ -236,7 +330,110 @@ export function FichaTrajetoria({
         </p>
       </CardHeader>
       <CardContent className="grid gap-3">
-        {renderRaiz(trajetoria.etapas)}
+        {/* ── POR ONDE O LEAD ENTROU (funil de origem, …345) ─────────────── */}
+        <div className="grid gap-2">
+          <p id={ID_ORIGEM} className="text-sm leading-none font-medium">
+            O lead entrou por:
+          </p>
+          <div
+            role="group"
+            aria-labelledby={ID_ORIGEM}
+            aria-busy={funilEmVoo || undefined}
+            className="flex flex-wrap gap-2"
+          >
+            {OPCOES_ORIGEM.map((o) => {
+              const ativo = funil === o.valor;
+              return (
+                <button
+                  key={o.valor ?? "nao_sei"}
+                  type="button"
+                  aria-pressed={ativo}
+                  disabled={funilEmVoo}
+                  onClick={() => escolherOrigem(o.valor)}
+                  className={cn(
+                    "foco-visivel inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border px-4 text-sm font-medium disabled:cursor-wait disabled:opacity-70",
+                    ativo
+                      ? "border-marca-acao bg-marca-acao text-primary-foreground"
+                      : "border-borda-forte bg-card text-foreground hover:bg-superficie-afundada",
+                  )}
+                >
+                  {ativo ? <Check aria-hidden className="size-4" /> : null}
+                  {o.rotulo}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── O CAMINHO: 4 fases ─────────────────────────────────────────
+            Colunas com largura proporcional ao conteúdo: a Execução tem 2
+            níveis de linha-guia e o nome mais longo ("Processamento do
+            ITCMD"); com 4 colunas iguais ele quebraria em 3 linhas. 4 colunas
+            só a partir de `lg` (a ficha tem `max-w-4xl`); de `sm` a `lg`, 2. */}
+        <div className="grid items-start gap-x-4 gap-y-4 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_minmax(0,1fr)]">
+          {FASES_DA_TRAJETORIA.map((f, i) => {
+            const estado =
+              i < posicaoAtual ? "passou" : i === posicaoAtual ? "atual" : "futura";
+            const idFase = `trajetoria-fase-${f}`;
+            const ultima = i === FASES_DA_TRAJETORIA.length - 1;
+            return (
+              <section
+                key={f}
+                aria-labelledby={idFase}
+                className="grid content-start gap-1"
+              >
+                <h3
+                  id={idFase}
+                  className="flex items-center gap-2 text-sm font-medium"
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "grid size-7 shrink-0 place-items-center rounded-full text-sm font-semibold tabular-nums",
+                      estado === "atual" &&
+                        "bg-marca-acao text-primary-foreground",
+                      estado === "passou" &&
+                        "border-2 border-marca-acao bg-card text-foreground",
+                      estado === "futura" &&
+                        "border border-borda-forte bg-card text-muted-foreground",
+                    )}
+                  >
+                    {i + 1}
+                  </span>
+                  {/* "fase atual" em texto, não só na cor do número. */}
+                  <span className="grid leading-tight">
+                    <span>
+                      {rotuloDaFase(f)}
+                      <span className="sr-only">
+                        {`, fase ${i + 1} de ${FASES_DA_TRAJETORIA.length}`}
+                        {estado === "passou" ? ", já passou" : ""}
+                        {estado === "futura" ? ", ainda não" : ""}
+                      </span>
+                    </span>
+                    {estado === "atual" ? (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        fase atual
+                      </span>
+                    ) : null}
+                  </span>
+                  {/* Conector até a próxima fase — só com as 4 lado a lado. */}
+                  {!ultima ? (
+                    <span
+                      aria-hidden
+                      className="hidden h-px min-w-4 flex-1 bg-borda-forte lg:block"
+                    />
+                  ) : null}
+                </h3>
+                {raizes[f].length > 0 ? (
+                  <ul className="grid">
+                    {raizes[f].map((e) => renderItem(e, true))}
+                  </ul>
+                ) : null}
+              </section>
+            );
+          })}
+        </div>
+
         {erro ? (
           <p
             role="alert"

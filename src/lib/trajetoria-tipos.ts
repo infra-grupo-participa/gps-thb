@@ -85,6 +85,47 @@ export function ehCodigoEtapaCliente(v: unknown): v is CodigoEtapaCliente {
   return typeof v === "string" && CODIGOS.has(v);
 }
 
+/**
+ * As 4 fases do cliente, na ordem do caminho. Mesmos ids de `FaseCliente`
+ * (`src/lib/types.ts`) — declarados aqui de novo porque este módulo não
+ * importa `@/` (o teste roda com `node --test`, sem resolvedor).
+ */
+export const FASES_DA_TRAJETORIA = [
+  "prospeccao",
+  "fechamento",
+  "contratado",
+  "concluido",
+] as const;
+export type FaseDaTrajetoria = (typeof FASES_DA_TRAJETORIA)[number];
+
+/**
+ * Em que fase cada etapa cai — espelho da coluna `cliente_etapa_tipos.fase`
+ * (migração …353), que é a que o gatilho do banco usa para CALCULAR a fase.
+ * Aqui serve SÓ para exibição (agrupar o caminho por fase na ficha); nada no
+ * front grava fase. Mudou lá, muda aqui (o teste cobre os 11 códigos).
+ *
+ * ⚠️ `entrega_pasta` é filha de `execucao` no catálogo, mas é de OUTRA fase
+ * (`concluido`): na tela ela sai da Execução e vira a etapa da fase ④.
+ */
+export const FASE_DA_ETAPA: Record<CodigoEtapaCliente, FaseDaTrajetoria> = {
+  prospeccao: "prospeccao",
+  reuniao_preliminar: "fechamento",
+  sessao_viabilidade: "fechamento",
+  croqui_estrutural: "fechamento",
+  execucao: "contratado",
+  reuniao_inicial_execucao: "contratado",
+  elaboracao_minutas: "contratado",
+  processamento_itcmd: "contratado",
+  processamento_itbi: "contratado",
+  junta_comercial: "contratado",
+  entrega_pasta: "concluido",
+};
+
+/** Fase de um código; `null` = fora do espelho (quem chama herda a do pai). */
+export function faseDaEtapa(codigo: string): FaseDaTrajetoria | null {
+  return ehCodigoEtapaCliente(codigo) ? FASE_DA_ETAPA[codigo] : null;
+}
+
 /** Mínimo que `calcularPendentes` precisa de cada etapa do catálogo. */
 export interface EtapaCatalogoBase {
   codigo: string;
@@ -106,12 +147,19 @@ export interface EtapaCatalogoBase {
  * - Só o topo vira pendente; subetapas nunca (regra do plano: "pela ordem do topo").
  * - Etapa inativa nunca é pendente. Código marcado fora do catálogo é ignorado.
  *
+ * - `funilOrigem = "sessao_viabilidade"` (o lead ENTROU pela Viabilidade,
+ *   `etapa1_clientes.funil_origem`): a Reunião Preliminar nunca é pendente —
+ *   ele pulou de propósito. Ausente/`null`/outro valor = regra de sempre.
+ *
  * Pura e determinística: devolve códigos na ordem do topo. Nada é gravado.
  */
 export function calcularPendentes(
   catalogo: readonly EtapaCatalogoBase[],
   marcadas: Iterable<string>,
+  funilOrigem?: string | null,
 ): string[] {
+  const pulada =
+    funilOrigem === "sessao_viabilidade" ? "reuniao_preliminar" : null;
   const porCodigo = new Map<string, EtapaCatalogoBase>();
   for (const e of catalogo) porCodigo.set(e.codigo, e);
 
@@ -140,10 +188,52 @@ export function calcularPendentes(
         e.paiCodigo === null &&
         e.ativo !== false &&
         e.ordem < maxOrdem &&
-        !toposAlcancados.has(e.codigo),
+        !toposAlcancados.has(e.codigo) &&
+        e.codigo !== pulada,
     )
     .sort((a, b) => a.ordem - b.ordem)
     .map((e) => e.codigo);
+}
+
+/** A árvore em lista (pré-ordem): o catálogo que a ficha enxerga. */
+export function achatarTrajetoria(
+  etapas: readonly EtapaTrajetoria[],
+): EtapaTrajetoria[] {
+  const saida: EtapaTrajetoria[] = [];
+  const visitar = (lista: readonly EtapaTrajetoria[]) => {
+    for (const e of lista) {
+      saida.push(e);
+      visitar(e.filhas);
+    }
+  };
+  visitar(etapas);
+  return saida;
+}
+
+/**
+ * Recalcula `pendentes` (e o `pendente` de cada nó) com o funil de origem do
+ * cliente. Existe porque a leitura da trajetória corre no MESMO `Promise.all`
+ * que a do cliente — ela não conhece `funil_origem` sem uma query a mais. A
+ * page aplica isto depois, quando já tem o cliente: zero ida ao banco.
+ * Etapa inativa não marcada não está na árvore — nunca seria pendente mesmo.
+ */
+export function comFunilOrigem(
+  t: TrajetoriaCliente,
+  funilOrigem: string | null | undefined,
+): TrajetoriaCliente {
+  const pendentes = calcularPendentes(
+    achatarTrajetoria(t.etapas),
+    t.marcadas,
+    funilOrigem,
+  );
+  const pend = new Set(pendentes);
+  const marcar = (lista: EtapaTrajetoria[]): EtapaTrajetoria[] =>
+    lista.map((e) => ({
+      ...e,
+      pendente: pend.has(e.codigo),
+      filhas: marcar(e.filhas),
+    }));
+  return { ...t, etapas: marcar(t.etapas), pendentes };
 }
 
 // ── Contrato de leitura (src/lib/data/trajetoria.ts) ─────────────────────

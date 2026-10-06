@@ -70,11 +70,7 @@
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import type {
-  ClienteEtapa1,
-  FunilOrigem,
-  GrauRelacao,
-} from "@/lib/types";
+import type { ClienteEtapa1, GrauRelacao } from "@/lib/types";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import type { ClienteCroqui } from "@/lib/croquis-tipos";
 import type { LinkDrive } from "@/lib/links-drive-tipos";
@@ -248,10 +244,6 @@ export function ClienteFicha({
     cliente.telefone ? mascaraTelefone(cliente.telefone) : "",
   );
   const [grau, setGrau] = useState<string>(cliente.grau_relacao ?? "");
-  // Funil de origem (…345). `""` = Não informado; vai como `null`.
-  const [funilOrigem, setFunilOrigem] = useState<string>(
-    cliente.funil_origem ?? "",
-  );
   // ── PESSOA JURÍDICA (migração `…308`) ────────────────────────────────
   // 🔴 `cnpj` mora MASCARADO no estado e vai em DÍGITOS PUROS ao banco (o
   // CHECK é `^[0-9]{14}$`). A conversão está em `salvar()` e repetida na
@@ -419,7 +411,6 @@ export function ClienteFicha({
     nome,
     telefone,
     grau,
-    funilOrigem,
     razaoSocial,
     cnpj,
     ramo,
@@ -651,7 +642,6 @@ export function ClienteFicha({
         // `""` (campo esvaziado) vira `null` = NÃO INFORMADO. A action repete
         // esta normalização — aqui é para o `alterado` acima não mentir.
         grau_relacao: (grau as GrauRelacao) || null,
-        funil_origem: (funilOrigem as FunilOrigem) || null,
         // 🔴 PJ: `null` quando vazio (o CHECK recusa string vazia) e o CNPJ em
         // DÍGITOS PUROS — a máscara é só da tela.
         razao_social: razaoSocial.trim() || null,
@@ -793,7 +783,16 @@ export function ClienteFicha({
         <PastaAtividade clienteId={cliente.id} atividade={atividadeDrive} />
       ) : null}
 
-      <FichaTrajetoria clienteId={cliente.id} trajetoria={trajetoria} />
+      {/* O funil de origem (…345) mora AQUI desde 05/10/2026 — saiu da aba
+          Dados ("fica ambíguo", Marcio). Grava na hora, como as caixas; não
+          passa pelo "Salvar ficha", que por isso não envia `funil_origem`
+          (senão o salvar devolveria o valor velho do formulário por cima). */}
+      <FichaTrajetoria
+        clienteId={cliente.id}
+        alunoId={alunoId}
+        trajetoria={trajetoria}
+        funilOrigem={cliente.funil_origem ?? null}
+      />
 
       <FichaAbas
         aba={aba}
@@ -809,8 +808,6 @@ export function ClienteFicha({
             onTelefone={setTelefone}
             grau={grau}
             onGrau={setGrau}
-            funilOrigem={funilOrigem}
-            onFunilOrigem={setFunilOrigem}
             razaoSocial={razaoSocial}
             onRazaoSocial={setRazaoSocial}
             cnpj={cnpj}

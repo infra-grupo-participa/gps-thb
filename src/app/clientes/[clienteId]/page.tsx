@@ -13,6 +13,7 @@ import { getCroquisDoCliente } from "@/lib/data/croquis";
 import { getLinksDriveDoCliente } from "@/lib/data/links-drive";
 import { getEstadoDrive } from "@/lib/data/drive";
 import { getTrajetoriaDoCliente } from "@/lib/data/trajetoria";
+import { comFunilOrigem } from "@/lib/trajetoria-tipos";
 import { getAtividadeDriveDoCliente } from "@/lib/data/drive-atividade";
 import {
   getDecisoresPendentes,
@@ -143,7 +144,13 @@ export default async function ClienteFichaPage({
           croquis={croquis}
           linksDrive={linksDrive}
           estadoDrive={estadoDrive}
-          trajetoria={trajetoria}
+          // Pendentes com o funil de origem (o lead que entrou pela
+          // Viabilidade não fica com a Preliminar pendente). Puro, sem query.
+          trajetoria={
+            trajetoria
+              ? comFunilOrigem(trajetoria, cliente.funil_origem)
+              : null
+          }
           atividadeDrive={atividadeDrive}
           contextoObrigatorio={contextoObrigatorio}
           alunoId={alunoId}

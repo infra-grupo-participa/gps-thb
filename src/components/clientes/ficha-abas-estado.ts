@@ -243,7 +243,6 @@ export const CAMPOS_POR_ABA: Record<AbaFicha, readonly (keyof ClienteEtapa1)[]> 
       "nome",
       "telefone",
       "grau_relacao",
-      "funil_origem",
       "razao_social",
       "cnpj",
       "ramo_atividade",
@@ -284,8 +283,6 @@ export interface ValoresDaFicha {
   /** Mascarado: `(11) 98888-7777`. */
   telefone: string;
   grau: string;
-  /** `""` = Não informado (vai como `null`). */
-  funilOrigem: string;
   razaoSocial: string;
   /** Mascarado: `00.000.000/0000-00`. */
   cnpj: string;
@@ -344,8 +341,6 @@ export function camposAlteradosDaFicha(
     campos.push("telefone");
   if ((v.grau || null) !== (cliente.grau_relacao ?? null))
     campos.push("grau_relacao");
-  if ((v.funilOrigem || null) !== (cliente.funil_origem ?? null))
-    campos.push("funil_origem");
   if ((v.razaoSocial.trim() || null) !== (cliente.razao_social ?? null))
     campos.push("razao_social");
   // Dígitos contra dígitos: o estado é mascarado, o banco não.
@@ -478,7 +473,6 @@ export const ID_DO_CAMPO = {
   nome: "f-nome",
   telefone: "f-tel",
   grau_relacao: "f-grau",
-  funil_origem: "f-funil",
   razao_social: "f-razao",
   cnpj: "f-cnpj",
   ramo_atividade: "f-ramo",
@@ -736,7 +730,6 @@ export const ROTULO_DO_CAMPO: Partial<Record<keyof ClienteEtapa1, string>> = {
   nome: "Nome",
   telefone: "Telefone",
   grau_relacao: "Grau de relação",
-  funil_origem: "De onde veio o cliente",
   razao_social: "Razão social",
   cnpj: "CNPJ",
   ramo_atividade: "Ramo de atividade",
@@ -807,8 +800,6 @@ export function valorDoCampo(
       return v.telefone;
     case "grau_relacao":
       return v.grau;
-    case "funil_origem":
-      return v.funilOrigem;
     case "razao_social":
       return v.razaoSocial;
     case "cnpj":

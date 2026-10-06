@@ -13,10 +13,18 @@
  * (`ReactNode`), montado pelo `ClienteFicha` — que continua dono de todos os
  * `useState` do formulário.
  *
- * ── DENSO E CHAPADO ────────────────────────────────────────────────────────
- * Abas como botões de uma grade: borda de 2 px + `bg-card` na folha ativa
- * (o `TabsList variant="line"` do header, com a forma sobrescrita só aqui),
- * corpo em `bg-card`. Sem sombra, sem gradiente. Rótulo em `text-base`
+ * ── 🔴 ABAS DE PASTA, NÃO BOTÕES (João, 06/10/2026) ─────────────────────
+ * *"A ficha tem que ter a aparência de uma ficha de escritório mesmo."*
+ * Cada aba é uma orelha de pasta: cantos de cima redondos, base reta,
+ * apoiada na borda da folha. A inativa fica atrás (manila `muted`, 6 px mais
+ * baixa a partir de `md`); a ativa é da cor da folha, contorno `marca-solida`
+ * com faixa de 4 px no topo, e a partir de `md` se FUNDE à folha (a base dela
+ * cobre a borda). A folha é `bg-card` com borda e sombra quente de papel
+ * sobre a mesa. Só CSS e tokens, sem imagem.
+ * No celular as abas ocupam 3 linhas (Trajetória sozinha, depois 2 + 2): só
+ * a última encosta na folha, então fundir só ali faria a ativa mudar de
+ * forma conforme a linha. Lá a ativa fecha embaixo, com o mesmo contorno.
+ * (`TabsList variant="line"` do header, forma sobrescrita só aqui.) Rótulo em `text-base`
  * (16 px, escala padrão do Tailwind — o `tailwind-merge` a reconhece como
  * tamanho). **Nunca** `text-*` custom, que ele trata como COR e descarta.
  *
@@ -95,6 +103,7 @@
  * navegador que pinta.
  *
  * ── 🔴 GRADE, NÃO FAIXA QUE ROLA (João, 06/10/2026) ───────────────────────
+ * (Continua valendo com as abas de pasta: a grade é a mesma.)
  * Em 390 px a faixa tinha `scrollWidth 622` contra `clientWidth 366` e
  * obrigava a arrastar para o lado. Agora é grade: 2 colunas no celular (a
  * Trajetória ocupa a linha inteira), 5 a partir de `md` (768). Em `sm`
@@ -192,14 +201,17 @@ export function FichaAbas({
          só a medição no tamanho alvo pega isto. */
       className="min-w-0 gap-0"
     >
-      {/* 🔴 GRADE (ver o cabeçalho). `grid` e `overflow-visible` vencem o
-          `inline-flex`/`overflow-x-auto` do variant `line` pelo
-          `tailwind-merge` (último da mesma família vence) — conferido no
-          HTML. `items-stretch`: botões da mesma linha com a mesma altura.
-          `ui/tabs.tsx` fica intacto: header e painéis usam o mesmo variant. */}
+      {/* 🔴 GRADE de abas de PASTA (ver o cabeçalho). `grid` e
+          `overflow-visible` vencem o `inline-flex`/`overflow-x-auto` do
+          variant `line` pelo `tailwind-merge`; `border-b-0` tira a régua do
+          variant (a linha de base agora é a borda de cima da FOLHA).
+          `items-stretch`: abas da mesma linha com a mesma base e o mesmo
+          topo (com `items-end` os rótulos que quebram davam topos tortos).
+          `relative z-10`: a lista pinta POR CIMA da folha — é o que deixa a
+          aba ativa cobrir o trecho da borda da folha sob ela (a fusão). */}
       <TabsList
         variant="line"
-        className="grid w-full! grid-cols-2 items-stretch gap-2 overflow-visible pb-2 md:grid-cols-5"
+        className="relative z-10 grid w-full! grid-cols-2 items-stretch gap-x-1 gap-y-1.5 overflow-visible border-b-0 md:grid-cols-5"
       >
         {ABAS_FICHA.map((id) => {
           const contador = contadores[id];
@@ -212,15 +224,31 @@ export function FichaAbas({
               key={id}
               value={id}
               className={cn(
-                // Alvo ≥ 44 px, texto quebra em vez de cortar.
-                "h-auto! min-h-11 flex-col items-start justify-center gap-1 whitespace-normal px-3 py-2 text-left text-base",
-                // Ativa: borda de 2 px + fundo de card + peso (Base UI põe
-                // `aria-selected`). Inativa tem a mesma borda em cinza, para
-                // não pular 1 px na troca. A régua `after:` do variant sai —
-                // somaria 4 px embaixo. `marca-solida` (#B04300) e não
-                // `primary`: dá 3:1 contra o card (WCAG 1.4.11).
-                "rounded-md border-2 border-borda-fina after:hidden",
-                "data-active:border-marca-solida data-active:bg-card!",
+                // Alvo ≥ 44 px, texto quebra em vez de cortar. A régua `after:`
+                // do variant sai.
+                "h-auto! min-h-11 flex-col items-start justify-center gap-1 whitespace-normal px-3 py-2 text-left text-base after:hidden",
+                // ABA DE PASTA: cantos de cima redondos, base reta, papel
+                // manila atrás (`muted`, um degrau mais escuro e quente que a
+                // folha). `-mb-px` apoia a aba SOBRE a borda de cima da folha.
+                // `!` no fundo: o variant `line` pinta `bg-transparent` com
+                // seletor de grupo, mais específico que uma classe solta.
+                "-mb-px rounded-t-lg rounded-b-none border border-borda-forte bg-muted!",
+                // Escalonamento (≥ md): a inativa nasce 6 px mais baixa — fica
+                // "atrás". A ativa sobe à altura cheia.
+                // 🔴 A ALTURA DA LINHA NÃO PODE DEPENDER DE QUAL ABA ESTÁ ATIVA,
+                // senão a folha pula na troca (medido: 3 px). Por isso a ativa
+                // devolve no `pt` o que ganhou de borda (4 − 1 = 3 px) e, em
+                // `md`, soma no `pt` os 6 px que a inativa tem de `mt`:
+                // toda aba ocupa a mesma caixa externa, ativa ou não.
+                "md:mt-1.5 md:data-active:mt-0 data-active:pt-[5px] md:data-active:pt-[11px]",
+                // ATIVA: a mesma cor da folha, contorno `marca-solida`
+                // (#B04300, 5,75:1 contra o card — WCAG 1.4.11 pede 3:1) e
+                // faixa de 4 px no topo: distinguível por FORMA, não só cor.
+                "data-active:border-marca-solida data-active:border-t-4 data-active:bg-card! data-active:text-foreground",
+                // Fusão (≥ md): a base da ativa é da cor da folha e cobre a
+                // borda dela — a folha "sai" da aba. No celular a ativa fecha
+                // embaixo (ver o cabeçalho: 3 linhas não encostam todas).
+                "md:data-active:border-b-card",
                 id === "trajetoria" && "col-span-2 md:col-span-1",
               )}
             >
@@ -257,7 +285,12 @@ export function FichaAbas({
           /* Ver o cabeçalho: o estado próprio de `MinutasAnexo`/`ContratoAnexo`
              morreria a cada troca de folha sem isto. */
           keepMounted
-          className="border-x border-b border-borda-fina bg-card p-4 sm:p-6"
+          /* A FOLHA: papel sobre a mesa. Borda `borda-forte` (a mesma das
+             abas, para a linha de base casar), sombra quente em dois
+             degraus. Cantos de cima retos: as abas cobrem a largura toda
+             (no celular a última linha; em `md` as cinco) — canto redondo
+             sob a aba da ponta deixava um dente visível. */
+          className="rounded-b-lg border border-borda-forte bg-card p-4 shadow-[0_1px_2px_rgb(24_20_16/0.06),0_6px_16px_-4px_rgb(24_20_16/0.10)] sm:p-6"
         >
           {conteudo[id]}
         </TabsContent>

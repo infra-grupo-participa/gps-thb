@@ -110,8 +110,10 @@ export function PastaAtividade({
   return (
     <Card size="sm" role="region" aria-labelledby={ID_TITULO}>
       <CardHeader>
-        <CardTitle id={ID_TITULO}>Na pasta do cliente</CardTitle>
-        <p className="text-base text-muted-foreground">
+        <CardTitle id={ID_TITULO} className="font-semibold group-data-[size=sm]/card:text-base">
+          Na pasta do cliente
+        </CardTitle>
+        <p className="text-sm leading-snug text-muted-foreground">
           Mostra o que foi criado ou alterado na pasta desde que o
           acompanhamento foi ligado.
         </p>

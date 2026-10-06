@@ -709,7 +709,9 @@ function BlocoDoTipo({
   }
 
   return (
-    <div>
+    // Cada tipo com grade é uma caixa de borda fina: com 2 ou 3 tipos abertos
+    // ao mesmo tempo, sem a caixa a grade de um emendava no título do outro.
+    <div className="rounded-lg border border-borda-fina px-4 py-4 sm:px-5">
       {/* 🔴 O TÍTULO E A INSTRUÇÃO VOLTAM AQUI. A fatia 1 tirou "Escolha um
           horário" do `PageHeader` — e com razão: lá ela falava por uma tela
           que também mostra sessão marcada e pendências, onde não há horário
@@ -724,7 +726,7 @@ function BlocoDoTipo({
       {tipo.id === TIPO_ENTREVISTA_PREVIA ? (
         <p className="mt-0.5 max-w-[62ch] corpo-sm text-muted-foreground">
           Aqui você pede à equipe que conduza a Entrevista Prévia com o seu
-          cliente; o nome de quem atende aparece em cada horário. Se preferir
+          cliente; o nome de quem atende aparece junto dos horários. Se preferir
           fazer você mesmo,{" "}
           {clienteDaZona1 ? (
             <Link
@@ -741,14 +743,14 @@ function BlocoDoTipo({
       ) : null}
       {tipo.id === TIPO_SESSAO_VIABILIDADE ||
       tipo.id === TIPO_CROQUI_ESTRUTURAL ? (
-        <p className="mt-0.5 max-w-[62ch] text-base text-muted-foreground">
+        <p className="mt-0.5 max-w-[62ch] corpo-sm text-muted-foreground">
           {tipo.id === TIPO_SESSAO_VIABILIDADE
             ? "Aqui a equipe analisa se a holding é viável para o seu cliente."
             : "Aqui a equipe apresenta o croqui da estrutura da holding do seu cliente."}{" "}
           Quem conduz é a Cristiane.
         </p>
       ) : null}
-      <div className="mt-2">
+      <div className="mt-4">
         <GradeHorarios
           tipo={tipo}
           horarios={horarios}

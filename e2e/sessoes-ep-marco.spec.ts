@@ -46,7 +46,7 @@ async function horariosPorDia(grade: Locator): Promise<Record<string, string[]>>
       if (!m) continue;
       const dia = `${m[3]}-${m[2]}-${m[1]}`;
       saida[dia] = Array.from(ul.querySelectorAll("button"))
-        .map((b) => /escolher (\d{2}:\d{2})/i.exec(b.textContent ?? "")?.[1])
+        .map((b) => /escolher (\d{2}:\d{2})/i.exec(b.getAttribute("aria-label") ?? b.textContent ?? "")?.[1])
         .filter((h): h is string => Boolean(h));
     }
     return saida;
@@ -96,6 +96,17 @@ test.describe("EP com o Marco · /sessoes → /admin/sessoes → questionário",
     });
     await expect(grade.getByText(/40 min/).first()).toBeVisible();
 
+    // A grade mostra 5 dias por vez: abre todos para a prova cobrir a janela
+    // inteira, e confere que cada clique ACRESCENTA dias e leva o foco ao
+    // primeiro horário novo (sem isso o foco cairia no body).
+    const verMais = grade.getByRole("button", { name: /^ver mais dias/i });
+    while (await verMais.count()) {
+      const antes = await grade.locator("[data-dia]").count();
+      await verMais.click();
+      await expect.poll(() => grade.locator("[data-dia]").count()).toBeGreaterThan(antes);
+      await expect(page.locator(":focus")).toHaveAccessibleName(/^escolher \d{2}:\d{2}/i);
+    }
+
     const porDia = await horariosPorDia(grade);
     const doMarco = Object.entries(porDia).filter(([dia]) => dia >= PRIMEIRO_DIA);
     expect(doMarco.length, "Nenhum dia de 06/10 em diante na grade da EP.").toBeGreaterThan(0);
@@ -121,7 +132,7 @@ test.describe("EP com o Marco · /sessoes → /admin/sessoes → questionário",
       await entrar(pp, parceiro!, "/sessoes");
       await pp.goto("/sessoes");
       const grade = gradeDaEp(pp);
-      const botao = grade.getByRole("button", { name: /^escolher \d{2}:\d{2}$/i }).first();
+      const botao = grade.getByRole("button", { name: /^escolher \d{2}:\d{2}/i }).first();
       const temHorario = await botao
         .waitFor({ state: "visible", timeout: 15_000 })
         .then(() => true)

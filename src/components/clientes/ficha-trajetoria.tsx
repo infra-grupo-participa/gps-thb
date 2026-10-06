@@ -82,7 +82,7 @@ export function FichaTrajetoria({
     return (
       <Card size="sm" role="region" aria-labelledby={ID_TITULO}>
         <CardHeader>
-          <CardTitle id={ID_TITULO}>Por onde o cliente passou</CardTitle>
+          <CardTitle id={ID_TITULO} className="font-semibold group-data-[size=sm]/card:text-base">Por onde o cliente passou</CardTitle>
         </CardHeader>
         <CardContent>
           <p
@@ -163,62 +163,80 @@ export function FichaTrajetoria({
     }
   }
 
-  const renderLista = (lista: EtapaTrajetoria[], nivel: number) => (
-    <ul className={nivel === 0 ? "sm:columns-2 sm:gap-8" : "grid pl-8"}>
-      {lista.map((e) => {
-        const est = estadoDe(e);
-        const pendente = nivel === 0 && pendentes.has(e.codigo);
-        return (
-          <li
-            key={e.codigo}
-            className={nivel === 0 ? "break-inside-avoid" : ""}
-          >
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 py-1 text-base leading-snug">
-              <Checkbox
-                checked={est.marcada}
-                disabled={emVoo.has(e.codigo)}
-                onCheckedChange={(v) => alternar(e, Boolean(v))}
-                className="foco-visivel size-6 [&_svg]:size-5!"
-              />
-              <span className="flex flex-wrap items-baseline gap-x-2">
-                <span className={nivel === 0 ? "font-medium" : undefined}>
-                  {e.nome}
-                </span>
-                {est.marcada && est.marcadoEm ? (
-                  <span className="text-muted-foreground">
-                    marcada em {formatarData(est.marcadoEm)}
-                  </span>
-                ) : null}
-                {pendente ? (
-                  <Badge
-                    variant="warning"
-                    icone={false}
-                    className="h-auto text-base"
-                  >
-                    pendente
-                  </Badge>
-                ) : null}
+  const renderItem = (e: EtapaTrajetoria, nivel: number) => {
+    const est = estadoDe(e);
+    const pendente = nivel === 0 && pendentes.has(e.codigo);
+    return (
+      <li key={e.codigo}>
+        <label className="flex min-h-9 cursor-pointer items-center gap-2 py-0.5 text-sm leading-snug">
+          <Checkbox
+            checked={est.marcada}
+            disabled={emVoo.has(e.codigo)}
+            onCheckedChange={(v) => alternar(e, Boolean(v))}
+            className="foco-visivel"
+          />
+          <span className="flex flex-wrap items-baseline gap-x-2">
+            <span className={nivel === 0 ? "font-medium" : undefined}>
+              {e.nome}
+            </span>
+            {est.marcada && est.marcadoEm ? (
+              <span className="text-sm text-muted-foreground">
+                marcada em {formatarData(est.marcadoEm)}
               </span>
-            </label>
-            {e.filhas.length > 0 ? renderLista(e.filhas, nivel + 1) : null}
-          </li>
-        );
-      })}
-    </ul>
+            ) : null}
+            {pendente ? (
+              <Badge
+                variant="warning"
+                icone={false}
+                className="h-auto text-sm"
+              >
+                pendente
+              </Badge>
+            ) : null}
+          </span>
+        </label>
+        {e.filhas.length > 0 ? renderFilhas(e.filhas, nivel + 1) : null}
+      </li>
+    );
+  };
+
+  // Recuo uniforme (pl-7) por nível.
+  const renderFilhas = (lista: EtapaTrajetoria[], nivel: number) => (
+    <ul className="grid pl-7">{lista.map((e) => renderItem(e, nivel))}</ul>
   );
+
+  // Nível 0: etapas sem filhas numa coluna; cada etapa com filhas, na sua.
+  const renderRaiz = (lista: EtapaTrajetoria[]) => {
+    const semFilhas = lista.filter((e) => e.filhas.length === 0);
+    const comFilhas = lista.filter((e) => e.filhas.length > 0);
+    return (
+      // Mesma caixa afundada das folhas ("Andamento do contato", "Problemas"):
+      // a ficha inteira fala uma língua só de caixa de marcar.
+      <div className="grid items-start gap-x-8 gap-y-1 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2">
+        {semFilhas.length > 0 ? (
+          <ul className="grid">{semFilhas.map((e) => renderItem(e, 0))}</ul>
+        ) : null}
+        {comFilhas.map((e) => (
+          <ul key={e.codigo} className="grid">
+            {renderItem(e, 0)}
+          </ul>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <Card size="sm" role="region" aria-labelledby={ID_TITULO}>
       <CardHeader>
-        <CardTitle id={ID_TITULO}>Por onde o cliente passou</CardTitle>
-        <p className="text-base leading-snug text-muted-foreground">
+        <CardTitle id={ID_TITULO} className="font-semibold group-data-[size=sm]/card:text-base">Por onde o cliente passou</CardTitle>
+        <p className="text-sm leading-snug text-muted-foreground">
           Marque as etapas que este cliente já fez. Salva na hora: não precisa
           clicar em &quot;Salvar ficha&quot;. <strong>Pendente</strong> = etapa
           que ficou para trás.
         </p>
       </CardHeader>
       <CardContent className="grid gap-3">
-        {renderLista(trajetoria.etapas, 0)}
+        {renderRaiz(trajetoria.etapas)}
         {erro ? (
           <p
             role="alert"

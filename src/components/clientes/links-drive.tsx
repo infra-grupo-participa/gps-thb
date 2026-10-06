@@ -156,11 +156,11 @@ export function LinksDrive({
           id={`${id}-titulo`}
           ref={tituloRef}
           tabIndex={-1}
-          className="outline-none"
+          className="font-semibold outline-none group-data-[size=sm]/card:text-base"
         >
           Link do Drive deste cliente
         </CardTitle>
-        <p className="text-base leading-snug text-muted-foreground">
+        <p className="text-sm leading-snug text-muted-foreground">
           A pasta com os documentos <strong>deste cliente</strong>. A pasta do
           escritório fica na aba Pasta. Este botão salva à parte: não precisa
           clicar em &quot;Salvar ficha&quot;.
@@ -177,25 +177,28 @@ export function LinksDrive({
             link novo.
           </p>
         ) : atual ? (
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-            <div className="grid min-w-0 gap-0.5">
-              <a
-                href={atual.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-h-11 items-center gap-2 text-base font-semibold text-accent-foreground underline underline-offset-2"
-              >
-                <ExternalLink aria-hidden className="size-5 shrink-0" />
-                Abrir a pasta no Drive
-                <span className="sr-only"> (abre em nova aba)</span>
-              </a>
-              <span className="text-base text-muted-foreground">
-                por {atual.origem === "equipe" ? "Equipe" : atual.criadoPorNome}{" "}
-                · {formatarData(atual.criadoEm)}
+          <div className="grid justify-items-start gap-1">
+            <a
+              href={atual.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-9 items-center gap-2 text-base font-semibold text-accent-foreground underline underline-offset-2"
+            >
+              <ExternalLink aria-hidden className="size-5 shrink-0" />
+              Abrir a pasta no Drive
+              <span className="sr-only"> (abre em nova aba)</span>
+            </a>
+            <span className="text-sm text-muted-foreground">
+              por {atual.origem === "equipe" ? "Equipe" : atual.criadoPorNome}{" "}
+              · {formatarData(atual.criadoEm)}
+            </span>
+            {!atual.podeRemover ? (
+              <span className="text-sm text-muted-foreground">
+                Link colocado pela equipe. Para trocar, fale com a equipe.
               </span>
-            </div>
+            ) : null}
             {atual.podeRemover && !editando ? (
-              <div className="flex gap-2">
+              <div className="mt-1 flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -217,10 +220,6 @@ export function LinksDrive({
                   Remover
                 </Button>
               </div>
-            ) : !atual.podeRemover ? (
-              <span className="text-base text-muted-foreground">
-                Link colocado pela equipe. Para trocar, fale com a equipe.
-              </span>
             ) : null}
           </div>
         ) : (
@@ -243,7 +242,7 @@ export function LinksDrive({
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-base leading-snug text-muted-foreground">
+                  <p className="text-sm leading-snug text-muted-foreground">
                     A equipe ainda está organizando a sua pasta no Drive.
                     Enquanto isso, você pode colar o link da pasta do cliente
                     abaixo.
@@ -286,7 +285,7 @@ export function LinksDrive({
         {mostrarCampo ? (
           <form onSubmit={enviar} noValidate className="grid gap-2">
             {souEquipe || !atual ? null : (
-              <div className="text-base leading-snug text-muted-foreground">
+              <div className="text-sm leading-snug text-muted-foreground">
                 Antes, compartilhe a pasta com a equipe:
                 <ul className="mt-0.5 select-all">
                   {EMAILS_EQUIPE_PASTA.map((email) => (

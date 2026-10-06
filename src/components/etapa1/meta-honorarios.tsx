@@ -125,12 +125,7 @@ export function MetaHonorarios({
       ) : (
         <p className="mt-1 text-xs text-muted-foreground">
           {contratados === 0 ? (
-            <>
-              Nenhum cliente contratado ainda. A meta de{" "}
-              {brlInteiro(META_HONORARIOS)} começa a contar quando um
-              cliente chegar à Execução (marcada em &quot;Por onde o cliente
-              passou&quot;).
-            </>
+            <>Nenhum cliente contratado ainda.</>
           ) : (
             <>
               {contratados} {contratados === 1 ? "cliente" : "clientes"}{" "}

@@ -34,7 +34,6 @@ import {
   List as ListIcon,
   PhoneCall,
   Plus,
-  Star,
   Users,
 } from "lucide-react";
 import type { ClienteEtapa1, FaseCliente, GrauRelacao } from "@/lib/types";
@@ -169,7 +168,7 @@ export function ClientesManager({
   // A régua vem de `calcularMetricasEtapa1`, a mesma função das outras duas
   // telas — `{}` porque só os números derivados da LISTA interessam aqui
   // (o mapa de tarefas manuais não muda `preenchidos`/`comDados`).
-  const { preenchidos, comDados } = useMemo(
+  const { comDados } = useMemo(
     () => calcularMetricasEtapa1(clientes, {}),
     [clientes],
   );
@@ -403,48 +402,11 @@ export function ClientesManager({
         <Secao
           icone={<Users />}
           titulo="Meus clientes"
-          descricao={
-            <>
-              {comDados} de {META_CLIENTES} com dados · cadastre, controle o
-              contato e anexe o contrato assinado.
-              {/* Rodapé honesto do KPI: sem ele, quem tem 3 clientes REAIS (um
-                  deles em execução) lê "3/30" como fracasso. A meta de 30 é da
-                  tarefa 1 da Etapa 01; a aba é a central de todos.
-                  🔴 O fichário de documentos por cliente saiu da UI em 07/2026:
-                  o documento vive no Drive. Aqui se anexa UM arquivo — o
-                  contrato assinado. */}
-              <span className="mt-1 block text-xs text-muted-foreground">
-                {preenchidos} com nome · {comDados} com nome e telefone.
-                {/* 🔴 O número estava aqui; o MOTIVO dele, não (11/09/2026).
-                    A home manda para cá quem tem 0 clientes — 82 pessoas — e
-                    a conta que destrava a Etapa 01 aparecia sem dizer o que
-                    destrava. "Com dados" também não explicava a si mesmo:
-                    ficha completa é nome + telefone, e é por isso que o
-                    telefone não é opcional. */}{" "}
-                É essa conta — nome <strong>e</strong> telefone — que destrava
-                o passo 2 da Etapa 01 (as 3 mensagens de prospecção). Os passos
-                4 a 8 abrem quando você escolher a estrela. Clientes em
-                andamento e em execução contam aqui também.
-              </span>
-              {/* 🔴 A ESTRELA É 38% DOS CHAMADOS (5 de 13, medido em 16/09/2026).
-                  Cinco parceiros a leram como "favorito": "achei que favoritar
-                  era apenas para sinalizar por onde queria começar"
-                  (Marineide), "não é favorito pois não é cliente ainda"
-                  (Rodrigo). A copy certa existia só no `title` — tooltip de
-                  HOVER, que não existe no celular nem para leitor de tela — e
-                  no diálogo, que só abre DEPOIS do clique. Aqui ela fica
-                  VISÍVEL e ANTES, uma vez só (não por linha). */}
-              <span className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
-                <Star aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-                <span>
-                  A <strong>estrela</strong> não é favorito nem &quot;por onde
-                  começar&quot;: ela escolhe o único cliente que a equipe vai
-                  acompanhar com você até a execução da holding. Depois que a
-                  equipe assumir, a troca passa a ser pelo Suporte.
-                </span>
-              </span>
-            </>
-          }
+          // 🔴 Só o número (João, 06/10/2026: "ninguém vai ler esses textos").
+          // Os 3 parágrafos que moravam aqui (a conta do passo 2, a estrela,
+          // o contrato) saíram: a estrela já se explica na caixa de certeza
+          // ANTES de gravar, e o passo 2 se explica na própria Etapa 01.
+          descricao={`${comDados} de ${META_CLIENTES} com nome e telefone`}
           acao={
             // `flex-wrap`: no celular os botões quebram linha; sem ele a fila
             // empurrava o card e cortava o texto à direita (medido em 390 px).

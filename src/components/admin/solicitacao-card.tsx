@@ -245,9 +245,7 @@ export function SolicitacaoCard({
         consequencia={
           <>
             A pessoa passa a ver <strong>&ldquo;sua solicitação não foi
-            aprovada&rdquo;</strong> ao entrar no portal, e o motivo abaixo
-            aparece para ela. Sem motivo, ela fica sem saber o que fazer — e
-            não tem canal de suporte antes de ter acesso.
+            aprovada&rdquo;</strong> ao entrar no portal, e o motivo abaixo aparece para ela.
           </>
         }
         rotuloConfirmar="Recusar solicitação"

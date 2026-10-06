@@ -632,16 +632,13 @@ export function GerenciarAcessoPainel({
           titulo="Fechar sem copiar a senha?"
           descricao={
             <>
-              A senha de <strong>{credenciais?.email}</strong> só aparece
-              aqui, agora. O sistema guarda a senha cifrada, e cifra não se
-              desfaz.
+              A senha de <strong>{credenciais?.email}</strong> só aparece aqui, agora.
             </>
           }
           consequencia={
             <>
               Depois de fechar, <strong>ninguém consegue ver esta senha de
-              novo</strong> — nem a equipe. Para dar acesso à pessoa será
-              preciso definir outra.
+              novo</strong> — nem a equipe.
             </>
           }
           rotuloConfirmar="Fechar mesmo assim"

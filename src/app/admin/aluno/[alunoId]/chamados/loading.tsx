@@ -22,7 +22,6 @@ export default function AdminAlunoChamadosLoading() {
             </span>
           }
           titulo={<SkeletonTexto className="h-7 w-64 max-w-full" />}
-          descricao="Todos os chamados deste ambiente, abertos e fechados. Responder e fechar acontece na thread."
         />
         <ListaSkeleton linhas={3} />
       </main>

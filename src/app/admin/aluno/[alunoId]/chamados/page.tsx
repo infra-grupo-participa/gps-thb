@@ -72,14 +72,12 @@ export default async function AdminAlunoChamadosPage({
             </Link>
           }
           titulo={`Chamados de ${aluno?.nome ?? "parceiro"}`}
-          descricao="Todos os chamados deste ambiente, abertos e fechados. Responder e fechar acontece na thread."
         />
 
         {chamados.length === 0 ? (
           <EmptyState
             icone={<LifeBuoy />}
             titulo="Este parceiro nunca abriu um chamado."
-            descricao="A aba Suporte já aparece no portal dele. Quando abrir, o chamado entra na fila da equipe."
           />
         ) : (
           <ChamadosLista

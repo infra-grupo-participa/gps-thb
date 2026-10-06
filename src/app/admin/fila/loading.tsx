@@ -9,7 +9,6 @@ export default function AdminFilaLoading() {
       <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Fila de ligações"
-          descricao="Os clientes selecionados pelos parceiros para a entrevista prévia, do mais antigo para o mais recente. Ligue, registre o resultado e a linha sai da fila."
         />
         <ListaSkeleton linhas={5} />
       </main>

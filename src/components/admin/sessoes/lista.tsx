@@ -577,8 +577,7 @@ function LinhaDaSessao({
         descricao={`${rotuloDoDia(sessao.data)}, ${inicio} — ${clienteNome ?? "cliente"}`}
         consequencia={
           <>
-            O link entra no lembrete por e-mail. Se a equipe já colou um link
-            aqui, ele prevalece sobre o do parceiro.
+            O link entra no lembrete por e-mail; o da equipe prevalece.
           </>
         }
         rotuloConfirmar={sessao.link_reuniao ? "Trocar link" : "Salvar link"}
@@ -665,9 +664,7 @@ function LinhaDaSessao({
         descricao={`${rotuloDoDia(sessao.data)}, ${inicio} — ${clienteNome ?? "cliente"}`}
         consequencia={
           <>
-            A sessão muda para o novo horário e o horário atual volta a ficar
-            livre. O motivo é obrigatório e o aluno o vê. O aluno será avisado
-            por e-mail.
+            O horário atual volta a ficar livre. O motivo é obrigatório e o aluno o vê. O aluno será avisado por e-mail.
           </>
         }
         rotuloConfirmar="Remarcar sessão"

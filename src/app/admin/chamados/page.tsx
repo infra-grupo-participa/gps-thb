@@ -70,7 +70,6 @@ export default async function AdminChamadosPage({
       <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Chamados"
-          descricao="Suporte do portal. O mais parado aparece primeiro — a fila existe para ninguém ficar sem resposta."
         />
 
         <Tabs defaultValue="fila" className="gap-6">

@@ -247,8 +247,7 @@ export function LoteDeEtapas({
             <strong>
               Liberar a etapa também libera o agendamento de sessão dela.
             </strong>{" "}
-            Quem já tinha a etapa liberada fica como está. As demais etapas não
-            mudam. O motivo vai para a trilha de cada parceiro.
+            O motivo vai para a trilha de cada parceiro.
           </>
         }
         rotuloConfirmar={`Liberar para ${plural(qtd, "pessoa", "pessoas")}`}

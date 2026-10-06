@@ -39,7 +39,6 @@ export default async function AdminAjudaPage() {
       <main id="conteudo" className="mx-auto w-full max-w-5xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Ajuda"
-          descricao="Os artigos do “Como faço?” do parceiro: em que tela aparecem, quantas vezes foram lidos e se resolveram."
         />
         {artigos.ok ? (
           <AjudaAdmin artigos={artigos.dados} metricas={metricas.ok ? metricas.dados : null} />

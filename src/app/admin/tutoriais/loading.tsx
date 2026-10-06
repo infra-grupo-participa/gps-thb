@@ -9,7 +9,6 @@ export default function AdminTutoriaisLoading() {
       <main id="conteudo" className="mx-auto w-full max-w-5xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Tutoriais"
-          descricao="Como usar o portal, passo a passo — vídeo, texto, ou os dois. Cadastre por aqui, sem deploy."
         />
         <ListaSkeleton linhas={4} />
       </main>

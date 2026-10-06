@@ -95,8 +95,7 @@ function BlocoSocio({ p }: { p: OnboardingDaPessoa }) {
           alarme falso "1 de 2 responderam" — o sócio compartilha o ambiente
           do titular e não é uma segunda resposta pendente. */}
       <p className="corpo-sm rounded-lg border border-borda-fina bg-muted/60 p-2.5 text-muted-foreground">
-        O sócio não responde o questionário inicial (decisão de 15/09/2026) —
-        compartilha o ambiente do titular.
+        O sócio não responde o questionário inicial.
         {socioSemRespostaConcluida
           ? p.status === "em_andamento"
             ? " Começou a responder antes dessa data; o questionário não se aplica mais ao sócio e não reabre. As respostas parciais ficam guardadas, sem exibição aqui."
@@ -208,8 +207,7 @@ export function OnboardingRespostas({
                     ) : null}
                     {p.status === "nao_iniciado" ? (
                       <p className="corpo-sm text-muted-foreground">
-                        O questionário abre sozinho no próximo acesso desta
-                        pessoa. Ninguém está bloqueado por isso.
+                        O questionário abre no próximo acesso desta pessoa.
                       </p>
                     ) : (
                       <Respostas p={p} />

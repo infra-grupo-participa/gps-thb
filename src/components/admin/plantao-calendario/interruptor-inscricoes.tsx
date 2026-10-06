@@ -148,8 +148,7 @@ export function InterruptorInscricoes({
         <DialogHeader>
           <DialogTitle>Pausar as inscrições?</DialogTitle>
           <DialogDescription>
-            Ninguém consegue se inscrever, cancelar ou revelar o link até você
-            reabrir. Os plantões continuam visíveis.
+            Ninguém consegue se inscrever, cancelar ou revelar o link até você reabrir.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

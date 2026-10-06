@@ -24,7 +24,6 @@ export default function AdminPlantaoLoading() {
         <PageHeader
           titulo="Plantão de Dúvidas"
           eyebrow="Produto: Acelera Holding"
-          descricao="Só participa quem comprou o Acelera Holding — agenda das mentoras, inscritos e acesso dos parceiros."
         />
         <div role="status" aria-live="polite" className="grid gap-6">
           <span className="sr-only">Carregando o plantão…</span>

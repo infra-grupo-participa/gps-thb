@@ -145,7 +145,7 @@ export function DiarioForm({
           onKeyDown={mencoes.aoTeclar}
           onBlur={mencoes.fechar}
           onClick={() => mencoes.fechar()}
-          placeholder="O que aconteceu, o que foi combinado ou o que ficou pendente. Digite @ para avisar alguém da equipe."
+          placeholder="O que aconteceu, foi combinado ou ficou pendente."
           rows={4}
           maxLength={TEXTO_MAXIMO}
           aria-describedby={
@@ -162,7 +162,7 @@ export function DiarioForm({
           <p id={idAjudaMencao} className="text-xs text-muted-foreground">
             <AtSign aria-hidden className="mr-1 inline size-3 align-[-1px]" />
             Digite <span className="font-medium">@</span> para avisar alguém da
-            equipe. Só quem já pode ler este diário aparece na lista.
+            equipe.
             {mencoes.carregando ? " Carregando a equipe…" : null}
           </p>
           <div

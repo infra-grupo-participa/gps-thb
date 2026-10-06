@@ -173,7 +173,6 @@ export default async function AdminAlunoResolverPage({
         <PageHeader
           eyebrow="Central de resolução"
           titulo={`Resolver — ${aluno?.nome ?? diagnostico.nome ?? "parceiro"}`}
-          descricao="O que está travando este ambiente, na ordem do socorro: sem login, nada mais importa. Cada linha traz o dado que sustenta o diagnóstico."
           voltar={
             <Link
               href={base}

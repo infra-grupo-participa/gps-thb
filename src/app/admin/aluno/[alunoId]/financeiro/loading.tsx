@@ -28,7 +28,6 @@ export default function AdminAlunoFinanceiroLoading() {
             </span>
           }
           titulo={<SkeletonTexto className="h-7 w-64 max-w-full" />}
-          descricao="Faturamento do parceiro na mentoria e o contrato do programa, lido do cadastro financeiro do Grupo Participa. Somente leitura — o portal não edita esses valores. O sócio do ambiente não vê esta aba."
         />
         <div role="status" aria-live="polite" className="grid gap-6">
           <span className="sr-only">Carregando…</span>

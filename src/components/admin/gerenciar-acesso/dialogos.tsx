@@ -54,10 +54,7 @@ export function DialogoRemoverSocio({
     <>
       Remove o acesso de{" "}
       <strong>{removendo.email ?? "este sócio"}</strong> a este ambiente
-      e <strong>apaga o login dele</strong>. Os clientes, o progresso e
-      o histórico do ambiente continuam com o titular. Não dá para
-      desfazer: para voltar, é preciso adicionar o sócio de novo e
-      definir uma senha nova.
+      e <strong>apaga o login dele</strong>. Os clientes e o histórico continuam com o titular. Não dá para desfazer.
     </>
   }
   rotuloConfirmar="Remover sócio"
@@ -90,9 +87,7 @@ export function DialogoOutrosPortais({
   consequencia={
     <>
       Esta conta também é usada em:{" "}
-      <strong>{confirmaOutros.programas.join(", ")}</strong>. Trocar a
-      senha aqui derruba as sessões dela em todos os portais e a senha
-      antiga deixa de funcionar em qualquer um deles. Avise a pessoa.
+      <strong>{confirmaOutros.programas.join(", ")}</strong>. Trocar a senha derruba as sessões dela em todos os portais. Avise a pessoa.
     </>
   }
   rotuloConfirmar="Trocar mesmo assim"

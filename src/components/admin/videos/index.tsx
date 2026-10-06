@@ -133,7 +133,7 @@ export function VideosAdmin({ videos }: { videos: VideoGps[] }) {
       {videos.length === 0 ? (
         <EmptyState
           titulo="Nenhum vídeo cadastrado."
-          descricao="Cole o link do YouTube (não listado) de uma gravação para começar. Ela nasce como rascunho até você publicar."
+          descricao="Cole o link do YouTube (não listado) de uma gravação para começar."
         />
       ) : (
         porEtapa.map(([etapa, itens]) => (
@@ -235,8 +235,7 @@ export function VideosAdmin({ videos }: { videos: VideoGps[] }) {
           <DialogHeader>
             <DialogTitle>{modo === "novo" ? "Novo vídeo" : "Editar vídeo"}</DialogTitle>
             <DialogDescription>
-              Cole o link do YouTube (não listado) — a pré-visualização aparece
-              assim que o link é reconhecido.
+              Cole o link do YouTube (não listado).
             </DialogDescription>
           </DialogHeader>
           {modo !== null ? (

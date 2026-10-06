@@ -164,8 +164,7 @@ export function CorpoBriefing({ b }: { b: SessaoBriefing }) {
   return (
     <div className="grid gap-3 border-t border-borda-fina px-3 py-3">
       <p className="corpo-sm text-muted-foreground">
-        Briefing congelado{gerado ? ` em ${formatarDataHora(gerado)}` : ""} — pode
-        não refletir mudanças feitas depois na ficha do cliente.
+        Briefing congelado{gerado ? ` em ${formatarDataHora(gerado)}` : ""} — pode estar desatualizado.
       </p>
 
       <dl className="grid gap-2">
@@ -355,8 +354,7 @@ function PartesDoScript({
           </p>
         ) : (
           <p className="corpo-sm text-muted-foreground">
-            Entrevista Prévia ainda não concluída — as 7 partes aparecem sem o
-            que o cliente respondeu.
+            Entrevista Prévia ainda não concluída.
           </p>
         )}
       </div>

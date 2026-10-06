@@ -153,10 +153,8 @@ export function SecaoPessoas({
           Trazer alguém que já tem ambiente próprio
         </p>
         <p className="mt-1 max-w-[70ch] corpo-sm text-muted-foreground">
-          Para quem virou titular de um ambiente separado antes de existir a
-          figura de sócio. Os clientes dele são <strong>copiados</strong> para
-          cá; progresso, notas e chamados ficam no ambiente antigo. O que vai e
-          o que fica é conferido no servidor antes de você confirmar.
+          Os clientes dele são <strong>copiados</strong> para
+          cá; progresso, notas e chamados ficam no ambiente antigo.
           {temTitular
             ? ""
             : " Indisponível: este ambiente está sem titular — defina o titular antes."}

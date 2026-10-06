@@ -137,33 +137,22 @@ export function AcoesSolicitacao({
               ehRemocao ? (
                 <>
                   Isto EXECUTA a saída agora: o login de <strong>{atual}</strong>{" "}
-                  é removido deste ambiente. O que ele cadastrou continua —
-                  só o acesso sai. O chamado fecha com a aprovação
-                  registrada. Não há uma segunda confirmação depois desta. O
-                  novo sócio é convidado depois, pela aba Equipe.
+                  é removido deste ambiente; o que ele cadastrou continua. Não há segunda confirmação. O novo sócio é convidado depois, pela aba Equipe.
                 </>
               ) : (
                 <>
                   Isto EXECUTA a troca agora: <strong>{atual}</strong> sai e{" "}
-                  <strong>{novo}</strong> entra no lugar como cliente
-                  acompanhado pela equipe. O chamado fecha com a aprovação
-                  registrada. Não há uma segunda confirmação depois desta —
-                  reverter exige abrir um novo pedido.
+                  <strong>{novo}</strong> entra no lugar como cliente acompanhado pela equipe. Não há segunda confirmação; reverter exige novo pedido.
                 </>
               )
             ) : ehRemocao ? (
               <>
-                O pedido de saída de <strong>{atual}</strong> é encerrado sem
-                executar nada — o sócio continua no ambiente. O parceiro vê o
-                motivo abaixo na thread do chamado, e a conversa pode
-                continuar por mensagem.
+                O pedido de saída de <strong>{atual}</strong> é encerrado sem executar nada — o sócio continua no ambiente. O parceiro vê o motivo abaixo.
               </>
             ) : (
               <>
                 O pedido de troca de <strong>{atual}</strong> para{" "}
-                <strong>{novo}</strong> é encerrado sem executar nada. O
-                parceiro vê o motivo abaixo na thread do chamado, e a
-                conversa pode continuar por mensagem.
+                <strong>{novo}</strong> é encerrado sem executar nada. O parceiro vê o motivo abaixo.
               </>
             )
           }

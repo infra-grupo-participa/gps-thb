@@ -315,18 +315,14 @@ export function ConverterTitularEmSocio({
 
         <p className="corpo-sm">
           O ambiente de origem deixa de existir como ambiente próprio e o acesso
-          da pessoa passa para cá, como <strong>sócio</strong>. Um retrato do
-          ambiente antigo é guardado na lixeira antes de qualquer mudança — é o
-          caminho de volta.
+          da pessoa passa para cá, como <strong>sócio</strong>. Um retrato do ambiente antigo fica guardado na lixeira.
         </p>
 
         {/* 🔴 A irreversibilidade da CÓPIA, em texto, no diálogo — não só no
             relatório. Sem esta frase o admin lê "tem retrato na lixeira" e
             conclui, errado, que desfazer limpa tudo. */}
         <p className="corpo-sm font-medium">
-          A cópia dos clientes não se desfaz sozinha. Restaurar o retrato
-          devolve o ambiente antigo, mas as linhas copiadas para cá ficam com
-          identificador novo e permanecem aqui — apagar uma a uma seria manual.
+          A cópia dos clientes não se desfaz sozinha: restaurar o retrato não remove as linhas copiadas para cá.
         </p>
 
         {/* CONFIRMAÇÃO NOMEADA — molde do "digite EXCLUIR", com o nome do

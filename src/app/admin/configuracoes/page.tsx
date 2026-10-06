@@ -37,7 +37,6 @@ export default async function AdminConfiguracoesPage() {
       <main id="conteudo" className="mx-auto w-full max-w-5xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Interruptores"
-          descricao="Liga e desliga funcionalidades do portal sem deploy. Cada mudança fica registrada, com autor e data."
         />
 
         <InterruptoresAdmin interruptores={interruptores} />

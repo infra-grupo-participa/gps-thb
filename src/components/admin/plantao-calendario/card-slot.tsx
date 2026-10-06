@@ -189,10 +189,7 @@ export function CardSlot({
           {slot.canceladoMotivo
             ? `Motivo: ${slot.canceladoMotivo}. `
             : "Cancelado sem motivo registrado. "}
-          Os inscritos receberam aviso por e-mail no cancelamento
-          (quem não recebeu precisa ser avisado por fora) e o plantão
-          saiu do ar. Fica aqui como histórico; use remover para tirar
-          da agenda.
+          Cada inscrito recebeu e-mail de cancelamento, salvo falha de envio. O plantão saiu do ar.
         </p>
       ) : null}
 
@@ -215,8 +212,7 @@ export function CardSlot({
           <MailXIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           <span>
             {slot.mentoraNome} não tem e-mail cadastrado; sem ele
-            ela não recebe o aviso de véspera. Cadastre na aba
-            Mentoras para poder publicar.
+            ela não recebe o aviso de véspera. Cadastre na aba Mentoras.
           </span>
         </p>
       ) : null}

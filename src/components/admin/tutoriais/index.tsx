@@ -132,7 +132,7 @@ export function TutoriaisAdmin({ tutoriais }: { tutoriais: TutorialGps[] }) {
       {tutoriais.length === 0 ? (
         <EmptyState
           titulo="Nenhum tutorial cadastrado."
-          descricao="Crie o primeiro tutorial — com vídeo, passo a passo, ou os dois. Ele nasce como rascunho até você publicar."
+          descricao="Crie o primeiro tutorial."
         />
       ) : (
         porSecao.map((grupo) => (

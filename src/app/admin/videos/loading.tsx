@@ -9,7 +9,6 @@ export default function AdminVideosLoading() {
       <main id="conteudo" className="mx-auto w-full max-w-5xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Vídeos"
-          descricao="Gravações de reuniões e aulas, embedadas do YouTube não listado. Cadastre por aqui — sem subir arquivo, sem deploy."
         />
         <ListaSkeleton linhas={4} />
       </main>

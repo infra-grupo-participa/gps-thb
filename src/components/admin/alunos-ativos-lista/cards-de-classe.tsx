@@ -120,8 +120,7 @@ export function CardsDeClasse({
       })}
 
       <p className="mt-1 corpo-sm text-muted-foreground">
-        {total} {total === 1 ? "parceiro" : "parceiros"} no programa. A fase é
-        calculada pelo que cada um já registrou — ninguém marca à mão.
+        {total} {total === 1 ? "parceiro" : "parceiros"} no programa.
       </p>
     </div>
   );

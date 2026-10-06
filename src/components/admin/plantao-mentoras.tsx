@@ -155,9 +155,7 @@ export function PlantaoMentoras({ mentoras }: { mentoras: MentoraAdmin[] }) {
               </strong>{" "}
               (
               {semEmailAtivas.map((m) => m.nome).join(", ")}
-              ): o aviso de véspera dos plantões dela(s) não é enviado enquanto
-              não houver e-mail cadastrado. Cadastre o e-mail para destravar o
-              aviso.
+              ): sem e-mail, o aviso de véspera não é enviado.
             </p>
           </CardContent>
         </Card>
@@ -172,7 +170,7 @@ export function PlantaoMentoras({ mentoras }: { mentoras: MentoraAdmin[] }) {
       {mentoras.length === 0 ? (
         <EmptyState
           titulo="Nenhuma mentora cadastrada."
-          descricao="Cadastre a primeira mentora para poder marcá-la nos plantões do calendário."
+          descricao="Cadastre a primeira mentora."
         />
       ) : (
         <Table>

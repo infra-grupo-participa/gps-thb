@@ -122,8 +122,7 @@ export function ChamadosConfig({
         <CardHeader>
           <CardTitle className="text-base">Entrada do suporte</CardTitle>
           <CardDescription>
-            Fechar impede o parceiro de abrir e de responder chamados. A equipe
-            continua respondendo e fechando os que existem.
+            Fechar impede o parceiro de abrir e de responder chamados.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3">
@@ -156,9 +155,7 @@ export function ChamadosConfig({
             Quem recebe aviso de chamado novo
           </CardTitle>
           <CardDescription>
-            Separe por vírgula. No máximo 10 endereços — avisar o time inteiro
-            treina o time a ignorar o aviso. O e-mail leva só o assunto e um
-            botão para o portal, nunca o texto da mensagem.
+            Separe por vírgula. No máximo 10 endereços.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -183,9 +180,7 @@ export function ChamadosConfig({
                 className="mt-0.5 size-4 shrink-0 text-muted-foreground"
               />
               <span>
-                Sem endereço cadastrado aqui; os avisos vão para o e-mail de
-                suporte configurado no servidor (EMAIL_SUPORTE). Cadastre um
-                endereço para a equipe receber por aqui.
+                Sem endereço aqui; os avisos vão para o e-mail de suporte do servidor.
               </span>
             </p>
           ) : null}
@@ -204,8 +199,7 @@ export function ChamadosConfig({
               aria-invalid={erro ? true : undefined}
             />
             <p id={idAjuda} className="text-xs text-muted-foreground">
-              Endereço inválido não é descartado em silêncio: a gravação é
-              recusada e a tela diz qual é.
+              Um endereço inválido recusa a gravação.
             </p>
           </div>
 
@@ -235,9 +229,7 @@ export function ChamadosConfig({
             <strong>
               Ninguém consegue abrir nem responder chamado até você reabrir
             </strong>{" "}
-            — nem quem já tem um chamado em andamento esperando resposta. A
-            equipe continua respondendo e fechando os chamados que existem, e o
-            histórico não é apagado.
+            — nem quem já tem chamado em andamento.
           </>
         }
         rotuloConfirmar="Fechar entrada"

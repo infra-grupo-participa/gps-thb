@@ -112,8 +112,7 @@ export function EmailDeMembro({
       </label>
 
       <p className="text-xs text-muted-foreground">
-        O login vale para todos os portais do Grupo Participa. A pessoa vai
-        precisar entrar com o e-mail novo, e as sessões abertas dela caem.
+        O login vale para todos os portais do Grupo Participa. As sessões abertas dela caem.
       </p>
 
       <Button

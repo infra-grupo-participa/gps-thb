@@ -32,7 +32,6 @@ export default function ResolverLoading() {
         <PageHeader
           eyebrow="Central de resolução"
           titulo="Resolver"
-          descricao="O que está travando este ambiente, na ordem do socorro: sem login, nada mais importa. Cada linha traz o dado que sustenta o diagnóstico."
         />
 
         <div role="status" aria-live="polite">

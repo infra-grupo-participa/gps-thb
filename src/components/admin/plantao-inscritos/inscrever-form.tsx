@@ -122,8 +122,7 @@ export function InscreverForm({ slotId }: { slotId: string }) {
           ) : null}
           {slotConflitanteId ? (
             <p className="text-xs text-muted-foreground">
-              Esta pessoa já tem um plantão marcado em outra data. Cancele a
-              inscrição anterior antes de inscrever aqui, se for o caso.
+              Esta pessoa já tem plantão marcado em outra data.
             </p>
           ) : null}
         </div>

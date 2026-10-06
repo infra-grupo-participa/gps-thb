@@ -307,8 +307,7 @@ export function RegistrarEntrevista({
         <DialogHeader>
           <DialogTitle>Registrar entrevista — {clienteNome}</DialogTitle>
           <DialogDescription>
-            Resultado da ligação, perfil DISC e decisores do negócio. O advogado
-            da reunião preliminar lê este registro depois.
+            Resultado da ligação, perfil DISC e decisores do negócio.
           </DialogDescription>
         </DialogHeader>
 
@@ -413,7 +412,7 @@ export function RegistrarEntrevista({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Como você avalia a ligação em si — vale para qualquer resultado.
+              Avaliação da ligação.
             </p>
           </div>
 
@@ -425,7 +424,7 @@ export function RegistrarEntrevista({
               onChange={(e) => setObservacoes(e.target.value)}
               rows={4}
               maxLength={ENTREVISTA_OBSERVACOES_MAXIMO}
-              placeholder="O que foi dito na ligação, contexto para a reunião preliminar."
+              placeholder="O que foi dito na ligação."
             />
             <p className="text-right text-xs text-muted-foreground">
               {observacoes.length}/{ENTREVISTA_OBSERVACOES_MAXIMO}

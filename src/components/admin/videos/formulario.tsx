@@ -196,8 +196,7 @@ export function FormularioVideo({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        O vídeo nasce como <strong>rascunho</strong> — só a equipe vê. Publique
-        na lista depois de conferir a pré-visualização.
+        O vídeo nasce como <strong>rascunho</strong> — só a equipe vê.
       </p>
 
       <DialogFooter>

@@ -82,7 +82,6 @@ export default async function AdminAlunoTutoriaisPage({
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
         <PageHeader
           titulo="Tutoriais"
-          descricao="Como usar o portal, passo a passo — por assunto."
         />
         {/* Mesmo tratamento de `/tutoriais`: interruptor off diz o estado
             real, não "ainda não publicamos". Aqui a frase é para a EQUIPE —

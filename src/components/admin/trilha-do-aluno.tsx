@@ -117,9 +117,7 @@ export function TrilhaDoAluno({
 
       {truncado ? (
         <AvisoInline>
-          Mostrando apenas os {itens.length} registros mais recentes desta
-          janela — há mais histórico não exibido. Reduza o período ou
-          considere que esta lista não cobre a janela inteira.
+          Mostrando apenas os {itens.length} registros mais recentes desta janela — há mais histórico. Reduza o período.
         </AvisoInline>
       ) : null}
 

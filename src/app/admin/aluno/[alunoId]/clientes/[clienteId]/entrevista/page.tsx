@@ -63,7 +63,7 @@ export default async function AdminAlunoEntrevistaPreviaPage({
       <main id="conteudo" className="mx-auto w-full max-w-2xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Entrevista Prévia"
-          descricao={`Conversa com ${cliente.nome ?? "o cliente"}. Leia as perguntas em voz alta e marque o que ele responder. São perguntas rápidas (até 15), cerca de 8 minutos. A equipe não marca a Reunião Preliminar por aqui: o horário se combina com o parceiro.`}
+          descricao={`Conversa com ${cliente.nome ?? "o cliente"}. Leia as perguntas e marque o que ele responder.`}
         />
         <ConducaoDaEntrevista
           alunoId={alunoId}

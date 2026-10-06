@@ -349,9 +349,7 @@ export function CriarAcessoPainel({
                       </>
                     ) : (
                       <>
-                        A conta existe mas ainda não está em nenhum programa —
-                        será aproveitada para o Programa de Implementação
-                        Assistida.
+                        A conta já existe e será aproveitada.
                       </>
                     )}
                   </p>
@@ -380,8 +378,7 @@ export function CriarAcessoPainel({
                   placeholder="email@exemplo.com"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Se o e-mail estiver antigo, corrija aqui — o cadastro será
-                  atualizado.
+                  Corrija o e-mail aqui se estiver antigo.
                 </p>
               </div>
 
@@ -526,10 +523,7 @@ export function CriarAcessoPainel({
             adocao.length > 0 ? (
               <>
                 Aproveitar esse login <strong>troca a senha da pessoa em: </strong>
-                <strong>{adocao.join(", ")}</strong> e derruba as sessões dela
-                nesses sistemas — ela vai precisar entrar de novo, com a senha
-                nova. O login e a senha são os mesmos em todos os portais do
-                grupo.
+                <strong>{adocao.join(", ")}</strong> e derruba as sessões dela nesses sistemas.
                 <br />
                 <br />
                 Avise a pessoa: o sistema não avisa por conta própria.
@@ -560,16 +554,13 @@ export function CriarAcessoPainel({
           titulo="Fechar sem copiar a senha?"
           descricao={
             <>
-              A senha de <strong>{credenciais?.email}</strong> só aparece
-              aqui, agora. O sistema guarda a senha cifrada, e cifra não se
-              desfaz.
+              A senha de <strong>{credenciais?.email}</strong> só aparece aqui, agora.
             </>
           }
           consequencia={
             <>
               Depois de fechar, <strong>ninguém consegue ver esta senha de
-              novo</strong> — nem a equipe. Para dar acesso à pessoa será
-              preciso definir outra.
+              novo</strong> — nem a equipe.
             </>
           }
           rotuloConfirmar="Fechar mesmo assim"

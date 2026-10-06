@@ -91,8 +91,7 @@ export function ChamadosRetencao({ itens }: { itens: AnexoParaExpurgo[] }) {
       <CardContent className="grid gap-3">
         {itens.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Nada a expurgar agora. Esta lista é lida do banco a cada carga da
-            página — vazia aqui significa vazia lá, não que a rotina falhou.
+            Nada a expurgar agora.
           </p>
         ) : (
           <div>
@@ -106,9 +105,7 @@ export function ChamadosRetencao({ itens }: { itens: AnexoParaExpurgo[] }) {
                 <DialogHeader>
                   <DialogTitle>Expurgar {itens.length} arquivo(s)?</DialogTitle>
                   <DialogDescription>
-                    Os arquivos são apagados definitivamente do armazenamento e
-                    não há como desfazer. A conversa continua no histórico, com
-                    o nome do arquivo e a data da remoção.
+                    Os arquivos são apagados definitivamente. A conversa continua no histórico.
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="flex flex-wrap justify-end gap-2">

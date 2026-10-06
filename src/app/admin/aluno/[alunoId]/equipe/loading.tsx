@@ -20,7 +20,6 @@ export default function AdminAlunoEquipeLoading() {
             </span>
           }
           titulo="Equipe do ambiente"
-          descricao="Quem divide este ambiente — os mesmos clientes, tarefas e progresso."
         />
         <ListaSkeleton linhas={2} />
       </main>

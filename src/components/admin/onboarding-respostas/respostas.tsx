@@ -170,7 +170,7 @@ export function Respostas({ p }: { p: OnboardingDaPessoa }) {
   if (nada) {
     return (
       <p className="corpo-sm text-muted-foreground">
-        Nada respondido ainda — não é falha da tela, é o estado desta pessoa.
+        Nada respondido ainda.
       </p>
     );
   }

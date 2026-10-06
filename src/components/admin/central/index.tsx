@@ -237,7 +237,7 @@ export function CentralResolucao({
           <EmptyState
             icone={<CheckCircle2 />}
             titulo="Nada a resolver por aqui"
-            descricao={`As ${contagem.total} conferências passaram. Abaixo, o que foi conferido — uma tela verde sem a lista não vale nada.`}
+            descricao={`As ${contagem.total} conferências passaram.`}
           />
         </div>
       ) : null}

@@ -297,7 +297,7 @@ export function AlunosAtivosLista({
       <EmptyState
         icone={<Users />}
         titulo="Nenhum parceiro no programa ainda"
-        descricao="Use “Criar acesso”, no topo da página, para colocar o primeiro parceiro em implementação assistida."
+        descricao="Use “Criar acesso”, no topo da página."
       />
     );
   }
@@ -356,8 +356,7 @@ export function AlunosAtivosLista({
                 Mostrando {alunos.length} de {total} carregados. A busca vale
                 só sobre os {alunos.length} carregados.
                 {carregarMaisHref === null ? (
-                  <> Este é o teto do painel; para achar quem ficou de fora, a
-                  busca precisará passar a rodar no servidor.</>
+                  <> Este é o teto do painel.</>
                 ) : null}
               </p>
             ) : null}
@@ -540,8 +539,7 @@ export function AlunosAtivosLista({
                 Sem esta frase o admin veria "de 1.250" sem botão e concluiria
                 que a tela quebrou. */}
             {carregarMaisHref === null ? (
-              <> Este é o teto do painel; para achar quem ficou de fora, a
-              busca precisará passar a rodar no servidor.</>
+              <> Este é o teto do painel.</>
             ) : null}
           </>
         ) : null}

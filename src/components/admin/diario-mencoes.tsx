@@ -314,8 +314,7 @@ export function ChipsMencionados({ ctrl }: { ctrl: ControleMencoes }) {
                 (`gps.config.slack_mencoes_ativo`) ou o webhook não configurado.
                 A menção fica registrada de qualquer jeito — prometer entrega
                 seria prometer o que esta tela não sabe. */}
-            A menção fica registrada na nota. O aviso no Slack sai quando o canal
-            está ligado — tirar alguém daqui não apaga o nome do texto.
+            A menção fica registrada na nota.
           </p>
         </>
       ) : null}

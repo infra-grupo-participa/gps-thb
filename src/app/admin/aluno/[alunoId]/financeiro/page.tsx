@@ -76,7 +76,6 @@ export default async function AdminAlunoFinanceiroPage({
             </Link>
           }
           titulo={`Financeiro de ${aluno?.nome ?? "parceiro"}`}
-          descricao="Faturamento do parceiro na mentoria e o contrato do programa, lido do cadastro financeiro do Grupo Participa. Somente leitura — o portal não edita esses valores. O sócio do ambiente não vê esta aba."
         />
         <FinanceiroView
           progresso={progresso}

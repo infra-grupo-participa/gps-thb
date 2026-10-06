@@ -379,8 +379,7 @@ export function CadastrarAlunoForm({
         {pending ? "Cadastrando..." : "Cadastrar e continuar"}
       </Button>
       <p className="text-xs text-muted-foreground">
-        O parceiro entra na base do Time Holding Brasil. Em seguida você escolhe
-        criar o login agora ou só o ambiente.
+        Em seguida você escolhe criar o login agora ou só o ambiente.
       </p>
     </form>
   );

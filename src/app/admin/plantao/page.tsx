@@ -91,7 +91,6 @@ export default async function AdminPlantaoPage({
         <PageHeader
           titulo="Plantão de Dúvidas"
           eyebrow="Produto: Acelera Holding"
-          descricao="Só participa quem comprou o Acelera Holding — agenda das mentoras, inscritos e acesso dos parceiros."
           acao={
             // A logo do Acelera (public/logo-acelera.svg) foi desenhada para
             // fundo escuro: sobre branco a palavra "ACELERA" some (degradê

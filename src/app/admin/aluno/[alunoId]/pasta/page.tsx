@@ -55,7 +55,6 @@ export default async function AdminAlunoPastaPage({
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo={`Pasta de ${aluno?.nome ?? ""}`}
-          descricao="O link da pasta do Drive pode ser colocado pela equipe ou pelo próprio parceiro."
         />
 
         <div className="grid gap-6">

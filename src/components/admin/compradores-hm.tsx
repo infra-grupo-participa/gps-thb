@@ -76,7 +76,7 @@ export function CompradoresHm({
     <Secao
       icone={<ShoppingBag />}
       titulo={`Compradores do HM aguardando acesso (${compradores.length})`}
-      descricao="Pagaram o Holding Masters cheio e já estão na base. Autorize para o sistema criar o login com o e-mail da compra e enviar as credenciais."
+      descricao="Pagaram o Holding Masters cheio. Autorize para criar o login e enviar as credenciais."
       classeConteudo="grid gap-3"
       className="mb-8"
     >
@@ -124,11 +124,7 @@ export function CompradoresHm({
                 </p>
                 {c.temLogin ? (
                   <p className="corpo-sm text-atencao-foreground">
-                    O e-mail já é usado em outro portal do grupo. Autorizar não
-                    troca a senha: a pessoa volta como &ldquo;precisa de
-                    decisão&rdquo;. Resolver depois (em Gerenciar acesso ou no
-                    botão do relatório) troca a senha dela em todos os portais
-                    do grupo.
+                    O e-mail já é usado em outro portal do grupo. Autorizar não troca a senha: a pessoa volta como &ldquo;precisa de decisão&rdquo;.
                   </p>
                 ) : null}
               </div>

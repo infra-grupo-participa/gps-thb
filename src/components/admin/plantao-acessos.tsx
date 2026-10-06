@@ -176,12 +176,8 @@ export function PlantaoAcessos({
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-borda-fina bg-superficie-afundada px-3 py-2 text-xs text-muted-foreground">
         <p>
-          <strong className="font-medium text-foreground">Situação comercial</strong> não é a
-          mesma coisa que acesso. Quem controla se a pessoa entra no Plantão é a coluna{" "}
-          <strong className="font-medium text-foreground">Status</strong> (Ativo/Revogado) e o
-          bloqueio por programa — a situação só explica o porquê. Uma pessoa pode estar
-          &ldquo;Pagou&rdquo; e revogada (a equipe tirou o acesso), ou &ldquo;Não pagou&rdquo; e
-          ativa (liberação manual).
+          <strong className="font-medium text-foreground">Situação comercial</strong> não é acesso: quem controla a entrada no Plantão é a coluna{" "}
+          <strong className="font-medium text-foreground">Status</strong> (Ativo/Revogado) e o bloqueio por programa.
         </p>
         <p className="mt-1">
           {situacaoImportadaEm
@@ -234,7 +230,7 @@ export function PlantaoAcessos({
       {filtrados.length === 0 ? (
         <EmptyState
           titulo="Nenhum parceiro encontrado."
-          descricao="Ajuste a busca, ou use “Liberar parceiro” para um caso pontual que ainda não está na base."
+          descricao="Ajuste a busca, ou use “Liberar parceiro”."
         />
       ) : (
         <Table>

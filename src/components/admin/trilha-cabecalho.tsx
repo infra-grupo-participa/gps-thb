@@ -65,8 +65,7 @@ export function TrilhaCabecalho({
         <div className="flex items-start gap-2 sm:col-span-2">
           <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
           <p className="text-xs text-muted-foreground">
-            Registramos o primeiro e o último acesso; os intermediários não
-            são guardados.
+            Só o primeiro e o último acesso são registrados.
           </p>
         </div>
       </CardContent>

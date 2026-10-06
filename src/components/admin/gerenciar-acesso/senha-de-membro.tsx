@@ -67,9 +67,7 @@ export function SenhaDeMembro({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Mínimo de {SENHA_MINIMO} caracteres. As sessões abertas desta pessoa caem
-          e o e-mail dela fica confirmado. O login vale para todos os
-          portais do grupo.
+          Mínimo de {SENHA_MINIMO} caracteres. As sessões abertas dela caem; o login vale em todos os portais do grupo.
         </p>
       </div>
       <Button

@@ -135,9 +135,7 @@ export function PainelEtapasAluno({
   return (
     <div className="grid gap-4">
       <p className="max-w-[70ch] corpo-sm text-muted-foreground">
-        A exceção vale só para {nomeAluno ?? "este aluno"}; a regra geral
-        continua valendo para os demais. Liberar uma etapa também libera o
-        agendamento de sessão dela. Toda mudança pede motivo e entra na trilha.
+        A exceção vale só para {nomeAluno ?? "este aluno"}; a regra geral vale para os demais. Toda mudança pede motivo e entra na trilha.
       </p>
 
       <SeletorEtapas

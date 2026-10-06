@@ -22,7 +22,6 @@ export default function AdminAlunoMateriaisLoading() {
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
         <PageHeader
           titulo="Materiais"
-          descricao="Acervo de aulas e modelos de todas as etapas."
         />
         <div role="status" aria-live="polite" className="grid gap-6">
           <span className="sr-only">Carregando o acervo…</span>

@@ -163,9 +163,7 @@ export function ConfirmacaoDaAcao({
             <>
               Este membro passa a ser{" "}
               <strong>{acao.pessoa.nome ?? "o cadastro escolhido"}</strong>
-              {acao.pessoa.email ? ` (${acao.pessoa.email})` : ""}. O nome e o
-              telefone dele voltam a aparecer nas telas da equipe. Nada do que
-              ele registrou muda de lugar, e dá para trocar o vínculo depois.
+              {acao.pessoa.email ? ` (${acao.pessoa.email})` : ""}. Nada do que ele registrou muda de lugar.
             </>
           }
           rotuloConfirmar="Vincular ao cadastro"
@@ -192,9 +190,7 @@ export function ConfirmacaoDaAcao({
                 O novo titular passa a ver o Financeiro do ambiente e o antigo
                 deixa de ver
               </strong>{" "}
-              — o contrato exibido continua sendo o que já estava no ambiente. A
-              Etapa 01, os clientes e o Diário continuam os mesmos. Para
-              desfazer, troque de volta.
+              — o contrato exibido continua o mesmo. Para desfazer, troque de volta.
             </>
           }
           rotuloConfirmar="Tornar titular"
@@ -236,9 +232,7 @@ export function ConfirmacaoDaAcao({
             <>
               <strong>{acao.concluidas}</strong>{" "}
               {acao.concluidas === 1 ? "tarefa volta" : "tarefas voltam"} a ficar
-              {acao.concluidas === 1 ? " pendente" : " pendentes"} para o parceiro.
-              Nada é apagado: cada uma fica registrada como reaberta na trilha
-              dele, e dá para marcar de novo na tela da etapa.
+              {acao.concluidas === 1 ? " pendente" : " pendentes"} para o parceiro. Nada é apagado: fica registrado na trilha.
             </>
           }
           rotuloConfirmar="Reabrir a etapa"
@@ -260,10 +254,7 @@ export function ConfirmacaoDaAcao({
           consequencia={
             <>
               O contrato de{" "}
-              <strong>{brlOuTraco(acao.candidato.valorTotal)}</strong> passa a
-              ser deste ambiente, e o pagamento dele aparece na aba Financeiro
-              para o titular. O dado continua sendo do sistema de origem: aqui
-              só se decide a quem ele pertence.
+              <strong>{brlOuTraco(acao.candidato.valorTotal)}</strong> passa a ser deste ambiente e aparece na aba Financeiro do titular.
             </>
           }
           rotuloConfirmar="Vincular contrato"

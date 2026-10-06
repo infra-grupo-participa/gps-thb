@@ -57,14 +57,6 @@ function parseModo(bruto: string | undefined): ModoFila {
     : "fila";
 }
 
-const DESCRICAO_POR_MODO: Record<ModoFila, string> = {
-  fila: "Os clientes selecionados pelos parceiros para a entrevista prévia, do mais antigo para o mais recente. Retorno vencido sobe ao topo. Ligue, registre o resultado e a linha sai da fila.",
-  sem_contato:
-    "Clientes que encerraram por 3 tentativas de “não atendeu” seguidas. Registrar um novo resultado tira a linha daqui.",
-  agendados:
-    "Clientes com retorno marcado para uma data futura. Somem desta lista quando a data chega e voltam para a fila.",
-};
-
 export default async function AdminFilaPage({
   searchParams,
 }: {
@@ -95,7 +87,6 @@ export default async function AdminFilaPage({
       <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Fila de ligações"
-          descricao={DESCRICAO_POR_MODO[modo]}
         />
 
         {erro ? (

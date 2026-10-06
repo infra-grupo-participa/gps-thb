@@ -216,7 +216,6 @@ export default async function AdminAlunoDiarioPage({
       <main id="conteudo" className="mx-auto w-full max-w-4xl px-4 pt-8 pb-16">
         <PageHeader
           titulo={`Diário de ${aluno?.nome ?? ""}`}
-          descricao="Trilha única: o que o parceiro fez no portal e o que a equipe observou, combinou ou deixou pendente. Visível só para o admin."
         />
 
         <div className="mb-6">
@@ -271,8 +270,7 @@ export default async function AdminAlunoDiarioPage({
         {pendenciasAbertas.length > 0 ? (
           <div className="mb-8">
             <p className="mb-2 text-xs text-muted-foreground">
-              Pendências em aberto — independem do filtro de período acima,
-              para nenhuma ficar esquecida sem baixa.
+              Pendências em aberto (sem filtro de período).
             </p>
             <DiarioTimeline pendenciasAbertas={pendenciasAbertas} />
           </div>

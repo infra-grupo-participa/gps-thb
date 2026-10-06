@@ -105,8 +105,7 @@ export function LinhaInscrito({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Só muda como aparece nesta lista e nos e-mails deste plantão. O
-              cadastro da pessoa não muda — para isso, aba Parceiros.
+              Só muda nesta lista e nos e-mails deste plantão.
             </p>
           </div>
         ) : (

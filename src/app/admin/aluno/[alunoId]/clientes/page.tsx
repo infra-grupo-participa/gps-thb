@@ -55,7 +55,6 @@ export default async function AdminAlunoClientesPage({
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo={`Clientes de ${aluno?.nome ?? ""}`}
-          descricao="Gerencie os clientes e documentos no ambiente do parceiro."
         />
 
         {/* `admin` mantém a estrela clicável no Modo Assistência: desde a

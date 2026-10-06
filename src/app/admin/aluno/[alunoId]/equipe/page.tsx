@@ -70,7 +70,6 @@ export default async function AdminEquipePage({
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Equipe do ambiente"
-          descricao="Quem divide este ambiente — os mesmos clientes, tarefas e progresso."
           voltar={
             <Link
               href={base}
@@ -95,7 +94,7 @@ export default async function AdminEquipePage({
             <EmptyState
               icone={<UsersRound />}
               titulo="Este ambiente ainda não tem sócio"
-              descricao="Quem convida é o próprio titular, pela aba Equipe do portal dele. A equipe não emite o convite — se ele estiver com dificuldade, oriente pelo Suporte."
+              descricao="Quem convida é o próprio titular, pela aba Equipe."
             />
           </div>
         )}

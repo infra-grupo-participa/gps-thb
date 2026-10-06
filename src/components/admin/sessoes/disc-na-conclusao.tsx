@@ -53,8 +53,7 @@ export function DiscNaConclusao({
       <div>
         <p className="rotulo text-muted-foreground">Perfil DISC do cliente</p>
         <p className="corpo-sm text-muted-foreground">
-          Você acabou de conversar com ele. Preencher agora evita ter que
-          lembrar depois — o que ficar em branco continua como está.
+          O que ficar em branco continua como está.
         </p>
       </div>
 

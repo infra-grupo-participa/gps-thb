@@ -201,8 +201,7 @@ export function LoteDeAcesso({
           clicar para o servidor recusar depois. */}
       {acimaDoTeto ? (
         <p aria-live="polite" className="corpo-sm text-atencao-foreground">
-          Selecione no máximo {LOTE_ACESSOS_MAXIMO} por vez — cada pessoa recebe
-          um e-mail, e o envio tem limite por segundo.
+          Selecione no máximo {LOTE_ACESSOS_MAXIMO} por vez.
         </p>
       ) : null}
 
@@ -217,14 +216,12 @@ export function LoteDeAcesso({
         consequencia={
           <>
             Cada pessoa recebe <strong>por e-mail uma senha temporária
-            individual</strong> — não existe senha padrão. No primeiro acesso o
-            portal pede que ela crie uma senha própria.
+            individual</strong> — no primeiro acesso ela cria a própria senha.
             <br />
             <br />
             Logins que <strong>já existem em outro portal do grupo</strong> não
             são alterados: essas pessoas voltam aqui como{" "}
-            <em>&ldquo;precisa de decisão&rdquo;</em>, para você resolver uma a
-            uma em &ldquo;Gerenciar acesso&rdquo;.
+            <em>&ldquo;precisa de decisão&rdquo;</em>.
           </>
         }
         rotuloConfirmar={`Criar ${qtd} ${qtd === 1 ? "acesso" : "acessos"}`}
@@ -369,8 +366,7 @@ function RelatorioDoLote({
                 login em outro portal do grupo.
               </strong>{" "}
               Resolver aqui cria o acesso {decisao.length === 1 ? "dela" : "delas"}{" "}
-              no Programa usando a conta que já existe — a senha nova passa a
-              valer também nos outros portais, e as sessões abertas caem.
+              no Programa com a conta que já existe — isso troca a senha nos outros portais e derruba as sessões.
             </p>
             <Button
               type="button"
@@ -394,8 +390,7 @@ function RelatorioDoLote({
               {semEmail.length === 1
                 ? "acesso foi criado, mas o e-mail não saiu"
                 : "acessos foram criados, mas os e-mails não saíram"}
-              . Copie a mensagem abaixo e mande por WhatsApp — o acesso existe,
-              só ninguém foi avisado.
+              . Copie a mensagem abaixo e mande por WhatsApp.
             </span>
           </p>
         ) : null}
@@ -451,8 +446,7 @@ function RelatorioDoLote({
                     {r.programas && r.programas.length > 0
                       ? ` em: ${r.programas.join(", ")}`
                       : " em outro portal do grupo"}
-                    . Nada foi alterado — adotar a conta troca a senha da pessoa
-                    nesses sistemas e derruba as sessões dela.
+                    . Nada foi alterado: adotar a conta troca a senha dela lá.
                   </p>
                   <Link
                     href={`/admin/aluno/${r.alunoId}`}
@@ -495,15 +489,13 @@ function RelatorioDoLote({
             {semEmail.length === 1
               ? "1 pessoa deste lote não recebeu o e-mail"
               : `${semEmail.length} pessoas deste lote não receberam o e-mail`}
-            {" "}— a senha delas só aparece aqui, agora. O sistema guarda a
-            senha cifrada, e cifra não se desfaz.
+            {" "}— a senha delas só aparece aqui, agora.
           </>
         }
         consequencia={
           <>
             Depois de fechar, <strong>ninguém consegue ver essas senhas de
-            novo</strong> — nem a equipe. Para dar acesso a essas pessoas será
-            preciso definir outra senha, uma a uma.
+            novo</strong> — nem a equipe.
           </>
         }
         rotuloConfirmar="Fechar mesmo assim"

@@ -21,7 +21,6 @@ export default function AdminAlunoPastaLoading() {
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo={<SkeletonTexto className="h-7 w-56 max-w-full" />}
-          descricao="Configure e acompanhe a pasta do Drive do parceiro."
         />
         <div role="status" aria-live="polite" className="grid gap-6">
           <span className="sr-only">Carregando…</span>

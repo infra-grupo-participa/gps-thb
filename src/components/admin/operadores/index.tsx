@@ -207,8 +207,7 @@ function AdicionarOperador() {
             {erro}
           </p>
           <p className="mt-2 corpo-sm text-muted-foreground">
-            A pessoa precisa já ter login em algum sistema do grupo — Adicionar
-            operador não cria conta nova, só liga o papel a um login existente.
+            A pessoa precisa já ter login em algum sistema do grupo.
           </p>
         </CardContent>
       </Card>

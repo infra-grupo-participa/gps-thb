@@ -9,7 +9,6 @@ export default function AdminOperadoresLoading() {
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Operadores"
-          descricao="Quem está ativo aqui vê a fila de ligações e o dossiê de qualquer cliente — o advogado que conduz a reunião preliminar e o operador que liga são o mesmo papel."
         />
         <ListaSkeleton linhas={4} />
       </main>

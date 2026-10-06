@@ -201,8 +201,7 @@ export function CalendarioDeSessoes({
 
       {truncado ? (
         <p className="corpo-sm text-muted-foreground">
-          Este mês tem mais sessões do que o calendário carrega de uma vez.
-          Use a lista abaixo para ver todas.
+          Há mais sessões neste mês; veja todas na lista abaixo.
         </p>
       ) : null}
 
@@ -323,8 +322,7 @@ export function CalendarioDeSessoes({
           <DialogHeader>
             <DialogTitle>{diaAberto ? rotuloDoDia(diaAberto) : ""}</DialogTitle>
             <DialogDescription>
-              Para cancelar, marcar falta, concluir ou colar o link, use a
-              lista de sessões abaixo do calendário.
+              As ações de cada sessão estão na lista abaixo.
             </DialogDescription>
           </DialogHeader>
           <ul className="divide-y divide-borda-fina border border-borda-fina">

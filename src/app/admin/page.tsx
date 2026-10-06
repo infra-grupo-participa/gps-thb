@@ -170,7 +170,6 @@ export default async function AdminPage({
       <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
         <PageHeader
           titulo="Painel do administrador"
-          descricao="Gerencie os acessos e acompanhe os parceiros em implementação assistida."
           acao={<CriarAcesso />}
         />
 
@@ -274,7 +273,6 @@ export default async function AdminPage({
                 <EmptyState
                   icone={<Inbox />}
                   titulo="Nenhuma solicitação pendente."
-                  descricao="Quando alguém pedir acesso ao portal, o pedido aparece aqui para você aprovar ou recusar."
                 />
               ) : (
                 <div className="grid gap-3">

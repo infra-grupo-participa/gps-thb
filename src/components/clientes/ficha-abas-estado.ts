@@ -24,18 +24,30 @@
 import type { ClienteEtapa1, FaseCliente } from "@/lib/types";
 import type { ClienteMinuta } from "@/lib/minutas-tipos";
 import type { ClienteCroqui } from "@/lib/croquis-tipos";
+import {
+  achatarTrajetoria,
+  type TrajetoriaCliente,
+} from "@/lib/trajetoria-tipos";
+import { rotuloFaseNoCaminho } from "@/lib/etapa1";
 import { mascaraTelefone, moedaParaNumero, numeroParaMoeda } from "@/lib/masks";
 
 /**
- * As quatro folhas da pasta, **na ordem em que aparecem** — a ordem é fixa e
- * é a do funil (quem é · a conversa · o que foi apresentado · o fechamento).
+ * As folhas da pasta, **na ordem em que aparecem** — a ordem é fixa e é a do
+ * funil (quem é · a conversa · o que foi apresentado · o fechamento).
+ *
+ * 🔑 "Trajetória" é a 1ª desde 05/10/2026 (pedido do Marcio: "a ficha é o
+ * centro" — o caminho do cliente saiu de cima da ficha e virou folha). É o
+ * mapa do caso inteiro, por isso abre a pasta; mas NÃO é a padrão
+ * (`abaPadraoPorFase` não a devolve nunca): a pasta continua abrindo onde o
+ * caso está. Ela não tem campo de formulário — grava na hora, por RPC.
  *
  * 🔴 Allowlist FECHADA de `?aba=`. Valor fora daqui não vira aba: cai no
- * padrão. Sem isso, `?aba=qualquercoisa` deixaria a pasta com as quatro
+ * padrão. Sem isso, `?aba=qualquercoisa` deixaria a pasta com as cinco
  * folhas invisíveis e nenhum conteúdo na tela — o mesmo defeito que
  * `abas-painel.tsx` já evita em `/admin`.
  */
 export const ABAS_FICHA = [
+  "trajetoria",
   "dados",
   "preliminar",
   "croqui",
@@ -46,6 +58,7 @@ export type AbaFicha = (typeof ABAS_FICHA)[number];
 
 /** Rótulo de cada aba. Mora aqui para o contador e o rótulo saírem juntos. */
 export const ROTULO_DA_ABA: Record<AbaFicha, string> = {
+  trajetoria: "Trajetória",
   dados: "Dados básicos",
   // 🔴 "Reunião preliminar", NUNCA "Sessão de viabilidade" (Marcio,
   // 24/09/2026, literal). São coisas diferentes no produto: a preliminar é a
@@ -111,6 +124,25 @@ export function resolverAba(
 /** Singular/plural: "1 problema" / "3 problemas", "1 versão" / "3 versões". */
 function plural(n: number, singular: string, pluralForma: string): string {
   return n === 1 ? singular : pluralForma;
+}
+
+/**
+ * Contador da aba "Trajetória" — `"Execução · 6 de 11 etapas"`.
+ *
+ * A fase é a do SERVIDOR (`cliente.fase`, calculada pelo gatilho …353 a
+ * partir das etapas); a contagem é da árvore que a page passou. Os dois
+ * mudam juntos: as actions da trajetória revalidam a página. `null` = a
+ * leitura falhou — o rótulo diz isso, nunca "0 de 11".
+ */
+export function contadorTrajetoria(
+  cliente: Pick<ClienteEtapa1, "fase">,
+  trajetoria: TrajetoriaCliente | null,
+): string {
+  if (!trajetoria) return "Não carregou";
+  const todas = achatarTrajetoria(trajetoria.etapas);
+  const feitas = todas.filter((e) => e.marcada).length;
+  const etapas = `${feitas} de ${todas.length} ${plural(todas.length, "etapa", "etapas")}`;
+  return cliente.fase ? `${rotuloFaseNoCaminho(cliente.fase)} · ${etapas}` : etapas;
 }
 
 /**
@@ -212,9 +244,13 @@ export function contadorDaAba(
     cliente: ClienteEtapa1;
     minutas: readonly ClienteMinuta[];
     croquis: readonly ClienteCroqui[];
+    /** `null` = a leitura falhou. */
+    trajetoria: TrajetoriaCliente | null;
   },
 ): string {
   switch (aba) {
+    case "trajetoria":
+      return contadorTrajetoria(args.cliente, args.trajetoria);
     case "dados":
       return contadorDados(args.cliente);
     case "preliminar":
@@ -239,6 +275,11 @@ export function contadorDaAba(
  */
 export const CAMPOS_POR_ABA: Record<AbaFicha, readonly (keyof ClienteEtapa1)[]> =
   {
+    // 🔴 Vazio de propósito: a trajetória (caixas e "O lead entrou por:")
+    // grava NA HORA, por RPC, e não passa pelo "Salvar ficha". Se um campo
+    // dela entrasse aqui, a barra acusaria "alterações não salvas em
+    // Trajetória" sobre algo que já está no banco.
+    trajetoria: [],
     dados: [
       "nome",
       "telefone",
@@ -394,9 +435,9 @@ export function camposAlteradosDaFicha(
  * senão a frase muda de folha a cada render.
  *
  * 🔴 Por que isto existe: até 24/09 a barra sticky dizia "Você tem alterações
- * não salvas nesta ficha". Com quatro folhas, "nesta ficha" não diz ONDE —
+ * não salvas nesta ficha". Com cinco folhas, "nesta ficha" não diz ONDE —
  * a pessoa altera o DISC, vai para Fechamento, lê a barra e não tem como
- * achar o que mudou sem abrir as quatro. A barra passa a NOMEAR a folha e a
+ * achar o que mudou sem abrir todas. A barra passa a NOMEAR a folha e a
  * folha ganha marca própria.
  */
 export function alteradoPorAba(
@@ -724,7 +765,7 @@ export function pendenciasQueBarram(
  * O nome de cada campo como a pessoa o lê na tela (o `<Label>` da folha, sem
  * o "(obrigatório)"). Serve à frase da barra quando é o SERVIDOR que recusa:
  * "o sistema recusou um campo" não diz qual — a pessoa teria de abrir as
- * quatro folhas para achar.
+ * cinco folhas para achar.
  */
 export const ROTULO_DO_CAMPO: Partial<Record<keyof ClienteEtapa1, string>> = {
   nome: "Nome",
@@ -963,7 +1004,7 @@ export function fraseDaBarra(args: {
  *
  * 🔴 **Alinha pela borda mais próxima, nunca centraliza.** Centralizar moveria
  * a faixa mesmo com a aba já visível e esconderia as vizinhas — a régua é um
- * mapa das quatro folhas, não um carrossel de uma.
+ * mapa das cinco folhas, não um carrossel de uma.
  *
  * 🔴 **O resultado é grampeado em `[0, scrollWidth - clientWidth]`.** Sem
  * isso, aba mais larga que a janela (rótulo "Fechamento da Holding" em
@@ -987,7 +1028,7 @@ export function rolarAbaAtivaParaDentro(args: {
 }): number | null {
   const { inicio, fim, scrollLeft, clientWidth, scrollWidth } = args;
 
-  // Faixa que não rola (1366 px: as quatro abas cabem) não tem o que ajustar.
+  // Faixa que não rola (1366 px: as cinco abas cabem) não tem o que ajustar.
   const maximo = Math.max(0, scrollWidth - clientWidth);
   if (maximo === 0) return null;
 

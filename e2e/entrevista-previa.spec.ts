@@ -69,7 +69,7 @@ const CLIENTE_TESTE = /CLIENTE DE TESTE/i;
  * feita" e o convite para `/sessoes` vivem todos em `ficha-aba-preliminar.tsx`
  * — a folha **"Reunião preliminar"**, que é a aba 2.
  *
- * Com `keepMounted`, as quatro folhas ficam no DOM e as inativas levam
+ * Com `keepMounted`, as cinco folhas ficam no DOM e as inativas levam
  * `hidden`: quem abrir a ficha numa fase cujo padrão é outra folha (
  * `contratado` abre em "Fechamento") encontraria o botão presente no DOM e
  * INVISÍVEL. O teste falharia por mudança de layout, não por defeito — e
@@ -85,7 +85,7 @@ async function irParaFolhaPreliminar(page: import("@playwright/test").Page) {
   await page.goto(`${base}?aba=preliminar`);
   await expect(
     page.getByRole("tab", { name: /reuni(ã|a)o preliminar/i }),
-    "A ficha não tem a folha 'Reunião preliminar'. A pasta de 4 abas " +
+    "A ficha não tem a folha 'Reunião preliminar'. A pasta de 5 abas " +
       "(fatia 4, 24/09/2026) é onde a Entrevista Prévia passou a morar — sem " +
       "essa aba, a feature inteira ficou sem porta de entrada.",
   ).toHaveAttribute("aria-selected", "true", { timeout: 12_000 });

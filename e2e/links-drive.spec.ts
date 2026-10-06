@@ -42,8 +42,9 @@ test.describe("Links do Drive na ficha", () => {
       "A ficha aberta não é a do cliente de teste — abortando antes de escrever.",
     ).toHaveValue(/CLIENTE DE TESTE \(QA\)/i);
 
-    // O card fica acima das abas: visível em qualquer uma.
-    const card = page.getByRole("region", { name: "Link do Drive deste cliente" });
+    // Desde 05/10/2026 a seção mora no topo da folha "Dados básicos" (a
+    // aberta acima por `?aba=dados`) — não fica mais acima das abas.
+    const card = page.getByRole("region", { name: "Pasta do cliente no Drive" });
     await expect(card).toBeVisible({ timeout: 15_000 });
     const abrir = card.getByRole("link", { name: /Abrir a pasta no Drive/ });
 

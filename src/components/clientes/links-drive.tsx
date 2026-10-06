@@ -11,7 +11,6 @@ import {
 } from "@/app/clientes/link-drive-actions";
 import { criarPastaCliente } from "@/app/drive/actions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,12 +42,19 @@ const BOTAO = "h-11 px-4 text-base";
  *
  * Grava pela action e faz `router.refresh()`; toast só no sucesso, erro em
  * `role="alert"` ao lado do campo.
+ *
+ * 🔑 Desde 05/10/2026 (pedido do Marcio: "tudo isso está ACIMA da ficha;
+ * quero DENTRO da ficha") esta é a seção "Pasta do cliente no Drive" da
+ * folha "Dados básicos" — sem Card próprio: a folha já é a moldura, e a
+ * seção segue o estilo das outras seções das folhas. `children` = o que vem
+ * logo abaixo dentro da mesma seção (a atividade da pasta).
  */
 export function LinksDrive({
   clienteId,
   links,
   souEquipe,
   estadoDrive,
+  children,
 }: {
   clienteId: string;
   /** `null` = a leitura falhou no servidor. Com a regra de 1 por cliente, 0 ou 1 item. */
@@ -56,6 +62,8 @@ export function LinksDrive({
   souEquipe: boolean;
   /** Criação automática da pasta; `null` = a leitura falhou (avisa, não oferece criar). */
   estadoDrive: EstadoDrive | null;
+  /** Conteúdo extra da seção, depois do link (a atividade da pasta). */
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   const id = useId();
@@ -67,7 +75,7 @@ export function LinksDrive({
   const [salvando, salvar] = useTransition();
   const [removendo, remover] = useTransition();
   const urlRef = useRef<HTMLInputElement>(null);
-  const tituloRef = useRef<HTMLDivElement>(null);
+  const tituloRef = useRef<HTMLHeadingElement>(null);
 
   const falhou = links === null;
   const atual = links?.[0] ?? null;
@@ -150,23 +158,22 @@ export function LinksDrive({
   }
 
   return (
-    <Card size="sm" role="region" aria-labelledby={`${id}-titulo`}>
-      <CardHeader>
-        <CardTitle
+    <section aria-labelledby={`${id}-titulo`} className="grid gap-3">
+      <div className="grid gap-1">
+        <h2
           id={`${id}-titulo`}
           ref={tituloRef}
           tabIndex={-1}
-          className="font-semibold outline-none group-data-[size=sm]/card:text-base"
+          className="text-base font-semibold outline-none"
         >
-          Link do Drive deste cliente
-        </CardTitle>
+          Pasta do cliente no Drive
+        </h2>
         <p className="text-sm leading-snug text-muted-foreground">
           A pasta com os documentos <strong>deste cliente</strong>. A pasta do
           escritório fica na aba Pasta. Este botão salva à parte: não precisa
           clicar em &quot;Salvar ficha&quot;.
         </p>
-      </CardHeader>
-      <CardContent className="grid gap-3">
+      </div>
         {falhou ? (
           <p
             role="alert"
@@ -347,7 +354,8 @@ export function LinksDrive({
             </div>
           </form>
         ) : null}
-      </CardContent>
+
+      {children}
 
       <DialogoConfirmacao
         aberto={confirmarCriar}
@@ -376,6 +384,6 @@ export function LinksDrive({
           if (!removendo) setConfirmarRemocao(false);
         }}
       />
-    </Card>
+    </section>
   );
 }

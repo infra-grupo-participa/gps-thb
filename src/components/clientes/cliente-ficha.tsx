@@ -1,7 +1,16 @@
 "use client";
 
 /**
- * A FICHA DO CLIENTE — uma PASTA COM QUATRO FOLHAS (Marcio, 24/09/2026).
+ * A FICHA DO CLIENTE — uma PASTA COM FOLHAS (Marcio, 24/09/2026).
+ *
+ * 🔑 05/10/2026 — "a ficha é o centro" (Marcio): o que ficava ACIMA da pasta
+ * entrou nela. A trajetória virou a folha "Trajetória" (1ª, mas não a
+ * padrão); o link do Drive e a atividade da pasta viraram a seção "Pasta do
+ * cliente no Drive" no topo da folha "Dados básicos"; o quadro verde do
+ * acompanhamento virou uma linha com "Entenda". Acima da pasta sobra só o
+ * topo (`FichaCabecalho`): selos, o mini-caminho das fases e essa linha.
+ * As duas peças que entraram nas folhas gravam NA HORA (RPC) e não entram em
+ * `CAMPOS_POR_ABA` — a barra de salvar não conta nada delas.
  *
  * Este arquivo é o **index**: ele é dono de todo o estado do formulário, da
  * validação, do `salvar()` e dos diálogos da estrela. Saíram daqui:
@@ -50,9 +59,9 @@
  * ═══════════════════════════════════════════════════════════════════════
  * 🔴 A BARRA STICKY NOMEIA A FOLHA
  * ═══════════════════════════════════════════════════════════════════════
- * "Você tem alterações não salvas em Reunião preliminar." Com quatro folhas,
+ * "Você tem alterações não salvas em Reunião preliminar." Com cinco folhas,
  * "nesta ficha" não diz ONDE — a pessoa alteraria o DISC, iria ao Fechamento
- * e teria de abrir as quatro para achar. A aba alterada também ganha marca
+ * e teria de abrir todas para achar. A aba alterada também ganha marca
  * própria (o texto "não salvo"), porque a barra fica no rodapé e a régua das
  * abas, no topo.
  *
@@ -708,7 +717,7 @@ export function ClienteFicha({
   const contadores = Object.fromEntries(
     ABAS_FICHA.map((id) => [
       id,
-      contadorDaAba(id, { cliente, minutas, croquis }),
+      contadorDaAba(id, { cliente, minutas, croquis, trajetoria }),
     ]),
   ) as Record<AbaFicha, string>;
 
@@ -763,35 +772,7 @@ export function ClienteFicha({
         pending={pending}
         onToggleEquipe={toggleEquipe}
         aoMudarAcompanhamento={() => router.refresh()}
-      />
-
-      {/* Acima das abas: os links valem para a ficha inteira, não para uma
-          folha. `souEquipe = admin` — a mesma prop que liga o modo assistência. */}
-      <LinksDrive
-        clienteId={cliente.id}
-        links={linksDrive}
-        souEquipe={admin}
-        estadoDrive={estadoDrive}
-      />
-
-      {/* O mapa do cliente: vale para a ficha inteira, então mora acima das
-          abas, junto do Drive — e não desmonta ao trocar de folha. Grava na
-          hora, por RPC; não passa pelo "Salvar ficha". */}
-      {/* Só com link de pasta: sem ele não há pasta para ler. Fica entre o
-          link e a trajetória porque a sugestão marca etapa dela. */}
-      {linkDrive ? (
-        <PastaAtividade clienteId={cliente.id} atividade={atividadeDrive} />
-      ) : null}
-
-      {/* O funil de origem (…345) mora AQUI desde 05/10/2026 — saiu da aba
-          Dados ("fica ambíguo", Marcio). Grava na hora, como as caixas; não
-          passa pelo "Salvar ficha", que por isso não envia `funil_origem`
-          (senão o salvar devolveria o valor velho do formulário por cima). */}
-      <FichaTrajetoria
-        clienteId={cliente.id}
-        alunoId={alunoId}
-        trajetoria={trajetoria}
-        funilOrigem={cliente.funil_origem ?? null}
+        onVerTrajetoria={() => irParaAba("trajetoria")}
       />
 
       <FichaAbas
@@ -800,25 +781,59 @@ export function ClienteFicha({
         contadores={contadores}
         abasAlteradas={abasAlteradas}
         estados={estados}
-        dados={
-          <FichaAbaDados
-            nome={nome}
-            onNome={setNome}
-            telefone={telefone}
-            onTelefone={setTelefone}
-            grau={grau}
-            onGrau={setGrau}
-            razaoSocial={razaoSocial}
-            onRazaoSocial={setRazaoSocial}
-            cnpj={cnpj}
-            onCnpj={setCnpj}
-            ramo={ramo}
-            onRamo={setRamo}
-            regime={regime}
-            onRegime={setRegime}
-            mascaraTelefone={mascaraTelefone}
-            erros={erros}
+        /* O caminho do cliente + o funil de origem (…345). Grava na hora, por
+           RPC; não passa pelo "Salvar ficha", que por isso não envia
+           `funil_origem` (senão o salvar devolveria o valor velho do
+           formulário por cima). `keepMounted` (em `FichaAbas`) mantém o
+           ajuste otimista e o clique em voo vivos na troca de folha. */
+        trajetoria={
+          <FichaTrajetoria
+            clienteId={cliente.id}
+            alunoId={alunoId}
+            trajetoria={trajetoria}
+            funilOrigem={cliente.funil_origem ?? null}
           />
+        }
+        dados={
+          <div className="grid gap-8">
+            {/* A pasta do cliente no Drive: link (+ atividade, só com link —
+                sem ele não há pasta para ler). Grava na hora, à parte do
+                "Salvar ficha". `souEquipe = admin` — a mesma prop que liga o
+                modo assistência. */}
+            <div className="border-b border-borda-fina pb-6">
+              <LinksDrive
+                clienteId={cliente.id}
+                links={linksDrive}
+                souEquipe={admin}
+                estadoDrive={estadoDrive}
+              >
+                {linkDrive ? (
+                  <PastaAtividade
+                    clienteId={cliente.id}
+                    atividade={atividadeDrive}
+                  />
+                ) : null}
+              </LinksDrive>
+            </div>
+            <FichaAbaDados
+              nome={nome}
+              onNome={setNome}
+              telefone={telefone}
+              onTelefone={setTelefone}
+              grau={grau}
+              onGrau={setGrau}
+              razaoSocial={razaoSocial}
+              onRazaoSocial={setRazaoSocial}
+              cnpj={cnpj}
+              onCnpj={setCnpj}
+              ramo={ramo}
+              onRamo={setRamo}
+              regime={regime}
+              onRegime={setRegime}
+              mascaraTelefone={mascaraTelefone}
+              erros={erros}
+            />
+          </div>
         }
         preliminar={
           <FichaAbaPreliminar

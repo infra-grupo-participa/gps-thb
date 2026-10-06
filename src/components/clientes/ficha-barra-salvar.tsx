@@ -12,7 +12,7 @@
  * morar dentro de um `Card`** — o `Card` é `overflow-hidden` e recortaria
  * qualquer coisa grudada nele.
  *
- * 🔴 **O aviso NOMEIA a folha** (`fraseDaBarra`). Com quatro folhas, "você
+ * 🔴 **O aviso NOMEIA a folha** (`fraseDaBarra`). Com cinco folhas, "você
  * tem alterações não salvas nesta ficha" não diz ONDE: a pessoa altera o
  * DISC, vai ao Fechamento e teria de abrir as quatro para achar. E é
  * `aria-live="polite"` porque quem não vê a barra precisa OUVIR — e agora
@@ -78,7 +78,7 @@ export function FichaBarraSalvar({
       {/* O botão NUNCA é desabilitado por "há alteração": se a comparação
           errar por um campo, o aluno fica preso sem conseguir salvar a ficha.
           🔴 E deixou de ser desabilitado por `pendenciasDaFicha` (`ficha-abas-estado.ts`, 24/09/2026):
-          com quatro folhas, um botão morto na folha 4 por causa de um campo da
+          com cinco folhas, um botão morto na folha 4 por causa de um campo da
           folha 1 não tem como ser entendido. Agora ele CLICA, a guarda em
           `salvar()` recusa, a barra diz o motivo **e a ficha puxa a pessoa
           para o campo**. */}

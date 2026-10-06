@@ -24,8 +24,11 @@
  * `atualizarCliente`.
  *
  * 🔴 **Zero consulta própria.** A árvore e o funil vêm da page (no MESMO
- * `Promise.all`) e descem por prop. Este bloco fica ACIMA das abas e não
- * desmonta ao trocar de folha — e mesmo assim não carrega nada no mount.
+ * `Promise.all`) e descem por prop. Desde 05/10/2026 (pedido do Marcio: "a
+ * ficha é o centro") este bloco é o CONTEÚDO da folha "Trajetória" — sem a
+ * moldura de Card. `FichaAbas` monta as folhas com `keepMounted`, então ele
+ * não desmonta ao trocar de folha: o ajuste otimista e o clique em voo
+ * sobrevivem à troca. E mesmo assim não carrega nada no mount.
  *
  * 🔴 **Otimista com rollback.** O estado na tela = a prop do servidor + os
  * ajustes locais (o que a pessoa clicou). No erro, o ajuste volta ao valor de
@@ -53,10 +56,13 @@ import {
   marcarEtapaCliente,
 } from "@/app/clientes/trajetoria-actions";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  MarcadorFase,
+  estadoDaFase,
+} from "@/components/clientes/caminho-fases";
 import { formatarData } from "@/lib/datas";
-import { FASES_CLIENTE } from "@/lib/etapa1";
+import { rotuloFaseNoCaminho } from "@/lib/etapa1";
 import { cn } from "@/lib/utils";
 import {
   calcularPendentes,
@@ -77,17 +83,6 @@ interface EstadoEtapa {
 
 const ID_TITULO = "trajetoria-titulo";
 const ID_ORIGEM = "trajetoria-origem";
-
-/**
- * Rótulo da fase no caminho. É o de `FASES_CLIENTE`, MENOS a 1ª: lá ela é
- * "Prospecção", o mesmo nome da única etapa dela — cabeçalho e etapa
- * repetiriam a palavra um embaixo do outro. "Captação" é o nome da frente no
- * programa e cabe na coluna estreita sem quebrar.
- */
-function rotuloDaFase(f: FaseDaTrajetoria): string {
-  if (f === "prospeccao") return "Captação";
-  return FASES_CLIENTE.find((x) => x.id === f)?.rotulo ?? f;
-}
 
 /** As opções do "O lead entrou por:". `null` = não informado. */
 const OPCOES_ORIGEM: { valor: FunilOrigem | null; rotulo: string }[] = [
@@ -164,20 +159,16 @@ export function FichaTrajetoria({
 
   if (!trajetoria) {
     return (
-      <Card size="sm" role="region" aria-labelledby={ID_TITULO}>
-        <CardHeader>
-          <CardTitle id={ID_TITULO} className="font-semibold group-data-[size=sm]/card:text-base">Por onde o cliente passou</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p
-            role="alert"
-            className="flex items-start gap-1.5 text-base font-medium text-risco-foreground"
-          >
-            <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-            Não deu para carregar as etapas deste cliente. Recarregue a página.
-          </p>
-        </CardContent>
-      </Card>
+      <div role="region" aria-labelledby={ID_TITULO} className="grid gap-2">
+        <Titulo />
+        <p
+          role="alert"
+          className="flex items-start gap-1.5 text-base font-medium text-risco-foreground"
+        >
+          <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+          Não deu para carregar as etapas deste cliente. Recarregue a página.
+        </p>
+      </div>
     );
   }
 
@@ -320,130 +311,125 @@ export function FichaTrajetoria({
   };
 
   return (
-    <Card size="sm" role="region" aria-labelledby={ID_TITULO}>
-      <CardHeader>
-        <CardTitle id={ID_TITULO} className="font-semibold group-data-[size=sm]/card:text-base">Por onde o cliente passou</CardTitle>
+    // Sem moldura própria: a folha (`TabsContent`) já é a borda. A região
+    // fica — `e2e/ficha-trajetoria.spec.ts` acha o bloco por ela.
+    <div role="region" aria-labelledby={ID_TITULO} className="grid gap-4">
+      <div className="grid gap-1">
+        <Titulo />
         <p className="text-sm leading-snug text-muted-foreground">
           Marque as etapas que este cliente já fez. Salva na hora: não precisa
           clicar em &quot;Salvar ficha&quot;. <strong>Pendente</strong> = etapa
           que ficou para trás.
         </p>
-      </CardHeader>
-      <CardContent className="grid gap-3">
-        {/* ── POR ONDE O LEAD ENTROU (funil de origem, …345) ─────────────── */}
-        <div className="grid gap-2">
-          <p id={ID_ORIGEM} className="text-sm leading-none font-medium">
-            O lead entrou por:
-          </p>
-          <div
-            role="group"
-            aria-labelledby={ID_ORIGEM}
-            aria-busy={funilEmVoo || undefined}
-            className="flex flex-wrap gap-2"
-          >
-            {OPCOES_ORIGEM.map((o) => {
-              const ativo = funil === o.valor;
-              return (
-                <button
-                  key={o.valor ?? "nao_sei"}
-                  type="button"
-                  aria-pressed={ativo}
-                  disabled={funilEmVoo}
-                  onClick={() => escolherOrigem(o.valor)}
-                  className={cn(
-                    "foco-visivel inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border px-4 text-sm font-medium disabled:cursor-wait disabled:opacity-70",
-                    ativo
-                      ? "border-marca-acao bg-marca-acao text-primary-foreground"
-                      : "border-borda-forte bg-card text-foreground hover:bg-superficie-afundada",
-                  )}
-                >
-                  {ativo ? <Check aria-hidden className="size-4" /> : null}
-                  {o.rotulo}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── O CAMINHO: 4 fases ─────────────────────────────────────────
-            Colunas com largura proporcional ao conteúdo: a Execução tem 2
-            níveis de linha-guia e o nome mais longo ("Processamento do
-            ITCMD"); com 4 colunas iguais ele quebraria em 3 linhas. 4 colunas
-            só a partir de `lg` (a ficha tem `max-w-4xl`); de `sm` a `lg`, 2. */}
-        <div className="grid items-start gap-x-4 gap-y-4 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_minmax(0,1fr)]">
-          {FASES_DA_TRAJETORIA.map((f, i) => {
-            const estado =
-              i < posicaoAtual ? "passou" : i === posicaoAtual ? "atual" : "futura";
-            const idFase = `trajetoria-fase-${f}`;
-            const ultima = i === FASES_DA_TRAJETORIA.length - 1;
+      </div>
+      {/* ── POR ONDE O LEAD ENTROU (funil de origem, …345) ─────────────── */}
+      <div className="grid gap-2">
+        <p id={ID_ORIGEM} className="text-sm leading-none font-medium">
+          O lead entrou por:
+        </p>
+        <div
+          role="group"
+          aria-labelledby={ID_ORIGEM}
+          aria-busy={funilEmVoo || undefined}
+          className="flex flex-wrap gap-2"
+        >
+          {OPCOES_ORIGEM.map((o) => {
+            const ativo = funil === o.valor;
             return (
-              <section
-                key={f}
-                aria-labelledby={idFase}
-                className="grid content-start gap-1"
+              <button
+                key={o.valor ?? "nao_sei"}
+                type="button"
+                aria-pressed={ativo}
+                disabled={funilEmVoo}
+                onClick={() => escolherOrigem(o.valor)}
+                className={cn(
+                  "foco-visivel inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border px-4 text-sm font-medium disabled:cursor-wait disabled:opacity-70",
+                  ativo
+                    ? "border-marca-acao bg-marca-acao text-primary-foreground"
+                    : "border-borda-forte bg-card text-foreground hover:bg-superficie-afundada",
+                )}
               >
-                <h3
-                  id={idFase}
-                  className="flex items-center gap-2 text-sm font-medium"
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "grid size-7 shrink-0 place-items-center rounded-full text-sm font-semibold tabular-nums",
-                      estado === "atual" &&
-                        "bg-marca-acao text-primary-foreground",
-                      estado === "passou" &&
-                        "border-2 border-marca-acao bg-card text-foreground",
-                      estado === "futura" &&
-                        "border border-borda-forte bg-card text-muted-foreground",
-                    )}
-                  >
-                    {i + 1}
-                  </span>
-                  {/* "fase atual" em texto, não só na cor do número. */}
-                  <span className="grid leading-tight">
-                    <span>
-                      {rotuloDaFase(f)}
-                      <span className="sr-only">
-                        {`, fase ${i + 1} de ${FASES_DA_TRAJETORIA.length}`}
-                        {estado === "passou" ? ", já passou" : ""}
-                        {estado === "futura" ? ", ainda não" : ""}
-                      </span>
-                    </span>
-                    {estado === "atual" ? (
-                      <span className="text-xs font-normal text-muted-foreground">
-                        fase atual
-                      </span>
-                    ) : null}
-                  </span>
-                  {/* Conector até a próxima fase — só com as 4 lado a lado. */}
-                  {!ultima ? (
-                    <span
-                      aria-hidden
-                      className="hidden h-px min-w-4 flex-1 bg-borda-forte lg:block"
-                    />
-                  ) : null}
-                </h3>
-                {raizes[f].length > 0 ? (
-                  <ul className="grid">
-                    {raizes[f].map((e) => renderItem(e, true))}
-                  </ul>
-                ) : null}
-              </section>
+                {ativo ? <Check aria-hidden className="size-4" /> : null}
+                {o.rotulo}
+              </button>
             );
           })}
         </div>
+      </div>
 
-        {erro ? (
-          <p
-            role="alert"
-            className="flex items-start gap-1.5 text-base font-medium text-risco-foreground"
-          >
-            <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {erro}
-          </p>
-        ) : null}
-      </CardContent>
-    </Card>
+      {/* ── O CAMINHO: 4 fases ─────────────────────────────────────────
+          Colunas com largura proporcional ao conteúdo: a Execução tem 2
+          níveis de linha-guia e o nome mais longo ("Processamento do
+          ITCMD"); com 4 colunas iguais ele quebraria em 3 linhas. 4 colunas
+          só a partir de `lg` (a ficha tem `max-w-4xl`); de `sm` a `lg`, 2. */}
+      <div className="grid items-start gap-x-4 gap-y-4 rounded-lg bg-superficie-afundada p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_minmax(0,1fr)]">
+        {FASES_DA_TRAJETORIA.map((f, i) => {
+          const estado = estadoDaFase(i, posicaoAtual);
+          const idFase = `trajetoria-fase-${f}`;
+          const ultima = i === FASES_DA_TRAJETORIA.length - 1;
+          return (
+            <section
+              key={f}
+              aria-labelledby={idFase}
+              className="grid content-start gap-1"
+            >
+              <h3
+                id={idFase}
+                className="flex items-center gap-2 text-sm font-medium"
+              >
+                <MarcadorFase numero={i + 1} estado={estado} />
+                {/* "fase atual" em texto, não só na cor do número. */}
+                <span className="grid leading-tight">
+                  <span>
+                    {rotuloFaseNoCaminho(f)}
+                    <span className="sr-only">
+                      {`, fase ${i + 1} de ${FASES_DA_TRAJETORIA.length}`}
+                      {estado === "passou" ? ", já passou" : ""}
+                      {estado === "futura" ? ", ainda não" : ""}
+                    </span>
+                  </span>
+                  {estado === "atual" ? (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      fase atual
+                    </span>
+                  ) : null}
+                </span>
+                {/* Conector até a próxima fase — só com as 4 lado a lado. */}
+                {!ultima ? (
+                  <span
+                    aria-hidden
+                    className="hidden h-px min-w-4 flex-1 bg-borda-forte lg:block"
+                  />
+                ) : null}
+              </h3>
+              {raizes[f].length > 0 ? (
+                <ul className="grid">
+                  {raizes[f].map((e) => renderItem(e, true))}
+                </ul>
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
+
+      {erro ? (
+        <p
+          role="alert"
+          className="flex items-start gap-1.5 text-base font-medium text-risco-foreground"
+        >
+          <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {erro}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** O título da folha — o nome da região que o e2e procura. */
+function Titulo() {
+  return (
+    <h2 id={ID_TITULO} className="text-base font-semibold">
+      Por onde o cliente passou
+    </h2>
   );
 }

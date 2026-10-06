@@ -37,7 +37,7 @@
 import { useId, useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { LifeBuoy, Lock, LockOpen } from "lucide-react";
+import { ChevronDown, LifeBuoy, Lock, LockOpen, Star } from "lucide-react";
 import type { ClienteEtapa1 } from "@/lib/types";
 import {
   confirmarAcompanhamento,
@@ -46,7 +46,6 @@ import {
 import { formatarData } from "@/lib/datas";
 // As RPCs `...203` recusam menos de 3 e mais de 300 — o mesmo limite da Central.
 import { MOTIVO_MAX, MOTIVO_MIN } from "@/lib/etapas-lote-tipos";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { Label } from "@/components/ui/label";
@@ -114,6 +113,52 @@ export function LinkTrocaPorChamado({
 }
 
 /**
+ * UMA linha curta + "Entenda" que abre o resto — a forma dos dois avisos do
+ * acompanhamento no topo da ficha desde 05/10/2026.
+ *
+ * Pedido do Marcio: *"tem muita informação acima do que realmente importa,
+ * que é a ficha"*. O quadro verde de ~150 px empurrava a ficha para baixo da
+ * dobra em toda visita, para repetir um texto que a pessoa leu uma vez.
+ * **Nada do conteúdo some — só recolhe**: o `<details>` nasce fechado e o
+ * texto inteiro (o que trava, como trocar, o link "abra um chamado") está lá
+ * dentro. O erro da estrela NÃO mora aqui: fica no `role="alert"` do
+ * cabeçalho, sempre visível.
+ *
+ * 🔑 A linha inteira é o `<summary>`: alvo de 44 px de altura para quem tem
+ * dificuldade de operar, e o leitor de tela ouve a frase + "Entenda". O
+ * estado aberto/fechado é do próprio `<details>` (anunciado pelo navegador);
+ * a seta só reforça.
+ */
+function LinhaComEntenda({
+  frase,
+  className = "",
+  children,
+}: {
+  frase: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className={"group " + className}>
+      <summary className="foco-visivel flex min-h-11 w-fit cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-1 rounded-md corpo-sm [&::-webkit-details-marker]:hidden">
+        <Star aria-hidden className="size-4 shrink-0 fill-current text-sucesso-foreground" />
+        <span className="font-medium">{frase}</span>
+        <span className="inline-flex items-center gap-0.5 font-medium text-accent-foreground underline underline-offset-4">
+          Entenda
+          <ChevronDown
+            aria-hidden
+            className="size-4 shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+          />
+        </span>
+      </summary>
+      <div className="mt-1 mb-2 grid max-w-prose gap-2 border-l-2 border-borda-forte pl-3">
+        {children}
+      </div>
+    </details>
+  );
+}
+
+/**
  * O aviso da ficha do cliente que o ALUNO escolheu e cujo caso ainda NÃO andou.
  *
  * 🔴 O caminho da troca é LIVRE aqui: enquanto o cliente está em Prospecção sem
@@ -123,19 +168,18 @@ export function LinkTrocaPorChamado({
  */
 export function AvisoEscolhaFeita() {
   return (
-    <div className="grid gap-2 rounded-xl border border-borda-fina bg-superficie-afundada p-3.5">
+    <LinhaComEntenda frase="Este é o cliente que a equipe acompanha.">
       <p className="corpo-sm">
-        <strong>Este é o cliente que a equipe acompanha.</strong> A equipe vai
-        acompanhar todo o progresso dele até a sua primeira holding. O resto da
-        ficha segue editável — telefone, registro do contato, honorários,
-        contrato assinado, perfil DISC e problemas.
+        A equipe vai acompanhar todo o progresso dele até a sua primeira
+        holding. O resto da ficha segue editável — telefone, registro do
+        contato, honorários, contrato assinado, perfil DISC e problemas.
       </p>
       <p className="corpo-sm text-muted-foreground">
         {TEXTO_TROCA_LIVRE}: basta clicar na estrela deste cliente ou marcar
         outro. Assim que ele mudar de fase ou ganhar uma data de reunião
         preliminar, a troca passa a ser pelo Suporte.
       </p>
-    </div>
+    </LinhaComEntenda>
   );
 }
 
@@ -173,15 +217,14 @@ export function AvisoAcompanhamento({
   basePath?: string;
 }) {
   return (
-    <div className="grid gap-2 rounded-xl border border-sucesso-foreground/25 bg-sucesso p-3.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="success">
-          {confirmadoEm
-            ? `A equipe está acompanhando este cliente desde ${formatarData(confirmadoEm)}`
-            : "A equipe está acompanhando este cliente"}
-        </Badge>
-      </div>
-      <p className="corpo-sm text-sucesso-foreground">
+    <LinhaComEntenda
+      frase={
+        confirmadoEm
+          ? `A equipe acompanha este cliente desde ${formatarData(confirmadoEm)}.`
+          : "A equipe acompanha este cliente."
+      }
+    >
+      <p className="corpo-sm">
         A equipe registrou que está acompanhando este cliente. Como ele já
         avançou, a estrela não muda, ele não pode ser excluído e a fase não
         volta para Prospecção. <strong>O resto da ficha segue editável</strong>{" "}
@@ -194,24 +237,24 @@ export function AvisoAcompanhamento({
               NADA para o aluno: a trava não depende mais desta coluna, e sim de
               o caso ter andado. Liberar apaga o registro formal da equipe e
               nada mais. A troca continua sendo da equipe, aqui mesmo. */}
-          <p className="previa-oculta corpo-sm text-sucesso-foreground">
+          <p className="previa-oculta corpo-sm">
             “Liberar acompanhamento” apaga o registro de que a equipe assumiu —
             e só isso: a estrela deste cliente continua travada, porque o caso
             dele já avançou. A troca é feita aqui, no Modo Assistência.
           </p>
           {/* A MESMA linha que o aluno lê, visível só dentro da prévia. */}
-          <p className="hidden corpo-sm text-sucesso-foreground [html[data-previa=aluno]_&]:block">
+          <p className="hidden corpo-sm [html[data-previa=aluno]_&]:block">
             Precisa trocar? <LinkTrocaPorChamado basePath={basePath} /> — a equipe faz a troca com
             você.
           </p>
         </>
       ) : (
-        <p className="corpo-sm text-sucesso-foreground">
+        <p className="corpo-sm">
           Precisa trocar? <LinkTrocaPorChamado basePath={basePath} /> — a equipe faz a troca com
           você.
         </p>
       )}
-    </div>
+    </LinhaComEntenda>
   );
 }
 
@@ -357,13 +400,12 @@ export function AcoesAcompanhamento({
     // exclusivo do admin e SOME na prévia "como o aluno vê" — o aluno não tem
     // esses botões nem esse texto. É só visual: a sessão continua sendo a do
     // admin e a RPC continua exigindo `gp_is_admin()`.
-    <div className="previa-oculta grid gap-2 rounded-xl border border-borda-fina bg-superficie-afundada p-3.5">
-      <p className="rotulo text-accent-foreground">Equipe</p>
-      <p className="corpo-sm text-muted-foreground">
-        {confirmado
-          ? "A equipe assumiu o acompanhamento deste cliente. Liberar solta a fase e a exclusão; a troca do cliente continua sendo da equipe."
-          : "Confirmar registra que a equipe ASSUMIU este cliente — e é isso que trava a troca. Até confirmar, o parceiro ainda pode escolher outro sozinho."}
-      </p>
+    // 05/10/2026 ("a ficha é o centro"): era uma caixa com rótulo, parágrafo
+    // de 2 linhas e botão acima das folhas. Vira UMA linha — rótulo, botão
+    // sempre visível e "Entenda" que abre a explicação (mesmo <details> das
+    // outras linhas do topo).
+    <div className="previa-oculta flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className="rotulo text-accent-foreground">Equipe</span>
       <div className="flex flex-wrap gap-2">
         {confirmado ? (
           <Button
@@ -387,6 +429,20 @@ export function AcoesAcompanhamento({
           </Button>
         )}
       </div>
+      <details className="group">
+        <summary className="foco-visivel flex min-h-11 w-fit cursor-pointer list-none items-center gap-0.5 rounded-md corpo-sm font-medium text-accent-foreground underline underline-offset-4 [&::-webkit-details-marker]:hidden">
+          Entenda
+          <ChevronDown
+            aria-hidden
+            className="size-4 shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+          />
+        </summary>
+        <p className="mb-2 max-w-prose border-l-2 border-borda-forte pl-3 corpo-sm text-muted-foreground">
+          {confirmado
+            ? "A equipe assumiu o acompanhamento deste cliente. Liberar solta a fase e a exclusão; a troca do cliente continua sendo da equipe."
+            : "Confirmar registra que a equipe ASSUMIU este cliente — e é isso que trava a troca. Até confirmar, o parceiro ainda pode escolher outro sozinho."}
+        </p>
+      </details>
 
       {acao ? (
         <DialogoConfirmacao

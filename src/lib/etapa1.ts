@@ -122,6 +122,18 @@ export const FASES_CLIENTE: {
 ];
 
 /**
+ * Rótulo da fase no CAMINHO da trajetória (folha "Trajetória" e o mini-caminho
+ * do topo da ficha). É o de `FASES_CLIENTE`, MENOS a 1ª: lá ela é
+ * "Prospecção", o mesmo nome da única etapa dela — cabeçalho e etapa
+ * repetiriam a palavra um embaixo do outro. "Captação" é o nome da frente no
+ * programa. Um lugar só: o topo, a folha e o contador da aba dizem o mesmo.
+ */
+export function rotuloFaseNoCaminho(fase: FaseCliente): string {
+  if (fase === "prospeccao") return "Captação";
+  return FASES_CLIENTE.find((x) => x.id === fase)?.rotulo ?? fase;
+}
+
+/**
  * A fase conta para honorários (meta de R$ 150 mil, 2ª metade, contrato)?
  *
  * 🔑 ÚNICO lugar da regra no front. `contratado` E `concluido` contam:

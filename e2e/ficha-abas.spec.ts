@@ -88,8 +88,12 @@ const admin = exigeAdmin();
 const CLIENTE_DE_TESTE = /CLIENTE DE TESTE \(QA\)/i;
 const BUSCA = "CLIENTE DE TESTE";
 
-/** As quatro folhas, na ordem de `ABAS_FICHA` — a ordem é do funil e é fixa. */
-const ABAS = ["dados", "preliminar", "croqui", "fechamento"] as const;
+/**
+ * As folhas, na ordem de `ABAS_FICHA` — a ordem é do funil e é fixa.
+ * "trajetoria" é a 1ª desde 05/10/2026 (saiu de cima da ficha), mas nunca a
+ * padrão.
+ */
+const ABAS = ["trajetoria", "dados", "preliminar", "croqui", "fechamento"] as const;
 type Aba = (typeof ABAS)[number];
 
 /**
@@ -119,6 +123,7 @@ type Aba = (typeof ABAS)[number];
  * ⚠️ Rótulo novo ou contador novo em `ficha-abas-estado.ts` passa por aqui.
  */
 const ROTULO: Record<Aba, RegExp> = {
+  trajetoria: /^trajet(ó|o)ria/i,
   dados: /^dados b(á|a)sicos/i,
   // 🔴 "Reunião preliminar", NUNCA "Sessão de viabilidade" (Marcio,
   // 24/09/2026). São coisas diferentes no produto.
@@ -143,6 +148,8 @@ const ROTULO: Record<Aba, RegExp> = {
  *   · fechamento  → "Contrato · N minutas" | "Sem contrato · nenhuma minuta"
  */
 const CONTADOR: Record<Aba, RegExp> = {
+  // "Execução · 6 de 11 etapas" · leitura falhou: "Não carregou".
+  trajetoria: /\d+ de \d+ etapas?|N(ã|a)o carregou/i,
   dados: /PJ|Dados/i,
   preliminar: /problemas?/i,
   croqui: /vers(ã|õ|a|o)(o|es)?|Nenhum/i,
@@ -152,7 +159,7 @@ const CONTADOR: Record<Aba, RegExp> = {
 /**
  * A aba da ficha, pelo rótulo.
  *
- * 🔑 Os rótulos das 4 folhas são únicos na página — nenhum deles colide com
+ * 🔑 Os rótulos das 5 folhas são únicos na página — nenhum deles colide com
  * as abas do header, nos DOIS NÍVEIS (24/09/2026: 1º nível do parceiro —
  * `Início`, `Clientes`, `Sessões`… — e os 5 grupos do admin — `Parceiros`,
  * `Agenda`, `Atendimento`, `Conteúdo`, `Configurações` — nem com as sub-abas
@@ -220,7 +227,7 @@ async function abrirFichaDeTeste(
  * do próprio elemento não sabe que um ancestral tem `hidden`/`display:none`.
  * `offsetParent === null` é o que o navegador de verdade responde para
  * "isto está fora do fluxo de renderização" — e essa é a pergunta certa
- * para `TabsPanel keepMounted`, que deixa as quatro folhas no DOM e esconde
+ * para `TabsPanel keepMounted`, que deixa as cinco folhas no DOM e esconde
  * três.
  */
 async function folhaVisivel(page: Page, id: Aba): Promise<boolean> {
@@ -302,7 +309,7 @@ function suiteDaFicha(opts: {
 }) {
   const { papel, credencial, abrir } = opts;
 
-  test.describe(`Ficha em 4 abas · ${papel}`, () => {
+  test.describe(`Ficha em 5 abas · ${papel}`, () => {
     test.skip(
       !credencial,
       papel === "parceiro"
@@ -330,7 +337,7 @@ function suiteDaFicha(opts: {
       //
       // 🔴 Este é o defeito que `ehAbaFicha` existe para impedir: sem a
       // allowlist, `?aba=xyz` não casaria com nenhuma `TabsContent` e as
-      // quatro folhas ficariam escondidas ao mesmo tempo — ficha em branco,
+      // cinco folhas ficariam escondidas ao mesmo tempo — ficha em branco,
       // sem erro nenhum no console. Mesmo desenho de `lerFoco` em `/admin`.
       await page.goto(`${base!}?aba=xyz`);
 
@@ -441,7 +448,7 @@ function suiteDaFicha(opts: {
     // ─────────────────────────────────────────────────────────────────────
     // 2 · Contador em TODA aba — "recolhido não pode ser invisível"
     // ─────────────────────────────────────────────────────────────────────
-    test("2 · as 4 abas carregam contador no rótulo", async ({ page }, info) => {
+    test("2 · as 5 abas carregam contador no rótulo", async ({ page }, info) => {
       const base = await abrir(page);
       test.skip(!base, "Cliente de teste não alcançável nesta conta.");
       await page.goto(`${base!}?aba=dados`);
@@ -491,7 +498,7 @@ function suiteDaFicha(opts: {
     // ─────────────────────────────────────────────────────────────────────
     // 3 · 🔴 Trocar de aba NÃO vai ao servidor
     // ─────────────────────────────────────────────────────────────────────
-    test("3 · 🔴 quatro trocas de aba = ZERO ida ao servidor", async ({
+    test("3 · 🔴 cinco trocas de aba = ZERO ida ao servidor", async ({
       page,
     }) => {
       const base = await abrir(page);
@@ -523,7 +530,13 @@ function suiteDaFicha(opts: {
        */
       const espiao = contarIdasAoServidor(page);
 
-      const percurso: Aba[] = ["preliminar", "croqui", "fechamento", "dados"];
+      const percurso: Aba[] = [
+        "trajetoria",
+        "preliminar",
+        "croqui",
+        "fechamento",
+        "dados",
+      ];
       for (const destino of percurso) {
         await aba(page, destino).click();
         await expect(aba(page, destino)).toHaveAttribute(
@@ -545,7 +558,7 @@ function suiteDaFicha(opts: {
         espiao.lista,
         "Trocar de aba foi ao SERVIDOR. `?aba=` tem de ser escrito por " +
           "`history.replaceState` (ver o cabeçalho de `ficha-abas.tsx`). " +
-          "Requisições capturadas durante as 4 trocas:\n" +
+          "Requisições capturadas durante as 5 trocas:\n" +
           espiao.lista.map((l) => `  • ${l}`).join("\n"),
       ).toEqual([]);
     });
@@ -570,7 +583,7 @@ function suiteDaFicha(opts: {
        *     troca e o "Salvar ficha" grava o valor do servidor por cima —
        *     em silêncio, com o `tsc` limpo.
        *
-       * (b) A barra NOMEIA a folha. Com quatro folhas, "você tem alterações
+       * (b) A barra NOMEIA a folha. Com cinco folhas, "você tem alterações
        *     não salvas nesta ficha" não diz ONDE: a pessoa altera o registro,
        *     vai ao Fechamento e teria de abrir as quatro para achar.
        *
@@ -621,7 +634,7 @@ function suiteDaFicha(opts: {
       // ── A barra NOMEIA a folha 2, estando a 4 aberta ───────────────────
       await expect(
         page.getByText(/alterações não salvas em Reunião preliminar/i).first(),
-        "A barra não nomeia a folha. Com 4 folhas, 'alterações não salvas " +
+        "A barra não nomeia a folha. Com 5 folhas, 'alterações não salvas " +
           "nesta ficha' obriga a pessoa a abrir as quatro para achar o que " +
           "mudou — é o defeito que `fraseDaBarra` existe para " +
           "fechar.",
@@ -1150,9 +1163,9 @@ function suiteDaFicha(opts: {
     });
 
     // ─────────────────────────────────────────────────────────────────────
-    // 7 · A RÉGUA DA CASA, nas 4 folhas
+    // 7 · A RÉGUA DA CASA, nas 5 folhas
     // ─────────────────────────────────────────────────────────────────────
-    test("7 · as 4 folhas herdam a régua: contraste, 0 rolagem lateral, alvos ≥24px, console limpo", async ({
+    test("7 · as 5 folhas herdam a régua: contraste, 0 rolagem lateral, alvos ≥24px, console limpo", async ({
       page,
     }, info) => {
       const console_ = vigiarConsole(page);
@@ -1219,7 +1232,7 @@ function suiteDaFicha(opts: {
       await registrarTela(page, info, `ficha-abas-regua-${papel}`);
 
       /**
-       * 🔑 O console é lido DEPOIS das quatro folhas. Erro aqui costuma ser
+       * 🔑 O console é lido DEPOIS das cinco folhas. Erro aqui costuma ser
        * hidratação — e hidratação quebrada numa aba inativa não aparece na
        * tela, só no console.
        */
@@ -1229,7 +1242,7 @@ function suiteDaFicha(opts: {
     // ─────────────────────────────────────────────────────────────────────
     // 8 · ARIA: a pasta é uma pasta de verdade
     // ─────────────────────────────────────────────────────────────────────
-    test("8 · as 4 abas completam o par tab ↔ tabpanel", async ({ page }) => {
+    test("8 · as 5 abas completam o par tab ↔ tabpanel", async ({ page }) => {
       const base = await abrir(page);
       test.skip(!base, "Cliente de teste não alcançável nesta conta.");
 

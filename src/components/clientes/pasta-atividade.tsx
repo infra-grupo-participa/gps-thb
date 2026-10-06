@@ -12,8 +12,11 @@
  * - Sugestão de etapa: "Marcar etapa" chama `marcarEtapaCliente` (a MESMA
  *   action da trajetória). Otimista: a sugestão some no clique e volta, com a
  *   frase do erro, se a action falhar. No sucesso, `router.refresh()` — a
- *   trajetória logo abaixo e esta lista são props do servidor, e
+ *   folha "Trajetória" e esta lista são props do servidor, e
  *   `revalidatePath` sozinho não garante a tela repintada.
+ *
+ * Desde 05/10/2026 mora DENTRO da seção "Pasta do cliente no Drive" da folha
+ * "Dados básicos" (filho de `LinksDrive`), sem Card próprio.
  *
  * O "há 2 horas" usa o relógio da LEITURA (`atividade.lidoEm`, servidor):
  * mesmo valor na SSR e na hidratação.
@@ -25,7 +28,6 @@ import { AlertCircle } from "lucide-react";
 
 import { marcarEtapaCliente } from "@/app/clientes/trajetoria-actions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatarData, formatarHaQuanto } from "@/lib/datas";
 import {
   fraseSugestao,
@@ -108,17 +110,20 @@ export function PastaAtividade({
   }
 
   return (
-    <Card size="sm" role="region" aria-labelledby={ID_TITULO}>
-      <CardHeader>
-        <CardTitle id={ID_TITULO} className="font-semibold group-data-[size=sm]/card:text-base">
+    <div
+      role="group"
+      aria-labelledby={ID_TITULO}
+      className="grid gap-3 border-t border-borda-fina pt-3 text-base leading-snug"
+    >
+      <div className="grid gap-1">
+        <h3 id={ID_TITULO} className="text-sm leading-none font-medium">
           Na pasta do cliente
-        </CardTitle>
+        </h3>
         <p className="text-sm leading-snug text-muted-foreground">
           Mostra o que foi criado ou alterado na pasta desde que o
           acompanhamento foi ligado.
         </p>
-      </CardHeader>
-      <CardContent className="grid gap-3 text-base leading-snug">
+      </div>
         {ultimaMinuta && haQuanto ? (
           <p>
             Minuta atualizada {haQuanto}
@@ -169,7 +174,6 @@ export function PastaAtividade({
             {erro}
           </p>
         ) : null}
-      </CardContent>
-    </Card>
+    </div>
   );
 }

@@ -82,6 +82,9 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
       page.getByLabel(/^Nome\s*\(obrigatório\)$/),
       "A ficha aberta não é a do cliente de teste — abortando antes de escrever.",
     ).toHaveValue(CLIENTE_DE_TESTE);
+    // Desde 05/10/2026 a trajetória é a FOLHA "Trajetória" (não fica mais
+    // acima das abas). Nunca é a padrão: a URL tem de pedi-la.
+    await page.goto(`${base}?aba=trajetoria`);
     return base;
   }
 
@@ -142,7 +145,7 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
     const inicial = await estadoDasCaixas(page);
 
     restaurar = async () => {
-      await page.goto(`${base}?aba=dados`);
+      await page.goto(`${base}?aba=trajetoria`);
       await expect(regiao(page)).toBeVisible({ timeout: 15_000 });
       // Uma por vez; nada propaga. Primeiro as que voltam MARCADAS, depois as
       // que voltam desmarcadas: na ordem inversa a fase passaria por
@@ -185,6 +188,15 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
     await expect(caixa(page, "Processamento do ITCMD")).toHaveAttribute(
       "aria-checked",
       "true",
+    );
+    // A junção clique → fase calculada pelo banco (…353) → topo da ficha:
+    // ITCMD é subetapa da Execução, então o mini-caminho e o contador da
+    // folha Trajetória passam a dizer Execução depois do reload.
+    await expect(
+      page.getByRole("button", { name: /^Fase atual: Execução/i }),
+    ).toBeVisible();
+    await expect(page.getByRole("tab", { name: /Trajetória/i })).toContainText(
+      /Execução/i,
     );
     await expect(caixa(page, "Elaboração das Minutas")).toHaveAttribute(
       "aria-checked",
@@ -232,7 +244,7 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
     );
   });
 
-  test("funil de origem no card: marca Viabilidade, relê, Preliminar sem pendente, limpa", async ({
+  test("funil de origem na folha Trajetória: marca Viabilidade, relê, Preliminar sem pendente, limpa", async ({
     page,
   }, info) => {
     test.skip(info.project.name !== "desktop", "Uma vez só basta.");
@@ -274,7 +286,7 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
     const inicial = await estadoDasCaixas(page);
 
     restaurar = async () => {
-      await page.goto(`${base}?aba=dados`);
+      await page.goto(`${base}?aba=trajetoria`);
       await expect(regiao(page)).toBeVisible({ timeout: 15_000 });
       // Primeiro as que voltam MARCADAS, depois as desmarcadas (trava do
       // favorito: a fase não pode passar por Prospecção no meio).
@@ -292,7 +304,8 @@ test.describe("Ficha: trajetória, funil e aviso · /sessoes com 4 tipos", () =>
       ).toEqual(inicial);
     };
 
-    // O select da aba Dados SAIU (05/10/2026): a origem mora só no card.
+    // O select da aba Dados SAIU (05/10/2026): a origem mora só na folha
+    // Trajetória.
     await expect(page.locator("#f-funil")).toHaveCount(0);
 
     // Ponto de partida: Prospecção + Croqui marcados, Preliminar e

@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * A PASTA COM FOLHAS — as quatro abas da ficha do cliente.
+ * A PASTA COM FOLHAS — as cinco abas da ficha do cliente.
  *
  * Pedido do Marcio (24/09/2026): *"dando literalmente a ideia de uma
  * ficha/pasta com folhas — cada folha é uma aba"*. A ficha era um formulário
- * de ~1.000 px de rolagem com cinco seções empilhadas; agora são quatro
+ * de ~1.000 px de rolagem com cinco seções empilhadas; agora são folhas (cinco desde 05/10/2026)
  * folhas, na ordem do funil, e a pasta abre na folha onde o caso está.
  *
  * Este arquivo é só a CASCA: a régua das abas, o contador de cada rótulo, a
@@ -26,7 +26,8 @@
  * *"gatilhos visuais, orientações visuais, ícones que indicam as coisas
  * exatamente"*. Até 28/09 este cabeçalho dizia "sem ícone decorativo" — e
  * continua valendo: nenhum ícone aqui é decoração. São dois tipos, fixos:
- *   · **identidade da folha** — `User` Dados · `CalendarClock` Preliminar ·
+ *   · **identidade da folha** — `Route` Trajetória (05/10/2026) · `User`
+ *     Dados · `CalendarClock` Preliminar ·
  *     `PenTool` Croqui · `FilePenLine` Fechamento (o `FileSignature` do
  *     pedido virou `FilePenLine` no lucide 1.x). Sempre o mesmo por folha,
  *     para o olho achar a folha sem ler;
@@ -80,10 +81,10 @@
  * contexto da minuta, o arquivo escolhido, a mensagem de erro do upload) —
  * e esse estado morre ao desmontar. Alguém escrevendo "o que mudou" numa
  * minuta, indo conferir um problema na aba 2 e voltando, perderia o texto
- * sem nenhum aviso. Com `keepMounted`, as quatro folhas ficam no DOM e o
+ * sem nenhum aviso. Com `keepMounted`, as cinco folhas ficam no DOM e o
  * painel inativo leva `hidden`.
  *
- * ⚠️ Consequência aceita e medida: o markup das quatro folhas existe desde a
+ * ⚠️ Consequência aceita e medida: o markup das cinco folhas existe desde a
  * primeira pintura. É o mesmo DOM que a ficha tinha ANTES das abas (as cinco
  * seções empilhadas) — não há custo novo de rede nem de consulta, só de nós.
  *
@@ -128,6 +129,7 @@ import {
   CircleCheck,
   FilePenLine,
   PenTool,
+  Route,
   TriangleAlert,
   User,
   type LucideIcon,
@@ -146,6 +148,7 @@ import {
 
 /** O ícone de IDENTIDADE de cada folha — fixo. Ver o cabeçalho. */
 const ICONE_DA_ABA: Record<AbaFicha, LucideIcon> = {
+  trajetoria: Route,
   dados: User,
   preliminar: CalendarClock,
   croqui: PenTool,
@@ -168,6 +171,7 @@ export function FichaAbas({
   contadores,
   abasAlteradas,
   estados,
+  trajetoria,
   dados,
   preliminar,
   croqui,
@@ -186,12 +190,15 @@ export function FichaAbas({
    * "Completa". `null` = nada a dizer.
    */
   estados: Record<AbaFicha, EstadoDaAba>;
+  /** A folha "Trajetória" — grava na hora; nada dela passa pelo salvar. */
+  trajetoria: React.ReactNode;
   dados: React.ReactNode;
   preliminar: React.ReactNode;
   croqui: React.ReactNode;
   fechamento: React.ReactNode;
 }) {
   const conteudo: Record<AbaFicha, React.ReactNode> = {
+    trajetoria,
     dados,
     preliminar,
     croqui,
@@ -244,16 +251,16 @@ export function FichaAbas({
          HORIZONTAL na página inteira, medida em Chromium a 390 px.
          A `TabsList` já tem `max-w-full` + `overflow-x-auto`, mas `max-w-full`
          é relativo ao PAI: este `Tabs` é filho de um `grid`, cuja `min-width`
-         padrão é `auto` (= o tamanho do conteúdo). Os quatro rótulos com badge
+         padrão é `auto` (= o tamanho do conteúdo). Os rótulos com badge
          somam 535 px, o `Tabs` cresceu para 535, e `max-w-full` da lista virou
          "535 px" — ela nunca rolava, quem rolava era o `<body>`.
          Medido: `documentElement.scrollWidth` 578 → 390 em 390 px de viewport,
-         nas quatro abas. Em 1366 não havia sintoma (cabia), e é por isso que
+         nas cinco abas. Em 1366 não havia sintoma (cabia), e é por isso que
          só a medição no tamanho alvo pega isto. */
       className="min-w-0 gap-0"
     >
       {/* 🔴 `justify-start`, pela MESMA razão medida em `abas-painel.tsx`: a
-          `TabsList` nasce `justify-center` e, quando as quatro abas não cabem
+          `TabsList` nasce `justify-center` e, quando as cinco abas não cabem
           (390 px — e aqui cada rótulo ainda carrega um badge), o conteúdo
           centralizado transborda para os DOIS lados; a primeira folha ficaria
           cortada e INALCANÇÁVEL, porque `scrollLeft` já está em 0. Alinhada à
@@ -272,7 +279,7 @@ export function FichaAbas({
           lugar de "Dados básicos"), exatamente o defeito que `abas-painel.tsx`
           documenta. Com `w-full`, a faixa ocupa a largura disponível e só rola
           quando de fato não cabe (390 px). Medido depois: `scrollLeft = 0` e
-          primeira aba inteira nas 4 abas, nos 2 tamanhos. */}
+          primeira aba inteira nas 5 abas, nos 2 tamanhos. */}
       <TabsList
         ref={faixaRef}
         variant="line"

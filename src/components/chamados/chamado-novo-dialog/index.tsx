@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LifeBuoy } from "lucide-react";
 import { toast } from "sonner";
 import { abrirChamado } from "@/app/chamados/actions";
+import { chamarAcao } from "@/lib/acao-no-navegador";
 import {
   CHAMADO_ASSUNTO_MAXIMO,
   CHAMADO_ASSUNTO_MINIMO,
@@ -169,14 +170,14 @@ export function ChamadoNovoDialog({
     }
     setErro(null);
     startTransition(async () => {
-      const r = await abrirChamado({
+      const r = await chamarAcao(() => abrirChamado({
         assunto: assuntoEfetivo(),
         texto: textoEfetivo(),
         categoria: categoriasAtivo ? categoria : undefined,
         alvoNovoId: ehTrocaCliente ? clienteNovo?.id : undefined,
         clienteId: ehTroca ? undefined : (clienteRef?.id ?? null),
         anexo: anexo ?? undefined,
-      });
+      }));
       if (!r.ok) {
         // O erro fica NA TELA, dentro do diálogo: um toast sumiria junto com
         // o que a pessoa preencheu.

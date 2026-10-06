@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { definirClienteDoChamado } from "@/app/chamados/actions";
+import { chamarAcao } from "@/lib/acao-no-navegador";
 import type { OpcaoClienteChamado } from "@/lib/chamados-tipos";
 import { Button } from "@/components/ui/button";
 import { CampoClienteReferencia } from "@/components/chamados/chamado-novo-dialog/campo-cliente-referencia";
@@ -76,7 +77,9 @@ export function ClienteDoChamado({
     }
     setErro(null);
     startTransition(async () => {
-      const r = await definirClienteDoChamado({ chamadoId, clienteId: novoId });
+      const r = await chamarAcao(() =>
+        definirClienteDoChamado({ chamadoId, clienteId: novoId }),
+      );
       if (!r.ok) {
         setErro(r.erro);
         return;

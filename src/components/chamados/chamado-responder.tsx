@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { fecharChamado, responderChamado } from "@/app/chamados/actions";
+import { chamarAcao } from "@/lib/acao-no-navegador";
 import {
   CHAMADO_TEXTO_MAXIMO,
   type AnexoInput,
@@ -75,11 +76,13 @@ export function ChamadoResponder({
     if (!textoValido) return;
     setErro(null);
     startTransition(async () => {
-      const r = await responderChamado({
-        chamadoId,
-        texto,
-        anexo: anexo ?? undefined,
-      });
+      const r = await chamarAcao(() =>
+        responderChamado({
+          chamadoId,
+          texto,
+          anexo: anexo ?? undefined,
+        }),
+      );
       if (!r.ok) {
         setErro(r.erro);
         return;
@@ -96,7 +99,7 @@ export function ChamadoResponder({
   function fechar() {
     setErro(null);
     startTransition(async () => {
-      const r = await fecharChamado(chamadoId);
+      const r = await chamarAcao(() => fecharChamado(chamadoId));
       if (!r.ok) {
         setErro(r.erro);
         setFecharAberto(false);

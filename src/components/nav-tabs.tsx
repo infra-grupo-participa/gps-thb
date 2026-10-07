@@ -18,6 +18,7 @@ import {
   Stethoscope,
   GraduationCap,
   MessageCircle,
+  FileSignature,
   type LucideIcon,
 } from "lucide-react";
 
@@ -49,6 +50,7 @@ export interface NavItem {
     | "inicio"
     | "clientes"
     | "materiais"
+    | "minutas"
     | "pasta"
     | "perfil"
     | "alunos"
@@ -170,6 +172,7 @@ const ICONES: Record<NonNullable<NavItem["icon"]>, LucideIcon> = {
   inicio: Home,
   clientes: Users,
   materiais: BookOpen,
+  minutas: FileSignature,
   sessoes: CalendarDays,
   pasta: FolderOpen,
   perfil: UserRound,

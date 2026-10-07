@@ -8,8 +8,10 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Todas as rotas, exceto assets estáticos e imagens.
+     * Todas as rotas, exceto assets estáticos, imagens e o service worker
+     * dos avisos (`/sw.js`): o navegador rebusca o script sem sessão e
+     * recusa registro/atualização atrás de redirect para o /login.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -18,8 +18,10 @@ import {
 } from "@/components/admin/chamados-fila";
 import { ChamadosConfig } from "@/components/admin/chamados-config";
 import { ChamadosRetencao } from "@/components/admin/chamados-retencao";
+import { PushAvisosBotao } from "@/components/admin/push-avisos-botao";
 
 export const metadata = { title: "Admin — Chamados" };
+
 
 /**
  * Suporte do lado da equipe: a fila, o interruptor + lista de avisos e o
@@ -107,6 +109,9 @@ export default async function AdminChamadosPage({
               emailEquipe={config.emailEquipe}
               fallbackEnv={config.fallbackEnv}
             />
+            <div className="mt-6">
+              <PushAvisosBotao chavePublica={config.vapidPublica} />
+            </div>
           </TabsContent>
 
           <TabsContent value="retencao">

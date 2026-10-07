@@ -441,6 +441,8 @@ export async function getChamadosConfig(): Promise<{
   fallbackEnv: boolean;
   /** Aviso de @menção para o Slack: modo ativo, sem nenhum segredo. */
   slack: { configurado: boolean; modo: "bot" | "webhook" | null };
+  /** Chave VAPID PÚBLICA dos avisos no computador (…357); "" = sem botão. */
+  vapidPublica: string;
 }> {
   // Mesmo teste do `avisarEquipe`: string só com espaço não é destinatário.
   const fallbackEnv = Boolean(process.env.EMAIL_SUPORTE?.trim());
@@ -450,6 +452,7 @@ export async function getChamadosConfig(): Promise<{
       emailEquipe: [],
       fallbackEnv: false,
       slack: { configurado: false, modo: null },
+      vapidPublica: "",
     };
   }
   const slack = slackConfigurado();
@@ -458,6 +461,7 @@ export async function getChamadosConfig(): Promise<{
     emailEquipe: [] as string[],
     fallbackEnv,
     slack,
+    vapidPublica: "",
   };
   const supabase = await createClient();
 
@@ -465,7 +469,7 @@ export async function getChamadosConfig(): Promise<{
     .schema("gps")
     .from("config")
     .select("chave, valor")
-    .in("chave", ["chamados_aberto", "chamados_email_equipe"]);
+    .in("chave", ["chamados_aberto", "chamados_email_equipe", "push_vapid_publica"]);
 
   if (error) {
     logErro("getChamadosConfig", error);
@@ -482,6 +486,7 @@ export async function getChamadosConfig(): Promise<{
   return {
     fallbackEnv,
     slack,
+    vapidPublica: (porChave.get("push_vapid_publica") ?? "").trim(),
     // Ausente = ABERTO, igual ao banco: o default tem de ser funcionar.
     aberto: (porChave.get("chamados_aberto") ?? "true") !== "false",
     emailEquipe: (porChave.get("chamados_email_equipe") ?? "")

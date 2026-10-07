@@ -132,6 +132,12 @@ export function alunoNavItems(
       ? { href: "/pasta/abrir", ativoEm: "/pasta", label: "Pasta", icon: "pasta", novaAba: true, emBreve: opts.pastaEmBreve !== false }
       : { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta", emBreve: opts.pastaEmBreve !== false },
     { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" },
+    // 📝 Gerador de minutas (sistema externo embedado em `/gerador-de-minutas`).
+    // SÓ para o parceiro (`basePath === ""`): o login do gerador é pessoal e o
+    // admin em assistência não pode ver o item (`alunoNavItems` também é dele).
+    ...(basePath === ""
+      ? [{ href: "/gerador-de-minutas", label: "Gerador de minutas", icon: "minutas" as const }]
+      : []),
     // 🎧 Plantão de Dúvidas — aba do aluno do PROGRAMA dentro do sistema
     // (decisão do Marcio, 10/09/2026). Não confundir com a rota pública
     // `/p/plantao` (embedada na Hotmart, exclusiva do Acelera): esta aba usa

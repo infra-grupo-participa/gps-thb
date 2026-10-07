@@ -165,7 +165,10 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "frame-ancestors 'none'; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com",
+              "frame-ancestors 'none'; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://gmthb.holdingmasters.com.br" +
+                (/^https:\/\/[a-z0-9.-]+$/i.test(process.env.GERADOR_MINUTAS_ORIGEM?.trim() ?? "")
+                  ? ` ${process.env.GERADOR_MINUTAS_ORIGEM!.trim()}`
+                  : ""),
           },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],

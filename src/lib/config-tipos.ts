@@ -146,6 +146,20 @@ export const INTERRUPTORES_CONFIG: readonly InterruptorConfig[] = [
     perigoso: true,
   },
   {
+    chave: "push_chamados_ativo",
+    rotulo: "Avisos de chamado no computador",
+    descricaoDesligado:
+      "Param os avisos no computador quando um parceiro escreve num chamado. A fila e o e-mail continuam como estão.",
+    perigoso: false,
+  },
+  {
+    chave: "gerador_minutas_ativo",
+    rotulo: "Gerador de minutas para os parceiros",
+    descricaoDesligado:
+      "A aba continua no menu, mas o parceiro vê \"Indisponível agora\" e não entra no gerador. Nada do que já foi gerado é apagado.",
+    perigoso: false,
+  },
+  {
     chave: "resgate_ativo",
     rotulo: "Resgate de acesso (esqueci a senha por código)",
     descricaoDesligado:

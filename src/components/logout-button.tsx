@@ -34,6 +34,12 @@ export function LogoutButton({
   async function sair() {
     setSaindo(true);
     try {
+      const { desligarPushAoSair } = await import("@/lib/push-ao-sair");
+      await desligarPushAoSair();
+    } catch {
+      // nunca bloqueia o logout
+    }
+    try {
       const { createClient } = await import("@/lib/supabase/client");
       // Escopo LOCAL: encerra só esta sessão. Assim, se mais de uma pessoa
       // está na mesma conta, sair aqui NÃO desloga as outras.

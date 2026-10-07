@@ -43,6 +43,12 @@ export function AutoLogout() {
         saindoRef.current = true;
         clearInterval(tick);
         try {
+          const { desligarPushAoSair } = await import("@/lib/push-ao-sair");
+          await desligarPushAoSair();
+        } catch {
+          // nunca bloqueia o logout
+        }
+        try {
           // PF1 — o SDK só é buscado agora, no tick que de fato encerra a
           // sessão. Enquanto o contador roda, nenhum byte dele foi baixado;
           // este componente está em toda página autenticada.

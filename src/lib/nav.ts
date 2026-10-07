@@ -32,149 +32,150 @@ export function alunoNavItems(
   opts: {
     financeiro: boolean;
     financeiroEmBreve?: boolean;
-    // 🔴 Navegação em 2 níveis (24/09/2026, pedido do Marcio: "abas reunidas
-    // dentro de uma aba"). MESMO MOLDE de `financeiroEmBreve`: "Pasta" nasce
-    // "em breve" por padrão (`opts.pastaEmBreve !== false`) — a assistência
-    // (`assistenciaNavItems`) passa `false` porque a equipe usa a Pasta para
-    // atender; `navDoAluno` também passa `false` desde 25/09/2026 (a aba do
-    // aluno vira atalho para o Drive). Copiado literalmente do comentário do
-    // Financeiro logo abaixo — não inverter a polaridade.
+  // 🔴 Navegação em 2 níveis (24/09/2026, pedido do Marcio: "abas reunidas
+  // dentro de uma aba"). MESMO MOLDE de `financeiroEmBreve`: "Pasta" nasce
+  // "em breve" por padrão (`opts.pastaEmBreve !== false`) — a assistência
+  // (`assistenciaNavItems`) passa `false` porque a equipe usa a Pasta para
+  // atender; `navDoAluno` também passa `false` desde 25/09/2026 (a aba do
+  // aluno vira atalho para o Drive). Copiado literalmente do comentário do
+  // Financeiro logo abaixo — não inverter a polaridade.
     pastaEmBreve?: boolean;
     equipe: boolean;
   },
 ): NavItem[] {
-  const itens: NavItem[] = [
-    { href: basePath || "/", label: "Início", icon: "inicio", exact: true },
-    { href: `${basePath}/clientes`, label: "Clientes", icon: "clientes" },
-    // 🔴 SUPORTE EM 3º, NÃO EM 7º (10/09/2026).
-    //
-    // MEDIDO: **zero chamados abertos** com 104 alunos travados no funil. A
-    // aba era a 7ª de 8, dentro de um `overflow-x-auto` — no celular ela
-    // nascia FORA DA TELA. O aluno travado teria de rolar a barra para
-    // descobrir que existe um canal de ajuda.
-    //
-    // O comentário mais abaixo já dizia que "esconder o canal de suporte
-    // deixaria o aluno sem saber que ele existe"; a posição contradizia o
-    // princípio. Aqui ela cai na primeira dobra, ao lado da aba onde o aluno
-    // trava (Clientes).
-    {
-      href: `${basePath}/chamados`,
-      label: "Suporte",
-      icon: "suporte",
-      // 🔑 Selo "N respostas" (Onda 1.1, 02/10/2026): só para o parceiro
-      // logado (`basePath === ""`). No modo assistência a contagem seria a do
-      // ADMIN, não a do ambiente — e o admin já tem a fila própria.
-      seloRespostas: basePath === "",
-    },
-    // 📅 Sessões com a equipe jurídica (22/09/2026) — Entrevista Prévia e
-    // Reunião Preliminar com as Dras. Elaine e Cristiane. O aluno escolhe um
-    // horário que a equipe JÁ declarou que pode (`gps.sessao_*`).
-    //
-    // 🔴 4ª POSIÇÃO, NÃO 7ª (23/09/2026) — o MESMO remédio que a aba Suporte
-    // recebeu logo acima, pelo MESMO defeito medido. Pedido do Marcio:
-    // *"a aba da sessão está presente no sistema mas não é visível. A gente
-    // tem que prosseguir depois da entrevista prévia para lá. Esse é o buraco
-    // na parte do sistema"*.
-    //
-    // Em 7º, dentro do `overflow-x-auto` do header, ela nascia FORA DA TELA
-    // no celular: o parceiro que acabou de concluir a Entrevista Prévia teria
-    // de rolar a barra horizontal para descobrir que existe onde marcar a
-    // sessão. Foi exatamente assim que o Suporte ficou com ZERO chamados e
-    // 104 alunos travados (10/09).
-    //
-    // ⚠️ Ela entra DEPOIS de Suporte, não antes: Suporte em 3º é decisão
-    // registrada de 10/09 e não se rebaixa para abrir espaço. A ordem do topo
-    // (Início · Clientes · Suporte) fica intacta; Sessões toma o 4º lugar,
-    // que era da Pasta.
-    //
-    // ⚠️ NÃO é o "agendamento de reunião com a equipe" removido em 10/08/2026
-    // e já reconstruído por engano uma vez (05/08). Aquela decisão foi
-    // REVOGADA pelo Marcio em 22/09 — "agora a disponibilidade parte delas" —
-    // e a revogação autorizou `gps.sessao_*`, e SÓ isso: as tabelas
-    // `gps.reuniao_*` e `gps.agenda` seguem órfãs e PROIBIDAS.
-    //
-    // 🔴 Esta linha é a PORTA DE ENTRADA da tela. Sem ela, `/sessoes`
-    // existiria completa e só seria alcançável digitando a URL — o defeito
-    // que este portal já pagou três vezes (a tela de respostas do onboarding
-    // com 77 questionários dentro, a aba Tutoriais, a aba do Inventário).
-    //
-    // 🔑 `basePath === ""` é o sinal de "é o aluno de verdade" — a MESMA
-    // condição do Plantão logo abaixo, e pelo mesmo motivo: não existe
-    // `admin/aluno/[id]/sessoes/page.tsx` (a tela da equipe é `/admin/sessoes`,
-    // fatia 5, e é outra tela). Sem este filtro, o link apareceria no modo
-    // assistência e o admin cairia num 404 ao clicar. Se um dia houver tela
-    // de assistência para as sessões, é só tirar a condição.
-    //
-    // 🔴 ÍCONE PRÓPRIO (`"sessoes"` = `CalendarDays`), e isto REVOGA o que
-    // este mesmo comentário dizia até 23/09 ("a regra do projeto é não
-    // inventar chave nova"). Aquela regra continua valendo em geral — o que a
-    // suspende aqui é o pedido explícito do Marcio por "mais visual e mais
-    // intuitiva". Com `"materiais"` (BookOpen), esta aba usava o ícone de
-    // Materiais e do Plantão: três abas de livro lado a lado, e o ícone
-    // deixava de informar qualquer coisa. Ver `NavItem["icon"]` em
-    // `nav-tabs.tsx`, onde a exceção está registrada junto da chave.
-    ...(basePath === ""
-      ? [{ href: "/sessoes", label: "Sessões", icon: "sessoes" as const }]
-      : []),
-    // 🔴 PASTA "EM BREVE" (24/09/2026, navegação em 2 níveis): MESMO MOLDE do
-    // Financeiro logo abaixo — a aba continua aparecendo, apagada e sem link,
-    // em vez de sumir. `opts.pastaEmBreve` é obrigatório na assinatura de
-    // `opts`, mas aceita `undefined` só através de `navDoAluno`/
-    // `assistenciaNavItems`, que sempre o preenchem; ver o comentário de cada
-    // uma. `!== false` é a MESMA polaridade do `financeiroEmBreve`: por
-    // padrão em breve, `false` explícito é que libera o link.
-    //
-    // 📁 Para o ALUNO (basePath ""), a aba abre o Drive direto, em nova aba
-    // (25/09/2026, pedido do João): `/pasta/abrir` redireciona para a pasta
-    // do ambiente, ou para `/pasta` com o aviso de preparo se não houver link.
-    // Na assistência a aba segue indo para a tela onde a equipe cola o link.
+  const inicio: NavItem = { href: basePath || "/", label: "Início", icon: "inicio", exact: true };
+  const clientes: NavItem = { href: `${basePath}/clientes`, label: "Clientes", icon: "clientes" };
+  const materiais: NavItem = { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" };
+  // 🔴 SUPORTE EM 3º, NÃO EM 7º (10/09/2026).
+  //
+  // ⚠️ 07/10/2026: vale para a ASSISTÊNCIA (lista abaixo, intacta). No
+  // trilho do PARCEIRO a ordem passou a ser a decidida pelo João (Suporte
+  // em 6º, depois de Materiais) — ver o bloco "GRUPOS DO PARCEIRO". O
+  // motivo de 10/09 (aba nascendo FORA DA TELA dentro de um scroller) não
+  // existe mais desde 03/10: o trilho é `flex-wrap`, as 7 abas cabem em
+  // 390 px como ícone, nenhuma fica atrás de rolagem.
+  //
+  // MEDIDO: **zero chamados abertos** com 104 alunos travados no funil. A
+  // aba era a 7ª de 8, dentro de um `overflow-x-auto` — no celular ela
+  // nascia FORA DA TELA. O aluno travado teria de rolar a barra para
+  // descobrir que existe um canal de ajuda.
+  //
+  // O comentário mais abaixo já dizia que "esconder o canal de suporte
+  // deixaria o aluno sem saber que ele existe"; a posição contradizia o
+  // princípio. Aqui ela cai na primeira dobra, ao lado da aba onde o aluno
+  // trava (Clientes).
+  const suporte: NavItem = {
+    href: `${basePath}/chamados`,
+    label: "Suporte",
+    icon: "suporte",
+    // 🔑 Selo "N respostas" (Onda 1.1, 02/10/2026): só para o parceiro
+    // logado (`basePath === ""`). No modo assistência a contagem seria a do
+    // ADMIN, não a do ambiente — e o admin já tem a fila própria.
+    seloRespostas: basePath === "",
+  };
+  // 📅 Sessões com a equipe jurídica (22/09/2026) — Entrevista Prévia e
+  // Reunião Preliminar com as Dras. Elaine e Cristiane. O aluno escolhe um
+  // horário que a equipe JÁ declarou que pode (`gps.sessao_*`).
+  //
+  // 🔴 4ª POSIÇÃO, NÃO 7ª (23/09/2026) — o MESMO remédio que a aba Suporte
+  // recebeu logo acima, pelo MESMO defeito medido. Pedido do Marcio:
+  // *"a aba da sessão está presente no sistema mas não é visível. A gente
+  // tem que prosseguir depois da entrevista prévia para lá. Esse é o buraco
+  // na parte do sistema"*.
+  //
+  // Em 7º, dentro do `overflow-x-auto` do header, ela nascia FORA DA TELA
+  // no celular: o parceiro que acabou de concluir a Entrevista Prévia teria
+  // de rolar a barra horizontal para descobrir que existe onde marcar a
+  // sessão. Foi exatamente assim que o Suporte ficou com ZERO chamados e
+  // 104 alunos travados (10/09).
+  //
+  // ⚠️ Ela entra DEPOIS de Suporte, não antes: Suporte em 3º é decisão
+  // registrada de 10/09 e não se rebaixa para abrir espaço. A ordem do topo
+  // (Início · Clientes · Suporte) fica intacta; Sessões toma o 4º lugar,
+  // que era da Pasta.
+  //
+  // ⚠️ NÃO é o "agendamento de reunião com a equipe" removido em 10/08/2026
+  // e já reconstruído por engano uma vez (05/08). Aquela decisão foi
+  // REVOGADA pelo Marcio em 22/09 — "agora a disponibilidade parte delas" —
+  // e a revogação autorizou `gps.sessao_*`, e SÓ isso: as tabelas
+  // `gps.reuniao_*` e `gps.agenda` seguem órfãs e PROIBIDAS.
+  //
+  // 🔴 Esta linha é a PORTA DE ENTRADA da tela. Sem ela, `/sessoes`
+  // existiria completa e só seria alcançável digitando a URL — o defeito
+  // que este portal já pagou três vezes (a tela de respostas do onboarding
+  // com 77 questionários dentro, a aba Tutoriais, a aba do Inventário).
+  //
+  // 🔑 `basePath === ""` é o sinal de "é o aluno de verdade" — a MESMA
+  // condição do Plantão logo abaixo, e pelo mesmo motivo: não existe
+  // `admin/aluno/[id]/sessoes/page.tsx` (a tela da equipe é `/admin/sessoes`,
+  // fatia 5, e é outra tela). Sem este filtro, o link apareceria no modo
+  // assistência e o admin cairia num 404 ao clicar. Se um dia houver tela
+  // de assistência para as sessões, é só tirar a condição.
+  //
+  // 🔴 ÍCONE PRÓPRIO (`"sessoes"` = `CalendarDays`), e isto REVOGA o que
+  // este mesmo comentário dizia até 23/09 ("a regra do projeto é não
+  // inventar chave nova"). Aquela regra continua valendo em geral — o que a
+  // suspende aqui é o pedido explícito do Marcio por "mais visual e mais
+  // intuitiva". Com `"materiais"` (BookOpen), esta aba usava o ícone de
+  // Materiais e do Plantão: três abas de livro lado a lado, e o ícone
+  // deixava de informar qualquer coisa. Ver `NavItem["icon"]` em
+  // `nav-tabs.tsx`, onde a exceção está registrada junto da chave.
+  const sessoes: NavItem = { href: "/sessoes", label: "Sessões", icon: "sessoes" };
+  // 🔴 PASTA "EM BREVE" (24/09/2026, navegação em 2 níveis): MESMO MOLDE do
+  // Financeiro logo abaixo — a aba continua aparecendo, apagada e sem link,
+  // em vez de sumir. `opts.pastaEmBreve` é obrigatório na assinatura de
+  // `opts`, mas aceita `undefined` só através de `navDoAluno`/
+  // `assistenciaNavItems`, que sempre o preenchem; ver o comentário de cada
+  // uma. `!== false` é a MESMA polaridade do `financeiroEmBreve`: por
+  // padrão em breve, `false` explícito é que libera o link.
+  //
+  // 📁 Para o ALUNO (basePath ""), a aba abre o Drive direto, em nova aba
+  // (25/09/2026, pedido do João): `/pasta/abrir` redireciona para a pasta
+  // do ambiente, ou para `/pasta` com o aviso de preparo se não houver link.
+  // Na assistência a aba segue indo para a tela onde a equipe cola o link.
+  const pasta: NavItem =
     basePath === ""
       ? { href: "/pasta/abrir", ativoEm: "/pasta", label: "Pasta", icon: "pasta", novaAba: true, emBreve: opts.pastaEmBreve !== false }
-      : { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta", emBreve: opts.pastaEmBreve !== false },
-    { href: `${basePath}/materiais`, label: "Materiais", icon: "materiais" },
-    // 📝 Gerador de minutas (sistema externo embedado em `/gerador-de-minutas`).
-    // SÓ para o parceiro (`basePath === ""`): o login do gerador é pessoal e o
-    // admin em assistência não pode ver o item (`alunoNavItems` também é dele).
-    ...(basePath === ""
-      ? [{ href: "/gerador-de-minutas", label: "Gerador de minutas", icon: "minutas" as const }]
-      : []),
-    // 🎧 Plantão de Dúvidas — aba do aluno do PROGRAMA dentro do sistema
-    // (decisão do Marcio, 10/09/2026). Não confundir com a rota pública
-    // `/p/plantao` (embedada na Hotmart, exclusiva do Acelera): esta aba usa
-    // `/plantao` (sem `/p/`) e RPCs próprias (`gps.plantao_*_logado`), que
-    // identificam a pessoa pela SESSÃO — nunca por e-mail digitado.
-    //
-    // 🔑 `basePath === ""` é o sinal de "é o aluno de verdade" (só ele chama
-    // com basePath vazio; `assistenciaNavItems` sempre passa
-    // `/admin/aluno/<id>`). A rota `/plantao` só existe para o ALUNO — não
-    // há `admin/aluno/[id]/plantao/page.tsx` (fora do escopo desta feature):
-    // sem este filtro, o link apareceria no modo assistência e o admin
-    // cairia num 404 ao clicar. Se um dia existir tela de assistência para
-    // o Plantão do Programa, é só tirar a condição.
-    //
-    // Ícone reaproveitado ("materiais", o mesmo do Plantão no admin em
-    // `adminNavItems`) — não existe chave dedicada a plantão em
-    // `NavItem["icon"]` e a regra do projeto é não inventar uma nova.
-    //
-    // ⚠️ NÃO reaproveitar aqui a chave `"sessoes"` (CalendarDays) criada em
-    // 23/09 para a aba Sessões: o pedido do Marcio era distinguir SESSÕES do
-    // resto, e dar o mesmo calendário ao Plantão refaria a confusão em outro
-    // par de abas. Plantão é atendimento em grupo, não hora marcada.
-    ...(basePath === ""
-      ? [{ href: "/plantao", label: "Plantão", icon: "materiais" as const }]
-      : []),
-    // ⏸️ FINANCEIRO EM ESPERA (decisão do Marcio, 10/09/2026): "esconder a
-    // aba do financeiro, dado que ainda não está pronta, deixa mockado com
-    // uma aba de em breve".
-    //
-    // A aba CONTINUA aparecendo, apagada e sem link. Sumir com ela faria o
-    // aluno não saber que o Financeiro vai existir; deixá-la clicável o
-    // levaria a uma tela que ainda não conta a história certa.
-    //
-    // 🔑 A regra do sócio (B7-b) continua valendo por baixo: quando o
-    // Financeiro voltar, é só trocar `emBreve: true` por nada — a flag
-    // `opts.financeiro` já decide quem vê.
-    ...(opts.financeiro
+      : { href: `${basePath}/pasta`, label: "Pasta", icon: "pasta", emBreve: opts.pastaEmBreve !== false };
+  // 📝 Gerador de minutas (sistema externo embedado em `/gerador-de-minutas`).
+  // SÓ para o parceiro (`basePath === ""`): o login do gerador é pessoal e o
+  // admin em assistência não pode ver o item (`alunoNavItems` também é dele).
+  const gerador: NavItem = { href: "/gerador-de-minutas", label: "Gerador de minutas", icon: "minutas" };
+  // 🎧 Plantão de Dúvidas — aba do aluno do PROGRAMA dentro do sistema
+  // (decisão do Marcio, 10/09/2026). Não confundir com a rota pública
+  // `/p/plantao` (embedada na Hotmart, exclusiva do Acelera): esta aba usa
+  // `/plantao` (sem `/p/`) e RPCs próprias (`gps.plantao_*_logado`), que
+  // identificam a pessoa pela SESSÃO — nunca por e-mail digitado.
+  //
+  // 🔑 `basePath === ""` é o sinal de "é o aluno de verdade" (só ele chama
+  // com basePath vazio; `assistenciaNavItems` sempre passa
+  // `/admin/aluno/<id>`). A rota `/plantao` só existe para o ALUNO — não
+  // há `admin/aluno/[id]/plantao/page.tsx` (fora do escopo desta feature):
+  // sem este filtro, o link apareceria no modo assistência e o admin
+  // cairia num 404 ao clicar. Se um dia existir tela de assistência para
+  // o Plantão do Programa, é só tirar a condição.
+  //
+  // Ícone reaproveitado ("materiais", o mesmo do Plantão no admin em
+  // `adminNavItems`) — não existe chave dedicada a plantão em
+  // `NavItem["icon"]` e a regra do projeto é não inventar uma nova.
+  //
+  // ⚠️ NÃO reaproveitar aqui a chave `"sessoes"` (CalendarDays) criada em
+  // 23/09 para a aba Sessões: o pedido do Marcio era distinguir SESSÕES do
+  // resto, e dar o mesmo calendário ao Plantão refaria a confusão em outro
+  // par de abas. Plantão é atendimento em grupo, não hora marcada.
+  const plantao: NavItem = { href: "/plantao", label: "Plantão", icon: "materiais" };
+  // ⏸️ FINANCEIRO EM ESPERA (decisão do Marcio, 10/09/2026): "esconder a
+  // aba do financeiro, dado que ainda não está pronta, deixa mockado com
+  // uma aba de em breve".
+  //
+  // A aba CONTINUA aparecendo, apagada e sem link. Sumir com ela faria o
+  // aluno não saber que o Financeiro vai existir; deixá-la clicável o
+  // levaria a uma tela que ainda não conta a história certa.
+  //
+  // 🔑 A regra do sócio (B7-b) continua valendo por baixo: quando o
+  // Financeiro voltar, é só trocar `emBreve: true` por nada — a flag
+  // `opts.financeiro` já decide quem vê.
+  const financeiro: NavItem[] = (opts.financeiro
       ? [
           {
             href: `${basePath}/financeiro`,
@@ -186,27 +187,27 @@ export function alunoNavItems(
             emBreve: opts.financeiroEmBreve !== false,
           },
         ]
-      : []),
-    // Suporte NÃO tem chave em `opts`: titular e sócio veem os dois. O
-    // chamado é do AMBIENTE (`gps.aluno_atual()`), como cliente e progresso —
-    // ao contrário do Financeiro, que é o contrato do titular (B7-b). Quem
-    // responde "posso abrir chamado?" é o interruptor `chamados_aberto`,
-    // dentro da página e com texto — nunca a presença da aba: esconder o
-    // canal de suporte deixaria o aluno sem saber que ele existe, que é
-    // exatamente o defeito que esta fase corrige.
-    // 🔴 Feature "Equipe" (11/09/2026): atrás de flag OBRIGATÓRIA, igual ao
-    // Financeiro — ver o comentário no topo do arquivo. Posição: logo antes
-    // de "Perfil" (decisão do plano da feature).
-    //
-    // 🔴 Navegação em 2 níveis (24/09/2026): quando `basePath === ""` (o
-    // aluno de verdade, nunca a assistência) o item passa a morar no menu
-    // "Sua conta" (`noMenuDeContas: true`), não no trilho — `NavTabs` não o
-    // desenha; `app-header.tsx` o filtra e entrega ao `MenuDeContas` via
-    // `itensExtras`. Na assistência (`basePath !== ""`) Equipe continua aba
-    // normal do trilho: é onde a equipe resolve chamado olhando a mesma tela
-    // do aluno (ver `assistenciaNavItems`), e o menu "Sua conta" ali é o DO
-    // ADMIN, não do aluno assistido.
-    ...(opts.equipe
+      : []);
+  // Suporte NÃO tem chave em `opts`: titular e sócio veem os dois. O
+  // chamado é do AMBIENTE (`gps.aluno_atual()`), como cliente e progresso —
+  // ao contrário do Financeiro, que é o contrato do titular (B7-b). Quem
+  // responde "posso abrir chamado?" é o interruptor `chamados_aberto`,
+  // dentro da página e com texto — nunca a presença da aba: esconder o
+  // canal de suporte deixaria o aluno sem saber que ele existe, que é
+  // exatamente o defeito que esta fase corrige.
+  // 🔴 Feature "Equipe" (11/09/2026): atrás de flag OBRIGATÓRIA, igual ao
+  // Financeiro — ver o comentário no topo do arquivo. Posição: logo antes
+  // de "Perfil" (decisão do plano da feature).
+  //
+  // 🔴 Navegação em 2 níveis (24/09/2026): quando `basePath === ""` (o
+  // aluno de verdade, nunca a assistência) o item passa a morar no menu
+  // "Sua conta" (`noMenuDeContas: true`), não no trilho — `NavTabs` não o
+  // desenha; `app-header.tsx` o filtra e entrega ao `MenuDeContas` via
+  // `itensExtras`. Na assistência (`basePath !== ""`) Equipe continua aba
+  // normal do trilho: é onde a equipe resolve chamado olhando a mesma tela
+  // do aluno (ver `assistenciaNavItems`), e o menu "Sua conta" ali é o DO
+  // ADMIN, não do aluno assistido.
+  const equipe: NavItem[] = (opts.equipe
       ? [
           basePath === ""
             ? {
@@ -217,24 +218,65 @@ export function alunoNavItems(
               }
             : { href: `${basePath}/equipe`, label: "Equipe", icon: "equipe" as const },
         ]
-      : []),
-    // 🔴 Navegação em 2 níveis (24/09/2026): "Perfil" SAI quando
-    // `basePath === ""` — já está acessível pelo menu "Sua conta" ("Seu
-    // perfil", em `menu-de-contas.tsx`), e repeti-lo no trilho seria a mesma
-    // rota em dois lugares. Na assistência (`basePath !== ""`) o item
-    // continua: o admin edita o perfil do aluno numa aba própria, e o menu
-    // "Sua conta" ali é o do ADMIN — não leva a `/admin/aluno/<id>/perfil`.
-    ...(basePath === ""
-      ? []
-      : [{ href: `${basePath}/perfil`, label: "Perfil", icon: "perfil" as const }]),
-    // 🔴 Ordem `emBreve` ao fim (24/09/2026, navegação em 2 níveis): "em breve
-    // fica na lista, não na frente" (pedido do Marcio). `.sort()` do array é
-    // ESTÁVEL (spec ECMAScript desde 2019, V8/Node cumprem) — dois itens que
-    // empatam no critério (ambos `emBreve` ou ambos não) mantêm a ordem
-    // relativa em que entraram acima. Não reordenar item por item: a lista já
-    // muda de posição conforme as flags (`financeiro`, `pastaEmBreve`), e um
-    // reposicionamento manual quebraria na primeira combinação nova.
-  ];
+      : []);
+  // 🔴 Navegação em 2 níveis (24/09/2026): "Perfil" SAI quando
+  // `basePath === ""` — já está acessível pelo menu "Sua conta" ("Seu
+  // perfil", em `menu-de-contas.tsx`), e repeti-lo no trilho seria a mesma
+  // rota em dois lugares. Na assistência (`basePath !== ""`) o item
+  // continua: o admin edita o perfil do aluno numa aba própria, e o menu
+  // "Sua conta" ali é o do ADMIN — não leva a `/admin/aluno/<id>/perfil`.
+  const perfil: NavItem[] =
+    basePath === "" ? [] : [{ href: `${basePath}/perfil`, label: "Perfil", icon: "perfil" }];
+
+  if (basePath === "") {
+    // 🔴 GRUPOS DO PARCEIRO (07/10/2026, decisão do João). Com "Gerador de
+    // minutas" a régua do parceiro chegou a 9 abas soltas + Tutoriais fixa e
+    // "Financeiro (em breve)" quebrou para uma 2ª linha em 1330 px. A saída
+    // escolhida (literal): `Início · Clientes · Encontros▾ · Documentos▾ ·
+    // Materiais · Suporte · Financeiro(em breve)` | Tutoriais.
+    //
+    // Desenho (2ª decisão do João, mesmo dia): "reunir subconteúdo dentro de
+    // um maior, e ao clicar descer um DROPDOWN com cada aba". `comoMenu: true`
+    // faz o grupo virar botão + menu suspenso (`NavGrupoMenu` em
+    // `nav-tabs.tsx`), SEM a 3ª linha de sub-abas da equipe. O grupo fica
+    // aceso quando qualquer filho casa — inclusive pelo `ativoEm` da Pasta
+    // (`/pasta`), ver `casaSozinho`. `href` do grupo = o da 1ª sub-aba (só
+    // documenta; o botão não navega). O menu honra `novaAba`, `emBreve`,
+    // `ativoEm` e ícone de cada filho.
+    //
+    // 🔑 SÓ AQUI (`basePath === ""`). A assistência continua com a lista
+    // solta de sempre, logo abaixo: lá não existem Sessões, Plantão nem
+    // Gerador, e a Pasta é a tela onde a equipe cola o link.
+    //
+    // 🔴 As 4 sub-abas continuam sendo a PORTA DE ENTRADA das suas telas
+    // (ver o comentário de cada uma acima) — agora a um clique do grupo.
+    return emBreveAoFim([
+      inicio,
+      clientes,
+      { href: "/sessoes", label: "Encontros", icon: "sessoes", comoMenu: true, filhos: emBreveAoFim([sessoes, plantao]) },
+      { href: "/gerador-de-minutas", label: "Documentos", icon: "minutas", comoMenu: true, filhos: emBreveAoFim([gerador, pasta]) },
+      materiais,
+      suporte,
+      ...financeiro,
+      ...equipe,
+    ]);
+  }
+
+  // Assistência (`basePath !== ""`): a MESMA lista e a MESMA ordem de antes
+  // dos grupos do parceiro (07/10/2026) — Suporte em 3º, Pasta solta.
+  return emBreveAoFim([inicio, clientes, suporte, pasta, materiais, ...financeiro, ...equipe, ...perfil]);
+}
+
+/**
+ * 🔴 Ordem `emBreve` ao fim (24/09/2026, navegação em 2 níveis): "em breve
+ * fica na lista, não na frente" (pedido do Marcio). `.sort()` do array é
+ * ESTÁVEL (spec ECMAScript desde 2019, V8/Node cumprem) — dois itens que
+ * empatam no critério (ambos `emBreve` ou ambos não) mantêm a ordem
+ * relativa em que entraram acima. Não reordenar item por item: a lista já
+ * muda de posição conforme as flags (`financeiro`, `pastaEmBreve`), e um
+ * reposicionamento manual quebraria na primeira combinação nova.
+ */
+function emBreveAoFim(itens: NavItem[]): NavItem[] {
   return itens.sort((a, b) => Number(!!a.emBreve) - Number(!!b.emBreve));
 }
 

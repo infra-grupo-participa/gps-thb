@@ -36,28 +36,34 @@ test.describe("Header · parceiro · trilho de 1º nível + fixa + em breve", ()
     "Sem QA_PARCEIRO_EMAIL/SENHA — defina-os em .env.qa (aponte QA_ENV_FILE).",
   );
 
-  test("a) trilho com os 6 links + Tutoriais fixa (se ligada) + Pasta como link de nova aba + Financeiro 'em breve' depois de todos", async ({
+  test("a) trilho com 4 links + 2 grupos em menu suspenso + Tutoriais fixa (se ligada) + Pasta (nova aba) no menu Documentos + Financeiro 'em breve' depois de todos", async ({
     page,
   }) => {
     await entrar(page, parceiro!, "/");
 
-    // Os 6 links que `alunoNavItems`/`navDoAluno` sempre produzem para o
-    // aluno de verdade (basePath=""): Início, Clientes, Suporte, Sessões,
-    // Materiais, Plantão. Não inclui Financeiro (`opts.financeiro` depende do
-    // papel) nem Equipe (saiu do trilho em 24/09, ver teste "b").
+    // 1º nível do aluno de verdade (basePath="") desde 07/10/2026 (grupos do
+    // parceiro, decisão do João): Início, Clientes, [Encontros▾], [Documentos▾],
+    // Materiais, Suporte. Os grupos são BOTÕES de menu suspenso (`comoMenu`),
+    // não links. Não inclui Financeiro (`opts.financeiro` depende do papel)
+    // nem Equipe (menu "Sua conta").
+    const principal = page.getByRole("navigation", { name: "Navegação principal" });
+    for (const grupo of [/^Encontros$/i, /^Documentos$/i]) {
+      await expect(principal.getByRole("button", { name: grupo })).toHaveAttribute(
+        "aria-haspopup",
+        "menu",
+      );
+    }
     const rotulos = [
       /^In(í|i)cio$/i,
       /^Clientes$/i,
+      /^Materiais$/i,
       // Sem `$`: com chamado respondido o nome vira "Suporte — 1 resposta da
       // equipe esperando você" (selo da Onda 1.1, 02/10/2026).
       /^Suporte( |$)/i,
-      /^Sess(õ|o)es$/i,
-      /^Materiais$/i,
-      /^Plant(ã|a)o$/i,
     ];
     for (const rotulo of rotulos) {
       await expect(
-        page.getByRole("link", { name: rotulo }).first(),
+        principal.getByRole("link", { name: rotulo }).first(),
         `Link "${rotulo}" ausente do trilho do parceiro.`,
       ).toBeVisible();
     }
@@ -71,25 +77,11 @@ test.describe("Header · parceiro · trilho de 1º nível + fixa + em breve", ()
     if (tutoriaisLigada) {
       await expect(tutoriais.first()).toBeVisible();
     }
-    // (Sem `else`: interruptor desligado é estado válido — a aba SOME por
-    // decisão do Marcio, não é "em breve". Nada a afirmar sobre ausência de
-    // uma feature opcional.)
-
-    // Pasta (25/09/2026) deixou de ser "em breve": é LINK para `/pasta/abrir`,
-    // em nova aba (o route handler redireciona para o Drive ou para `/pasta`).
-    // O `sr-only` " (abre em nova aba)" entra no nome acessível — daí `^Pasta`.
-    const pasta = page.getByRole("link", { name: /^Pasta/ });
-    await expect(pasta).toBeVisible();
-    await expect(pasta).toHaveAttribute("href", "/pasta/abrir");
-    await expect(pasta).toHaveAttribute("target", "_blank");
-    await expect(
-      page.locator('[aria-disabled="true"]', { hasText: /^Pasta/ }),
-    ).toHaveCount(0);
 
     // Financeiro só existe quando `opts.financeiro` é true (titular). É o
     // único "em breve" que sobrou e vem DEPOIS de todos os links clicáveis.
-    const xUltimoLink = await page
-      .getByRole("link", { name: /^Plant(ã|a)o$/i })
+    const xUltimoLink = await principal
+      .getByRole("link", { name: /^Suporte( |$)/i })
       .first()
       .boundingBox();
     const financeiro = page.locator('[aria-disabled="true"]', {
@@ -102,6 +94,17 @@ test.describe("Header · parceiro · trilho de 1º nível + fixa + em breve", ()
       expect(xFinanceiro).not.toBeNull();
       expect(xFinanceiro!.x).toBeGreaterThan(xUltimoLink!.x);
     }
+
+    // Pasta (25/09/2026) é LINK para `/pasta/abrir`, em nova aba; desde
+    // 07/10/2026 mora no menu suspenso do grupo "Documentos". O `sr-only`
+    // " (abre em nova aba)" entra no nome acessível — daí `^Pasta`.
+    await principal.getByRole("button", { name: /^Documentos$/i }).click();
+    const pasta = page.getByRole("menuitem", { name: /^Pasta/ });
+    await expect(pasta).toBeVisible();
+    await expect(pasta).toHaveAttribute("href", "/pasta/abrir");
+    await expect(pasta).toHaveAttribute("target", "_blank");
+    await page.keyboard.press("Escape");
+    await expect(pasta).toBeHidden();
   });
 
   test("a2) /pasta/abrir redireciona para o Drive ou para /pasta — nunca para fora", async ({

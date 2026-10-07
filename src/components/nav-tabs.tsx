@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
+import { Menu } from "@base-ui/react/menu";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,8 @@ import {
   GraduationCap,
   MessageCircle,
   FileSignature,
+  ChevronDown,
+  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
 
@@ -138,6 +141,15 @@ export interface NavItem {
    */
   filhos?: NavItem[];
   /**
+   * 🔑 Só nos grupos do PARCEIRO (07/10/2026, pedido do João: "reunir
+   * subconteúdo dentro de um maior, e ao clicar descer um DROPDOWN com cada
+   * aba"). Com a flag, o grupo NÃO abre a 3ª linha (`SubNavTabs`): o item do
+   * 1º nível vira botão que abre um menu suspenso com os `filhos`
+   * (`NavGrupoMenu`). Sem a flag, `filhos` segue o mecanismo da EQUIPE
+   * (3ª linha), intacto — por isso flag no item, não mudança global.
+   */
+  comoMenu?: boolean;
+  /**
    * Só nas sub-abas do grupo "Alunos" do admin: qual valor de `?aba=` esta
    * sub-aba representa. Em `/admin` a troca é `history.replaceState` (o
    * conteúdo já está na página — nota de 23/09: `router.replace` re-executa
@@ -155,8 +167,11 @@ export interface NavItem {
    * aluno, cujo `href` é `/pasta/abrir` — um redirect para o Drive (25/09/2026,
    * pedido do João). O GPS fica aberto na aba de origem.
    *
-   * ⚠️ Só `NavTabLink` honra a flag. `SubNavTabs` e o `MenuDeContas` usam
-   * `<Link>` cru: um item `novaAba` que ganhe `filhos` ou `noMenuDeContas`
+   * Honram a flag: `NavTabLink` (1º nível) e `NavGrupoMenu` (item do menu
+   * suspenso dos grupos `comoMenu` do parceiro — desde 07/10/2026 a Pasta é
+   * filho do grupo "Documentos").
+   * ⚠️ `SubNavTabs` (3ª linha da equipe) e o `MenuDeContas` usam `<Link>`
+   * cru: um item `novaAba` num grupo SEM `comoMenu`, ou com `noMenuDeContas`,
    * perde o `target` em silêncio.
    */
   novaAba?: boolean;
@@ -350,6 +365,131 @@ function NavTabLink({
 }
 
 /**
+ * Grupo do PARCEIRO como menu suspenso (07/10/2026, pedido do João). O botão
+ * ocupa o lugar da aba, com o MESMO desenho (régua de 2 px quando um filho é a
+ * rota atual) + chevron; o clique abre o menu com as abas do grupo.
+ *
+ * 🔑 `Menu` do Base UI (já dependência do projeto, como `Select`/`Dialog`),
+ * renderizado em PORTAL: um menu absoluto dentro do trilho seria cortado por
+ * qualquer `overflow` de ancestral. Dá de graça `aria-haspopup`/
+ * `aria-expanded`, Enter/Espaço/clique para abrir, setas entre itens, Esc e
+ * clique fora para fechar, e foco de volta ao botão.
+ *
+ * ⚠️ `menu-de-contas.tsx` registra que o `DropdownMenu` (Base UI via shadcn)
+ * "não abria" em 09/2026, sem causa achada. Este usa as partes do Base UI
+ * direto, sem o wrapper do shadcn — e a abertura foi PROVADA no navegador
+ * (mouse e teclado, 1280/1366/390) antes de entrar. `modal={false}`: sem
+ * trava de rolagem nem `inert` na página, que mexeriam na geometria.
+ *
+ * Itens com alvo ≥ 44 px e texto 16 px (público mais velho). Honram
+ * `novaAba` (target/rel + ícone discreto + texto para leitor de tela),
+ * `emBreve` (apagado, desabilitado, selo) e `ativoEm` (via `casaSozinho`).
+ */
+function NavGrupoMenu({
+  item,
+  pathname,
+  denso,
+}: {
+  item: NavItem;
+  pathname: string;
+  denso: boolean;
+}) {
+  const soIcone = denso ? "max-xl:sr-only" : "max-md:sr-only";
+  const ativo = grupoAtivo(item, pathname);
+  const Icon = item.icon ? ICONES[item.icon] : null;
+  const filhos = item.filhos ?? [];
+
+  return (
+    <Menu.Root modal={false}>
+      <Menu.Trigger
+        className={cn(
+          "foco-visivel -mb-px inline-flex shrink-0 cursor-pointer items-center gap-1.5 border-b-2 px-2 py-2.5 text-sm whitespace-nowrap transition-colors sm:px-2.5 md:px-3",
+          ativo
+            ? "border-primary font-semibold text-foreground [&>svg]:text-accent-foreground"
+            : "border-transparent font-medium text-muted-foreground hover:border-borda-forte hover:text-foreground data-[popup-open]:text-foreground",
+          item.adminOnly && "previa-oculta",
+        )}
+        title={Icon ? item.label : undefined}
+      >
+        {Icon ? <Icon className="size-4" aria-hidden /> : null}
+        <span className={cn(Icon && (ativo ? denso && "max-sm:sr-only" : soIcone))}>
+          {item.label}
+        </span>
+        <ChevronDown className="size-3.5" aria-hidden />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner
+          side="bottom"
+          align="start"
+          sideOffset={4}
+          collisionPadding={8}
+          className="z-50 outline-none"
+        >
+          <Menu.Popup className="min-w-56 rounded-md border bg-background p-1 shadow-md outline-none">
+            {filhos.map((f) => {
+              const FIcon = f.icon ? ICONES[f.icon] : null;
+              const linha =
+                "flex min-h-11 w-full items-center gap-2.5 rounded-sm px-3 text-base whitespace-nowrap outline-none";
+              if (f.emBreve) {
+                return (
+                  <Menu.Item
+                    key={f.href}
+                    disabled
+                    className={cn(linha, "cursor-default text-muted-foreground/70")}
+                  >
+                    {FIcon ? <FIcon className="size-4" aria-hidden /> : null}
+                    {f.label}
+                    <Badge
+                      variant="neutral"
+                      icone={false}
+                      className="ml-auto h-5 px-1.5 text-[10px] font-normal"
+                    >
+                      em breve
+                    </Badge>
+                  </Menu.Item>
+                );
+              }
+              const atual = casaSozinho(f, pathname);
+              return (
+                <Menu.LinkItem
+                  key={f.href}
+                  closeOnClick
+                  aria-current={atual ? "page" : undefined}
+                  render={
+                    <Link
+                      href={f.href}
+                      prefetch={false}
+                      target={f.novaAba ? "_blank" : undefined}
+                      rel={f.novaAba ? "noopener noreferrer" : undefined}
+                    />
+                  }
+                  className={cn(
+                    linha,
+                    "cursor-pointer data-[highlighted]:bg-accent",
+                    atual
+                      ? "font-semibold text-foreground shadow-[inset_2px_0_0_var(--color-primary)]"
+                      : "text-foreground",
+                  )}
+                >
+                  {FIcon ? <FIcon className="size-4 text-muted-foreground" aria-hidden /> : null}
+                  {f.label}
+                  {f.novaAba ? (
+                    <>
+                      <ExternalLink className="ml-auto size-3.5 text-muted-foreground" aria-hidden />
+                      <span className="sr-only"> (abre em nova aba)</span>
+                    </>
+                  ) : null}
+                </Menu.LinkItem>
+              );
+            })}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  );
+}
+
+/**
  * `items` é o que ROLA; `fixo` é o que NÃO rola (a aba fixa à direita do
  * header, ver `app-header.tsx`). Propositalmente duas props, não um item a
  * mais no array: `fixo` é renderizado por um `NavTabs` DIFERENTE (com
@@ -431,12 +571,20 @@ export function NavTabs({
             // quem usa leitor de tela, já vem do `aria-disabled` de cada um.
             <span aria-hidden className="mx-1 my-2 w-px shrink-0 bg-border" />
           ) : null}
-          <NavTabLink
-            item={item}
-            pathname={pathname}
-            urlDoPainel={urlDoPainel}
-            denso={doTrilho.length > 6}
-          />
+          {item.comoMenu && (item.filhos?.length ?? 0) > 0 ? (
+            <NavGrupoMenu
+              item={item}
+              pathname={pathname}
+              denso={doTrilho.length > 6}
+            />
+          ) : (
+            <NavTabLink
+              item={item}
+              pathname={pathname}
+              urlDoPainel={urlDoPainel}
+              denso={doTrilho.length > 6}
+            />
+          )}
         </Fragment>
       ))}
     </nav>
@@ -664,7 +812,9 @@ export function TrilhoDeNavegacao({
   // — seria erro de `nav.ts`), o PRIMEIRO vence. Duas 3ªs linhas empilhadas
   // seriam pior do que a errada: o header dobraria de altura sem aviso.
   const ativo = items.find((i) => !i.noMenuDeContas && grupoAtivo(i, pathname));
-  const subItens = ativo?.filhos ?? [];
+  // Grupo `comoMenu` (parceiro) mostra os filhos no menu suspenso, nunca
+  // na 3ª linha: o header do parceiro não cresce.
+  const subItens = ativo?.comoMenu ? [] : (ativo?.filhos ?? []);
 
   // 🔴 A 3ª LINHA INTEIRA some na prévia "como o aluno vê" quando NADA dela
   // sobra. `previa-oculta` é `display:none` em cada `<a>`/`<button>` filho

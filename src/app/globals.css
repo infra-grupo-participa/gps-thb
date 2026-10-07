@@ -328,6 +328,12 @@ body:has([data-assistindo]) main {
   padding-bottom: 4.5rem;
 }
 
+/* Gerador de minutas embutido: o gerador tem o próprio botão de ajuda no mesmo
+   canto; dois flutuantes sobrepostos cobriam o conteúdo dele (07/10/2026). */
+body:has([data-gerador-minutas]) [data-botao-secretaria] {
+  display: none;
+}
+
 /* Barra de rolagem escondida no contêiner de abas do header (app-header.tsx):
    em 360 px as 7 abas do modo assistência rolam na horizontal, e a barra
    nativa comeria altura e apareceria por cima dos rótulos. O conteúdo

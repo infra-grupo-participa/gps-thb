@@ -78,6 +78,7 @@ export async function BotaoSecretaria() {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
+      data-botao-secretaria
       // `print:hidden` porque o botão não faz sentido no papel; `z-40` fica
       // ABAIXO dos diálogos (z-50), senão flutuaria por cima do modal aberto.
       // `--color-marca-acao` (#C74600) é o preenchimento AA do botão

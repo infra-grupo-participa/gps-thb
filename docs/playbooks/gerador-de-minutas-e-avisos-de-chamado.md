@@ -57,6 +57,42 @@ Números de 07/10/2026 (cruzamento por hash de e-mail): 199 elegíveis no GPS, *
 tinham conta** no gerador (vínculo automático na 1ª entrada), **159 sem conta**
 (criada na 1ª entrada).
 
+## 2.1 Conciliação dos acessos (07/10/2026) — "indolor para o parceiro"
+
+Regra do João: nenhum parceiro recebe conta duplicada nem e-mail de confirmação; o
+trabalho de conciliar é da equipe. Cruzamento GPS × gerador por hash de e-mail, nome
+normalizado e últimos 9 dígitos do WhatsApp (207 logins do GPS):
+
+| Grupo | Qtd | Tratamento |
+|---|---:|---|
+| Conta no gerador com o mesmo e-mail | 41 | vínculo automático na 1ª entrada (pares congelados, …359) |
+| Sem nenhuma conta no gerador | 163 | conta criada na 1ª entrada |
+| Outra conta com mesmo nome/telefone | 3 | conciliados à mão (abaixo) |
+
+Casos feitos à mão (vínculo `conciliado` em `sso_vinculos`, tipo novo no CHECK do gerador):
+- **Luigi G.:** acesso do GPS ligado à conta que ele já tinha no gerador com outro e-mail.
+- **Roberta N.:** tinha 2 acessos no GPS. Mantido o de 29/09 (cliente + questionário
+  feito); o contrato HM (`cs.contatos_hm`) passou para ele; o acesso vazio de 02/10 foi
+  removido (lixeira). No gerador, e-mail com erro de digitação (`.com.br`) corrigido e conta
+  ligada. O aviso a ela sobre qual login usar está no ClickUp.
+- **Guilherme C. e Leonardo L.:** estavam bloqueados no gerador →
+  aprovados, desbloqueados, classificados "Holding Masters".
+- **Carita V.:** a 2ª conta (nunca usada) foi bloqueada; ela entra
+  pela conta gmail que já usa.
+- **7 sócios sem cadastro próprio:** liberados pela …360 e restringidos pela **…361** à lista
+  congelada `gps.gerador_sso_socios_2026_10_07` (achado ALTO do kirad: o convite de sócio deixa
+  o titular criar sócio com e-mail de terceiro, já confirmado). Sócio sem cadastro criado
+  depois usa o login do gerador até a equipe vincular o cadastro dele (Central → Pessoas).
+- **Wagner:** NÃO liberado. O e-mail do login dele no GPS pertence, no gerador, a uma conta
+  com outro nome completo. Conferir quem é quem antes de qualquer vínculo (card no ClickUp).
+- A conta de teste do parceiro de QA foi criada no gerador pelo teste de 07/10.
+
+**Tela (07/10):** a aba virou uma "janela" do Programa: faixa fina com nome e "Abrir em tela
+cheia", gerador ocupando a largura (até 1600px) e a altura da tela sem rolagem dupla; o botão
+"Falar com a secretaria" some nesta tela (`globals.css`, `data-gerador-minutas`). No gerador,
+o **modo embutido** (`src/lib/embutido.ts`, detecta iframe) esconde rodapé, marca, "Sair" e o
+botão flutuante; fora do iframe nada muda.
+
 ## 3. Avisos de chamado no computador (Web Push)
 
 Sem e-mail, sem Resend. A equipe clica em **/admin/chamados → Configuração → "Ativar

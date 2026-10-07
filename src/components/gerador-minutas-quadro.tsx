@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import { GERADOR_DASHBOARD_URL } from "@/lib/gerador-sso";
+import { GeradorMinutasMoldura } from "@/components/gerador-minutas-moldura";
 
 /**
  * Gerador de minutas embedado. `src` = URL de acesso único (`…/sso#t=…`) ou,
@@ -16,29 +17,29 @@ export function GeradorMinutasQuadro({
   hrefTelaCheia?: string;
 }) {
   return (
-    <div className="grid gap-3">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <GeradorMinutasMoldura
+      acao={
         <a
           href={hrefTelaCheia}
           target="_blank"
           rel="noopener"
-          className="foco-visivel inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 text-base font-medium hover:bg-muted"
+          className="foco-visivel flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border bg-white px-4 text-base font-medium text-foreground hover:bg-muted sm:inline-flex sm:w-auto"
         >
           <ExternalLink aria-hidden className="size-4" />
           Abrir em tela cheia
         </a>
-        <p className="text-base text-muted-foreground">
-          Se o login não abrir aqui, use Abrir em tela cheia.
-        </p>
-      </div>
+      }
+    >
+      {/* `min-h-0 flex-1`: o iframe ocupa o resto da moldura; quem rola é ele,
+          nunca a página. */}
       <iframe
         src={src}
         title="Gerador de minutas"
         allow="clipboard-write"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
         referrerPolicy="strict-origin-when-cross-origin"
-        className="block min-h-[600px] h-[calc(100dvh-11rem)] w-full rounded-xl border bg-background ring-1 ring-foreground/10"
+        className="block min-h-0 w-full flex-1 bg-white"
       />
-    </div>
+    </GeradorMinutasMoldura>
   );
 }

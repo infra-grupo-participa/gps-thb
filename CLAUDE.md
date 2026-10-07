@@ -2543,6 +2543,12 @@ pelo botão. `drive_tarefa_pegar` serve manual/nascimento antes de backfill. O p
 pendências: `gps.drive_pendencias()` (só admin) → card "Pastas do Drive" em
 `/admin/configuracoes`. Ensaio: `supabase/ensaio-20261007000364.sql` (fora de migrations). Para
 desligar: as duas chaves = `false`.
+🔴 **Revisto no mesmo dia pelo João:** *"não cria os 173, deixa o botão de criar pasta funcional"*.
+`drive_backfill_ativo = 'false'` (só 2 pastas saíram em massa). **Não religar sem ele.** Os
+antigos ganham pasta por clique em **`/admin/pastas`** (menu Configurações › Pastas, migração
+`…365`: `drive_pendencias` devolve `sem_pasta` — até 300, nome + `email_google`; botão "Criar
+pasta" por linha → `provisionarPastaParceiro`). Acesso novo continua automático
+(`drive_auto_nascimento='true'`). Tempo medido por pasta: 3 a 7 min (5 casos, 03:02–06:43).
 Idempotência pelo `appProperties.gps_id` no Drive. Actions `src/app/drive/actions.ts`, leitura
 `src/lib/data/drive.ts` (`gps.drive_estado`), script OAuth `scripts/gdrive-ligar.mjs`, provas
 `supabase/verificacao-20261005000347.sql`.

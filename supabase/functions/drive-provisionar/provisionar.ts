@@ -116,6 +116,12 @@ export type Tarefa = {
   pasta_drive_origem?: string | null;
   /** Quem pediu a tarefa é admin ativo (calculado no banco). */
   solicitado_por_admin?: boolean;
+  /**
+   * …364: 'manual' (botão) | 'nascimento' (gatilho em gps.ambientes) |
+   * 'backfill' (gps.drive_backfill_enfileirar). Ausente = 'manual'
+   * (drive_tarefa_pegar anterior à 364).
+   */
+  origem?: string | null;
   titular_email: string | null;
   cliente_nome: string | null;
   cliente_link_url: string | null;
@@ -161,6 +167,22 @@ export const urlDaPasta = (id: string) => `https://drive.google.com/drive/folder
 /** O link (de qualquer formato) aponta para esta pasta? */
 export function linkApontaPara(url: string | null, fileId: string): boolean {
   return !!url && extrairIdDoDrive(url) === fileId;
+}
+
+/**
+ * …364: tarefa automática (nascimento/backfill) cujo ambiente JÁ tem link que
+ * não é a raiz que o sistema registrou — a equipe (ou o parceiro) colou o link
+ * depois do enfileiramento. Conclui 'feito' com aviso, sem tocar no Drive:
+ * automático nunca adota nem cria pasta paralela. Link que aponta para a raiz
+ * registrada = a própria tarefa já gravou o link e caiu antes de compartilhar
+ * (transitório): segue para retomar.
+ */
+export function automaticaJaTinhaPasta(t: Tarefa): boolean {
+  if (t.tipo !== "provisionar_parceiro") return false;
+  if ((t.origem ?? "manual") === "manual") return false;
+  if (!t.pasta_drive_url) return false;
+  const raiz = t.pastas?.raiz_parceiro?.file_id;
+  return !(raiz && linkApontaPara(t.pasta_drive_url, raiz));
 }
 
 /** Texto curto de erro técnico: tipo + status + razão, nunca corpo nem token. */
@@ -624,6 +646,10 @@ export async function executarLote(deps: Deps): Promise<{ status: number; corpo:
       if (t.tipo === "revogar") {
         const repetir = await revogarAcessos(ctx, t);
         await concluir(t, repetir ? "transitorio" : "feito", repetir ? { detalhe: "revogacao com falha transitoria" } : {});
+        continue;
+      }
+      if (automaticaJaTinhaPasta(t)) {
+        await concluir(t, "feito", { aviso: "ja_tinha_pasta" });
         continue;
       }
       const avisos =

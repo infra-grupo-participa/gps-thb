@@ -7,7 +7,7 @@
 /** 'revogar' não aparece na tela: é interna (sem aluno, gps.drive_estado não a devolve). */
 export type TipoTarefaDrive = "provisionar_parceiro" | "criar_pasta_cliente" | "compartilhar" | "revogar";
 export type EstadoTarefaDrive = "pendente" | "rodando" | "feito" | "erro";
-export type AvisoDrive = "email_nao_google" | "sem_login" | "documentos_ausente";
+export type AvisoDrive = "email_nao_google" | "sem_login" | "documentos_ausente" | "ja_tinha_pasta";
 
 /** O que a tela mostra. `nenhuma` = nunca pediram (e não há link). */
 export type SituacaoPastaDrive = "nenhuma" | "criando" | "pronta" | "erro";
@@ -67,9 +67,10 @@ export const TEXTO_AVISO: Record<AvisoDrive, string> = {
     "A pasta foi criada, mas o parceiro ainda não tem login no portal, então ninguém recebeu o convite.",
   documentos_ausente:
     "A pasta não tem a subpasta \"1) DOCUMENTOS\"; o parceiro recebeu acesso só à pasta principal e a 5) CLIENTES.",
+  ja_tinha_pasta: "Este aluno já tinha uma pasta ligada. Nada foi criado de novo.",
 };
 
-const AVISOS: readonly AvisoDrive[] = ["email_nao_google", "sem_login", "documentos_ausente"];
+const AVISOS: readonly AvisoDrive[] = ["email_nao_google", "sem_login", "documentos_ausente", "ja_tinha_pasta"];
 
 /** "a,b" → avisos conhecidos, sem repetição. Código desconhecido é ignorado. */
 export function lerAvisos(bruto: unknown): AvisoDrive[] {

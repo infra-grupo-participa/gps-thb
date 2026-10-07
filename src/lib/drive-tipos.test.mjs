@@ -190,7 +190,9 @@ test("estado da tela a partir da última tarefa", () => {
 test("avisos: só os conhecidos, sem repetir", () => {
   assert.deepEqual(t.lerAvisos("email_nao_google,sem_login,email_nao_google,xyz"), ["email_nao_google", "sem_login"]);
   assert.deepEqual(t.lerAvisos(null), []);
-  for (const a of ["email_nao_google", "sem_login", "documentos_ausente"]) assert.ok(t.TEXTO_AVISO[a]);
+  for (const a of ["email_nao_google", "sem_login", "documentos_ausente", "ja_tinha_pasta"]) assert.ok(t.TEXTO_AVISO[a]);
+  assert.deepEqual(t.lerAvisos("ja_tinha_pasta,sem_login,ja_tinha_pasta"), ["ja_tinha_pasta", "sem_login"]);
+  assert.deepEqual(t.situacaoDaLinha({ estado: "feito", aviso: "ja_tinha_pasta", url: "https://drive.google.com/x" }).avisos, ["ja_tinha_pasta"]);
 });
 
 // ── …348: tipo, organizada, revogacao_pendente, desligado ─────────────────

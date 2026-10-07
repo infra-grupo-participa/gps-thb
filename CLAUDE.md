@@ -2529,6 +2529,20 @@ ultima_modificacao_em, ultima_modificacao_por` (só nome; texto com `@` vira nul
 06 → `entrega_pasta`, só com arquivo e etapa não marcada; **sugere, nunca marca**). Item removido perde o `nome` (`…351`; null só em removido). Pai que é pasta do MESMO lote
 espera ser processado antes do filho (`…351`). Excluir cliente
 apaga a lista dele (cascade). Provas `supabase/verificacao-20261005000349.sql`.
+**Pasta nasce sozinha (migração `…364`, 07/10/2026; decisões do João: ao criar o acesso + botão
+da ficha; backfill de TODOS os sem pasta; link anyone da pasta-mãe mantido; convite por e-mail
+mantido).** `drive_tarefas.origem` ∈ manual · nascimento · backfill. Gatilho
+`trg_ambientes_drive_nasceu` (AFTER INSERT em `gps.ambientes`, tudo em `exception`: o cadastro nunca
+cai por causa da fila; sem pg_net) enfileira com a chave `drive_auto_nascimento`. O backfill
+(`gps.drive_backfill_enfileirar`, chamado por `drive_varrer` 1×/min) enfileira os ambientes sem
+link, sem tarefa de parceiro **em qualquer estado** e sem raiz registrada, com
+`drive_backfill_simultaneas` (1..10) e a chave `drive_backfill_ativo`. Quem já errou só volta
+pelo botão. `drive_tarefa_pegar` serve manual/nascimento antes de backfill. O pedido manual
+**assume** a tarefa automática pendente (`drive_provisionar_parceiro`). A edge pula com o aviso
+`ja_tinha_pasta` quando a tarefa automática encontra link colado por outra pessoa. Placar e
+pendências: `gps.drive_pendencias()` (só admin) → card "Pastas do Drive" em
+`/admin/configuracoes`. Ensaio: `supabase/ensaio-20261007000364.sql` (fora de migrations). Para
+desligar: as duas chaves = `false`.
 Idempotência pelo `appProperties.gps_id` no Drive. Actions `src/app/drive/actions.ts`, leitura
 `src/lib/data/drive.ts` (`gps.drive_estado`), script OAuth `scripts/gdrive-ligar.mjs`, provas
 `supabase/verificacao-20261005000347.sql`.

@@ -59,6 +59,8 @@ class Mundo {
   resultadosRevogacao: { id: string; resultado: string }[] = [];
   falhaNoDelete = false;
   recusaMover = false;
+  /** Pedidos a qualquer host Google (OAuth + Drive). */
+  chamadasGoogle = 0;
 
   novoId(): string {
     return `F${String(++this.seq).padStart(12, "0")}`;
@@ -102,8 +104,12 @@ function deps(m: Mundo): Deps {
   const fetchFalso = async (entrada: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = new URL(String(entrada));
     const metodo = init?.method ?? "GET";
-    if (url.hostname === "oauth2.googleapis.com") return resposta(200, { access_token: "t", expires_in: 3600 });
+    if (url.hostname === "oauth2.googleapis.com") {
+      m.chamadasGoogle++;
+      return resposta(200, { access_token: "t", expires_in: 3600 });
+    }
     const corpo = init?.body ? JSON.parse(String(init.body)) : {};
+    if (url.origin !== SB) m.chamadasGoogle++;
 
     if (url.origin === SB) {
       const nome = url.pathname.split("/").pop();
@@ -593,4 +599,70 @@ D.test("arquivar: recusa raiz, matriz, arquivo que não é pasta e id inválido"
   igual(m.conclusoes.map((c) => c.resultado), ["erro", "erro", "erro", "erro"]);
   igual(m.escritas, 0);
   igual(m.arquivos.get(RAIZ_PADRAO)!.parents, ["root"], "raiz intocada");
+});
+
+// …364: tarefa automática (nascimento/backfill) com link colado depois do enfileiramento.
+D.test("backfill/nascimento com link já colado: feito ja_tinha_pasta, sem tocar no Google", async () => {
+  const m = new Mundo();
+  const colada = m.add({ name: "Pasta feita à mão", mimeType: PASTA, parents: [RAIZ_PADRAO] });
+  for (const origem of ["backfill", "nascimento"]) {
+    m.fila.push(tarefa({
+      origem,
+      solicitado_por_admin: false,
+      pasta_drive_origem: "equipe",
+      pasta_drive_url: `https://drive.google.com/drive/folders/${colada.id}`,
+    }));
+  }
+  const r = await chamar(m);
+  igual(r.status, 200);
+  igual(m.conclusoes, [
+    { resultado: "feito", erro: null, aviso: "ja_tinha_pasta" },
+    { resultado: "feito", erro: null, aviso: "ja_tinha_pasta" },
+  ]);
+  igual(m.chamadasGoogle, 0, "nenhum pedido ao Google");
+  igual(m.registros.length, 0, "nada registrado");
+  igual(m.links.length, 0, "link não regravado");
+  igual(m.perms.size, 0, "nada compartilhado");
+});
+
+D.test("backfill retomado depois de gravar o próprio link: segue e compartilha (não é ja_tinha_pasta)", async () => {
+  const m = new Mundo();
+  m.fila.push(tarefa({ origem: "backfill", solicitado_por_admin: false }));
+  await chamar(m);
+  igual(m.conclusoes.map((c) => c.resultado), ["feito"]);
+  const raiz = m.registros.find((x) => x.papel === "raiz_parceiro")!;
+  // Queda depois de gravar o link e antes do convite: some a permissão.
+  m.perms.clear();
+  m.conclusoes = [];
+  m.chamadasGoogle = 0;
+  m.fila.push(tarefaCliente(m, {
+    tipo: "provisionar_parceiro",
+    cliente_id: null,
+    origem: "backfill",
+    solicitado_por_admin: false,
+    pasta_drive_url: `https://drive.google.com/drive/folders/${raiz.file_id}`,
+  }));
+  await chamar(m);
+  igual(m.conclusoes.length, 1);
+  igual(m.conclusoes[0].resultado, "feito");
+  ok(m.conclusoes[0].aviso !== "ja_tinha_pasta", "não pulou a própria pasta");
+  ok(m.chamadasGoogle > 0, "foi ao Drive");
+  igual(m.perms.get(raiz.file_id)?.map((p) => p.role), ["reader"], "convite refeito");
+});
+
+D.test("manual (ou origem ausente) com link colado: comportamento antigo, adota pelo Drive", async () => {
+  for (const origem of ["manual", undefined]) {
+    const m = new Mundo();
+    const colada = m.add({ name: "Pasta feita à mão", mimeType: PASTA, parents: [RAIZ_PADRAO] });
+    m.fila.push(tarefa({
+      origem,
+      pasta_drive_origem: "equipe",
+      pasta_drive_url: `https://drive.google.com/drive/folders/${colada.id}`,
+    }));
+    await chamar(m);
+    igual(m.conclusoes.map((c) => c.resultado), ["feito"], `origem ${origem}`);
+    ok(m.conclusoes[0].aviso !== "ja_tinha_pasta", `origem ${origem}: não pulou`);
+    ok(m.chamadasGoogle > 0, `origem ${origem}: foi ao Drive`);
+    igual(m.registros.find((x) => x.papel === "raiz_parceiro")?.adotada, true, `origem ${origem}: adotou`);
+  }
 });

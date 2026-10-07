@@ -80,7 +80,7 @@ export function PastaDriveAdmin({
         </div>
         <EstadoPasta
           estado={estado.parceiro}
-          textoCriando="Criando a pasta no Drive. Leva de 30 a 60 segundos; pode ficar nesta tela."
+          textoCriando="Criando a pasta no Drive. Leva de 3 a 7 minutos; pode ficar nesta tela."
           mostrarLink={false}
           mostrarAvisos
           parou={parou}
@@ -102,7 +102,7 @@ export function PastaDriveAdmin({
         consequencia={
           temLink
             ? "O sistema confere a pasta já vinculada, cria o que falta e compartilha com o titular. Nada é apagado."
-            : "O sistema cria a pasta no Drive e compartilha com o titular. Leva de 30 a 60 segundos."
+            : "O sistema cria a pasta no Drive e compartilha com o titular. Leva de 3 a 7 minutos."
         }
         rotuloConfirmar={rotulo}
         rotuloConfirmando="Enviando…"

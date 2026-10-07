@@ -7,12 +7,16 @@ export const INTERVALOS_BASE_MS = [5000, 10000, 20000, 30000] as const;
 /** Maior intervalo entre duas releituras. */
 export const TETO_INTERVALO_MS = 30000;
 
-/** Tempo ATIVO (aba visível) depois do qual a releitura automática para. */
-export const TOTAL_MAXIMO_MS = 180000;
+/**
+ * Tempo ATIVO (aba visível) depois do qual a releitura automática para.
+ * 10 min (07/10/2026): a edge leva ~7 min por pasta (várias passadas); com
+ * 3 min a tela desistia antes de a pasta ficar pronta.
+ */
+export const TOTAL_MAXIMO_MS = 600000;
 
 /**
  * Esperas entre as releituras, na ordem, sem passar do total. Com os valores
- * padrão: 5, 10, 20, 30, 30, 30, 30 s (155 s).
+ * padrão: 5, 10, 20 e 18 × 30 s (575 s); a espera final fecha os 600 s.
  */
 export function agendaDeIntervalos(
   totalMs: number = TOTAL_MAXIMO_MS,

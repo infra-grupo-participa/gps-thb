@@ -17,7 +17,7 @@ export const TEXTO_PAROU =
 
 /**
  * Releitura da página ENQUANTO `criando`, com recuo progressivo (5, 10, 20 e
- * 30 s) e parada depois de 3 min de aba visível (`src/lib/atualizar-pasta.ts`).
+ * 30 s) e parada depois de 10 min de aba visível (`src/lib/atualizar-pasta.ts`).
  * Aba oculta pausa o relógio; ao voltar, retoma do passo em que estava. Ao
  * parar, `parou` vira `true` e `atualizarAgora` faz uma releitura e reinicia o
  * ciclo. Tudo morre quando `criando` vira `false` e no unmount.

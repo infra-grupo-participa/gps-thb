@@ -5,8 +5,10 @@ import { formatarDataHora } from "@/lib/datas";
 import { Secao } from "@/components/ui/secao";
 
 /**
- * Card "Pastas do Drive" em /admin/configuracoes — andamento da criação
- * automática das pastas dos alunos (`gps.drive_pendencias`).
+ * Bloco "Andamento" em /admin/pastas (07/10/2026; antes era o card "Pastas do
+ * Drive" em /admin/configuracoes) — andamento da criação automática das
+ * pastas dos alunos (`gps.drive_pendencias`). O título da página já diz
+ * "Pastas do Drive"; repetir aqui faria dois títulos iguais.
  *
  * Server Component, sem JS no cliente: a página lê UMA vez e passa por prop.
  * Público: equipe mais velha → texto em 16 px (`text-base`), frases curtas.
@@ -47,7 +49,7 @@ const PLACAR: { chave: keyof PendenciasDrive["placar"]; rotulo: string }[] = [
 
 export function PastasDriveAdmin({ dados }: { dados: PendenciasDrive | null }) {
   return (
-    <Secao titulo="Pastas do Drive" className="mt-10">
+    <Secao titulo="Andamento" className="mt-8">
       {dados === null ? (
         <p role="alert" className="rounded-lg border px-4 py-3 text-base text-destructive">
           Não deu para carregar as pastas agora. Recarregue a página daqui a pouco.

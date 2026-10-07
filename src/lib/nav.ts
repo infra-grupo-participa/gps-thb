@@ -610,6 +610,10 @@ export function adminNavItems(
         // `/admin/operadores` existiria completa e só seria alcançável
         // digitando a URL.
         { href: "/admin/operadores", label: "Operadores" },
+        // Pastas do Drive (07/10/2026): placar da criação automática + os
+        // alunos antigos sem pasta, que ganham a pasta por clique. 🔴 PORTA
+        // DE ENTRADA da tela — só no ramo `souAdmin` (a RPC é só admin).
+        { href: "/admin/pastas", label: "Pastas" },
       ],
     },
   ];

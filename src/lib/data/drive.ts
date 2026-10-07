@@ -37,8 +37,8 @@ export async function getEstadoDrive(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Andamento da criação automática (card "Pastas do Drive" em
-// /admin/configuracoes). Fonte: `gps.drive_pendencias()` — só admin (42501
+// Andamento da criação automática (página /admin/pastas, 07/10/2026; antes
+// era um card em /admin/configuracoes). Fonte: `gps.drive_pendencias()` — só admin (42501
 // para os outros). UMA chamada por carregamento; a lista já vem pronta do
 // banco, nada de query por linha.
 // ─────────────────────────────────────────────────────────────────────────
@@ -61,13 +61,26 @@ export interface PendenciaDrive {
   atualizadoEm: string | null;
 }
 
+/** Ambiente sem pasta e sem tarefa — ganha a pasta por clique (decisão do João, 07/10). */
+export interface AlunoSemPasta {
+  alunoId: string;
+  nome: string;
+  /** `false` = e-mail do login não é Google: a pasta nasce sem compartilhar. */
+  emailGoogle: boolean;
+  criadoEm: string | null;
+}
+
 export interface PendenciasDrive {
   placar: PlacarDrive;
   itens: PendenciaDrive[];
+  /** Chave `sem_pasta` da RPC; ausente (migration ainda não aplicada) = `[]`. */
+  semPasta: AlunoSemPasta[];
 }
 
 /** Teto da lista na tela (o contrato da RPC fala em até 200). */
 const MAX_PENDENCIAS = 200;
+/** Teto de `sem_pasta` (o contrato da RPC fala em até 300, por nome). */
+const MAX_SEM_PASTA = 300;
 
 function numero(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
@@ -90,7 +103,11 @@ export async function getPendenciasDrive(): Promise<PendenciasDrive | null> {
     return null;
   }
 
-  const r = (data ?? {}) as { placar?: Record<string, unknown> | null; itens?: unknown };
+  const r = (data ?? {}) as {
+    placar?: Record<string, unknown> | null;
+    itens?: unknown;
+    sem_pasta?: unknown;
+  };
   const p = r.placar ?? {};
   const itensBrutos = Array.isArray(r.itens) ? r.itens : [];
 
@@ -110,6 +127,22 @@ export async function getPendenciasDrive(): Promise<PendenciasDrive | null> {
     });
   }
 
+  const semPasta: AlunoSemPasta[] = [];
+  const semPastaBrutos = Array.isArray(r.sem_pasta) ? r.sem_pasta : [];
+  for (const bruto of semPastaBrutos) {
+    if (semPasta.length >= MAX_SEM_PASTA) break;
+    const i = (bruto ?? {}) as Record<string, unknown>;
+    const alunoId = typeof i.aluno_id === "string" && UUID_RE.test(i.aluno_id) ? i.aluno_id : null;
+    if (!alunoId) continue;
+    semPasta.push({
+      alunoId,
+      nome: textoOuNulo(i.nome) ?? "Aluno sem nome",
+      // Só `false` explícito acende o aviso: dado ausente não afirma nada.
+      emailGoogle: i.email_google !== false,
+      criadoEm: textoOuNulo(i.criado_em),
+    });
+  }
+
   return {
     placar: {
       feitas: numero(p.feitas),
@@ -118,5 +151,6 @@ export async function getPendenciasDrive(): Promise<PendenciasDrive | null> {
       faltando: numero(p.faltando),
     },
     itens,
+    semPasta,
   };
 }

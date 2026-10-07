@@ -1,12 +1,11 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
 import { getInterruptores } from "@/lib/data/config";
-import { getPendenciasDrive } from "@/lib/data/drive";
 import { adminNavItems } from "@/lib/nav";
 import { AppHeader } from "@/components/app-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { InterruptoresAdmin } from "@/components/admin/interruptores";
-import { PastasDriveAdmin } from "@/components/admin/pastas-drive";
 
 export const metadata = { title: "Admin — Interruptores" };
 
@@ -25,12 +24,9 @@ export default async function AdminConfiguracoesPage() {
   if (!ctx) redirect("/login");
   if (ctx.papel !== "admin") redirect("/");
 
-  // Uma chamada de cada por carregamento, em paralelo. A do Drive devolve
-  // `null` em falha (o card mostra aviso; a página não cai).
-  const [interruptores, pendenciasDrive] = await Promise.all([
-    getInterruptores(),
-    getPendenciasDrive(),
-  ]);
+  // O card do Drive foi para /admin/pastas (07/10/2026): aqui fica só o
+  // link, e a página deixa de chamar `gps.drive_pendencias`.
+  const interruptores = await getInterruptores();
 
   return (
     <>
@@ -48,7 +44,14 @@ export default async function AdminConfiguracoesPage() {
 
         <InterruptoresAdmin interruptores={interruptores} />
 
-        <PastasDriveAdmin dados={pendenciasDrive} />
+        <p className="mt-10 text-base">
+          <Link
+            href="/admin/pastas"
+            className="font-medium text-accent-foreground underline-offset-4 hover:underline"
+          >
+            Pastas do Drive →
+          </Link>
+        </p>
       </main>
     </>
   );

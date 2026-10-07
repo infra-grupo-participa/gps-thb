@@ -15,13 +15,20 @@ export function GeradorMinutasMoldura({
   acao,
   children,
   className,
+  dica,
+  ref,
 }: {
   acao?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** Troca o subtítulo (ex.: "aperte Esc para voltar" em tela cheia). */
+  dica?: string;
+  /** Elemento que vai para tela cheia (`GeradorMinutasQuadro`). */
+  ref?: React.Ref<HTMLElement>;
 }) {
   return (
     <section
+      ref={ref}
       aria-labelledby="gerador-titulo"
       className={cn(
         "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-white",
@@ -38,9 +45,15 @@ export function GeradorMinutasMoldura({
           </h1>
           {/* No celular a frase quebrava em 2 linhas e roubava ~50 px do
               gerador; o nome já diz onde a pessoa está. */}
-          <p className="hidden text-base text-muted-foreground sm:block">
-            Suas minutas e casos, sem sair do Programa
-          </p>
+          {dica ? (
+            <p className="text-base text-muted-foreground" aria-live="polite">
+              {dica}
+            </p>
+          ) : (
+            <p className="hidden text-base text-muted-foreground sm:block">
+              Suas minutas e casos, sem sair do Programa
+            </p>
+          )}
         </div>
         {acao ? <div className="shrink-0">{acao}</div> : null}
       </div>

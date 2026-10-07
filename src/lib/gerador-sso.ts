@@ -13,7 +13,7 @@ import { logErro } from "@/lib/log";
  * não manda `#…` ao servidor, então ele não cai em log de acesso nem em
  * `Referer`.
  *
- * Quem chama (`page.tsx`, `/gerador-de-minutas/abrir`) já validou a sessão
+ * Quem chama (`page.tsx`) já validou a sessão
  * com `getContextoSessao()` (`getUser`). A edge e o PostgREST revalidam o JWT.
  *
  * 🔒 O token NUNCA é logado. Falha (sem ambiente, e-mail ≠ cadastro, admin,
@@ -26,7 +26,7 @@ const ORIGEM_PADRAO = "https://gmthb.holdingmasters.com.br";
 const origemEnv = process.env.GERADOR_MINUTAS_ORIGEM?.trim();
 export const GERADOR_ORIGEM =
   origemEnv && /^https:\/\/[a-z0-9.-]+$/i.test(origemEnv) ? origemEnv : ORIGEM_PADRAO;
-export const GERADOR_DASHBOARD_URL = `${GERADOR_ORIGEM}/dashboard`;
+const GERADOR_DASHBOARD_URL = `${GERADOR_ORIGEM}/dashboard`;
 
 /** Forma de JWT (3 partes base64url). Qualquer outra coisa não entra na URL. */
 const FORMA_JWT = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;

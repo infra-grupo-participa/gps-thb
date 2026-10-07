@@ -8,8 +8,10 @@
 ## 1. O que o parceiro vê
 
 Aba **"Gerador de minutas"** (só para o parceiro: titular ou sócio). A aba abre o
-gerador **embutido** e já **logado**, sem pedir senha. O botão "tela cheia" abre
-o mesmo acesso numa aba nova (`/gerador-de-minutas/abrir`).
+gerador **embutido** e já **logado**, sem pedir senha. O botão "Tela cheia" põe a
+própria janela em tela cheia (Fullscreen API; o iframe não recarrega), e o Esc volta. Sem a
+API (iPhone), a janela cobre a tela por CSS e o botão vira "Sair da tela cheia".
+(A rota `/gerador-de-minutas/abrir`, que abria aba nova, foi removida em 07/10.)
 
 A equipe **não** entra por aqui: ela usa o login próprio do gerador.
 
@@ -45,8 +47,8 @@ página /sso do gerador ──> edge sso-exchange (gerador) ──> token_hash �
      "Sim, ligar minha conta"** (nunca liga sozinho). É a trava contra tomada de conta: o
      GPS confirma e-mail sozinho (`mailer_autoconfirm`).
 - **Login CSRF:** a página `/sso` só entra sozinha quando o `Referer` é a origem do GPS
-  (o iframe manda `strict-origin-when-cross-origin`; `/gerador-de-minutas/abrir` responde
-  `Referrer-Policy: strict-origin`). Vindo de outro lugar, pergunta "Entrar como <e-mail>?".
+  (o iframe manda `strict-origin-when-cross-origin`). Vindo de outro lugar, pergunta
+  "Entrar como <e-mail>?".
 - Conta da equipe no gerador → 403; conta bloqueada → 403.
 
 **Criar login de quem não tem:** acontece **sozinho na primeira entrada** (passo 2).
@@ -70,6 +72,8 @@ normalizado e últimos 9 dígitos do WhatsApp (207 logins do GPS):
 | Outra conta com mesmo nome/telefone | 3 | conciliados à mão (abaixo) |
 
 Casos feitos à mão (vínculo `conciliado` em `sso_vinculos`, tipo novo no CHECK do gerador):
+- **Luiz Fernando Z. N.:** 2 acessos no GPS criados em 06/10, ambos vazios. Mantido o da
+  planilha da Central; o cadastro manual removido (lixeira). Aviso a ele no ClickUp.
 - **Luigi G.:** acesso do GPS ligado à conta que ele já tinha no gerador com outro e-mail.
 - **Roberta N.:** tinha 2 acessos no GPS. Mantido o de 29/09 (cliente + questionário
   feito); o contrato HM (`cs.contatos_hm`) passou para ele; o acesso vazio de 02/10 foi
@@ -124,8 +128,8 @@ Os dois aparecem na tela de interruptores do admin.
 
 1. `GERADOR_MINUTAS_ORIGEM=<origem do gerador> npx next dev -p 3991` (a origem também
    entra no `frame-src`). A prévia da Lovable (`id-preview--…`) **exige login na Lovable
-   e não abre em iframe**: para testar a troca, chamar a `sso-exchange` direto com o passe
-   de `/gerador-de-minutas/abrir` e fazer `verifyOtp` (roteiro em §6).
+   e não abre em iframe**: para testar a troca, ler o passe do `src` do iframe em
+   `/gerador-de-minutas`, chamar a `sso-exchange` direto e fazer `verifyOtp` (roteiro em §6).
 2. **Push não chega em Chrome de automação** (Playwright/CDP): o Google aceita (201) e o
    aviso não aparece, mesmo com a biblioteca de referência `web-push`. Testar com o
    **Microsoft Edge** (`channel: "msedge"`, `ignoreDefaultArgs:

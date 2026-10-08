@@ -34,13 +34,23 @@ export type EstadoAgendar =
       tipo: "A";
       sessaoTipo: SessaoTipo;
       horarios: HorarioLivre[];
+      /** Já ocupados por outros alunos — só leitura na grade. */
+      reservados: HorarioLivre[];
       clienteNome: string;
       /** `null` = a leitura dos decisores falhou. */
       decisores: { nomes: string[]; exigeTodos: boolean } | null;
       /** Resposta de `presenca_decisores` na entrevista do `?e=`, se houver. */
       presenca: string | null;
     }
-  | { tipo: "B" }
+  | {
+      tipo: "B";
+      /** Sem livres, mas com reservados a mostrar (só leitura). */
+      reservadosNaGrade?: {
+        sessaoTipo: SessaoTipo;
+        clienteNome: string;
+        reservados: HorarioLivre[];
+      };
+    }
   | { tipo: "C1" }
   | { tipo: "C2"; clienteAcompanhadoId: string }
   | { tipo: "C3"; nomeDoTipo: string | null; etapaDoTipo: number | null }
@@ -113,16 +123,6 @@ function BannerSugestao({ estado, data }: { estado: EstadoAgendar; data: string 
   );
 }
 
-/**
- * O dia sugerido primeiro, o resto na ordem da RPC. `GradeHorarios` agrupa
- * por dia na ordem de chegada, então reordenar a lista basta para "abrir" no
- * dia combinado — sem mexer no componente que `/sessoes` usa.
- */
-function comDiaPrimeiro(horarios: HorarioLivre[], data: string | null): HorarioLivre[] {
-  if (!data) return horarios;
-  return [...horarios.filter((h) => h.data === data), ...horarios.filter((h) => h.data !== data)];
-}
-
 function Corpo({ estado, dataSugerida }: { estado: EstadoAgendar; dataSugerida: string | null }) {
   switch (estado.tipo) {
     case "E":
@@ -183,7 +183,23 @@ function Corpo({ estado, dataSugerida }: { estado: EstadoAgendar; dataSugerida: 
       );
 
     case "B":
-      return <SemHorario motivo="sem-horario" semanas={SEMANAS_DA_JANELA} />;
+      return (
+        <div className="grid gap-4">
+          <SemHorario
+            motivo="sem-horario"
+            semanas={SEMANAS_DA_JANELA}
+            temReservados={(estado.reservadosNaGrade?.reservados.length ?? 0) > 0}
+          />
+          {estado.reservadosNaGrade?.reservados.length ? (
+            <GradeHorarios
+              tipo={estado.reservadosNaGrade.sessaoTipo}
+              horarios={[]}
+              reservados={estado.reservadosNaGrade.reservados}
+              clienteNome={estado.reservadosNaGrade.clienteNome}
+            />
+          ) : null}
+        </div>
+      );
 
     case "A":
       return (
@@ -191,7 +207,9 @@ function Corpo({ estado, dataSugerida }: { estado: EstadoAgendar; dataSugerida: 
           <BannerDecisores decisores={estado.decisores} presenca={estado.presenca} />
           <GradeHorarios
             tipo={estado.sessaoTipo}
-            horarios={comDiaPrimeiro(estado.horarios, dataSugerida)}
+            horarios={estado.horarios}
+            reservados={estado.reservados}
+            diaPrimeiro={dataSugerida}
             clienteNome={estado.clienteNome}
           />
         </div>

@@ -35,6 +35,11 @@ export interface BlocoDeTipo {
   jaMarcada: SessaoAgendamento | null;
   elegivel: { clienteId: string | null; falhou: boolean } | null;
   horarios: HorarioLivre[];
+  /**
+   * Blocos já ocupados por outros alunos — só para a grade mostrar. NÃO entram
+   * em `causaDoVazio`: grade com 0 livres e N reservados continua "sem-horario".
+   */
+  reservados?: HorarioLivre[];
   erro?: string;
 }
 

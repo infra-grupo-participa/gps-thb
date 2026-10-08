@@ -20,6 +20,7 @@ import { getNomesEDiscLeve } from "@/lib/data/clientes";
 import { getDecisoresPendentes } from "@/lib/data/entrevista-previa";
 import {
   getHorariosLivres,
+  getHorariosReservados,
   getMapaDeResponsaveis,
   getSessoesDoAmbiente,
   getTiposDeSessaoAtivos,
@@ -248,7 +249,10 @@ export default async function SessoesPage() {
       // paralelo: a causa do vazio deles (`nao-elegivel`/`etapa-fechada`)
       // depende da elegibilidade.
       if (tipo.etapa_id === null) {
-        const grade = await getHorariosLivres({ tipoId: tipo.id });
+        const [grade, ocupados] = await Promise.all([
+          getHorariosLivres({ tipoId: tipo.id }),
+          getHorariosReservados({ tipoId: tipo.id }),
+        ]);
         const elegibilidade =
           grade.erro || grade.horarios.length === 0
             ? null
@@ -258,13 +262,15 @@ export default async function SessoesPage() {
           jaMarcada: null,
           elegivel: elegibilidade,
           horarios: grade.horarios,
+          reservados: ocupados.horarios,
           erro: grade.erro,
         };
       }
 
-      const [elegibilidade, grade] = await Promise.all([
+      const [elegibilidade, grade, ocupados] = await Promise.all([
         getClienteElegivel(alunoId, tipo.id),
         getHorariosLivres({ tipoId: tipo.id }),
+        getHorariosReservados({ tipoId: tipo.id }),
       ]);
 
       return {
@@ -272,6 +278,7 @@ export default async function SessoesPage() {
         jaMarcada: null,
         elegivel: elegibilidade,
         horarios: grade.horarios,
+        reservados: ocupados.horarios,
         erro: grade.erro,
       };
     }),
@@ -636,6 +643,7 @@ function BlocoDoTipo({
   linkPorEquipe: boolean | null;
 }) {
   const { tipo, jaMarcada, elegivel, horarios, erro } = bloco;
+  const reservados = bloco.reservados ?? [];
 
   if (jaMarcada) {
     // 🔑 CARD ÚNICO, sem cabeçalho de seção próprio: a Zona 2 já tem o
@@ -700,8 +708,21 @@ function BlocoDoTipo({
             // componente faria o bloco da Entrevista mentir a etapa.
             nomeDoTipo={tipo.nome}
             etapaDoTipo={tipo.etapa_id}
+            temReservados={causa === "sem-horario" && reservados.length > 0}
           />
         </div>
+        {/* Sem horário LIVRE, mas com reservados: a frase acima segue valendo
+            e a grade mostra só o que já foi pego (nada clicável). */}
+        {causa === "sem-horario" && reservados.length > 0 ? (
+          <div className="mt-4">
+            <GradeHorarios
+              tipo={tipo}
+              horarios={[]}
+              reservados={reservados}
+              clienteNome="seu cliente"
+            />
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -752,6 +773,7 @@ function BlocoDoTipo({
         <GradeHorarios
           tipo={tipo}
           horarios={horarios}
+          reservados={reservados}
           clienteNome={
             (elegivel?.clienteId ? clientes.get(elegivel.clienteId) : null) ??
             "seu cliente"

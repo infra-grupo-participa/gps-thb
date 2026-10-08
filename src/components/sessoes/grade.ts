@@ -25,6 +25,7 @@
  */
 
 import { formatarDataSoDia } from "@/lib/datas";
+import type { ItemDaGrade } from "@/components/sessoes/juntar-grade";
 import type { HorarioLivre, SessaoAgendamento } from "@/lib/sessoes-tipos";
 
 /**
@@ -151,6 +152,31 @@ export function agruparPorDia(horarios: HorarioLivre[]): DiaDaGrade[] {
     data,
     rotulo: rotuloDoDia(data),
     horarios: lista,
+  }));
+}
+
+/** Um dia da grade com livres E reservados (ver `juntar-grade.ts`). */
+export interface DiaDaGradeComReservas {
+  data: string;
+  rotulo: string;
+  itens: ItemDaGrade[];
+}
+
+/**
+ * Agrupa itens JÁ ordenados (`juntarLivresEReservados`) por dia, na ordem de
+ * chegada — mesma regra de `agruparPorDia`, sem `sort` próprio.
+ */
+export function agruparItensPorDia(itens: ItemDaGrade[]): DiaDaGradeComReservas[] {
+  const porDia = new Map<string, ItemDaGrade[]>();
+  for (const i of itens) {
+    const lista = porDia.get(i.horario.data);
+    if (lista) lista.push(i);
+    else porDia.set(i.horario.data, [i]);
+  }
+  return Array.from(porDia, ([data, lista]) => ({
+    data,
+    rotulo: rotuloDoDia(data),
+    itens: lista,
   }));
 }
 

@@ -142,6 +142,43 @@ export async function getHorariosLivres(params: {
 }
 
 /**
+ * Os blocos JÁ RESERVADOS por outros alunos — `gps.sessao_horarios_reservados`,
+ * mesmos parâmetros e colunas de `sessao_horarios_livres`. Serve só para a grade
+ * MOSTRAR por que um horário não está livre.
+ *
+ * 🔴 Falha aqui NUNCA quebra a grade: informação auxiliar. Em erro devolve `[]`
+ * e registra no log; não há campo `erro` para a tela propagar. (Consequência:
+ * falha vira "sem reservados", o que é a tela de antes — nunca um veredito.)
+ */
+export async function getHorariosReservados(params: {
+  tipoId: number;
+  responsavelId?: string;
+  de?: string;
+  ate?: string;
+}): Promise<{ horarios: HorarioLivre[] }> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .schema("gps")
+      .rpc("sessao_horarios_reservados", {
+        p_tipo_id: params.tipoId,
+        p_responsavel_id: params.responsavelId ?? null,
+        p_de: params.de ?? null,
+        p_ate: params.ate ?? null,
+      });
+
+    if (error) {
+      logErro("getHorariosReservados", error, { tipoId: params.tipoId });
+      return { horarios: [] };
+    }
+    return { horarios: (data ?? []) as HorarioLivre[] };
+  } catch (e) {
+    logErro("getHorariosReservados", e, { tipoId: params.tipoId });
+    return { horarios: [] };
+  }
+}
+
+/**
  * As sessões do AMBIENTE do usuário logado (titular e sócio veem as mesmas —
  * `aluno_id` é o ambiente, não a pessoa). A RLS (`gps_sessao_agend_aluno_select`)
  * já restringe a `aluno_id = gps.aluno_atual()`; este filtro por `estado` é

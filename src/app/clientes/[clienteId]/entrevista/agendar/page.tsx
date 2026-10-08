@@ -15,7 +15,11 @@ import { getContextoSessao } from "@/lib/auth";
 import { hojeSaoPaulo } from "@/lib/datas";
 import { getAlunoById, getClienteById } from "@/lib/data";
 import { getDecisoresPendentes, getEntrevistaEmAberto } from "@/lib/data/entrevista-previa";
-import { getHorariosLivres, getTiposDeSessaoAtivos } from "@/lib/data/sessoes";
+import {
+  getHorariosLivres,
+  getHorariosReservados,
+  getTiposDeSessaoAtivos,
+} from "@/lib/data/sessoes";
 import { mapearDecisores } from "@/lib/entrevista-previa-calculo";
 import { navDoAluno } from "@/lib/nav";
 import { TIPO_REUNIAO_PRELIMINAR } from "@/lib/sessoes-tipos";
@@ -98,19 +102,24 @@ export default async function AgendarPreliminarPage({
       : { tipo: "C1" };
   } else {
     // Elegível e é este cliente: só agora se pede a grade e os decisores.
-    const [grade, decisores] = await Promise.all([
+    const [grade, ocupados, decisores] = await Promise.all([
       getHorariosLivres({ tipoId: TIPO_REUNIAO_PRELIMINAR }),
+      getHorariosReservados({ tipoId: TIPO_REUNIAO_PRELIMINAR }),
       getDecisoresPendentes(clienteId),
     ]);
     if (grade.erro) {
       estado = { tipo: "E" };
     } else if (grade.horarios.length === 0) {
-      estado = { tipo: "B" };
+      estado = {
+        tipo: "B",
+        reservadosNaGrade: { sessaoTipo, clienteNome, reservados: ocupados.horarios },
+      };
     } else {
       estado = {
         tipo: "A",
         sessaoTipo,
         horarios: grade.horarios,
+        reservados: ocupados.horarios,
         clienteNome,
         decisores: decisores
           ? {

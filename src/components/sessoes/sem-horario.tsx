@@ -90,6 +90,7 @@ export function SemHorario({
   href,
   nomeDoTipo,
   etapaDoTipo,
+  temReservados = false,
 }: {
   motivo: "nao-elegivel" | "etapa-fechada" | "sem-horario";
   /**
@@ -129,6 +130,11 @@ export function SemHorario({
    * a frase cai numa redação sem número, que continua verdadeira.
    */
   etapaDoTipo?: number | null;
+  /**
+   * Há horários da grade, mas todos já reservados por outros alunos. Troca a
+   * frase "a equipe não tem horário" (falsa nesse caso) por uma verdadeira.
+   */
+  temReservados?: boolean;
 }) {
   if (motivo === "etapa-fechada") {
     // A Entrevista Prévia não pode se oferecer como "o que dá para adiantar"
@@ -224,7 +230,9 @@ export function SemHorario({
   return (
     <div className="border border-borda-fina px-4 py-4">
       <p className="corpo font-medium text-foreground">
-        A equipe não tem horário nas próximas {semanas} semanas.
+        {temReservados
+          ? `Todos os horários das próximas ${semanas} semanas já estão reservados.`
+          : `A equipe não tem horário nas próximas ${semanas} semanas.`}
       </p>
       <p className="mt-1 corpo-sm text-muted-foreground">
         Novos horários aparecem aqui quando a equipe publicar.

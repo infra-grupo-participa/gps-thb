@@ -7,11 +7,13 @@ import { agendarSessao } from "@/app/sessoes/actions";
 import { Button } from "@/components/ui/button";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import {
+  agruparItensPorDia,
   agruparPorDia,
   formatarDuracao,
   horaDeTime,
   horaFimDeBloco,
 } from "@/components/sessoes/grade";
+import { juntarLivresEReservados } from "@/components/sessoes/juntar-grade";
 import type { HorarioLivre, SessaoTipo } from "@/lib/sessoes-tipos";
 
 /** Quantos dias a grade mostra de início, e quantos cada "Ver mais" soma. */
@@ -59,11 +61,22 @@ const DIAS_POR_VEZ = 5;
 export function GradeHorarios({
   tipo,
   horarios,
+  reservados = [],
+  diaPrimeiro = null,
   clienteNome,
   nomeDaResponsavel,
 }: {
   tipo: SessaoTipo;
   horarios: HorarioLivre[];
+  /**
+   * Blocos já ocupados por outros alunos. Aparecem desabilitados, com o texto
+   * "Reservado" — só para o aluno entender por que o horário não está livre.
+   * Nunca selecionáveis. Reservado com o mesmo início e responsável de um
+   * livre é ignorado (vale o livre).
+   */
+  reservados?: HorarioLivre[];
+  /** Dia ("YYYY-MM-DD") que abre a lista; o resto segue cronológico. */
+  diaPrimeiro?: string | null;
   /** Nome do cliente favoritado — é sobre ele que a sessão acontece. */
   clienteNome: string;
   /**
@@ -96,7 +109,8 @@ export function GradeHorarios({
   const focarDia = useRef<string | null>(null);
   const gradeRef = useRef<HTMLDivElement>(null);
 
-  const dias = agruparPorDia(horarios);
+  const itens = juntarLivresEReservados(horarios, reservados, diaPrimeiro);
+  const dias = agruparItensPorDia(itens);
 
   // O nome vem NA PRÓPRIA LINHA do horário (`responsavel_nome`, 2ª coluna da
   // RPC). O mapa por prop continua aceito como sobreposição, mas não é mais a
@@ -116,8 +130,8 @@ export function GradeHorarios({
   // Duração e responsável saem do botão quando são os MESMOS na grade
   // inteira: repetir "40 min · Marco" em 300 botões é ruído. A duração vem de
   // `duracao_min` de cada horário (a mesma fonte do diálogo), nunca de literal.
-  const nomes = new Set(horarios.map(nomeDe));
-  const duracoes = new Set(horarios.map((h) => h.duracao_min));
+  const nomes = new Set(itens.map((i) => nomeDe(i.horario)));
+  const duracoes = new Set(itens.map((i) => i.horario.duracao_min));
   const nomeUnico = nomes.size === 1 ? [...nomes][0] : null;
   const duracaoUnica =
     duracoes.size === 1 ? formatarDuracao([...duracoes][0]) : "";
@@ -137,9 +151,25 @@ export function GradeHorarios({
     const dia = focarDia.current;
     if (!dia) return;
     focarDia.current = null;
-    gradeRef.current
-      ?.querySelector<HTMLButtonElement>(`[data-dia="${dia}"] button`)
-      ?.focus();
+    // Dias revelados = do primeiro novo até o fim da tela. Foca o 1º botão
+    // HABILITADO entre eles; dia só com reservados não tem nenhum, então cai
+    // no cabeçalho do primeiro dia revelado (tabIndex -1) — nunca no body.
+    const todos = Array.from(
+      gradeRef.current?.querySelectorAll<HTMLElement>("[data-dia]") ?? [],
+    );
+    const reveladas = todos.slice(
+      Math.max(0, todos.findIndex((el) => el.dataset.dia === dia)),
+    );
+    for (const el of reveladas) {
+      const botao = el.querySelector<HTMLButtonElement>(
+        "button:not([disabled])",
+      );
+      if (botao) {
+        botao.focus();
+        return;
+      }
+    }
+    reveladas[0]?.querySelector<HTMLElement>("[data-cab-dia]")?.focus();
   }, [diasVisiveis]);
 
   function confirmar() {
@@ -193,7 +223,11 @@ export function GradeHorarios({
             >
               {/* O dia: posição e peso de rótulo, não de título de seção. A
                   data fica com o ano: a janela de ~2 meses pode virar o ano. */}
-              <p className="corpo shrink-0 text-foreground sm:w-32 sm:pt-2.5">
+              <p
+                data-cab-dia
+                tabIndex={-1}
+                className="corpo shrink-0 text-foreground outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ring sm:w-32 sm:pt-2.5"
+              >
                 {semana ? (
                   <>
                     <span className="block font-medium">{semana}</span>
@@ -206,9 +240,35 @@ export function GradeHorarios({
                 )}
               </p>
               <ul className="flex min-w-0 flex-1 flex-wrap gap-2">
-                {dia.horarios.map((h) => {
+                {dia.itens.map(({ horario: h, reservado }) => {
                   const inicio = horaDeTime(h.hora_inicio);
                   const nome = nomeDe(h);
+                  if (reservado) {
+                    return (
+                      <li
+                        key={`r-${h.data}-${h.hora_inicio}-${h.responsavel_id}`}
+                      >
+                        {/* Reservado: desabilitado de verdade (`disabled` tira
+                            do Tab e do clique), sem hover, e o estado vai
+                            escrito — não só em cinza. `opacity-100` porque o
+                            `disabled:opacity-50` do Button reprovaria o
+                            contraste do texto. */}
+                        <Button
+                          variant="outline"
+                          disabled
+                          aria-disabled="true"
+                          className="h-11 min-w-[5.5rem] cursor-not-allowed border-borda-fina bg-superficie-afundada px-4 text-base text-muted-foreground disabled:opacity-100"
+                          aria-label={`${inicio}, ${dia.rotulo.replace(", ", " ")}, com ${nome}: reservado, indisponível`}
+                        >
+                          {inicio}
+                          {nomeUnico ? null : (
+                            <span className="text-base">· {nome}</span>
+                          )}
+                          <span className="text-base">Reservado</span>
+                        </Button>
+                      </li>
+                    );
+                  }
                   return (
                     <li key={`${h.data}-${h.hora_inicio}-${h.responsavel_id}`}>
                       <Button

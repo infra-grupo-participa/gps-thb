@@ -1,0 +1,53 @@
+# Gerado pela skill ci-padrao v1 — NÃO editar à mão.
+# Ajuste deste repo: .ci-padrao.json · regenerar: python ~/.claude/skills/ci-padrao/ci.py aplicar .
+# Runner: repo PÚBLICO: runner do GitHub é gratuito e sem limite
+name: CI padrão
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-padrao-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 1º as regras (sem dependência, ~1 s): falha rápido antes do npm ci
+      - name: Regras do Grupo Participa
+        run: node scripts/ci-padrao/rodar.mjs
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+
+      - name: Tipos (tsc)
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Segredos no que mudou (gitleaks)
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar -xz gitleaks
+          B="$CI_BASE"; if [ -z "$B" ] || [ "${B//0/}" = "" ]; then B=HEAD~1; fi
+          ./gitleaks git --log-opts="$B..HEAD" --redact --no-banner

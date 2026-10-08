@@ -1,0 +1,65 @@
+{
+  "versao": 1,
+  "regras": [
+    {
+      "id": "use-server-so-async",
+      "nivel": "erro",
+      "stacks": [
+        "next"
+      ],
+      "titulo": "Arquivo \"use server\" só pode exportar função async",
+      "porque": "export type/interface/const passa no tsc e no build e quebra em runtime — 4 quedas do GPS (10/09, 2× 11/09, 24/09).",
+      "nota": "2026-09-24 - 4a queda por export type em modulo use server - so o log de producao mostra, e o build da Hostinger pode falhar por flake de fonte"
+    },
+    {
+      "id": "check-sem-subquery",
+      "nivel": "erro",
+      "stacks": [
+        "supabase"
+      ],
+      "titulo": "CHECK constraint não aceita subquery",
+      "porque": "Postgres recusa com 0A000 só na hora de aplicar; passa no tsc, no build, no pentest e em 3 leituras. Encapsular em função IMMUTABLE.",
+      "nota": ""
+    },
+    {
+      "id": "definer-com-revoke",
+      "nivel": "erro",
+      "stacks": [
+        "supabase"
+      ],
+      "titulo": "SECURITY DEFINER exige revoke de PUBLIC/anon no mesmo arquivo",
+      "porque": "Função definer em schema exposto sem revoke entregou 1.890 alunos com CPF a anon (incidente LGPD 28/09).",
+      "nota": "2026-09-28 - INCIDENTE LGPD - funcoes SECURITY DEFINER abertas a anon entregavam a base de alunos"
+    },
+    {
+      "id": "migracao-numero-unico",
+      "nivel": "erro",
+      "stacks": [
+        "supabase"
+      ],
+      "titulo": "Número de migration não pode repetir",
+      "porque": "Executor em fork defasado numerou 0130, que já existia; `supabase db push` aborta ou aplica fora de ordem.",
+      "nota": ""
+    },
+    {
+      "id": "acento-quebrado",
+      "nivel": "erro",
+      "stacks": [
+        "*"
+      ],
+      "titulo": "Texto com acento quebrado (mojibake)",
+      "porque": "Pipe no Windows grava cp1252 como UTF-8: 7 funções do Drive saíram com \"Ã\" na tela (05/10).",
+      "nota": ""
+    },
+    {
+      "id": "build-contorno-no-build",
+      "nivel": "aviso",
+      "stacks": [
+        "next"
+      ],
+      "titulo": "Contorno de build tem que estar no script `build`",
+      "porque": "GPS teve só `build:webpack` paralelo; o push seguinte voltou ao Turbopack: 10 builds falhos, site 2 dias parado (01/10). Só passa se a config SALVA da Hostinger usa o script paralelo.",
+      "nota": "2026-09-29 - Deploy da Hostinger falhando em silencio - Turbopack PostCSS - build com webpack"
+    }
+  ]
+}

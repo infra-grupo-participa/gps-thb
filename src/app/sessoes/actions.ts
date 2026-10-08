@@ -76,6 +76,9 @@ function frasesDasTravas(): Record<string, string> {
     "Você ainda não pode agendar esta sessão. É preciso ter um cliente marcado como o que a equipe acompanha, e a etapa correspondente liberada.":
       "Você ainda não pode agendar esta sessão. É preciso ter um cliente marcado como o que a equipe acompanha, e a etapa correspondente liberada.",
     "Tipo de sessão não encontrado.": "Tipo de sessão não encontrado.",
+    // gatilho trg_sessao_aluno_sem_choque (…376)
+    "Você já tem outra reunião marcada nesse horário. Escolha outro na lista.":
+      "Você já tem outra reunião marcada nesse horário. Escolha outro na lista.",
 
     // ── gps.sessao_cancelar ──────────────────────────────────────────────
     "Sessão não encontrada.": "Sessão não encontrada.",

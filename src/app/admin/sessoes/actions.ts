@@ -67,6 +67,9 @@ function frasesDasTravas(): Record<string, string> {
       "Alguém acabou de pegar esse horário. Escolha outro na lista.",
     "Este aluno já tem outra sessão deste tipo marcada.":
       "Este aluno já tem outra sessão deste tipo marcada.",
+    // gatilho trg_sessao_aluno_sem_choque (…376)
+    "Este aluno já tem outra reunião marcada nesse horário. Escolha outro.":
+      "Este aluno já tem outra reunião marcada nesse horário. Escolha outro.",
     "Esse horário conflita com outra sessão da mesma profissional. Escolha outro na lista.":
       "Esse horário conflita com outra sessão da mesma profissional. Escolha outro na lista.",
     "Esta sessão já foi remarcada 3 vezes nas últimas 24 horas. Fale com o aluno antes de mudar de novo.":

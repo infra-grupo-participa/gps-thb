@@ -62,30 +62,21 @@ test.describe("Admin · navegação até Interruptores (2 níveis, 24/09/2026)",
     // componente nunca produz para um grupo com filhos — teste verde sem
     // provar nada, ou reprovando por natureza. A prova correta do grupo é
     // presença no `nav` PRINCIPAL (1º nível), pelo rótulo.
+    // 🔴 08/10/2026: os grupos do admin viraram MENU SUSPENSO (`comoMenu`,
+    // o mesmo `NavGrupoMenu` do parceiro) e a 3ª linha "Seções de …" deixou
+    // de existir no admin. O grupo é BOTÃO (sem `aria-current`); a sub-aba
+    // atual é o `menuitem` com `aria-current="page"` dentro do menu aberto.
     const principal = page.getByRole("navigation", { name: /^Navega(ç|c)(ã|a)o principal$/i });
-    const grupo = principal.getByText(/^Configura(ç|c)(õ|o)es$/, { exact: true });
-    await expect(grupo.first()).toBeVisible();
-    // Nenhum `aria-current` no grupo — confirma que ele não usurpa a marca
-    // de página atual da sub-aba (regressão que a correção acima previne).
+    const grupo = principal.getByRole("button", { name: /^Configura(ç|c)(õ|o)es/ });
+    await expect(grupo).toHaveAttribute("aria-haspopup", "menu");
+    await expect(grupo).not.toHaveAttribute("aria-current", /.+/);
     await expect(
-      principal.locator('[aria-current="page"]', {
-        hasText: /^Configura(ç|c)(õ|o)es$/,
-      }),
+      page.getByRole("navigation", { name: /^Se(ç|c)(õ|o)es de /i }),
     ).toHaveCount(0);
 
-    // A 3ª linha (sub-abas do grupo ativo) é OUTRO `<nav>`, rotulado
-    // `aria-label={\`Seções de ${grupoLabel}\`}` (`SubNavTabs`, `nav-tabs.tsx`)
-    // — aqui `grupoLabel` é "Configurações", o grupo ativo em
-    // `/admin/configuracoes`.
-    const secoes = page.getByRole("navigation", {
-      name: /^Se(ç|c)(õ|o)es de Configura(ç|c)(õ|o)es$/i,
-    });
-    await expect(secoes).toBeVisible();
-
-    // "Interruptores" é o ÚNICO `[aria-current="page"]` dentro dela —
-    // `abaDoPainel` não se aplica aqui (não é sub-aba de `?aba=` do painel);
-    // é `href` puro, então a prova é a rota + `aria-current`.
-    const atuais = secoes.locator('[aria-current="page"]');
+    await grupo.click();
+    const menu = page.getByRole("menu");
+    const atuais = menu.locator('[aria-current="page"]');
     await expect(atuais).toHaveCount(1);
     await expect(atuais).toHaveText(/^Interruptores$/);
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Menu } from "@base-ui/react/menu";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -147,6 +147,10 @@ export interface NavItem {
    * 1º nível vira botão que abre um menu suspenso com os `filhos`
    * (`NavGrupoMenu`). Sem a flag, `filhos` segue o mecanismo da EQUIPE
    * (3ª linha), intacto — por isso flag no item, não mudança global.
+   *
+   * 08/10/2026: os 5 grupos do ADMIN também ligam a flag (pedido do dono:
+   * "mesmo modelo dos alunos"). O modo assistência ("Acompanhamento") segue
+   * na 3ª linha. Grupo `comoMenu` com 1 filho vira link direto (`NavTabs`).
    */
   comoMenu?: boolean;
   /**
@@ -234,6 +238,48 @@ function casaSozinho(item: NavItem, pathname: string): boolean {
 export function grupoAtivo(item: NavItem, pathname: string): boolean {
   if (casaSozinho(item, pathname)) return true;
   return (item.filhos ?? []).some((f) => casaSozinho(f, pathname));
+}
+
+type AbaDoPainel = NonNullable<NavItem["abaDoPainel"]>;
+
+/**
+ * Qual `?aba=` do painel está valendo. Allowlist fechada, a MESMA de
+ * `estado-na-url.ts` (importada, não recopiada): `?aba=qualquercoisa` cai no
+ * padrão, senão nenhuma sub-aba ficaria marcada. Usada pela 3ª linha
+ * (`SubNavTabs`) e pelo menu suspenso dos grupos do admin (`ItemDoPainel`) —
+ * uma leitura só de "qual aba é a atual".
+ */
+function abaDoPainelDe(bruto: string | null): AbaDoPainel {
+  return (ABAS as readonly string[]).includes(bruto ?? "")
+    ? (bruto as AbaDoPainel)
+    : ABA_PADRAO;
+}
+
+/**
+ * O ESCRITOR de `aba` (24/09/2026): troca a aba do painel SEM navegar
+ * (`history.replaceState`). Extraído de `SubNavTabs` em 08/10/2026 para o
+ * menu suspenso do admin usar a MESMA escrita — continua havendo um escritor
+ * só por parâmetro, agora com dois chamadores. Ver o cabeçalho de
+ * `SubNavTabs` para o porquê de não ser `<Link>`/`router.replace`.
+ */
+function escreverAbaDoPainel(
+  caminhoDoPainel: string,
+  searchParams: URLSearchParams | { toString(): string },
+  valor: AbaDoPainel,
+) {
+  const sp = new URLSearchParams(searchParams.toString());
+  // O padrão SAI do endereço: `/admin` limpo tem de continuar `/admin`
+  // (os ~15 hrefs do dashboard e o e-2-e dependem disso).
+  if (valor === ABA_PADRAO) sp.delete("aba");
+  else sp.set("aba", valor);
+  // 🔴 Sair da Visão geral leva o `vis` junto: `?aba=ativos&vis=atencao` é
+  // estado de uma aba fora da tela, e voltaria a valer numa próxima visita
+  // sem ninguém ter escolhido.
+  if (valor !== "visao") sp.delete("vis");
+  // Os DEMAIS parâmetros ficam: `q`, `ordem`, `f`, `classe`, `mais` são de
+  // outros donos e este escritor só passa por cima do que é dele.
+  const q = sp.toString().replace(/%2C/g, ",");
+  window.history.replaceState(null, "", `${caminhoDoPainel}${q ? `?${q}` : ""}`);
 }
 
 /**
@@ -365,7 +411,9 @@ function NavTabLink({
 }
 
 /**
- * Grupo do PARCEIRO como menu suspenso (07/10/2026, pedido do João). O botão
+ * Grupo como menu suspenso — do PARCEIRO desde 07/10/2026 (pedido do João) e
+ * do ADMIN desde 08/10/2026 (contador no grupo e no item, `?aba=` do painel
+ * via `ItemDoPainel`). O botão
  * ocupa o lugar da aba, com o MESMO desenho (régua de 2 px quando um filho é a
  * rota atual) + chevron; o clique abre o menu com as abas do grupo.
  *
@@ -388,16 +436,25 @@ function NavTabLink({
 function NavGrupoMenu({
   item,
   pathname,
+  urlDoPainel,
   denso,
 }: {
   item: NavItem;
   pathname: string;
+  /** Só o grupo "Parceiros" do admin usa: ver `ItemDoPainel`. */
+  urlDoPainel: string | undefined;
   denso: boolean;
 }) {
   const soIcone = denso ? "max-xl:sr-only" : "max-md:sr-only";
   const ativo = grupoAtivo(item, pathname);
   const Icon = item.icon ? ICONES[item.icon] : null;
   const filhos = item.filhos ?? [];
+  // 🔑 Caminho do painel sai do `href` do PRÓPRIO filho (`/admin?aba=x` →
+  // `/admin`), mesma regra de `SubNavTabs` — nenhum literal `"/admin"` aqui.
+  // Grupo sem filho `abaDoPainel` (todos os do parceiro) dá `null`, e todos os
+  // itens seguem pelo ramo `<Link>` de sempre.
+  const caminhoDoPainel =
+    filhos.find((f) => f.abaDoPainel)?.href.split("?")[0] ?? null;
 
   return (
     <Menu.Root modal={false}>
@@ -412,9 +469,25 @@ function NavGrupoMenu({
         title={Icon ? item.label : undefined}
       >
         {Icon ? <Icon className="size-4" aria-hidden /> : null}
-        <span className={cn(Icon && (ativo ? denso && "max-sm:sr-only" : soIcone))}>
+        {/* Abaixo de `sm` o grupo de menu ATIVO também vira só ícone + régua,
+            como sempre foi no trilho denso do parceiro (08/10/2026): o
+            chevron e o contador ocupam a folga que o rótulo usaria, e o
+            admin com "Atendimento 14" ativo pedia 391 px num trilho de 374
+            (MEDIDO em 390) — quebrava linha. Para o parceiro (denso) a
+            classe resultante é a mesma de antes. */}
+        <span className={cn(Icon && (ativo ? "max-sm:sr-only" : soIcone))}>
           {item.label}
         </span>
+        {/* 🔑 Contador do grupo (08/10/2026, menu do admin): SEMPRE visível,
+            ativo ou não. Na 3ª linha ele era suprimido no grupo ativo porque a
+            sub-aba logo abaixo repetia o número; no menu suspenso a sub-aba só
+            aparece com o menu aberto, e o grupo é o único aviso de que há fila.
+            Os grupos do parceiro não têm `badge` — nada muda para eles. */}
+        {item.badge && item.badge > 0 ? (
+          <Badge variant="danger" icone={false} className="h-5 px-1.5 text-[10px]">
+            {item.badge}
+          </Badge>
+        ) : null}
         <ChevronDown className="size-3.5" aria-hidden />
       </Menu.Trigger>
       <Menu.Portal>
@@ -428,8 +501,20 @@ function NavGrupoMenu({
           <Menu.Popup className="min-w-56 rounded-md border bg-background p-1 shadow-md outline-none">
             {filhos.map((f) => {
               const FIcon = f.icon ? ICONES[f.icon] : null;
-              const linha =
-                "flex min-h-11 w-full items-center gap-2.5 rounded-sm px-3 text-base whitespace-nowrap outline-none";
+              const linha = cn(
+                "flex min-h-11 w-full items-center gap-2.5 rounded-sm px-3 text-base whitespace-nowrap outline-none",
+                f.adminOnly && "previa-oculta",
+              );
+              const contador =
+                f.badge && f.badge > 0 ? (
+                  <Badge
+                    variant="danger"
+                    icone={false}
+                    className="ml-auto h-5 px-1.5 text-[10px]"
+                  >
+                    {f.badge}
+                  </Badge>
+                ) : null;
               if (f.emBreve) {
                 return (
                   <Menu.Item
@@ -447,6 +532,23 @@ function NavGrupoMenu({
                       em breve
                     </Badge>
                   </Menu.Item>
+                );
+              }
+              if (f.abaDoPainel && caminhoDoPainel) {
+                return (
+                  <ItemDoPainel
+                    key={f.href}
+                    item={f}
+                    aba={f.abaDoPainel}
+                    pathname={pathname}
+                    caminhoDoPainel={caminhoDoPainel}
+                    urlDoPainel={urlDoPainel}
+                    linha={linha}
+                  >
+                    {FIcon ? <FIcon className="size-4 text-muted-foreground" aria-hidden /> : null}
+                    {f.label}
+                    {contador}
+                  </ItemDoPainel>
                 );
               }
               const atual = casaSozinho(f, pathname);
@@ -479,6 +581,7 @@ function NavGrupoMenu({
                       <span className="sr-only"> (abre em nova aba)</span>
                     </>
                   ) : null}
+                  {contador}
                 </Menu.LinkItem>
               );
             })}
@@ -487,6 +590,106 @@ function NavGrupoMenu({
       </Menu.Portal>
     </Menu.Root>
   );
+}
+
+/**
+ * Item do menu que representa um `?aba=` do painel do admin (08/10/2026) — o
+ * mesmo contrato da 3ª linha (`SubNavTabs`), agora dentro do menu suspenso:
+ *
+ * | onde | mecanismo | ativo |
+ * |---|---|---|
+ * | no painel (`/admin`) | `Menu.Item` + `history.replaceState` | `?aba=` atual |
+ * | fora do painel | `<Link>` | nunca (a consulta não é desta rota) |
+ *
+ * 🔴 No painel, NUNCA `<Link>`: `/admin` é dinâmico e re-executaria o Server
+ * Component inteiro para trocar conteúdo que já está montado (ver o
+ * cabeçalho de `SubNavTabs`).
+ *
+ * 🔑 `useSearchParams()` mora AQUI, numa folha que só monta com o menu
+ * ABERTO (o `Menu.Popup` não fica no DOM fechado) — o trilho não passa a
+ * assinar a consulta em toda tela, e o grupo do parceiro nunca chega aqui.
+ *
+ * 🔑 `restauraPainel` (o clique em "Parceiros" levava à última URL do painel)
+ * continua valendo pelo item: fora do painel, o item cuja aba é a da última
+ * URL gravada leva a ELA (busca, ordem, filtros, lote), não ao `href` pelado.
+ */
+function ItemDoPainel({
+  item,
+  aba,
+  pathname,
+  caminhoDoPainel,
+  urlDoPainel,
+  linha,
+  children,
+}: {
+  item: NavItem;
+  aba: AbaDoPainel;
+  pathname: string;
+  caminhoDoPainel: string;
+  urlDoPainel: string | undefined;
+  linha: string;
+  children: ReactNode;
+}) {
+  const searchParams = useSearchParams();
+  const noPainel = pathname === caminhoDoPainel;
+  const atual = noPainel && abaDoPainelDe(searchParams.get("aba")) === aba;
+  const classe = cn(
+    linha,
+    "cursor-pointer data-[highlighted]:bg-accent",
+    atual
+      ? "font-semibold text-foreground shadow-[inset_2px_0_0_var(--color-primary)]"
+      : "text-foreground",
+  );
+
+  if (noPainel) {
+    return (
+      <Menu.Item
+        closeOnClick
+        aria-current={atual ? "page" : undefined}
+        onClick={() => escreverAbaDoPainel(caminhoDoPainel, searchParams, aba)}
+        className={classe}
+      >
+        {children}
+      </Menu.Item>
+    );
+  }
+
+  const [caminhoSalvo, consultaSalva] = (urlDoPainel ?? "").split("?");
+  const destino =
+    caminhoSalvo === caminhoDoPainel &&
+    abaDoPainelDe(new URLSearchParams(consultaSalva ?? "").get("aba")) === aba
+      ? (urlDoPainel as string)
+      : item.href;
+
+  return (
+    <Menu.LinkItem
+      closeOnClick
+      render={<Link href={destino} prefetch={false} />}
+      className={classe}
+    >
+      {children}
+    </Menu.LinkItem>
+  );
+}
+
+/**
+ * Grupo `comoMenu` com exatamente um filho → o próprio filho como link de 1º
+ * nível, vestido com rótulo/ícone/contador do grupo. Sem filhos, devolve o
+ * item como está (o `href` do grupo).
+ */
+function linkDoGrupoDeUm(item: NavItem): NavItem {
+  const unico = item.filhos?.length === 1 ? item.filhos[0] : null;
+  if (!unico) return item;
+  return {
+    ...unico,
+    label: item.label,
+    icon: item.icon ?? unico.icon,
+    badge: item.badge ?? unico.badge,
+    adminOnly: item.adminOnly || unico.adminOnly,
+    emBreve: item.emBreve || unico.emBreve,
+    filhos: undefined,
+    comoMenu: undefined,
+  };
 }
 
 /**
@@ -571,15 +774,20 @@ export function NavTabs({
             // quem usa leitor de tela, já vem do `aria-disabled` de cada um.
             <span aria-hidden className="mx-1 my-2 w-px shrink-0 bg-border" />
           ) : null}
-          {item.comoMenu && (item.filhos?.length ?? 0) > 0 ? (
+          {item.comoMenu && (item.filhos?.length ?? 0) > 1 ? (
             <NavGrupoMenu
               item={item}
               pathname={pathname}
+              urlDoPainel={urlDoPainel}
               denso={doTrilho.length > 6}
             />
           ) : (
             <NavTabLink
-              item={item}
+              // 🔑 Grupo `comoMenu` com UM filho só não vira menu de uma
+              // opção (08/10/2026): vira link direto para o filho, com o
+              // rótulo, o ícone e o contador do grupo. Grupo de 2+ filhos
+              // segue o menu; item sem `comoMenu` segue intacto.
+              item={item.comoMenu ? linkDoGrupoDeUm(item) : item}
               pathname={pathname}
               urlDoPainel={urlDoPainel}
               denso={doTrilho.length > 6}
@@ -660,30 +868,12 @@ export function SubNavTabs({
   // Allowlist fechada, a MESMA de `estado-na-url.ts` (importada, não
   // recopiada): `?aba=qualquercoisa` cai no padrão, senão nenhuma sub-aba
   // ficaria marcada e a linha inteira pareceria desligada.
-  const bruto = searchParams.get("aba");
-  const abaAtual = (ABAS as readonly string[]).includes(bruto ?? "")
-    ? (bruto as NonNullable<NavItem["abaDoPainel"]>)
-    : ABA_PADRAO;
+  const abaAtual = abaDoPainelDe(searchParams.get("aba"));
 
-  function trocarAba(valor: NonNullable<NavItem["abaDoPainel"]>) {
-    const sp = new URLSearchParams(searchParams.toString());
-    // O padrão SAI do endereço: `/admin` limpo tem de continuar `/admin`
-    // (os ~15 hrefs do dashboard e o e-2-e dependem disso).
-    if (valor === ABA_PADRAO) sp.delete("aba");
-    else sp.set("aba", valor);
-    // 🔴 Sair da Visão geral leva o `vis` junto: `?aba=ativos&vis=atencao` é
-    // estado de uma aba fora da tela, e voltaria a valer numa próxima visita
-    // sem ninguém ter escolhido. (Era o que o `trocar()` de `abas-painel.tsx`
-    // fazia; veio junto com a responsabilidade.)
-    if (valor !== "visao") sp.delete("vis");
-    // Os DEMAIS parâmetros ficam: `q`, `ordem`, `f`, `classe`, `mais` são de
-    // outros donos e este escritor só passa por cima do que é dele.
-    const q = sp.toString().replace(/%2C/g, ",");
-    window.history.replaceState(
-      null,
-      "",
-      `${caminhoDoPainel}${q ? `?${q}` : ""}`,
-    );
+  function trocarAba(valor: AbaDoPainel) {
+    // `caminhoDoPainel` não é null aqui: `trocarAba` só é chamada no ramo
+    // `item.abaDoPainel && noPainel`, e `noPainel` exige o caminho.
+    escreverAbaDoPainel(caminhoDoPainel as string, searchParams, valor);
   }
 
   return (
@@ -812,8 +1002,8 @@ export function TrilhoDeNavegacao({
   // — seria erro de `nav.ts`), o PRIMEIRO vence. Duas 3ªs linhas empilhadas
   // seriam pior do que a errada: o header dobraria de altura sem aviso.
   const ativo = items.find((i) => !i.noMenuDeContas && grupoAtivo(i, pathname));
-  // Grupo `comoMenu` (parceiro) mostra os filhos no menu suspenso, nunca
-  // na 3ª linha: o header do parceiro não cresce.
+  // Grupo `comoMenu` (parceiro e, desde 08/10/2026, admin) mostra os filhos
+  // no menu suspenso, nunca na 3ª linha: o header não cresce.
   const subItens = ativo?.comoMenu ? [] : (ativo?.filhos ?? []);
 
   // 🔴 A 3ª LINHA INTEIRA some na prévia "como o aluno vê" quando NADA dela

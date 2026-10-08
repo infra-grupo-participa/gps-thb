@@ -94,10 +94,18 @@ test.describe("Admin · Visão geral · régua + cruzamento + ranking", () => {
     // `NavTabLink` já usa para o trilho, não por `role="tab"`/`aria-selected`
     // (que era o contrato da `TabsList` do `AbasPainel`, ainda válido para o
     // `?vis=` interno abaixo, não para esta sub-aba).
-    const visaoGeral = page.locator('[aria-current="page"]', {
+    // 🔴 08/10/2026: a sub-aba mora no MENU SUSPENSO do grupo "Parceiros"
+    // (`comoMenu`); abre-se o menu para ler a marca e fecha-se com Esc.
+    await page
+      .getByRole("navigation", { name: "Navegação principal" })
+      .getByRole("button", { name: /^Parceiros/ })
+      .click();
+    const visaoGeral = page.getByRole("menu").locator('[aria-current="page"]', {
       hasText: /^Vis(ã|a)o geral$/,
     });
     await expect(visaoGeral).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toBeHidden();
 
     // A sub-aba padrão é Programa — e chegou lá SEM `?vis=` na URL.
     const programa = page.getByRole("tab", { name: /^o programa$/i });

@@ -432,6 +432,17 @@ export function adminNavItems(
   }
 
   return [
+    // 🔴 MENU SUSPENSO (08/10/2026, pedido do dono: "coloca no mesmo modelo
+    // dos alunos, o dropdown com as opções sendo exibidas"). Os 5 grupos
+    // levam `comoMenu: true` — o MESMO `NavGrupoMenu` do parceiro: clicar no
+    // grupo abre a lista dos filhos e a 3ª linha de sub-abas deixa de existir
+    // no admin. O bloco "2 níveis" abaixo descreve a 3ª linha, que vale só até
+    // 07/10 (e volta se `comoMenu` for apagado); desde 08/10: o grupo é BOTÃO, o contador
+    // fica no grupo E no item, as sub-abas `abaDoPainel` continuam trocando
+    // `?aba=` sem navegar quando já se está no painel, e `restauraPainel`
+    // passou para o item cuja aba é a da última URL do painel
+    // (`ItemDoPainel`, `nav-tabs.tsx`). Reverter = apagar os 5 `comoMenu`.
+    //
     // 🔴 NAVEGAÇÃO EM 2 NÍVEIS (24/09/2026, pedido do Marcio): "abas reunidas
     // dentro de uma aba; Clientes vira sub-aba de Alunos; em breve fica na
     // lista, não na frente". As 10 abas soltas viram 5 GRUPOS com `filhos`
@@ -439,11 +450,12 @@ export function adminNavItems(
     // ativo — ver `NavItem["filhos"]` em `nav-tabs.tsx`). Cada grupo mantém
     // `href` próprio (a rota do clique direto no rótulo do grupo).
     //
-    // Grupo "Parceiros": `restauraPainel` continua no GRUPO — o clique leva à
-    // ÚLTIMA URL do painel (aba, busca, ordem, filtros, lote), não a `/admin`
-    // pelado. Sem isso, a aba do header desfazia exatamente o estado que a
-    // URL do painel existe para guardar — era a segunda porta de volta, e ela
-    // apagava tudo.
+    // Grupo "Parceiros": desde 08/10 o grupo é `Menu.Trigger` e NÃO navega —
+    // quem volta à ÚLTIMA URL do painel (aba, busca, ordem, filtros, lote) é
+    // o ITEM cuja aba é a dela (`ItemDoPainel`, `nav-tabs.tsx`). A flag
+    // `restauraPainel: true` que segue no grupo é só o CAMINHO DE REVERSÃO:
+    // apagando `comoMenu`, o grupo volta a ser link e volta a restaurar a URL
+    // (o comportamento de 24/09–07/10). Não é código morto: não remover.
     //
     // 🔑 Rótulo "Parceiros", não "Alunos": é o rótulo que `abas-painel.tsx`
     // já usa hoje na `TabsTrigger` de 1º nível (`AbasPainel`) — confira lá e
@@ -469,6 +481,7 @@ export function adminNavItems(
       icon: "alunos",
       exact: true,
       restauraPainel: true,
+      comoMenu: true,
       // Badge de solicitações pendentes: o mecanismo é o mesmo do grupo
       // "Atendimento" com `chamadosAbertos` (`nav-tabs.tsx` suprime o badge
       // do grupo ativo e o mostra na sub-aba "Solicitações").
@@ -538,6 +551,7 @@ export function adminNavItems(
       href: "/admin/sessoes",
       label: "Agenda",
       icon: "sessoes",
+      comoMenu: true,
       filhos: [
         { href: "/admin/sessoes", label: "Sessões" },
         { href: "/admin/plantao", label: "Plantão", icon: "materiais" },
@@ -553,6 +567,7 @@ export function adminNavItems(
       label: "Atendimento",
       icon: "suporte",
       badge: opts.chamadosAbertos,
+      comoMenu: true,
       filhos: [
         {
           href: "/admin/chamados",
@@ -572,6 +587,7 @@ export function adminNavItems(
       href: "/admin/videos",
       label: "Conteúdo",
       icon: "materiais",
+      comoMenu: true,
       filhos: [
         { href: "/admin/videos", label: "Vídeos" },
         // 🔴 Esta linha é a PORTA DE ENTRADA da tela. Sem ela, `/admin/tutoriais`
@@ -601,6 +617,7 @@ export function adminNavItems(
       href: "/admin/configuracoes",
       label: "Configurações",
       icon: "resolver",
+      comoMenu: true,
       filhos: [
         // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela,
         // `/admin/configuracoes` existiria completa e só seria alcançável

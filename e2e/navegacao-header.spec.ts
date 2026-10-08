@@ -179,18 +179,21 @@ test.describe("Header · admin · grupos de 1º nível + sub-abas de 2º nível"
     // `Badge` é `inline-flex`, entra no nome) — `/^Atendimento$/` dava 0
     // elementos com um único chamado aberto em produção (achado do joao,
     // it.2). Os grupos que carregam número toleram o sufixo.
+    // 🔴 08/10/2026: os 5 grupos são BOTÕES de menu suspenso (`comoMenu`, o
+    // mesmo `NavGrupoMenu` do parceiro), não links. O contador do grupo
+    // entra no nome acessível, colado ou com espaço — daí `\s*`.
     const grupos = [
-      /^Parceiros( \d+)?$/i,
+      /^Parceiros\s*(\d+)?$/i,
       /^Agenda$/i,
-      /^Atendimento( \d+)?$/i,
+      /^Atendimento\s*(\d+)?$/i,
       /^Conte(ú|u)do$/i,
       /^Configura(ç|c)(õ|o)es$/i,
     ];
     for (const rotulo of grupos) {
       await expect(
-        trilho.getByRole("link", { name: rotulo }).first(),
+        trilho.getByRole("button", { name: rotulo }),
         `Grupo "${rotulo}" ausente do trilho de 1º nível do admin.`,
-      ).toBeVisible();
+      ).toHaveAttribute("aria-haspopup", "menu");
     }
 
     // 🔴 Nenhum dos 10 rótulos ANTIGOS pode sobrar SOLTO no 1º nível — eles
@@ -219,26 +222,25 @@ test.describe("Header · admin · grupos de 1º nível + sub-abas de 2º nível"
     }
   });
 
-  test("d) /admin/clientes mostra a 3ª linha com a sub-aba Clientes ativa", async ({
+  test("d) /admin/clientes: sem 3ª linha; no menu de Parceiros, Clientes é a página atual", async ({
     page,
   }) => {
     await entrar(page, admin!, "/admin/clientes");
 
-    // 🔴 Escopado pelo `<nav aria-label="Seções de Parceiros">` (3ª linha,
-    // `SubNavTabs`), não pelo documento inteiro: `[aria-current="page"]` sem
-    // escopo casaria também um eventual `aria-current` de outro `<nav>` (o
-    // grupo "Parceiros" no 1º nível NÃO leva `aria-current` por ter filhos,
-    // mas o escopo deixa a prova robusta mesmo se isso mudar).
-    const secoes = page.getByRole("navigation", { name: /^Se(ç|c)(õ|o)es de Parceiros$/i });
-    await expect(secoes).toBeVisible();
-
-    const subaba = secoes.locator('[aria-current="page"]', {
-      hasText: /^Clientes$/,
-    });
+    // 🔴 08/10/2026: a 3ª linha "Seções de …" não existe mais no admin — as
+    // sub-abas moram no menu suspenso do grupo.
     await expect(
-      subaba,
-      "Ao abrir /admin/clientes, a sub-aba 'Clientes' (filha do grupo 'Parceiros') tem de aparecer ativa na 3ª linha do header.",
-    ).toBeVisible();
+      page.getByRole("navigation", { name: /^Se(ç|c)(õ|o)es de /i }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("navigation", { name: "Navegação principal" })
+      .getByRole("button", { name: /^Parceiros/ })
+      .click();
+    const atual = page.getByRole("menu").locator('[aria-current="page"]');
+    await expect(atual).toHaveCount(1);
+    await expect(atual).toHaveText(/^Clientes$/);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toBeHidden();
   });
 
   test("e) trocar sub-aba dentro de /admin não navega (zero request document); sair para /admin/clientes e voltar para Visão geral NAVEGA", async ({
@@ -264,7 +266,11 @@ test.describe("Header · admin · grupos de 1º nível + sub-abas de 2º nível"
     // veredito do João) — renomeada em `src/lib/nav.ts` para não repetir o
     // rótulo do grupo pai ("Parceiros" dentro de "Parceiros" confundia qual
     // dos dois era o clicado). O grupo continua "Parceiros".
-    const subabaAtivos = page.getByRole("button", { name: /^Ativos$/i });
+    // 🔴 08/10/2026: "Ativos" é `menuitem` no menu suspenso de "Parceiros";
+    // dentro de `/admin` continua sem navegar (`history.replaceState`).
+    const principal = page.getByRole("navigation", { name: "Navegação principal" });
+    await principal.getByRole("button", { name: /^Parceiros/ }).click();
+    const subabaAtivos = page.getByRole("menuitem", { name: /^Ativos$/i });
     await subabaAtivos.click();
     await expect(page).toHaveURL(/[?&]aba=ativos/);
     expect(
@@ -276,7 +282,8 @@ test.describe("Header · admin · grupos de 1º nível + sub-abas de 2º nível"
     // de VERDADE (rota diferente → mesma rota), então DEVE ir ao servidor —
     // o teste aqui é sobre a URL final, não sobre zero-fetch.
     await page.goto("/admin/clientes");
-    const visaoGeral = page.getByRole("link", { name: /^Vis(ã|a)o geral$/i });
+    await principal.getByRole("button", { name: /^Parceiros/ }).click();
+    const visaoGeral = page.getByRole("menuitem", { name: /^Vis(ã|a)o geral$/i });
     await visaoGeral.click();
     // 🔴 Regex apertada para `/admin` LIMPO (2ª rodada): "Visão geral" agora
     // declara `href: "/admin", exact: true` em `nav.ts` (não mais

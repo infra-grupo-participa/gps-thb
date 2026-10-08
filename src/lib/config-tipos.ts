@@ -147,9 +147,18 @@ export const INTERRUPTORES_CONFIG: readonly InterruptorConfig[] = [
   },
   {
     chave: "push_chamados_ativo",
-    rotulo: "Avisos de chamado no computador",
+    // Desde a …379 vale para TODO aviso com push (chamado, minuta, croqui,
+    // sessão cancelada), não só chamado. A chave não mudou de nome.
+    rotulo: "Avisos da equipe no computador (notificação)",
     descricaoDesligado:
-      "Param os avisos no computador quando um parceiro escreve num chamado. A fila e o e-mail continuam como estão.",
+      "Param as notificações no computador (chamado, minuta, croqui, sessão cancelada). O sino e o pop-up dentro do sistema continuam, se a central de avisos estiver ligada.",
+    perigoso: false,
+  },
+  {
+    chave: "avisos_equipe_ativo",
+    rotulo: "Central de avisos da equipe (sino, pop-up e notificação)",
+    descricaoDesligado:
+      "Nenhum aviso novo é registrado: o sino fica vazio, o pop-up some e nenhuma notificação sai — inclusive a de chamado. A fila de chamados e os e-mails continuam como estão.",
     perigoso: false,
   },
   {

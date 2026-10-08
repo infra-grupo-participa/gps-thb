@@ -7,6 +7,7 @@ import { AutoLogout } from "@/components/auto-logout";
 import { contarChamadosAguardandoParceiro } from "@/lib/data/chamados-selo";
 import { lerAjudaDaTela } from "@/components/ajuda/ler-ajuda-da-tela";
 import { PainelAjuda } from "@/components/ajuda/painel-ajuda";
+import { SinoAvisos } from "@/components/admin/sino-avisos";
 
 /**
  * Quantos chamados a equipe respondeu e esperam o parceiro — ou `0` se a
@@ -128,6 +129,14 @@ export async function AppHeader({
 
           <div className="ml-auto flex min-w-0 items-center gap-3">
             {ajuda ? <PainelAjuda rota={ajuda.rota} artigos={ajuda.artigos} /> : null}
+            {/* Sino da equipe (08/10/2026). O sinal de "é admin" é o MESMO que
+                o menu já usa (`papelRotulo === "Admin"`): todas as páginas que
+                passam "Admin" o fazem atrás de `ehAdmin()`/`souAdmin`. A
+                fronteira real é o banco — as RPCs `avisos_*` devolvem 42501
+                para quem não é admin, e aí o sino some sozinho. Zero consulta
+                aqui no servidor: a contagem é lida 1× por aba no cliente (o
+                header é renderizado por página, não por layout). */}
+            {papelRotulo === "Admin" ? <SinoAvisos email={email} /> : null}
             {/* Perfil, trocar de conta e sair vivem num menu só. O botão de
                 logout solto saiu: eram dois alvos para a mesma área, e a
                 troca de conta não teria onde morar. */}

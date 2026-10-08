@@ -26,7 +26,7 @@ function bytesParaB64url(buf: ArrayBuffer | null): string {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-/** Avisos de mensagem nova de parceiro neste computador (Web Push). */
+/** Avisos da equipe neste aparelho (Web Push). Mora no painel do sino. */
 export function PushAvisosBotao({ chavePublica }: { chavePublica: string }) {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [pendente, iniciar] = useTransition();
@@ -131,7 +131,7 @@ export function PushAvisosBotao({ chavePublica }: { chavePublica: string }) {
   if (estado === "ativo") {
     return (
       <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm">Avisos ligados neste computador</p>
+        <p className="text-sm">Avisos ligados neste aparelho</p>
         <Button
           type="button"
           variant="outline"
@@ -146,7 +146,7 @@ export function PushAvisosBotao({ chavePublica }: { chavePublica: string }) {
   }
   return (
     <Button type="button" size="sm" onClick={ativar} disabled={pendente}>
-      Ativar avisos neste computador
+      Ativar avisos neste aparelho
     </Button>
   );
 }

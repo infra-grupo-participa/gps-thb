@@ -1,7 +1,13 @@
-// Web Push dos chamados do GPS. `index.ts` só liga isto ao Deno.serve; o teste
+// Web Push da equipe do GPS. `index.ts` só liga isto ao Deno.serve; o teste
 // (`enviar.test.ts`) chama `atender()` com fetch e env falsos.
 //
+// Duas entradas (POST do banco via pg_net, header x-push-segredo):
+//   {aviso_id: <inteiro>}  — central de avisos (…379), caminho de TODO aviso
+//   {mensagem_id: <uuid>}  — legado da …357 (chamado), mantido compatível
+//
 // Contrato com o banco (SÓ service_role):
+//   gps.push_preparar_aviso(p_aviso_id)    → jsonb | null
+//     { aviso_id, tipo, entidade_id, titulo, corpo, url, inscricoes: [...] }
 //   gps.push_preparar(p_mensagem_id)       → jsonb | null
 //     { titulo, corpo, url, chamado_id, inscricoes: [{endpoint, p256dh, auth}] }
 //   gps.push_resultado(p_endpoint, p_status) — status HTTP do push service;
@@ -16,6 +22,7 @@
 export const SCHEMA = "gps";
 export const HEADER_SEGREDO = "x-push-segredo";
 export const RPC_PREPARAR = "push_preparar";
+export const RPC_PREPARAR_AVISO = "push_preparar_aviso";
 export const RPC_RESULTADO = "push_resultado";
 export const SEGREDO_MINIMO = 32;
 export const TIMEOUT_ENVIO_MS = 5000;
@@ -29,11 +36,23 @@ const VALIDADE_JWT_SEG = 12 * 3600;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type Inscricao = { endpoint: string; p256dh: string; auth: string };
+/** Retorno de `gps.push_preparar` (chamado, …357). */
 export type Preparado = {
   titulo: string;
   corpo: string;
   url: string;
   chamado_id: string;
+  inscricoes: Inscricao[];
+};
+
+/** Retorno de `gps.push_preparar_aviso` (central de avisos, …379). */
+export type PreparadoAviso = {
+  aviso_id: number;
+  tipo: string;
+  entidade_id: string | null;
+  titulo: string;
+  corpo: string;
+  url: string;
   inscricoes: Inscricao[];
 };
 
@@ -205,13 +224,39 @@ export async function jwtVapid(v: Vapid, endpoint: string, agoraMs: number): Pro
 
 // ------------------------------------------------------------- envio
 
+/** Pedaço de tag: só [a-z0-9_-], até 64 caracteres (o banco já manda assim; aqui é a cerca). */
+function pedacoTag(v: unknown): string {
+  return String(v ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 64);
+}
+
+/** `aviso-<tipo>-<entidade>`; sem entidade, o id do aviso (nunca colapsa avisos diferentes sem dono). */
+export function tagDe(p: Preparado | PreparadoAviso): string {
+  if ("aviso_id" in p) {
+    const entidade = pedacoTag(p.entidade_id) || `n${pedacoTag(p.aviso_id)}`;
+    return `aviso-${pedacoTag(p.tipo) || "aviso"}-${entidade}`;
+  }
+  return `chamado-${p.chamado_id}`;
+}
+
+/**
+ * Caminho relativo dentro de /admin; qualquer outra coisa vira "/admin".
+ * O banco já tem CHECK igual; o service worker confere de novo no clique.
+ */
+export function urlInterna(u: unknown): string {
+  const s = String(u ?? "");
+  return /^\/admin(\/[A-Za-z0-9_-]+)*$/.test(s) ? s : "/admin";
+}
+
 /** Payload do service worker. Corta o corpo até caber num registro. */
-export function montarPayload(p: Preparado): Bytes {
+export function montarPayload(p: Preparado | PreparadoAviso): Bytes {
   const base = {
     titulo: String(p.titulo ?? ""),
     corpo: String(p.corpo ?? ""),
-    url: String(p.url ?? ""),
-    tag: `chamado-${p.chamado_id}`,
+    url: urlInterna(p.url),
+    tag: tagDe(p),
   };
   let b = txt(JSON.stringify(base));
   while (b.length > LIMITE_TEXTO && base.corpo.length > 0) {
@@ -342,6 +387,34 @@ function json(status: number, corpo: unknown): Response {
   });
 }
 
+type Pedido = { avisoId: number } | { mensagemId: string } | { erro: string };
+
+/**
+ * Corpo aceito: exatamente UM de `aviso_id` (inteiro positivo seguro) ou
+ * `mensagem_id` (uuid). Os dois juntos, nenhum ou tipo errado → 400.
+ */
+export async function lerPedido(req: Request): Promise<Pedido> {
+  let c: Record<string, unknown> | null = null;
+  try {
+    const j = await req.json();
+    c = j !== null && typeof j === "object" && !Array.isArray(j) ? (j as Record<string, unknown>) : null;
+  } catch {
+    // corpo não-JSON
+  }
+  if (!c) return { erro: "corpo inválido" };
+  const temAviso = "aviso_id" in c;
+  const temMensagem = "mensagem_id" in c;
+  if (temAviso && temMensagem) return { erro: "informe aviso_id OU mensagem_id" };
+  if (temAviso) {
+    const v = c.aviso_id;
+    if (typeof v !== "number" || !Number.isSafeInteger(v) || v <= 0) return { erro: "aviso_id inválido" };
+    return { avisoId: v };
+  }
+  const m = typeof c.mensagem_id === "string" ? c.mensagem_id : "";
+  if (!UUID.test(m)) return { erro: "mensagem_id inválido" };
+  return { mensagemId: m };
+}
+
 export async function atender(req: Request, deps: Deps): Promise<Response> {
   // Chamado só pelo banco (pg_net): POST, sem CORS, sem JWT de usuário.
   if (req.method !== "POST") return json(405, { erro: "método não permitido" });
@@ -351,14 +424,8 @@ export async function atender(req: Request, deps: Deps): Promise<Response> {
   const recebido = req.headers.get(HEADER_SEGREDO) ?? "";
   if (!(await segredoConfere(recebido, esperado))) return json(401, { erro: "não autorizado" });
 
-  let mensagemId = "";
-  try {
-    const c = await req.json();
-    mensagemId = typeof c?.mensagem_id === "string" ? c.mensagem_id : "";
-  } catch {
-    // corpo não-JSON
-  }
-  if (!UUID.test(mensagemId)) return json(400, { erro: "mensagem_id inválido" });
+  const pedido = await lerPedido(req);
+  if ("erro" in pedido) return json(400, { erro: pedido.erro });
 
   let vapid: Vapid;
   try {
@@ -374,7 +441,10 @@ export async function atender(req: Request, deps: Deps): Promise<Response> {
 
   try {
     const rpc = rest(deps);
-    const p = await rpc<Preparado | null>(RPC_PREPARAR, { p_mensagem_id: mensagemId });
+    const p =
+      "avisoId" in pedido
+        ? await rpc<PreparadoAviso | null>(RPC_PREPARAR_AVISO, { p_aviso_id: pedido.avisoId })
+        : await rpc<Preparado | null>(RPC_PREPARAR, { p_mensagem_id: pedido.mensagemId });
     if (!p) return new Response(null, { status: 204 });
 
     const inscricoes = Array.isArray(p.inscricoes) ? p.inscricoes : [];

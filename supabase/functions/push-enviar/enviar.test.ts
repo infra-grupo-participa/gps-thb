@@ -12,8 +12,13 @@ import {
   deB64url,
   endpointPermitido,
   jwtVapid,
+  lerPedido,
+  montarPayload,
   type Preparado,
+  type PreparadoAviso,
   RS,
+  tagDe,
+  urlInterna,
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore TS5097 — import com extensão .ts é o padrão do Deno
 } from "./enviar.ts";
@@ -58,7 +63,7 @@ async function chavesVapid() {
 }
 
 async function montar(opc: {
-  preparado: Preparado | null;
+  preparado: Preparado | PreparadoAviso | null;
   statusPush?: (endpoint: string) => number | "rede";
 }) {
   const v = await chavesVapid();
@@ -76,7 +81,7 @@ async function montar(opc: {
     await Promise.resolve(); // assíncrono como o fetch real
     const url = String(entrada);
     chamadas.push({ url, init });
-    if (url === `${SB}/rest/v1/rpc/push_preparar`) {
+    if (url === `${SB}/rest/v1/rpc/push_preparar` || url === `${SB}/rest/v1/rpc/push_preparar_aviso`) {
       return new Response(opc.preparado === null ? "null" : JSON.stringify(opc.preparado), { status: 200 });
     }
     if (url === `${SB}/rest/v1/rpc/push_resultado`) {
@@ -275,4 +280,97 @@ D.test("302 não é seguido: redirect manual e status 302 registrado como falha"
   igual(envios.length, 1, "uma chamada só, nenhuma ao destino do redirect");
   igual(envios[0].init?.redirect, "manual");
   igual(m.resultados[0].p_status, 302);
+});
+
+// ---------------------------------------------------------------- avisos (…379)
+
+const AVISO: PreparadoAviso = {
+  aviso_id: 42,
+  tipo: "minuta_anexada",
+  entidade_id: "3c4d5e6f-0a1b-4c2d-8e3f-9a0b1c2d3e4f",
+  titulo: "Minuta nova",
+  corpo: "Nova minuta para revisão. Abra o GPS.",
+  url: "/admin/aluno/1/clientes/2",
+  inscricoes: [],
+};
+
+D.test("aviso_id → chama push_preparar_aviso com p_aviso_id (e não push_preparar)", async () => {
+  const insc = await inscricaoFalsa("https://fcm.googleapis.com/fcm/send/zzz");
+  const m = await montar({ preparado: { ...AVISO, inscricoes: [insc] } });
+  const r = await atender(pedido({ aviso_id: 42 }), m.deps);
+  igual(r.status, 200);
+  igual(await r.json(), { enviados: 1, falhas: 0 });
+  igual(m.chamadas[0].url, `${SB}/rest/v1/rpc/push_preparar_aviso`);
+  igual(JSON.parse(String(m.chamadas[0].init?.body)), { p_aviso_id: 42 });
+  ok(!m.chamadas.some((c) => c.url === `${SB}/rest/v1/rpc/push_preparar`), "não chamou o legado");
+  igual(m.resultados, [{ p_endpoint: insc.endpoint, p_status: 201 }]);
+});
+
+D.test("aviso_id: preparar null → 204", async () => {
+  const m = await montar({ preparado: null });
+  const r = await atender(pedido({ aviso_id: 7 }), m.deps);
+  igual(r.status, 204);
+  igual(m.chamadas.length, 1);
+});
+
+D.test("aviso_id inválido, ambíguo ou corpo não-objeto → 400 sem tocar no banco", async () => {
+  const m = await montar({ preparado: null });
+  const ruins: unknown[] = [
+    { aviso_id: 0 },
+    { aviso_id: -1 },
+    { aviso_id: 1.5 },
+    { aviso_id: "42" },
+    { aviso_id: null },
+    { aviso_id: Number.MAX_SAFE_INTEGER + 2 },
+    { aviso_id: 1, mensagem_id: MENSAGEM },
+    [1],
+    "null",
+    "42",
+  ];
+  for (const corpo of ruins) {
+    const r = await atender(pedido(corpo), m.deps);
+    igual(r.status, 400, `corpo ${JSON.stringify(corpo)}`);
+  }
+  igual(m.chamadas.length, 0);
+});
+
+D.test("lerPedido mantém o legado mensagem_id", async () => {
+  const p = await lerPedido(pedido({ mensagem_id: MENSAGEM }));
+  igual(p, { mensagemId: MENSAGEM });
+});
+
+D.test("tag: aviso-<tipo>-<entidade>; sem entidade usa o id; chamado segue chamado-<id>", () => {
+  igual(tagDe(AVISO), `aviso-minuta_anexada-${AVISO.entidade_id}`);
+  igual(tagDe({ ...AVISO, entidade_id: null }), "aviso-minuta_anexada-n42");
+  igual(tagDe({ ...AVISO, tipo: "Ru<i>m ", entidade_id: "a/b..c" }), "aviso-ruim-abc");
+  igual(tagDe({ titulo: "t", corpo: "c", url: "/", chamado_id: "c1", inscricoes: [] }), "chamado-c1");
+});
+
+D.test("url do payload: só caminho dentro de /admin; resto vira /admin", () => {
+  for (const ok_ of ["/admin", "/admin/chamados/abc-1", "/admin/aluno/1/clientes/2"]) igual(urlInterna(ok_), ok_);
+  for (const ruim of [
+    "//evil.com",
+    "/admin//evil.com",
+    "https://evil.com/admin",
+    "/admin/../x",
+    "/admin/a?x=1",
+    "/admin\\evil",
+    "javascript:alert(1)",
+    "/adminx",
+    "",
+    null,
+  ]) {
+    igual(urlInterna(ruim), "/admin", `url ${String(ruim)}`);
+  }
+});
+
+D.test("payload do aviso: título/corpo do catálogo, url e tag", () => {
+  const b = montarPayload(AVISO);
+  const j = JSON.parse(new TextDecoder().decode(b));
+  igual(j, {
+    titulo: "Minuta nova",
+    corpo: "Nova minuta para revisão. Abra o GPS.",
+    url: "/admin/aluno/1/clientes/2",
+    tag: `aviso-minuta_anexada-${AVISO.entidade_id}`,
+  });
 });

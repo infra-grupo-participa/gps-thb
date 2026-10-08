@@ -1,5 +1,6 @@
-// Edge Function push-enviar: Web Push de uma mensagem de chamado para as
-// inscrições que `gps.push_preparar` devolver.
+// Edge Function push-enviar: Web Push de um aviso da equipe ({aviso_id}, …379,
+// `gps.push_preparar_aviso`) ou, legado, de uma mensagem de chamado
+// ({mensagem_id}, …357, `gps.push_preparar`) para as inscrições devolvidas.
 //
 // DEPLOY: `supabase functions deploy push-enviar --no-verify-jwt`.
 // Quem chama é o banco (pg_net), nunca o navegador: sem JWT de usuário. A

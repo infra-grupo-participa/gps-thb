@@ -18,7 +18,6 @@ import {
 } from "@/components/admin/chamados-fila";
 import { ChamadosConfig } from "@/components/admin/chamados-config";
 import { ChamadosRetencao } from "@/components/admin/chamados-retencao";
-import { PushAvisosBotao } from "@/components/admin/push-avisos-botao";
 
 export const metadata = { title: "Admin — Chamados" };
 
@@ -109,9 +108,12 @@ export default async function AdminChamadosPage({
               emailEquipe={config.emailEquipe}
               fallbackEnv={config.fallbackEnv}
             />
-            <div className="mt-6">
-              <PushAvisosBotao chavePublica={config.vapidPublica} />
-            </div>
+            {/* O botão de avisos no aparelho mudou para o sino do topo
+                (08/10/2026), onde vale para todos os avisos da equipe. */}
+            <p className="mt-6 corpo-sm text-muted-foreground">
+              Avisos neste aparelho: abra o sino no topo da página e use
+              &ldquo;Receber avisos neste aparelho&rdquo;.
+            </p>
           </TabsContent>
 
           <TabsContent value="retencao">

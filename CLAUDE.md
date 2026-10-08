@@ -128,8 +128,14 @@ Migrações `…238` (a trava) e `…239` (o congelamento).
 
 ## Papéis / acesso
 
-- **Admin** = registro em `public.perfis` (equipe interna; já têm `auth.users`). Pode ver e
-  **editar** o ambiente de qualquer aluno.
+- **Admin** = linha ativa em **`gps.admins`** (desde 08/10/2026, migrações 366–375; `gps.eh_admin()`
+  no banco, `src/lib/auth-admin.ts` no app). Pode ver e **editar** o ambiente de qualquer aluno.
+  🔴 O GPS **não lê mais** `public.gp_is_admin()` nem `perfis.cargo` para decidir admin — em 07/10 o
+  projeto de acesso (schema `acesso`) redefiniu os dois e derrubou a equipe. Incluir/tirar admin:
+  tela **Equipe e admins** (`/admin/operadores`) → `gps.admin_definir` (só admin, motivo, só
+  `@advmais.com`, nunca aluno, nunca o último). Escrita direta em `gps.admins` é recusada até como
+  `postgres` (gatilho + marca por txid). Toda função/policy nova do GPS usa `(select gps.eh_admin())`,
+  **nunca** `gp_is_admin()`. Carga inicial dos 11 ficou fora do repo (repo público).
 - **Aluno/parceiro** = registro em `public.thb_alunos` (2.459). O GPS é o **primeiro** portal com
   login próprio do aluno (antes, 0 alunos tinham `auth.users`). Provisionar login e vincular.
 
@@ -195,7 +201,7 @@ abaixo): `gps.reuniao_agendamentos`, `gps.reuniao_horarios`, `gps.reuniao_evento
 propósito, para não perder dado e permitir voltar atrás. **Não voltar a lê-las sem decisão
 explícita do Marcio.**
 Funções: `gps.aluno_atual()` (aluno_id do usuário logado), `gps.touch_atualizado_em()`.
-RLS: admin (`public.gp_is_admin()`, cargo dev/admin) faz tudo; aluno só nos próprios registros
+RLS: admin (`gps.eh_admin()` desde 08/10/2026; antes `public.gp_is_admin()`) faz tudo; aluno só nos próprios registros
 (via `gps.aluno_atual()`).
 
 ## 🔴 Conferência dos 141 × 159 — o gargalo do acesso (10/09/2026)

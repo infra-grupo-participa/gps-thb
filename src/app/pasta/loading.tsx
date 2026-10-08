@@ -3,7 +3,7 @@ import { HeaderSkeleton, SkeletonTexto } from "@/components/ui/lista-skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 
 /**
- * Mesma largura da página real (`max-w-6xl`), senão a coluna salta de lado.
+ * Mesma largura da página real (`max-w-pagina`), senão a coluna salta de lado.
  * Ficha única (link da pasta do Drive) — `SkeletonTexto`, não
  * `ListaSkeleton` (não é lista de itens repetidos).
  */
@@ -11,7 +11,7 @@ export default function PastaLoading() {
   return (
     <>
       <HeaderSkeleton />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
+      <main id="conteudo" className="mx-auto w-full max-w-pagina px-4 pt-8 pb-16">
         <PageHeader
           titulo="Minha pasta"
           descricao="Aqui fica a sua pasta de documentos no Drive, criada pela equipe durante a implementação."

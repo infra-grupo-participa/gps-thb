@@ -281,7 +281,7 @@ export default async function HomePage() {
         navItems={navDoAluno(ctx)}
         navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-6 pb-16">
+      <main id="conteudo" className="mx-auto w-full max-w-pagina px-4 pt-6 pb-16">
         <HomeAluno
           primeiroNome={nomeExibicao?.trim().split(/\s+/)[0] || null}
           compartilhado={

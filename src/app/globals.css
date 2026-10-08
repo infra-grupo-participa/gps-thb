@@ -13,6 +13,9 @@
 @custom-variant dark (&:is([data-tema-escuro] *));
 
 @theme inline {
+  /* Largura ÚNICA de página (gera `max-w-pagina`). Header, menu e <main> usam
+     esta classe para a borda esquerda coincidir. Não repetir o número. */
+  --container-pagina: 1600px;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);

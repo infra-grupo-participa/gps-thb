@@ -59,7 +59,7 @@ export default async function GeradorDeMinutasPage() {
       <main
         id="conteudo"
         data-gerador-minutas
-        className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col px-4 pt-3 pb-4"
+        className="mx-auto flex min-h-0 w-full max-w-pagina flex-1 flex-col px-4 pt-3 pb-4"
       >
         {ativo && src ? (
           <GeradorMinutasQuadro src={src} />

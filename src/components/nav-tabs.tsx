@@ -1046,7 +1046,7 @@ export function TrilhoDeNavegacao({
           + `shrink-0` (o fixo nunca cede) são o mecanismo para qualquer
           largura, inclusive 360 px — MEDIDO, ver o comentário abaixo. */}
       <div className="border-t">
-        <div className="mx-auto flex w-full max-w-6xl items-stretch">
+        <div className="mx-auto flex w-full max-w-pagina items-stretch">
           <div className="min-w-0 flex-1 pl-4">
             <NavTabs
               items={items}
@@ -1107,11 +1107,11 @@ export function TrilhoDeNavegacao({
       </div>
 
       {subItens.length > 0 ? (
-        // 3ª linha: mesmo `max-w-6xl` e mesmo `pl-4` das de cima, para as
+        // 3ª linha: mesmo `max-w-pagina` e mesmo `pl-4` das de cima, para as
         // três alinharem na mesma sarjeta esquerda. Sem aba fixa aqui — o
         // 2º nível é curto por construção (2 a 5 itens).
         <div className={cn("border-t", linhaSoAdmin && "previa-oculta")}>
-          <div className="mx-auto w-full max-w-6xl">
+          <div className="mx-auto w-full max-w-pagina">
             <div className="pl-4">
               <SubNavTabs
                 itens={subItens}

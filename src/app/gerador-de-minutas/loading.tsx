@@ -9,7 +9,7 @@ export default function GeradorDeMinutasLoading() {
       <HeaderSkeleton />
       <main
         id="conteudo"
-        className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col px-4 pt-3 pb-4"
+        className="mx-auto flex min-h-0 w-full max-w-pagina flex-1 flex-col px-4 pt-3 pb-4"
       >
         <GeradorMinutasMoldura
           acao={<Skeleton aria-hidden className="h-11 w-full rounded-lg sm:w-52" />}

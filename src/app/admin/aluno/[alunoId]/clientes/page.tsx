@@ -52,7 +52,7 @@ export default async function AdminAlunoClientesPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
+      <main id="conteudo" className="mx-auto w-full max-w-pagina px-4 pt-8 pb-16">
         <PageHeader
           titulo={`Clientes de ${aluno?.nome ?? ""}`}
         />

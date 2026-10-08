@@ -22,7 +22,7 @@ export default function MateriaisLoading() {
   return (
     <>
       <HeaderSkeleton />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-pagina px-4 py-8">
         <PageHeader
           titulo="Materiais"
           descricao="Seu acervo de aulas e modelos — reunidos de todas as etapas, num só lugar."

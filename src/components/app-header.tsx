@@ -113,7 +113,7 @@ export async function AppHeader({
             64 px do header e empurrando a faixa "Modo assistência" por cima do
             subtítulo. Com as abas na própria linha, a marca nunca disputa
             largura com elas — o header fica igual com 3 ou com 8 abas. */}
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-x-4 px-4">
+        <div className="mx-auto flex h-14 w-full max-w-pagina items-center gap-x-4 px-4">
           <Link
             href={homeHref}
             className="foco-visivel flex min-w-0 items-center gap-2.5 rounded-md"

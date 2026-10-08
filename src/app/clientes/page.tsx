@@ -38,7 +38,7 @@ export default async function ClientesPage({
         navItems={navDoAluno(ctx)}
         navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
+      <main id="conteudo" className="mx-auto w-full max-w-pagina px-4 pt-8 pb-16">
         {/* João 06/10: sem parágrafo de descrição. */}
         <PageHeader
           titulo="Clientes"

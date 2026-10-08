@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 /**
  * Título e descrição são estáticos — a página real usa exatamente
  * "Materiais" / "Acervo de aulas e modelos de todas as etapas.", sem depender
- * de query nenhuma. `max-w-6xl` + `py-8` é a forma real (mesma da irmã do
+ * de query nenhuma. `max-w-pagina` + `py-8` é a forma real (mesma da irmã do
  * aluno, `src/app/materiais/loading.tsx`).
  *
  * A forma é a do `MateriaisView`: barra de busca + 3 chips de tipo, e então
@@ -19,7 +19,7 @@ export default function AdminAlunoMateriaisLoading() {
   return (
     <>
       <HeaderSkeleton />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-pagina px-4 py-8">
         <PageHeader
           titulo="Materiais"
         />

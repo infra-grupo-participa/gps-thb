@@ -125,7 +125,7 @@ function AgendamentosCard({
           <CardTitle className="text-base">
             Agendamentos da Apresentação do Croqui
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="max-w-[70ch] text-sm text-muted-foreground">
             Sua agenda pessoal desta etapa. Liste as datas e marque{" "}
             <span className="font-medium">a principal</span> para se organizar.
           </p>
@@ -239,7 +239,7 @@ function RevisaoCard({
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Revisão do Croqui</CardTitle>
-        <p className="text-sm text-muted-foreground">
+        <p className="max-w-[70ch] text-sm text-muted-foreground">
           O parceiro registra as dúvidas; a equipe aponta as correções.
         </p>
       </CardHeader>

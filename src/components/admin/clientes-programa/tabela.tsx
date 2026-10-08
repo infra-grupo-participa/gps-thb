@@ -10,7 +10,7 @@
  * 🔴 SEM ROLAGEM LATERAL, SEM VÃO (03/10, 06/10 e 08/10/2026): as quatro datas
  * da agenda são o status do pessoal e precisam caber sem arrastar para o lado.
  * Parceiro, telefone e grau/DISC são linhas 2 e 3 da célula do cliente.
- * Container da página: `max-w-[1600px]` (o mesmo do gerador). Colunas: cliente
+ * Container da página: `max-w-pagina` (o mesmo do gerador). Colunas: cliente
  * `minmax(16rem,28rem)` (NÃO absorve a sobra), fase 7rem fixa e as 6 restantes
  * (4 datas, Documentos, Pasta) em `fr` com mínimo de 6/9,5/5,5rem — a sobra se
  * reparte entre elas. Conta a 1366 px (útil ≈1.302): 28 + 7 + 6 colunas ≥ 38,5

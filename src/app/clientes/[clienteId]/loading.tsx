@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
  * O link de voltar é estático e já aparece: quem abriu a ficha errada volta à
  * lista sem esperar.
  *
- * `max-w-4xl` é a largura da ficha de verdade — não a `max-w-6xl` da lista de
+ * `max-w-4xl` é a largura da ficha de verdade — não a `max-w-pagina` da lista de
  * onde a pessoa veio.
  */
 export default function ClienteFichaLoading() {

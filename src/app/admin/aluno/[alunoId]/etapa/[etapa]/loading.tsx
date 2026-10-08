@@ -10,14 +10,14 @@ import {
  * esqueleto DENTRO do `h1` (`SkeletonTexto` é `<span>` — um `<div>` ali seria
  * HTML inválido). O link "voltar" é estático e já fica clicável.
  *
- * `max-w-6xl` + `py-8` (não `pt-8 pb-16`) é a forma exata da página real —
+ * `max-w-pagina` + `py-8` (não `pt-8 pb-16`) é a forma exata da página real —
  * a mesma da irmã do aluno (`src/app/etapa/[etapa]/loading.tsx`).
  */
 export default function AdminAlunoEtapaLoading() {
   return (
     <>
       <HeaderSkeleton />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-pagina px-4 py-8">
         <PageHeader
           voltar={
             <span className="text-sm text-muted-foreground">

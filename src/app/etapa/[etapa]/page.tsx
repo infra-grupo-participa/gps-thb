@@ -71,7 +71,7 @@ export default async function EtapaAlunoPage({
         navItems={navDoAluno(ctx)}
         navFixo={navFixoDoAluno("", { tutoriais: tutoriaisAtivo })}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-pagina px-4 py-8">
         <PageHeader
           titulo={`Etapa ${String(n).padStart(2, "0")} — ${etapaInfo.nome}`}
           voltar={

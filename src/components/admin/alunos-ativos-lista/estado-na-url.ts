@@ -129,8 +129,8 @@ export const SUBABA_VISAO_PADRAO: SubAbaVisao = "programa";
  * "O programa" marca, e que recorta o gráfico e a tabela abaixo dela
  * (23/09/2026, redesenho master-detail).
  *
- * 🔑 **Seis estágios, não nove.** A régua tem 1152 px de largura útil
- * (`max-w-6xl` do `/admin`): nove números dariam ~128 px cada, e um rótulo
+ * 🔑 **Seis estágios, não nove.** A régua tinha 1152 px de largura útil (hoje ~1568; a decisão de seis ficou)
+ * (`max-w-pagina` do `/admin`): nove números dariam ~128 px cada, e um rótulo
  * de três palavras não cabe — a régua quebraria em duas linhas e deixaria de
  * ser régua. Os três estágios que ficaram de fora (`no programa`, `fechou os
  * 30`, `reuniao`) continuam na RPC; `no programa` é o denominador (148) e

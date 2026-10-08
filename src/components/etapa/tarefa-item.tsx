@@ -118,9 +118,9 @@ export function TarefaItem({
             </Badge>
           ) : null}
         </div>
-        <p className="text-xs text-muted-foreground">{t.descricao}</p>
+        <p className="max-w-[70ch] text-xs text-muted-foreground">{t.descricao}</p>
         {bloqueada && detalheBloqueio ? (
-          <p className="text-xs text-muted-foreground">{detalheBloqueio}</p>
+          <p className="max-w-[70ch] text-xs text-muted-foreground">{detalheBloqueio}</p>
         ) : null}
 
         {t.apontaClientes && clientesHref ? (
@@ -134,7 +134,7 @@ export function TarefaItem({
         ) : null}
 
         {t.info ? (
-          <p className="mt-1 text-xs font-medium text-accent-foreground">{t.info}</p>
+          <p className="mt-1 max-w-[70ch] text-xs font-medium text-accent-foreground">{t.info}</p>
         ) : null}
 
         {t.tutorialUrl || t.modelo ? (

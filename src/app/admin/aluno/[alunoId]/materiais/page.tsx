@@ -69,7 +69,7 @@ export default async function AdminAlunoMateriaisPage({
       />
       <AssistBanner aluno={aluno} />
 
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main id="conteudo" className="mx-auto w-full max-w-pagina px-4 py-8">
         <PageHeader
           titulo="Materiais"
         />

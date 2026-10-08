@@ -15,7 +15,7 @@ export default function HomeLoading() {
       <main id="conteudo"
         role="status"
         aria-live="polite"
-        className="mx-auto w-full max-w-6xl px-4 pt-6 pb-16"
+        className="mx-auto w-full max-w-pagina px-4 pt-6 pb-16"
       >
         <span className="sr-only">Carregando seu início…</span>
 

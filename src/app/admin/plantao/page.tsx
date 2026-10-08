@@ -87,7 +87,7 @@ export default async function AdminPlantaoPage({
         homeHref="/admin"
         navItems={adminNavItems({ souAdmin: true })}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
+      <main id="conteudo" className="mx-auto w-full max-w-pagina px-4 pt-8 pb-16">
         <PageHeader
           titulo="Plantão de Dúvidas"
           eyebrow="Produto: Acelera Holding"

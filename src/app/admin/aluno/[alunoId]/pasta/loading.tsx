@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * O nome do parceiro só existe depois da query — o título leva uma barra
- * (`SkeletonTexto`). A descrição é estática. `max-w-6xl` é a largura real.
+ * (`SkeletonTexto`). A descrição é estática. `max-w-pagina` é a largura real.
  *
  * Dois blocos, na ordem real: o formulário de configuração do link do Drive
  * (só admin) e o card com o botão "Abrir no Drive" (a prévia embutida saiu
@@ -18,7 +18,7 @@ export default function AdminAlunoPastaLoading() {
   return (
     <>
       <HeaderSkeleton />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
+      <main id="conteudo" className="mx-auto w-full max-w-pagina px-4 pt-8 pb-16">
         <PageHeader
           titulo={<SkeletonTexto className="h-7 w-56 max-w-full" />}
         />

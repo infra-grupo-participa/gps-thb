@@ -29,7 +29,7 @@ export function AssistBanner({ aluno }: { aluno: Aluno | null }) {
 
       {/* Barra informativa */}
       <div className="previa-oculta border-b border-primary/30 bg-accent">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-4 py-2 text-sm">
+        <div className="mx-auto flex w-full max-w-pagina flex-wrap items-center gap-2 px-4 py-2 text-sm">
           <Badge icone={ShieldCheck}>Modo assistência</Badge>
           <span className="text-muted-foreground">
             Você está no ambiente de{" "}

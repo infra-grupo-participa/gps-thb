@@ -139,17 +139,21 @@ export function TabelaClientesPrograma({
                           className="size-3.5 shrink-0 fill-primary text-primary"
                         />
                       ) : null}
-                      <span className="truncate" title={nome}>
+                      <Link
+                        href={`/admin/aluno/${c.alunoId}/clientes/${c.id}`}
+                        className="truncate underline-offset-2 hover:underline focus-visible:underline"
+                        title={`Abrir a ficha de ${nome}`}
+                      >
                         {nome}
-                      </span>
+                      </Link>
                     </div>
                     <span className="shrink-0 lg:hidden">{seloFase}</span>
                   </div>
                   <div className="flex min-w-0 items-center gap-x-1.5 text-xs text-muted-foreground">
                     <Link
                       href={`/admin/aluno/${c.alunoId}`}
-                      className="min-w-0 truncate hover:text-accent-foreground hover:underline"
-                      title={c.parceiroNome ?? undefined}
+                      className="min-w-0 truncate font-medium text-accent-foreground underline decoration-accent-foreground/40 underline-offset-2 hover:decoration-accent-foreground"
+                      title={c.parceiroNome ? `Abrir a ficha do parceiro ${c.parceiroNome}` : undefined}
                     >
                       <span className="sr-only">Parceiro: </span>
                       {formatarNome(c.parceiroNome) || "—"}
@@ -192,16 +196,16 @@ export function TabelaClientesPrograma({
                   ))}
                   <div className="col-span-2 flex flex-wrap gap-x-4 gap-y-0.5 lg:col-span-1 lg:grid lg:gap-0.5">
                     <SeloAnexo
-                      tipo="Minuta"
-                      status={c.mnStatus}
-                      em={c.mnEm}
-                      porEquipe={c.mnPorEquipe}
-                    />
-                    <SeloAnexo
                       tipo="Croqui"
                       status={c.cqPdfStatus}
                       em={c.cqPdfEm}
                       porEquipe={c.cqPdfPorEquipe}
+                    />
+                    <SeloAnexo
+                      tipo="Minuta"
+                      status={c.mnStatus}
+                      em={c.mnEm}
+                      porEquipe={c.mnPorEquipe}
                     />
                   </div>
                   <span

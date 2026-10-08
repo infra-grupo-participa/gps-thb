@@ -97,10 +97,10 @@ export const COLUNAS_CSV_CLIENTES: ColunaCsv<ClienteDoPrograma>[] = [
     cabecalho: "Acompanhado pela equipe",
     valor: (c) => (c.acompanhadoEquipe ? "Sim" : "Não"),
   },
-  { cabecalho: "Minuta (situação)", valor: (c) => situacaoAnexoCsv(c.mnStatus, "Revisada") },
   {
     cabecalho: "Croqui PDF (situação)",
     valor: (c) => situacaoAnexoCsv(c.cqPdfStatus, "Revisado"),
   },
+  { cabecalho: "Minuta (situação)", valor: (c) => situacaoAnexoCsv(c.mnStatus, "Revisada") },
   { cabecalho: "Cadastrado em", valor: (c) => formatarData(c.criadoEm) },
 ];

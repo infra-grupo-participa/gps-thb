@@ -362,10 +362,11 @@ const TILES_DOCUMENTOS: {
   rotulo: string;
   paraRevisar: boolean;
 }[] = [
-  { id: "minuta_pendente", tipo: "minuta", situacao: "pendente", rotulo: "Minutas para revisar", paraRevisar: true },
+  // Ordem do processo (pedido do João, 08/10): o croqui vem ANTES da minuta.
   { id: "croqui_pendente", tipo: "croqui", situacao: "pendente", rotulo: "Croquis para revisar", paraRevisar: true },
-  { id: "minuta_revisada", tipo: "minuta", situacao: "revisada", rotulo: "Minutas revisadas", paraRevisar: false },
   { id: "croqui_revisado", tipo: "croqui", situacao: "revisada", rotulo: "Croquis revisados", paraRevisar: false },
+  { id: "minuta_pendente", tipo: "minuta", situacao: "pendente", rotulo: "Minutas para revisar", paraRevisar: true },
+  { id: "minuta_revisada", tipo: "minuta", situacao: "revisada", rotulo: "Minutas revisadas", paraRevisar: false },
 ];
 
 /**
@@ -397,7 +398,7 @@ function FaixaDocumentos({
         className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
       >
         <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
-        Não foi possível carregar os documentos (minuta e croqui). {erro ?? ""}
+        Não foi possível carregar os documentos (croqui e minuta). {erro ?? ""}
       </p>
     );
   }
@@ -410,7 +411,7 @@ function FaixaDocumentos({
 
   return (
     <FaixaMetricas
-      titulo="Documentos — minuta e croqui em PDF"
+      titulo="Documentos — croqui e minuta em PDF"
       resumo={`${paraRevisar} para revisar`}
       ativo={estado.anexo}
       colunas={4}

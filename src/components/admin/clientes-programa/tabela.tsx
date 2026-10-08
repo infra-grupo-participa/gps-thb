@@ -7,18 +7,19 @@
  * Aqui a página inteira já pode ter 100 linhas — 100 instâncias de um
  * componente com portal travariam a aba. Zero componente Radix/Base UI por linha.
  *
- * 🔴 SEM ROLAGEM LATERAL (03/10/2026 e 06/10/2026, João): as quatro datas da
- * agenda (Entrevista, Preliminar, Croqui, Execução) são o status do pessoal e
- * precisam caber sem arrastar para o lado. Para abrir espaço, parceiro,
- * telefone e grau/DISC deixaram de ser colunas e viraram a 2ª linha da célula
- * do cliente. Conta a 1366 px (container útil ≈1.088): colunas fixas
- * 7 + 4×6 + 5,5 = 36,5rem + 6 vãos de 0,75rem ≈ 656 px → sobram ≈ 390 px
- * para o cliente. No estreito (<lg) a linha vira cartão com grade 2×2.
+ * 🔴 SEM ROLAGEM LATERAL, SEM VÃO (03/10, 06/10 e 08/10/2026): as quatro datas
+ * da agenda são o status do pessoal e precisam caber sem arrastar para o lado.
+ * Parceiro, telefone e grau/DISC são linhas 2 e 3 da célula do cliente.
+ * Container da página: `max-w-[1600px]` (o mesmo do gerador). Colunas: cliente
+ * `minmax(16rem,28rem)` (NÃO absorve a sobra), fase 7rem fixa e as 6 restantes
+ * (4 datas, Documentos, Pasta) em `fr` com mínimo de 6/9,5/5,5rem — a sobra se
+ * reparte entre elas. Conta a 1366 px (útil ≈1.302): 28 + 7 + 6 colunas ≥ 38,5
+ * = 73,5rem + 7 vãos de 0,75rem ≈ 1.260 px, sem sobra grande; a 1920 px o
+ * container trava em 1.600 (útil 1.568) e as colunas em `fr` crescem juntas.
+ * No estreito (<lg) a linha vira cartão com grade 2×2.
  *
- * (…378, 08/10/2026) + coluna "Documentos" (minuta e croqui em PDF), 9,5rem +
- * 1 vão = 164 px → o cliente fica com ≈ 266 px a 1366 px (nome trunca com
- * `title`). O selo mostra estado curto ("A revisar"); data e autor vão no
- * `title` e no texto de leitor de tela, não numa 2ª linha.
+ * Documentos (…378): só se mostra o anexo que existe (croqui antes da minuta);
+ * sem nenhum, um marcador vazio. Estrela mantém fundo próprio também no hover.
  */
 
 import { Fragment } from "react";
@@ -65,7 +66,7 @@ export function TabelaClientesPrograma({
         aria-hidden
         className={cn(
           COLUNAS,
-          "hidden gap-x-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground lg:grid",
+          "hidden items-end gap-x-3 border-b px-4 py-2 text-xs leading-tight font-medium text-muted-foreground lg:grid",
         )}
       >
         <span>Cliente</span>
@@ -117,11 +118,11 @@ export function TabelaClientesPrograma({
                   negrito. Sem estrela: tom apagado (token, nunca `opacity`). */}
               <li
                 className={cn(
-                  "flex flex-col gap-1.5 px-4 py-2.5 text-sm lg:grid lg:items-center lg:gap-x-3 lg:gap-y-0",
+                  "flex flex-col gap-1.5 px-4 py-3 text-sm transition-colors lg:grid lg:items-center lg:gap-x-3 lg:gap-y-0",
                   COLUNAS,
                   c.acompanhadoEquipe
-                    ? "bg-primary/5 shadow-[inset_3px_0_0_var(--color-primary)]"
-                    : "text-muted-foreground",
+                    ? "bg-primary/5 shadow-[inset_3px_0_0_var(--color-primary)] hover:bg-primary/10"
+                    : "text-muted-foreground hover:bg-muted/60",
                 )}
               >
                 {/* Cliente: nome (+ fase só no estreito) / parceiro · telefone · grau/DISC */}
@@ -149,18 +150,18 @@ export function TabelaClientesPrograma({
                     </div>
                     <span className="shrink-0 lg:hidden">{seloFase}</span>
                   </div>
-                  <div className="flex min-w-0 items-center gap-x-1.5 text-xs text-muted-foreground">
+                  <div className="min-w-0 text-xs">
                     <Link
                       href={`/admin/aluno/${c.alunoId}`}
-                      className="min-w-0 truncate font-medium text-accent-foreground underline decoration-accent-foreground/40 underline-offset-2 hover:decoration-accent-foreground"
+                      className="block min-w-0 font-medium text-accent-foreground underline decoration-accent-foreground/40 underline-offset-2 hover:decoration-accent-foreground"
                       title={c.parceiroNome ? `Abrir a ficha do parceiro ${c.parceiroNome}` : undefined}
                     >
-                      <span className="sr-only">Parceiro: </span>
-                      {formatarNome(c.parceiroNome) || "—"}
+                      Aluno: {formatarNome(c.parceiroNome) || "sem nome"}
                     </Link>
-                    {c.telefone ? (
-                      <>
-                        <span aria-hidden>·</span>
+                  </div>
+                  {c.telefone || grauDisc ? (
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                      {c.telefone ? (
                         <span className="shrink-0 whitespace-nowrap">
                           <CopiarContato
                             valor={c.telefone}
@@ -168,17 +169,11 @@ export function TabelaClientesPrograma({
                             formatar={mascaraTelefone}
                           />
                         </span>
-                      </>
-                    ) : null}
-                    {grauDisc ? (
-                      <>
-                        <span aria-hidden>·</span>
-                        <span className="min-w-0 truncate" title={grauDisc}>
-                          {grauDisc}
-                        </span>
-                      </>
-                    ) : null}
-                  </div>
+                      ) : null}
+                      {c.telefone && grauDisc ? <span aria-hidden>·</span> : null}
+                      {grauDisc ? <span className="min-w-0">{grauDisc}</span> : null}
+                    </div>
+                  ) : null}
                 </div>
 
                 <span className="hidden lg:block">{seloFase}</span>
@@ -195,25 +190,31 @@ export function TabelaClientesPrograma({
                     />
                   ))}
                   <div className="col-span-2 flex flex-wrap gap-x-4 gap-y-0.5 lg:col-span-1 lg:grid lg:gap-0.5">
-                    <SeloAnexo
-                      tipo="Croqui"
-                      status={c.cqPdfStatus}
-                      em={c.cqPdfEm}
-                      porEquipe={c.cqPdfPorEquipe}
-                    />
-                    <SeloAnexo
-                      tipo="Minuta"
-                      status={c.mnStatus}
-                      em={c.mnEm}
-                      porEquipe={c.mnPorEquipe}
-                    />
+                    {!c.cqPdfStatus && !c.mnStatus ? (
+                      <Vazio texto="sem anexo" />
+                    ) : (
+                      <>
+                        <SeloAnexo
+                          tipo="Croqui"
+                          status={c.cqPdfStatus}
+                          em={c.cqPdfEm}
+                          porEquipe={c.cqPdfPorEquipe}
+                        />
+                        <SeloAnexo
+                          tipo="Minuta"
+                          status={c.mnStatus}
+                          em={c.mnEm}
+                          porEquipe={c.mnPorEquipe}
+                        />
+                      </>
+                    )}
                   </div>
                   <span
                     className="whitespace-nowrap text-xs text-muted-foreground lg:text-sm"
                     title={pasta?.[c.id]?.titulo}
                   >
                     <span className="lg:sr-only">Pasta </span>
-                    {pasta?.[c.id]?.rotulo ?? "—"}
+                    {pasta?.[c.id]?.rotulo ?? <Vazio texto="sem pasta" />}
                   </span>
                 </div>
               </li>
@@ -276,12 +277,21 @@ function CelulaData({
           ) : null}
         </>
       ) : (
-        <>
-          <span aria-hidden>—</span>
-          <span className="sr-only">sem data</span>
-        </>
+        <Vazio texto="sem data" />
       )}
     </div>
+  );
+}
+
+/** Vazio discreto: o que tem conteúdo salta aos olhos. */
+function Vazio({ texto }: { texto: string }) {
+  return (
+    <>
+      <span aria-hidden className="text-muted-foreground/50">
+        ·
+      </span>
+      <span className="sr-only">{texto}</span>
+    </>
   );
 }
 
@@ -321,17 +331,7 @@ function SeloAnexo({
   em: string | null;
   porEquipe: boolean | null;
 }) {
-  if (!status) {
-    return (
-      <div className="flex items-center gap-1.5 whitespace-nowrap text-sm">
-        <span className="w-12 shrink-0 text-muted-foreground">{tipo}</span>
-        <span aria-hidden className="text-muted-foreground">—</span>
-        <span className="sr-only">
-          {tipo === "Minuta" ? "sem minuta anexada" : "sem croqui anexado"}
-        </span>
-      </div>
-    );
-  }
+  if (!status) return null; // Só se mostra o que existe.
   const d = em ? new Date(em) : null;
   const dia = d && !Number.isNaN(d.getTime()) ? FORMATO_DIA_MES.format(d) : null;
   const autor = porEquipe === null ? null : porEquipe ? "pela equipe" : "pelo parceiro";
@@ -394,4 +394,4 @@ function dataCurta(iso: string | null): string | null {
 
 /** As oito colunas em tela larga — o cabeçalho e cada linha usam a mesma. */
 const COLUNAS =
-  "lg:grid-cols-[minmax(0,1fr)_7rem_6rem_6rem_6rem_6rem_9.5rem_5.5rem]";
+  "lg:grid-cols-[minmax(16rem,28rem)_7rem_repeat(4,minmax(6rem,1fr))_minmax(9.5rem,1.3fr)_minmax(5.5rem,1fr)]";

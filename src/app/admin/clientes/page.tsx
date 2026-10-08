@@ -102,7 +102,7 @@ export default async function AdminClientesPage({
         homeHref="/admin"
         navItems={adminNavItems({ souAdmin: true })}
       />
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
+      <main id="conteudo" className="mx-auto w-full max-w-[1600px] px-4 pt-8 pb-16">
         <PageHeader
           titulo="Clientes"
         />

@@ -8,5 +8,12 @@
   "desligar": [],
   "so_aviso": [],
   "build_env": [],
-  "versao_aplicada": 1
+  "versao_aplicada": 1,
+  "pos_push": {
+    "url": "https://programa.timeholdingbrasil.com.br",
+    "hostinger": {
+      "username": "u542688653",
+      "domain": "programa.timeholdingbrasil.com.br"
+    }
+  }
 }

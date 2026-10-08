@@ -4,6 +4,18 @@ import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import type { ClienteDoPrograma, EstadoReuniao, EtapaAgenda } from "@/lib/data/clientes-admin";
 import { mascaraTelefone } from "@/lib/masks";
 
+/** Situação do documento na revisão da equipe. Vazio = sem anexo.
+ * Gênero por tipo: "Revisada" (minuta) × "Revisado" (croqui). */
+function situacaoAnexoCsv(
+  status: ClienteDoPrograma["mnStatus"],
+  revisada: "Revisada" | "Revisado",
+): string {
+  if (status === "enviada") return "A revisar";
+  if (status === "em_analise") return "Em análise";
+  if (status === "revisada") return revisada;
+  return "";
+}
+
 const ROTULO_ESTADO_CSV: Record<EstadoReuniao, string> = {
   agendada: "agendada",
   pendente: "pendente (não registrada)",
@@ -78,12 +90,17 @@ export const COLUNAS_CSV_CLIENTES: ColunaCsv<ClienteDoPrograma>[] = [
   // "Reunião Preliminar (agenda)" ≠ a coluna "Reunião preliminar" acima, que é
   // a data DIGITADA na ficha. Esta é a regra da agenda (sessão manda).
   { cabecalho: "Reunião Preliminar (agenda)", valor: (c) => reuniaoCsv(c.rpEm, c.rpEstado) },
-  { cabecalho: "Croqui", valor: (c) => reuniaoCsv(c.cqEm, c.cqEstado) },
+  { cabecalho: "Reunião do croqui", valor: (c) => reuniaoCsv(c.cqEm, c.cqEstado) },
   { cabecalho: "Reunião Inicial de Execução", valor: (c) => reuniaoCsv(c.exEm, c.exEstado) },
   { cabecalho: "Aderiu", valor: (c) => (c.aderiuReuniao ? "Sim" : "Não") },
   {
     cabecalho: "Acompanhado pela equipe",
     valor: (c) => (c.acompanhadoEquipe ? "Sim" : "Não"),
+  },
+  { cabecalho: "Minuta (situação)", valor: (c) => situacaoAnexoCsv(c.mnStatus, "Revisada") },
+  {
+    cabecalho: "Croqui PDF (situação)",
+    valor: (c) => situacaoAnexoCsv(c.cqPdfStatus, "Revisado"),
   },
   { cabecalho: "Cadastrado em", valor: (c) => formatarData(c.criadoEm) },
 ];

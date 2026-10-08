@@ -18,7 +18,7 @@ import type { ClienteCroqui } from "@/lib/croquis-tipos";
 // ─────────────────────────────────────────────────────────────────────────
 
 const COLUNAS_CROQUI =
-  "id, cliente_id, path, nome, tamanho, apresentado_em, observacoes, enviado_em, enviado_por, enviado_pela_equipe";
+  "id, cliente_id, path, nome, tamanho, apresentado_em, observacoes, enviado_em, enviado_por, enviado_pela_equipe, status, parecer, parecer_em, parecer_por";
 
 /**
  * Lista os croquis de UM cliente, mais recente primeiro.

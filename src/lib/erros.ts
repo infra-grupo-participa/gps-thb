@@ -226,6 +226,9 @@ const FRASES_DO_BANCO: Record<string, string> = {
   // com a mesma frase de propósito: para o aluno é um problema só.
   "Para trocar o cliente que a equipe acompanha, abra um chamado no Suporte.":
     "Para trocar o cliente que a equipe acompanha, abra um chamado no Suporte.",
+  // trg_etapa1_clientes_croqui_revisado (…380)
+  "Este cliente tem croqui revisado pela equipe e não pode ser excluído. Fale com o Suporte.":
+    "Este cliente tem croqui revisado pela equipe e não pode ser excluído. Fale com o Suporte.",
 
   // ⚠️ Esta ficou INALCANÇÁVEL com a ...215 (a recusa acima pega o mesmo caso
   // antes, e com uma frase que diz o que fazer). Continua aqui enquanto a

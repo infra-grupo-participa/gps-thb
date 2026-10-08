@@ -875,6 +875,7 @@ export function ClienteFicha({
             clienteId={cliente.id}
             croquis={croquis}
             podeAnexar
+            equipe={admin}
             desabilitado={pending}
             aoMudar={() => router.refresh()}
             linkDrive={linkDrive}

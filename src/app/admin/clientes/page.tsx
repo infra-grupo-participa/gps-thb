@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { getContextoSessao } from "@/lib/auth";
-import { getClientesAgendaKpis, getClientesDoPrograma } from "@/lib/data/clientes-admin";
+import {
+  getClientesAgendaKpis,
+  getClientesAnexosKpis,
+  getClientesDoPrograma,
+} from "@/lib/data/clientes-admin";
 import { getUltimaModificacaoPasta } from "@/lib/data/clientes-pasta";
 import { formatarDataHora, formatarHaQuanto } from "@/lib/datas";
 import { adminNavItems } from "@/lib/nav";
@@ -48,6 +52,7 @@ export default async function AdminClientesPage({
     pag?: string;
     reuniao?: string;
     agenda?: string;
+    anexo?: string;
   }>;
 }) {
   const ctx = await getContextoSessao();
@@ -59,7 +64,7 @@ export default async function AdminClientesPage({
   // Lista (paginada, filtrada) e KPIs (universo inteiro, mesma chamada
   // única de sempre) são independentes — buscadas em PARALELO, nunca em
   // cascata (protocolo de sustentabilidade, pergunta "repetição").
-  const [{ linhas, total, erro }, kpisAgenda] = await Promise.all([
+  const [{ linhas, total, erro }, kpisAgenda, kpisAnexos] = await Promise.all([
     getClientesDoPrograma({
       limite: ITENS_POR_PAGINA,
       offset: offsetDaPagina(estado.pagina),
@@ -68,11 +73,16 @@ export default async function AdminClientesPage({
       busca: estado.busca || null,
       reuniao: estado.reuniao,
       agenda: estado.agenda,
+      anexo: estado.anexo,
     }),
     // Falha vira aviso na faixa, nunca "0" nem a tela inteira no error.tsx.
     getClientesAgendaKpis().catch(() => null),
+    // (…378) Minuta/croqui em PDF: mesma regra — terceira chamada no MESMO
+    // `Promise.all`, nunca em série; falha vira aviso na própria faixa.
+    getClientesAnexosKpis().catch(() => null),
   ]);
   const erroKpis = kpisAgenda ? null : "Tente recarregar a página.";
+  const erroKpisAnexos = kpisAnexos ? null : "Tente recarregar a página.";
 
   // Depende dos ids da página, então vem logo DEPOIS (segunda consulta, uma
   // só por página). Falha → mapa vazio + `logErro` lá dentro: coluna "—".
@@ -105,6 +115,8 @@ export default async function AdminClientesPage({
           kpis={kpisAgenda}
           pasta={pasta}
           erroKpis={erroKpis}
+          kpisAnexos={kpisAnexos}
+          erroKpisAnexos={erroKpisAnexos}
         />
       </main>
     </>

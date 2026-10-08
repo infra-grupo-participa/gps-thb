@@ -57,6 +57,11 @@ import { Label } from "@/components/ui/label";
 import { DialogoConfirmacao } from "@/components/ui/dialogo-confirmacao";
 import { VisorDocumento } from "@/components/clientes/visor-documento";
 import { AvisoRevisaoDrive } from "@/components/clientes/aviso-revisao-drive";
+import {
+  CroquiAndamento,
+  CroquiParecerForm,
+  CroquiParecerLeitura,
+} from "@/components/clientes/minuta-parecer";
 import { cn } from "@/lib/utils";
 
 const ACCEPT = ".pdf,application/pdf";
@@ -95,6 +100,7 @@ export function FichaCroqui({
   croquis,
   podeAnexar = true,
   desabilitado = false,
+  equipe = false,
   linkDrive = null,
   aoMudar,
 }: {
@@ -108,6 +114,9 @@ export function FichaCroqui({
    * `croqui-actions.ts` já confere a permissão de verdade no servidor. */
   podeAnexar?: boolean;
   desabilitado?: boolean;
+  /** Visão da EQUIPE (admin): registra parecer e remove folha revisada. O
+   * parceiro só lê. A proteção real é a action (`ehAdmin`) e a RPC. */
+  equipe?: boolean;
   /** Chamado depois de gravar/remover — a ficha recarrega do servidor. */
   aoMudar?: () => void;
 }) {
@@ -346,6 +355,9 @@ export function FichaCroqui({
             const versao = croquis.length - indice;
             const apresentado = formatarDataSoDia(croqui.apresentado_em);
             const emVisualizacao = visualizandoId === croqui.id;
+            // O banco recusa (42501) o parceiro remover folha revisada; aqui
+            // a tela nem oferece o botão e diz o porquê.
+            const travadaParaParceiro = croqui.status === "revisada" && !equipe;
             return (
               <li
                 key={croqui.id}
@@ -395,7 +407,7 @@ export function FichaCroqui({
                   >
                     <Download aria-hidden /> {baixandoId ? "Abrindo…" : "Baixar"}
                   </Button>
-                  {podeAnexar ? (
+                  {podeAnexar && !travadaParaParceiro ? (
                     <Button
                       type="button"
                       variant="ghost-danger"
@@ -412,6 +424,13 @@ export function FichaCroqui({
                   ) : null}
                 </div>
 
+                <CroquiAndamento status={croqui.status} />
+                {podeAnexar && travadaParaParceiro ? (
+                  <p className="text-base text-muted-foreground">
+                    Revisado pela equipe — não pode ser removido.
+                  </p>
+                ) : null}
+
                 {/* Leitura densa e chapada: rótulo pequeno em
                     text-muted-foreground, valor abaixo — hierarquia por
                     POSIÇÃO, sem card por campo nem ícone decorativo. */}
@@ -426,6 +445,15 @@ export function FichaCroqui({
                       {croqui.observacoes}
                     </p>
                   </div>
+                ) : null}
+
+                {/* Retorno da equipe (…378): texto puro, nunca HTML. */}
+                <CroquiParecerLeitura croqui={croqui} />
+                {equipe ? (
+                  <CroquiParecerForm
+                    croqui={croqui}
+                    aoMudar={() => aoMudar?.()}
+                  />
                 ) : null}
 
                 {emVisualizacao ? (

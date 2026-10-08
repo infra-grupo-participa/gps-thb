@@ -11,9 +11,28 @@ import {
   type EtapaAgenda,
 } from "@/lib/clientes-agenda-tipos";
 
+import {
+  SITUACOES_ANEXO,
+  TIPOS_ANEXO,
+  ehSituacaoAnexo,
+  ehTipoAnexo,
+  statusAnexo,
+  type FiltroAnexo,
+  type SituacaoAnexo,
+  type StatusAnexo,
+  type TipoAnexo,
+} from "@/lib/clientes-anexos-tipos";
+
 // Vocabulário da agenda (…355) vive em módulo puro; reexportado aqui porque é
 // a linha do cliente que o carrega (contrato com a tela).
 export type { EstadoReuniao, EtapaAgenda } from "@/lib/clientes-agenda-tipos";
+// (…378) Idem para os anexos.
+export type {
+  FiltroAnexo,
+  SituacaoAnexo,
+  StatusAnexo,
+  TipoAnexo,
+} from "@/lib/clientes-anexos-tipos";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Lista consolidada de clientes do programa (item 3 dos 9, 14/09/2026).
@@ -60,6 +79,17 @@ export interface ClienteDoPrograma {
   exEm: string | null;
   exEstado: EstadoReuniao | null;
   etapaAgenda: EtapaAgenda;
+  /** (…378) Versão MAIS RECENTE da minuta. `null` = cliente sem minuta. */
+  mnStatus: StatusAnexo | null;
+  /** `enviado_em` da versão mais recente da minuta. */
+  mnEm: string | null;
+  /** `true` = a versão mais recente foi anexada pela equipe. `null` = sem minuta. */
+  mnPorEquipe: boolean | null;
+  /** (…378) Folha MAIS RECENTE do croqui (PDF). `null` = cliente sem croqui.
+   * Não confundir com `cqEm`/`cqEstado`, que são a REUNIÃO de croqui. */
+  cqPdfStatus: StatusAnexo | null;
+  cqPdfEm: string | null;
+  cqPdfPorEquipe: boolean | null;
 }
 
 export interface FiltrosClientesDoPrograma {
@@ -75,6 +105,8 @@ export interface FiltrosClientesDoPrograma {
   reuniao?: FiltroReuniao;
   /** `null`/ausente = todas as etapas. Ver `EtapaAgenda`. */
   agenda?: EtapaAgenda | null;
+  /** (…378) `null`/ausente = todos. Ver `FiltroAnexo`. */
+  anexo?: FiltroAnexo | null;
 }
 
 /**
@@ -84,7 +116,7 @@ export interface FiltrosClientesDoPrograma {
  * tamanho da página — é o número que a tela usa para dizer "100 de 1.214".
  *
  * `ehAdmin()` de guarda (mesmo padrão de `getDashboard`): evita uma viagem
- * ao banco à toa. A fronteira real é `gp_is_admin()` na RPC (42501).
+ * ao banco à toa. A fronteira real é `gps.eh_admin()` na RPC (42501).
  */
 export async function getClientesDoPrograma(
   opts?: FiltrosClientesDoPrograma,
@@ -100,6 +132,9 @@ export async function getClientesDoPrograma(
     p_busca: opts?.busca ?? null,
     p_reuniao: opts?.reuniao ?? null,
     p_agenda: opts?.agenda ?? null,
+    // (…378) Só vai quando há filtro: sem a chave, a chamada casa também com a
+    // assinatura antiga (7 parâmetros) na janela entre deploy e migração.
+    ...(opts?.anexo ? { p_anexo: opts.anexo } : {}),
   });
 
   if (error) {
@@ -168,6 +203,61 @@ export async function getClientesAgendaKpis(): Promise<AgendaKpi[]> {
   return linhas as AgendaKpi[];
 }
 
+/** Uma linha de `gps.admin_clientes_anexos_kpis()` (…378). */
+export interface AnexoKpi {
+  tipo: TipoAnexo;
+  /** `pendente` CONTÉM `em_analise` — ver `SITUACOES_ANEXO`. */
+  situacao: SituacaoAnexo;
+  /** CLIENTES cuja versão mais recente está nesta situação. */
+  total: number;
+}
+
+/**
+ * `gps.admin_clientes_anexos_kpis()` → as 6 linhas, sempre nesta ordem:
+ * minuta × (pendente, em_analise, revisada), croqui × (as mesmas).
+ *
+ * 🔴 LANÇA em erro e se faltar alguma das 6 linhas — mesma regra de
+ * `getClientesAgendaKpis`: "0 pendentes" é afirmação sobre o mundo, e a busca
+ * ter falhado não prova conjunto vazio. Quem chama decide o aviso.
+ */
+export async function getClientesAnexosKpis(): Promise<AnexoKpi[]> {
+  if (!(await ehAdmin())) throw new Error(SEM_PERMISSAO);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.schema("gps").rpc("admin_clientes_anexos_kpis");
+
+  if (error) {
+    throw new Error(
+      traduzirErroBanco("getClientesAnexosKpis", error, {
+        rpc: "gps.admin_clientes_anexos_kpis",
+      }),
+    );
+  }
+
+  const porChave = new Map<string, AnexoKpi>();
+  for (const d of (data ?? []) as Record<string, unknown>[]) {
+    if (!ehTipoAnexo(d.tipo) || !ehSituacaoAnexo(d.situacao)) continue;
+    porChave.set(`${d.tipo}:${d.situacao}`, {
+      tipo: d.tipo,
+      situacao: d.situacao,
+      total: Number(d.total ?? 0),
+    });
+  }
+
+  const linhas = TIPOS_ANEXO.flatMap((t) =>
+    SITUACOES_ANEXO.map((s) => porChave.get(`${t}:${s}`)),
+  );
+  if (linhas.some((l) => !l)) {
+    throw new Error("Não foi possível apurar os anexos agora.");
+  }
+  return linhas as AnexoKpi[];
+}
+
+/** `boolean` cru da RPC; `null`/ausente fica `null` (cliente sem o anexo). */
+function boolOuNulo(v: unknown): boolean | null {
+  return typeof v === "boolean" ? v : null;
+}
+
 function mapearLinha(d: Record<string, unknown>): ClienteDoPrograma {
   return {
     id: String(d.id),
@@ -192,5 +282,13 @@ function mapearLinha(d: Record<string, unknown>): ClienteDoPrograma {
     exEstado: estadoReuniao(d.ex_estado),
     // Banco sem a …355 não devolve a coluna: cai em "sem", nunca quebra a linha.
     etapaAgenda: ehEtapaAgenda(d.etapa_agenda) ? d.etapa_agenda : "sem",
+    // (…378) Banco sem a migração não devolve as colunas: tudo `null` = "sem
+    // anexo" na tela. ⚠️ Por isso a migração vai ANTES do deploy.
+    mnStatus: statusAnexo(d.mn_status),
+    mnEm: (d.mn_em as string | null) ?? null,
+    mnPorEquipe: boolOuNulo(d.mn_por_equipe),
+    cqPdfStatus: statusAnexo(d.cq_pdf_status),
+    cqPdfEm: (d.cq_pdf_em as string | null) ?? null,
+    cqPdfPorEquipe: boolOuNulo(d.cq_pdf_por_equipe),
   };
 }

@@ -31,17 +31,21 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getContextoSessao } from "@/lib/auth";
+import { ehAdmin, getContextoSessao } from "@/lib/auth";
 import { ehSessaoIndeterminada } from "@/lib/auth-erros";
 import { traduzirErroBanco, MSG_SESSAO_INDETERMINADA } from "@/lib/erros";
 import { logErro } from "@/lib/log";
+import { UUID_RE } from "@/lib/texto";
+import { enviarCroquiRevisadoParaParceiro } from "@/lib/email-minutas";
 import {
   BUCKET_CROQUIS,
   CROQUI_EXTENSAO,
   CROQUI_OBSERVACOES_MAXIMO,
+  CROQUI_PARECER_MAXIMO,
   CROQUI_PATH_REGEX,
   CROQUI_TAMANHO_MAXIMO,
   ehCroquiMime,
+  ehCroquiStatus,
   nomeDeCroquiSeguro,
 } from "@/lib/croquis-tipos";
 
@@ -223,12 +227,37 @@ export async function registrarCroquiCliente(input: {
 }
 
 /**
+ * Frases de `gps.croqui_registrar_parecer` e da trava nova de
+ * `gps.cliente_croqui_remover` (…378), repassadas como `frasesExtras` a
+ * `traduzirErroBanco` (igualdade EXATA com o `raise` do banco) em vez de
+ * crescer o mapa global de `erros.ts`. Função e não `const` exportada:
+ * módulo `"use server"` só exporta `async function` — e esta nem é exportada.
+ */
+function frasesDasTravasDoCroqui(): Record<string, string> {
+  return {
+    "Croqui não informado.":
+      "Não foi possível identificar o croqui. Recarregue a página e tente de novo.",
+    "Status de croqui inválido.": "Escolha um status válido para o croqui.",
+    "O parecer passa de 4000 caracteres.": "O parecer pode ter até 4000 caracteres.",
+    "Escreva o parecer para marcar o croqui como revisado.":
+      "Escreva o parecer para marcar o croqui como revisado.",
+    "Croqui não encontrado.": "Croqui não encontrado.",
+    "Este croqui já foi revisado pela equipe e não pode ser removido.":
+      "Este croqui já foi revisado pela equipe e não pode ser removido.",
+  };
+}
+
+/**
  * Tira UMA folha da lista. O ARQUIVO continua no bucket até o expurgo do
  * admin — a mesma verdade da minuta, do contrato e do anexo do questionário:
  * apagar a linha de `storage.objects` por SQL não apaga o byte.
  *
  * Dono do ambiente OU admin (quem decide é a RPC). A trava do favorito NÃO
  * bloqueia: croqui é ficha, não vínculo.
+ *
+ * (…378) Folha `revisada` pela equipe: o parceiro NÃO remove — a RPC recusa
+ * com 42501 e a frase chega em português; o admin remove. Esconder o botão na
+ * tela é conforto, não a trava.
  */
 export async function removerCroquiCliente(
   clienteId: string,
@@ -244,10 +273,12 @@ export async function removerCroquiCliente(
 
   if (error) {
     return {
-      erro: traduzirErroBanco("removerCroquiCliente", error, {
-        croquiId,
-        clienteId,
-      }),
+      erro: traduzirErroBanco(
+        "removerCroquiCliente",
+        error,
+        { croquiId, clienteId },
+        frasesDasTravasDoCroqui(),
+      ),
     };
   }
 
@@ -318,4 +349,98 @@ export async function urlDeDownloadDoCroquiCliente(
     };
   }
   return { ok: true, url: assinada.signedUrl };
+}
+
+/**
+ * A EQUIPE registra o status e o parecer de UMA folha de croqui (…378,
+ * decisão do dono 08/10/2026) — espelho de `registrarParecerMinuta`
+ * (`minuta-actions.ts`).
+ *
+ * 🔴 `ehAdmin()` aqui é atalho de mensagem; a fronteira é a RPC
+ * (`gps.eh_admin()` → 42501). Server Action é endpoint HTTP: esconder o
+ * formulário do parceiro não protege nada.
+ *
+ * E-mail ao parceiro SÓ quando o status gravado é `revisada`, DEPOIS do
+ * commit, e a falha dele não desfaz o parecer. O destinatário vem do banco
+ * (`avisar`), nunca do cliente. `avisado` diz à tela se o e-mail saiu.
+ */
+export async function registrarParecerCroqui(input: {
+  croquiId: string;
+  status: string;
+  parecer?: string | null;
+}): Promise<{ erro?: string; avisado?: boolean }> {
+  const frases = frasesDasTravasDoCroqui();
+
+  let admin: boolean;
+  try {
+    admin = await ehAdmin();
+  } catch (e) {
+    if (!ehSessaoIndeterminada(e)) throw e;
+    return { erro: MSG_SESSAO_INDETERMINADA };
+  }
+  if (!admin) return { erro: "Sem permissão." };
+
+  if (!UUID_RE.test(input.croquiId ?? "")) {
+    return { erro: frases["Croqui não informado."] };
+  }
+  if (!ehCroquiStatus(input.status)) {
+    return { erro: frases["Status de croqui inválido."] };
+  }
+  const parecer = (input.parecer ?? "").trim();
+  if (parecer.length > CROQUI_PARECER_MAXIMO) {
+    return { erro: frases["O parecer passa de 4000 caracteres."] };
+  }
+  if (input.status === "revisada" && parecer === "") {
+    return { erro: frases["Escreva o parecer para marcar o croqui como revisado."] };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("gps")
+    .rpc("croqui_registrar_parecer", {
+      p_croqui_id: input.croquiId,
+      p_status: input.status,
+      p_parecer: parecer === "" ? null : parecer,
+    });
+
+  if (error) {
+    return {
+      erro: traduzirErroBanco(
+        "registrarParecerCroqui",
+        error,
+        { croquiId: input.croquiId, status: input.status },
+        frases,
+      ),
+    };
+  }
+
+  const r = (data ?? {}) as {
+    cliente_id?: string | null;
+    aluno_id?: string | null;
+    cliente_nome?: string | null;
+    status?: string | null;
+    avisar?: string | null;
+  };
+
+  if (r.aluno_id) revalidarFicha(r.aluno_id);
+
+  if (r.status !== "revisada") return {};
+
+  if (!r.avisar || !r.cliente_id) {
+    logErro("registrarParecerCroqui", "parecer gravado sem destinatario para o aviso", {
+      croquiId: input.croquiId,
+    });
+    return { avisado: false };
+  }
+  const envio = await enviarCroquiRevisadoParaParceiro({
+    para: r.avisar,
+    clienteNome: r.cliente_nome ?? null,
+    clienteId: r.cliente_id,
+  });
+  if (!envio.ok) {
+    logErro("registrarParecerCroqui", envio.erro ?? "falha sem detalhe", {
+      croquiId: input.croquiId,
+    });
+  }
+  return { avisado: envio.ok };
 }

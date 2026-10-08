@@ -14,12 +14,21 @@
  * do cliente. Conta a 1366 px (container útil ≈1.088): colunas fixas
  * 7 + 4×6 + 5,5 = 36,5rem + 6 vãos de 0,75rem ≈ 656 px → sobram ≈ 390 px
  * para o cliente. No estreito (<lg) a linha vira cartão com grade 2×2.
+ *
+ * (…378, 08/10/2026) + coluna "Documentos" (minuta e croqui em PDF), 9,5rem +
+ * 1 vão = 164 px → o cliente fica com ≈ 266 px a 1366 px (nome trunca com
+ * `title`). O selo mostra estado curto ("A revisar"); data e autor vão no
+ * `title` e no texto de leitor de tela, não numa 2ª linha.
  */
 
 import { Fragment } from "react";
 import Link from "next/link";
-import { Check, CircleAlert, Star, X } from "lucide-react";
-import type { ClienteDoPrograma, EstadoReuniao } from "@/lib/data/clientes-admin";
+import { Check, CircleAlert, Hourglass, Star, X } from "lucide-react";
+import type {
+  ClienteDoPrograma,
+  EstadoReuniao,
+  StatusAnexo,
+} from "@/lib/data/clientes-admin";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { FUSO } from "@/lib/datas";
 import { mascaraTelefone } from "@/lib/masks";
@@ -34,7 +43,8 @@ export type PastaPorCliente = Record<string, { rotulo: string; titulo: string }>
 const REUNIOES = [
   { chave: "ep", rotulo: "Entrevista" },
   { chave: "rp", rotulo: "Preliminar" },
-  { chave: "cq", rotulo: "Croqui" },
+  // (…378) A REUNIÃO do croqui — o PDF do croqui está em "Documentos".
+  { chave: "cq", rotulo: "Reunião do croqui" },
   { chave: "ex", rotulo: "Execução" },
 ] as const;
 
@@ -63,6 +73,7 @@ export function TabelaClientesPrograma({
         {REUNIOES.map((r) => (
           <span key={r.chave}>{r.rotulo}</span>
         ))}
+        <span>Documentos</span>
         <span>Pasta</span>
       </div>
       <ul className="divide-y">
@@ -179,6 +190,20 @@ export function TabelaClientesPrograma({
                       estado={datas[r.chave].estado}
                     />
                   ))}
+                  <div className="col-span-2 flex flex-wrap gap-x-4 gap-y-0.5 lg:col-span-1 lg:grid lg:gap-0.5">
+                    <SeloAnexo
+                      tipo="Minuta"
+                      status={c.mnStatus}
+                      em={c.mnEm}
+                      porEquipe={c.mnPorEquipe}
+                    />
+                    <SeloAnexo
+                      tipo="Croqui"
+                      status={c.cqPdfStatus}
+                      em={c.cqPdfEm}
+                      porEquipe={c.cqPdfPorEquipe}
+                    />
+                  </div>
                   <span
                     className="whitespace-nowrap text-xs text-muted-foreground lg:text-sm"
                     title={pasta?.[c.id]?.titulo}
@@ -256,6 +281,85 @@ function CelulaData({
   );
 }
 
+/** Rótulo VISÍVEL (curto, cabe em 9,5rem a 14 px) e o completo (title/leitor). */
+const ROTULO_ANEXO: Record<StatusAnexo, { curto: string; completo: string }> = {
+  enviada: { curto: "A revisar", completo: "aguardando revisão" },
+  em_analise: { curto: "Em análise", completo: "em análise" },
+  revisada: { curto: "Revisada", completo: "revisada" },
+};
+
+/** Gênero por tipo: minuta é feminino, croqui é masculino. */
+const ROTULO_REVISADO: Record<"Minuta" | "Croqui", { curto: string; completo: string }> = {
+  Minuta: { curto: "Revisada", completo: "revisada" },
+  Croqui: { curto: "Revisado", completo: "revisado" },
+};
+
+const FORMATO_DIA_MES = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  timeZone: FUSO,
+});
+
+/**
+ * Selo de UM documento (minuta ou croqui em PDF, versão mais recente — …378).
+ * Estado por ÍCONE + TEXTO, nunca só cor: sem anexo = "—" · enviada = alerta
+ * + "A revisar" (âmbar, pede ação) · em análise = ampulheta · revisada = ✓.
+ * Texto em 14 px (`text-sm`). Data (dd/mm) e quem anexou: `title` + sr-only.
+ */
+function SeloAnexo({
+  tipo,
+  status,
+  em,
+  porEquipe,
+}: {
+  tipo: "Minuta" | "Croqui";
+  status: StatusAnexo | null;
+  em: string | null;
+  porEquipe: boolean | null;
+}) {
+  if (!status) {
+    return (
+      <div className="flex items-center gap-1.5 whitespace-nowrap text-sm">
+        <span className="w-12 shrink-0 text-muted-foreground">{tipo}</span>
+        <span aria-hidden className="text-muted-foreground">—</span>
+        <span className="sr-only">
+          {tipo === "Minuta" ? "sem minuta anexada" : "sem croqui anexado"}
+        </span>
+      </div>
+    );
+  }
+  const d = em ? new Date(em) : null;
+  const dia = d && !Number.isNaN(d.getTime()) ? FORMATO_DIA_MES.format(d) : null;
+  const autor = porEquipe === null ? null : porEquipe ? "pela equipe" : "pelo parceiro";
+  const rotulo = status === "revisada" ? ROTULO_REVISADO[tipo] : ROTULO_ANEXO[status];
+  const detalhe = [
+    dia ? `${tipo === "Minuta" ? "enviada" : "enviado"} em ${dia}` : null,
+    autor,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const descricao = `${tipo}: ${rotulo.completo}${detalhe ? ` · ${detalhe}` : ""}`;
+  const Icone = status === "revisada" ? Check : status === "em_analise" ? Hourglass : CircleAlert;
+  return (
+    <div className="flex items-center gap-1.5 whitespace-nowrap text-sm" title={descricao}>
+      <span className="w-12 shrink-0 text-muted-foreground">{tipo}</span>
+      <span
+        aria-hidden
+        className={cn(
+          "inline-flex items-center gap-1",
+          status === "enviada" && "font-medium text-atencao-foreground",
+          status === "em_analise" && "text-foreground",
+          status === "revisada" && "text-sucesso-foreground",
+        )}
+      >
+        <Icone className="size-3.5 shrink-0" />
+        {rotulo.curto}
+      </span>
+      <span className="sr-only">{descricao}</span>
+    </div>
+  );
+}
+
 const ROTULO_ESTADO: Record<EstadoReuniao, string> = {
   agendada: "agendada",
   pendente: "não concluída",
@@ -284,6 +388,6 @@ function dataCurta(iso: string | null): string | null {
   return Number.isNaN(d.getTime()) ? null : FORMATO_CURTO.format(d);
 }
 
-/** As sete colunas em tela larga — o cabeçalho e cada linha usam a mesma. */
+/** As oito colunas em tela larga — o cabeçalho e cada linha usam a mesma. */
 const COLUNAS =
-  "lg:grid-cols-[minmax(0,1fr)_7rem_6rem_6rem_6rem_6rem_5.5rem]";
+  "lg:grid-cols-[minmax(0,1fr)_7rem_6rem_6rem_6rem_6rem_9.5rem_5.5rem]";

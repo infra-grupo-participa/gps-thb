@@ -67,3 +67,48 @@ export async function enviarMinutaRevisadaParaParceiro(params: {
     texto,
   });
 }
+
+/**
+ * Croqui da ficha do cliente — aviso ao parceiro quando a equipe REVISA uma
+ * folha (migração `…378`, decisão do dono 08/10/2026). Mesmo molde e mesmas
+ * regras do aviso da minuta: nunca lança, o parecer NÃO vai no e-mail, só o
+ * nome do cliente e o botão para a ficha.
+ */
+export async function enviarCroquiRevisadoParaParceiro(params: {
+  para: string;
+  clienteNome: string | null;
+  clienteId: string;
+}): Promise<ResultadoEmail> {
+  const { para, clienteId } = params;
+  if (!para) return { ok: false, erro: "Sem destinatário." };
+
+  const url = linkDaFicha(clienteId);
+  const nome = nomeSeguro(params.clienteNome);
+
+  const corpo = `
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+      A equipe revisou o croqui de <strong>${esc(nome)}</strong>.
+    </p>
+    ${botao(url, "Ver o parecer na ficha")}
+    <p style="margin:0;font-size:13px;line-height:1.6;color:#78716c;">
+      O parecer está no portal, na ficha do cliente — por segurança, ele não vai por e-mail.
+    </p>`;
+
+  const texto = [
+    `A equipe revisou o croqui de ${nome}.`,
+    "",
+    `Ver o parecer em: ${url}`,
+    "O parecer está no portal, na ficha do cliente — por segurança, ele não vai por e-mail.",
+  ].join("\n");
+
+  return enviar({
+    para,
+    assunto: `A equipe revisou o croqui de ${nome}`,
+    html: layout({
+      preheader: "A equipe revisou o seu croqui no portal.",
+      titulo: "Croqui revisado",
+      corpo,
+    }),
+    texto,
+  });
+}

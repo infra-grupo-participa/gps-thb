@@ -2,13 +2,15 @@
 
 /**
  * Status e parecer da EQUIPE sobre uma versão de minuta (migração `…341`,
- * decisão do João 02/10/2026, card 86akryphf). Sem integração com o gerador
- * de minutas.
+ * decisão do João 02/10/2026, card 86akryphf) **e sobre uma folha de croqui**
+ * (migração `…378`, 08/10/2026). Mesmo comportamento, por isso um corpo só:
+ * as peças genéricas recebem `tipo` e os wrappers `Minuta*`/`Croqui*` mantêm
+ * a API de quem já usava. Sem integração com o gerador de minutas.
  *
- * - `MinutaSeloStatus` + `MinutaParecerLeitura`: o que TODOS veem (parceiro e
- *   equipe). O parecer é renderizado como TEXTO (`{texto}` do React, com
- *   `whitespace-pre-wrap`) — nunca `dangerouslySetInnerHTML`.
- * - `MinutaParecerForm`: só a equipe (modo assistência). Leva `previa-oculta`
+ * - `*SeloStatus` + `*Andamento` + `*ParecerLeitura`: o que TODOS veem
+ *   (parceiro e equipe). O parecer é renderizado como TEXTO (`{texto}` do
+ *   React, com `whitespace-pre-wrap`) — nunca `dangerouslySetInnerHTML`.
+ * - `*ParecerForm`: só a equipe (modo assistência). Leva `previa-oculta`
  *   para sumir na prévia "como o aluno vê". Esconder NÃO é a proteção: a
  *   action confere `ehAdmin()` e a RPC confere `gp_is_admin()` (42501).
  */
@@ -35,9 +37,19 @@ import {
   type ClienteMinuta,
   type MinutaStatus,
 } from "@/lib/minutas-tipos";
+import {
+  CROQUI_PARECER_MAXIMO,
+  CROQUI_STATUS_ROTULO,
+  type ClienteCroqui,
+} from "@/lib/croquis-tipos";
 import { registrarParecerMinuta } from "@/app/clientes/minuta-actions";
+import { registrarParecerCroqui } from "@/app/clientes/croqui-actions";
 
-const VARIANTE: Record<MinutaStatus, "neutral" | "warning" | "success"> = {
+/** Os dois catálogos de status são idênticos (CHECK copiado no banco). */
+type Status = MinutaStatus;
+export type TipoParecer = "minuta" | "croqui";
+
+const VARIANTE: Record<Status, "neutral" | "warning" | "success"> = {
   enviada: "neutral",
   em_analise: "warning",
   revisada: "success",
@@ -47,23 +59,47 @@ const CLASSE_SELECT =
   "border-input bg-background focus-visible:ring-ring/50 h-9 rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:outline-solid focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 /** Ícone de cada andamento: o estado nunca fica só na cor. */
-const ICONE_STATUS: Record<MinutaStatus, LucideIcon> = {
+const ICONE_STATUS: Record<Status, LucideIcon> = {
   enviada: Send,
   em_analise: Clock,
   revisada: CircleCheck,
 };
 
-/** Frase curta que diz o que o andamento significa (vale para parceiro e equipe). */
-const AJUDA_STATUS: Record<MinutaStatus, string> = {
-  enviada: "Enviada. Aguardando a análise da equipe.",
-  em_analise: "A equipe está analisando esta minuta.",
-  revisada: "Análise concluída. Leia o parecer abaixo.",
+const CONFIG: Record<
+  TipoParecer,
+  {
+    rotulo: Record<Status, string>;
+    maximo: number;
+    ajuda: Record<Status, string>;
+  }
+> = {
+  minuta: {
+    rotulo: MINUTA_STATUS_ROTULO,
+    maximo: MINUTA_PARECER_MAXIMO,
+    // Frase curta que diz o que o andamento significa (parceiro e equipe).
+    ajuda: {
+      enviada: "Enviada. Aguardando a análise da equipe.",
+      em_analise: "A equipe está analisando esta minuta.",
+      revisada: "Análise concluída. Leia o parecer abaixo.",
+    },
+  },
+  croqui: {
+    rotulo: CROQUI_STATUS_ROTULO,
+    maximo: CROQUI_PARECER_MAXIMO,
+    ajuda: {
+      enviada: "Enviado. Aguardando a análise da equipe.",
+      em_analise: "A equipe está analisando este croqui.",
+      revisada: "Análise concluída. Leia o parecer abaixo.",
+    },
+  },
 };
 
-export function MinutaSeloStatus({ status }: { status: MinutaStatus }) {
-  // Valor fora do catálogo (não deveria existir: CHECK no banco) cai em
-  // "Enviada" em vez de quebrar a ficha.
-  const s: MinutaStatus = ehMinutaStatus(status) ? status : "enviada";
+// Valor fora do catálogo (não deveria existir: CHECK no banco) cai em
+// "Enviada" em vez de quebrar a ficha.
+const normalizar = (s: unknown): Status => (ehMinutaStatus(s) ? s : "enviada");
+
+function SeloStatus({ tipo, status }: { tipo: TipoParecer; status: Status }) {
+  const s = normalizar(status);
   // Selo com ícone próprio (o padrão de `neutral` é um cadeado, que diria
   // "travada") e texto em 14 px: o andamento é a primeira coisa que o parceiro procura.
   return (
@@ -72,75 +108,85 @@ export function MinutaSeloStatus({ status }: { status: MinutaStatus }) {
       icone={ICONE_STATUS[s]}
       className="h-8 shrink-0 gap-1.5 px-3 text-sm font-semibold [&>svg]:size-4!"
     >
-      {MINUTA_STATUS_ROTULO[s]}
+      {CONFIG[tipo].rotulo[s]}
     </Badge>
   );
 }
 
 /** Selo + uma frase dizendo o que ele significa. */
-export function MinutaAndamento({ status }: { status: MinutaStatus }) {
-  const s: MinutaStatus = ehMinutaStatus(status) ? status : "enviada";
+function Andamento({ tipo, status }: { tipo: TipoParecer; status: Status }) {
+  const s = normalizar(status);
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span className="text-base font-medium">Andamento:</span>
-      <MinutaSeloStatus status={s} />
-      <span className="text-base text-muted-foreground">{AJUDA_STATUS[s]}</span>
+      <SeloStatus tipo={tipo} status={s} />
+      <span className="text-base text-muted-foreground">{CONFIG[tipo].ajuda[s]}</span>
     </div>
   );
 }
 
-export function MinutaParecerLeitura({ minuta }: { minuta: ClienteMinuta }) {
-  if (!minuta.parecer) return null;
+function ParecerLeitura({
+  parecer,
+  parecerEm,
+}: {
+  parecer: string | null;
+  parecerEm: string | null;
+}) {
+  if (!parecer) return null;
   return (
     <div className="grid gap-1.5 rounded-lg border border-borda-forte border-l-4 border-l-primary bg-card px-3 py-2.5">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base font-semibold">
         <MessageSquareText aria-hidden className="size-5 shrink-0 text-accent-foreground" />
         Parecer da equipe
-        {minuta.parecer_em ? (
+        {parecerEm ? (
           <span className="font-normal text-muted-foreground">
-            em {formatarDataHora(minuta.parecer_em)}
+            em {formatarDataHora(parecerEm)}
           </span>
         ) : null}
       </p>
       <p className="text-base leading-relaxed whitespace-pre-wrap break-words">
-        {minuta.parecer}
+        {parecer}
       </p>
     </div>
   );
 }
 
-export function MinutaParecerForm({
-  minuta,
+function ParecerForm({
+  tipo,
+  itemId,
+  statusAtual,
+  parecerAtual,
   aoMudar,
 }: {
-  minuta: ClienteMinuta;
+  tipo: TipoParecer;
+  itemId: string;
+  statusAtual: Status;
+  parecerAtual: string | null;
   aoMudar: () => void;
 }) {
+  const { rotulo, maximo } = CONFIG[tipo];
   const uid = useId();
   const idStatus = `${uid}-status`;
   const idParecer = `${uid}-parecer`;
   const [aberto, setAberto] = useState(false);
-  const [status, setStatus] = useState<MinutaStatus>(
-    ehMinutaStatus(minuta.status) ? minuta.status : "enviada",
-  );
-  const [parecer, setParecer] = useState(minuta.parecer ?? "");
+  const [status, setStatus] = useState<Status>(normalizar(statusAtual));
+  const [parecer, setParecer] = useState(parecerAtual ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [salvando, iniciar] = useTransition();
 
   const tamanho = parecer.trim().length;
-  const excedido = tamanho > MINUTA_PARECER_MAXIMO;
+  const excedido = tamanho > maximo;
   const faltaParecer = status === "revisada" && tamanho === 0;
 
   function salvar() {
     setErro(null);
     setAviso(null);
     iniciar(async () => {
-      const r = await registrarParecerMinuta({
-        minutaId: minuta.id,
-        status,
-        parecer,
-      });
+      const r =
+        tipo === "croqui"
+          ? await registrarParecerCroqui({ croquiId: itemId, status, parecer })
+          : await registrarParecerMinuta({ minutaId: itemId, status, parecer });
       if (r.erro) {
         setErro(r.erro);
         return;
@@ -168,16 +214,16 @@ export function MinutaParecerForm({
             variant="outline"
             size="sm"
             onClick={() => {
-              // Relê da prop: depois do `refresh()` a minuta pode ter mudado
+              // Relê da prop: depois do `refresh()` o item pode ter mudado
               // (outra pessoa da equipe salvou) e o estado local ficaria velho.
               setAviso(null);
               setErro(null);
-              setStatus(ehMinutaStatus(minuta.status) ? minuta.status : "enviada");
-              setParecer(minuta.parecer ?? "");
+              setStatus(normalizar(statusAtual));
+              setParecer(parecerAtual ?? "");
               setAberto(true);
             }}
           >
-            {minuta.parecer ? "Editar parecer" : "Registrar parecer"}
+            {parecerAtual ? "Editar parecer" : "Registrar parecer"}
           </Button>
         </div>
       ) : (
@@ -195,7 +241,7 @@ export function MinutaParecerForm({
             >
               {MINUTA_STATUS.map((s) => (
                 <option key={s} value={s}>
-                  {MINUTA_STATUS_ROTULO[s]}
+                  {rotulo[s]}
                 </option>
               ))}
             </select>
@@ -222,7 +268,7 @@ export function MinutaParecerForm({
               }
             >
               {excedido
-                ? `Até ${MINUTA_PARECER_MAXIMO} caracteres (${tamanho} digitados).`
+                ? `Até ${maximo} caracteres (${tamanho} digitados).`
                 : "O parceiro lê este texto na ficha. Ao marcar Revisada, ele recebe um e-mail avisando (sem o texto do parecer)."}
             </p>
           </div>
@@ -244,8 +290,8 @@ export function MinutaParecerForm({
               onClick={() => {
                 setAberto(false);
                 setErro(null);
-                setStatus(ehMinutaStatus(minuta.status) ? minuta.status : "enviada");
-                setParecer(minuta.parecer ?? "");
+                setStatus(normalizar(statusAtual));
+                setParecer(parecerAtual ?? "");
               }}
             >
               Cancelar
@@ -275,5 +321,69 @@ export function MinutaParecerForm({
         ) : null}
       </div>
     </div>
+  );
+}
+
+/* ── Minuta (API original, inalterada) ─────────────────────────────── */
+
+export function MinutaSeloStatus({ status }: { status: MinutaStatus }) {
+  return <SeloStatus tipo="minuta" status={status} />;
+}
+
+export function MinutaAndamento({ status }: { status: MinutaStatus }) {
+  return <Andamento tipo="minuta" status={status} />;
+}
+
+export function MinutaParecerLeitura({ minuta }: { minuta: ClienteMinuta }) {
+  return <ParecerLeitura parecer={minuta.parecer} parecerEm={minuta.parecer_em} />;
+}
+
+export function MinutaParecerForm({
+  minuta,
+  aoMudar,
+}: {
+  minuta: ClienteMinuta;
+  aoMudar: () => void;
+}) {
+  return (
+    <ParecerForm
+      tipo="minuta"
+      itemId={minuta.id}
+      statusAtual={minuta.status}
+      parecerAtual={minuta.parecer}
+      aoMudar={aoMudar}
+    />
+  );
+}
+
+/* ── Croqui ─────────────────────────────────────────────────────────── */
+
+export function CroquiSeloStatus({ status }: { status: ClienteCroqui["status"] }) {
+  return <SeloStatus tipo="croqui" status={status} />;
+}
+
+export function CroquiAndamento({ status }: { status: ClienteCroqui["status"] }) {
+  return <Andamento tipo="croqui" status={status} />;
+}
+
+export function CroquiParecerLeitura({ croqui }: { croqui: ClienteCroqui }) {
+  return <ParecerLeitura parecer={croqui.parecer} parecerEm={croqui.parecer_em} />;
+}
+
+export function CroquiParecerForm({
+  croqui,
+  aoMudar,
+}: {
+  croqui: ClienteCroqui;
+  aoMudar: () => void;
+}) {
+  return (
+    <ParecerForm
+      tipo="croqui"
+      itemId={croqui.id}
+      statusAtual={croqui.status}
+      parecerAtual={croqui.parecer}
+      aoMudar={aoMudar}
+    />
   );
 }

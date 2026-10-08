@@ -55,7 +55,14 @@
 
 import Link from "next/link";
 import { Search, Users, AlertTriangle } from "lucide-react";
-import type { ClienteDoPrograma, EtapaAgenda } from "@/lib/data/clientes-admin";
+import type {
+  AnexoKpi,
+  ClienteDoPrograma,
+  EtapaAgenda,
+  FiltroAnexo,
+  SituacaoAnexo,
+  TipoAnexo,
+} from "@/lib/data/clientes-admin";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { Card, CardContent } from "@/components/ui/card";
 import { FaixaMetricas } from "@/components/ui/faixa-metricas";
@@ -98,6 +105,8 @@ export function ClientesPrograma({
   estado,
   kpis,
   erroKpis,
+  kpisAnexos,
+  erroKpisAnexos,
   pasta,
 }: {
   linhas: ClienteDoPrograma[];
@@ -108,6 +117,9 @@ export function ClientesPrograma({
   /** As 5 linhas de `getClientesAgendaKpis()` — universo INTEIRO, não o do filtro. */
   kpis?: AgendaKpi[] | null;
   erroKpis?: string | null;
+  /** As 6 linhas de `getClientesAnexosKpis()` (…378) — universo INTEIRO. */
+  kpisAnexos?: AnexoKpi[] | null;
+  erroKpisAnexos?: string | null;
   /** Última modificação da pasta do Drive por `cliente.id` (texto pronto do servidor). Ausente = "—". */
   pasta?: PastaPorCliente;
 }) {
@@ -144,6 +156,8 @@ export function ClientesPrograma({
 
       <FaixaEtapasAgenda kpis={kpis} erro={erroKpis} estado={estado} />
 
+      <FaixaDocumentos kpis={kpisAnexos} erro={erroKpisAnexos} estado={estado} />
+
       <Card>
         <CardContent className="grid gap-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -161,6 +175,9 @@ export function ClientesPrograma({
               ) : null}
               {estado.agenda ? (
                 <input type="hidden" name="agenda" value={estado.agenda} />
+              ) : null}
+              {estado.anexo ? (
+                <input type="hidden" name="anexo" value={estado.anexo} />
               ) : null}
               <Search
                 aria-hidden="true"
@@ -263,7 +280,9 @@ export function ClientesPrograma({
 const ETAPAS_AGENDA: { id: EtapaAgenda; rotulo: string }[] = [
   { id: "entrevista", rotulo: "Entrevista prévia" },
   { id: "preliminar", rotulo: "Reunião preliminar" },
-  { id: "croqui", rotulo: "Croqui" },
+  // (…378) "Croqui" sozinho passou a confundir com o PDF do croqui (faixa
+  // "Documentos" logo abaixo): este tile é a REUNIÃO (`cq_em`/`cq_estado`).
+  { id: "croqui", rotulo: "Reunião do croqui" },
   { id: "execucao", rotulo: "Inicial de execução" },
   { id: "sem", rotulo: "Sem reunião" },
 ];
@@ -323,6 +342,92 @@ function FaixaEtapasAgenda({
             estado,
           ),
           detalhe: `+${Math.max(k.total - k.estrela, 0)} sem estrela`,
+        };
+      })}
+    />
+  );
+}
+
+/**
+ * Os 4 tiles de documentos (…378), na ordem da tela: o que pede AÇÃO primeiro
+ * (posição, não cor). `situacao` aponta a linha de `getClientesAnexosKpis()`.
+ * 🔑 `pendente` CONTÉM `em_analise`: o tile "para revisar" bate com a lista
+ * filtrada por `*_pendente`; "em análise" vai só no detalhe, sem filtro próprio
+ * (a RPC não tem `p_anexo` para ele).
+ */
+const TILES_DOCUMENTOS: {
+  id: FiltroAnexo;
+  tipo: TipoAnexo;
+  situacao: SituacaoAnexo;
+  rotulo: string;
+  paraRevisar: boolean;
+}[] = [
+  { id: "minuta_pendente", tipo: "minuta", situacao: "pendente", rotulo: "Minutas para revisar", paraRevisar: true },
+  { id: "croqui_pendente", tipo: "croqui", situacao: "pendente", rotulo: "Croquis para revisar", paraRevisar: true },
+  { id: "minuta_revisada", tipo: "minuta", situacao: "revisada", rotulo: "Minutas revisadas", paraRevisar: false },
+  { id: "croqui_revisado", tipo: "croqui", situacao: "revisada", rotulo: "Croquis revisados", paraRevisar: false },
+];
+
+/**
+ * **Documentos anexados** — minuta e croqui em PDF (…378). Versão MAIS
+ * RECENTE de cada cliente; universo inteiro, não o do filtro.
+ *
+ * "Para revisar" leva tom `atencao` (pede ação da equipe); `FaixaMetricas`
+ * rebaixa a neutro quando é 0. Revisadas: neutro (nada a fazer). Clicar
+ * filtra (`?anexo=`); clicar no ativo limpa — mesmo contrato das etapas.
+ *
+ * 🔴 Erro ou contagem incompleta NUNCA vira "0": mostra aviso.
+ */
+function FaixaDocumentos({
+  kpis,
+  erro,
+  estado,
+}: {
+  kpis?: AnexoKpi[] | null;
+  erro?: string | null;
+  estado: EstadoClientesUrl;
+}) {
+  const porChave = new Map((kpis ?? []).map((k) => [`${k.tipo}:${k.situacao}`, k.total]));
+  const valor = (tipo: TipoAnexo, situacao: SituacaoAnexo) => porChave.get(`${tipo}:${situacao}`);
+  const incompleto = TILES_DOCUMENTOS.some((t) => valor(t.tipo, t.situacao) === undefined);
+  if (erro || (kpis && incompleto)) {
+    return (
+      <p
+        role="alert"
+        className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+      >
+        <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
+        Não foi possível carregar os documentos (minuta e croqui). {erro ?? ""}
+      </p>
+    );
+  }
+  if (!kpis) return null;
+
+  const paraRevisar = TILES_DOCUMENTOS.filter((t) => t.paraRevisar).reduce(
+    (s, t) => s + (valor(t.tipo, t.situacao) ?? 0),
+    0,
+  );
+
+  return (
+    <FaixaMetricas
+      titulo="Documentos — minuta e croqui em PDF"
+      resumo={`${paraRevisar} para revisar`}
+      ativo={estado.anexo}
+      colunas={4}
+      metricas={TILES_DOCUMENTOS.map((t) => {
+        const emAnalise = t.paraRevisar ? valor(t.tipo, "em_analise") ?? 0 : null;
+        return {
+          id: t.id,
+          rotulo: t.rotulo,
+          valor: valor(t.tipo, t.situacao) ?? 0,
+          tom: t.paraRevisar ? ("atencao" as const) : ("neutro" as const),
+          href: hrefClientes(
+            { anexo: estado.anexo === t.id ? null : t.id, pagina: 1 },
+            estado,
+          ),
+          // Revisadas também levam 1 linha: sem ela o número desalinha dos
+          // tiles vizinhos (medido a 1366 px, `justify-center`).
+          detalhe: emAnalise === null ? "versão mais recente" : `${emAnalise} já em análise`,
         };
       })}
     />

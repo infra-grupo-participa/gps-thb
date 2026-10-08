@@ -48,6 +48,8 @@ export function ExportarClientesCsv({
         // Sem isto o CSV com `?agenda=` ativo levaria a base inteira — o
         // mesmo defeito de 17/09 com `reuniao`.
         agenda: estado.agenda,
+        // (…378) Idem `?anexo=`: sem repassar, exportaria a base inteira.
+        anexo: estado.anexo,
       });
 
       if (resultado.erro || !resultado.csv) {

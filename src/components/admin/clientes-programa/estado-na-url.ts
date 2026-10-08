@@ -18,6 +18,7 @@
 import type { FaseCliente, GrauRelacao } from "@/lib/types";
 import { FASES_CLIENTE, GRAUS_RELACAO_UI } from "@/lib/etapa1";
 import { ehEtapaAgenda, type EtapaAgenda } from "@/lib/clientes-agenda-tipos";
+import { ehFiltroAnexo, type FiltroAnexo } from "@/lib/clientes-anexos-tipos";
 
 const FASES_SET = new Set<string>(FASES_CLIENTE.map((f) => f.id));
 const GRAUS_SET = new Set<string>(GRAUS_RELACAO_UI.map((g) => g.id));
@@ -67,6 +68,9 @@ export interface EstadoClientesUrl {
   /** Etapa da agenda (…355, `?agenda=`). `null` = todas. Allowlist =
    * `ETAPAS_AGENDA`, o mesmo catálogo de `p_agenda` na RPC. */
   agenda: EtapaAgenda | null;
+  /** Situação da minuta/croqui em PDF (…378, `?anexo=`). `null` = todos.
+   * Allowlist = `FILTROS_ANEXO`, o mesmo catálogo de `p_anexo` na RPC. */
+  anexo: FiltroAnexo | null;
 }
 
 /** Lê `searchParams` já resolvido (`await searchParams`) do App Router. */
@@ -77,6 +81,7 @@ export function lerEstadoClientesUrl(sp: {
   pag?: string;
   reuniao?: string;
   agenda?: string;
+  anexo?: string;
 }): EstadoClientesUrl {
   const fase = FASES_SET.has(sp.fase ?? "") ? (sp.fase as FaseCliente) : null;
   const grau =
@@ -90,7 +95,8 @@ export function lerEstadoClientesUrl(sp: {
     ? (sp.reuniao as FiltroReuniao)
     : null;
   const agenda = ehEtapaAgenda(sp.agenda) ? sp.agenda : null;
-  return { fase, grau, busca, pagina, reuniao, agenda };
+  const anexo = ehFiltroAnexo(sp.anexo) ? sp.anexo : null;
+  return { fase, grau, busca, pagina, reuniao, agenda, anexo };
 }
 
 /** `pagina` (1-based) → `offset` da RPC. */
@@ -114,6 +120,7 @@ export function hrefClientes(
   if (novo.busca.trim()) sp.set("q", novo.busca.trim());
   if (novo.reuniao) sp.set("reuniao", novo.reuniao);
   if (novo.agenda) sp.set("agenda", novo.agenda);
+  if (novo.anexo) sp.set("anexo", novo.anexo);
   if (novo.pagina > 1) sp.set("pag", String(novo.pagina));
   const q = sp.toString();
   return q ? `/admin/clientes?${q}` : "/admin/clientes";

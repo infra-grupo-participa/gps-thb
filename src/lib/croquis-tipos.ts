@@ -99,7 +99,41 @@ export interface ClienteCroqui {
   enviado_por: string | null;
   /** `true` quando quem enviou foi a equipe (modo assistência), não o aluno. */
   enviado_pela_equipe: boolean;
+  /** Andamento da revisão pela equipe (…378, 08/10/2026). Nasce `enviada`. */
+  status: CroquiStatus;
+  /** Parecer da equipe sobre ESTA folha — texto puro, nunca HTML. */
+  parecer: string | null;
+  parecer_em: string | null;
+  parecer_por: string | null;
 }
+
+/**
+ * Status da revisão da folha pela equipe (migração `…378`, decisão do dono
+ * 08/10/2026): o MESMO de `MINUTA_STATUS`. O CHECK
+ * `chk_cliente_croquis_status` é cópia (por `pg_get_constraintdef`) do da
+ * minuta, e o IF de `gps.croqui_registrar_parecer` repete a lista — mudar um
+ * exige mudar os três. Cópia e não import de `minutas-tipos.ts`, pelo mesmo
+ * motivo de `nomeDeCroquiSeguro`: os dois módulos não se acoplam.
+ *
+ * 🔑 Folha `revisada`: o parceiro NÃO remove (a RPC recusa com 42501); a
+ * equipe remove.
+ */
+export const CROQUI_STATUS = ["enviada", "em_analise", "revisada"] as const;
+export type CroquiStatus = (typeof CROQUI_STATUS)[number];
+
+export const CROQUI_STATUS_ROTULO: Record<CroquiStatus, string> = {
+  enviada: "Enviado",
+  em_analise: "Em análise",
+  revisada: "Revisado",
+};
+
+export function ehCroquiStatus(v: unknown): v is CroquiStatus {
+  return typeof v === "string" && (CROQUI_STATUS as readonly string[]).includes(v);
+}
+
+/** Teto do parecer — o mesmo do CHECK `chk_cliente_croquis_parecer_tam`
+ * (copiado do da minuta). */
+export const CROQUI_PARECER_MAXIMO = 4000;
 
 /** "3,7 MB" — mesmo formato de `minutaTamanhoLegivel`, copiado pelo mesmo
  * motivo de não acoplar os módulos. */

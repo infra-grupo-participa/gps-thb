@@ -4,6 +4,7 @@ import type { PapelMembro, Papel, Perfil } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
 import { SessaoIndeterminadaError } from "@/lib/auth-erros";
 import { logErro } from "@/lib/log";
+import { consultarAdminAtivo, type ClienteAdmins } from "@/lib/auth-admin";
 
 export interface ContextoSessao {
   user: User;
@@ -44,7 +45,8 @@ export interface ContextoSessao {
 
 /**
  * Resolve o usuário autenticado e seu papel no GPS.
- * - admin: consta em public.perfis com cargo dev/admin e status ativo.
+ * - admin: linha em `gps.admins` com `ativo = true` (desde 08/10/2026; antes
+ *   era `public.perfis` cargo dev/admin). `perfis` só fornece nome/exibição.
  * - aluno: consta em gps.membros (vínculo com um thb_aluno).
  * - sem_acesso: autenticado, mas sem vínculo.
  * Retorna null se não houver sessão.
@@ -64,7 +66,7 @@ export interface ContextoSessao {
  * 57 ms: `getSession()` não valida o JWT no servidor.
  *
  * 🔴 LANÇA `SessaoIndeterminadaError`, NÃO devolve papel, quando a consulta a
- * `perfis` ou a `gps.membros` falha (16/09/2026 — achado do
+ * `gps.admins` ou a `gps.membros` falha (16/09/2026 — achado do
  * `fable-orchestrator`, `CLAUDE.md`). As duas consultas usavam `maybeSingle()`
  * e descartavam o `error`: `maybeSingle()` devolve `data:null, error:null`
  * com 0 linhas, e `data:null` **com** `error` quando o transporte falha.
@@ -100,27 +102,26 @@ export const getContextoSessao = cache(async function getContextoSessao(): Promi
 
   if (!user) return null;
 
-  // Admin?
-  const { data: perfil, error: erroPerfil } = await supabase
-    .from("perfis")
-    .select("id, nome, email, cargo, status")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Admin? Fonte única: `gps.admins` (ativo = true). `public.perfis.cargo` NÃO
+  // decide mais papel (07/10/2026: outro sistema o alterou e derrubou os admins).
+  // `error` preenchido LANÇA `SessaoIndeterminadaError` — ver `auth-admin.ts`.
+  if (await consultarAdminAtivo(supabase as unknown as ClienteAdmins, user.id)) {
+    // `perfis` só para EXIBIÇÃO (nome no cabeçalho). Falha aqui não decide
+    // acesso, então degrada para `perfil: null` em vez de derrubar a sessão.
+    const { data: perfil, error: erroPerfil } = await supabase
+      .from("perfis")
+      .select("id, nome, email, cargo, status")
+      .eq("id", user.id)
+      .maybeSingle();
 
-  if (erroPerfil) {
-    logErro("getContextoSessao", erroPerfil, { escopo: "perfis" });
-    throw new SessaoIndeterminadaError("perfis");
-  }
+    if (erroPerfil) {
+      logErro("getContextoSessao", erroPerfil, { escopo: "perfis" });
+    }
 
-  if (
-    perfil &&
-    perfil.status === "ativo" &&
-    (perfil.cargo === "dev" || perfil.cargo === "admin")
-  ) {
     return {
       user,
       papel: "admin",
-      perfil,
+      perfil: perfil ?? null,
       alunoId: null,
       membroAlunoId: null,
       pessoaAlunoId: null,

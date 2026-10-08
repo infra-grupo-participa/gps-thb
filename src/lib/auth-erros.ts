@@ -18,9 +18,9 @@
  * distinção completa.
  */
 export class SessaoIndeterminadaError extends Error {
-  readonly escopo: "perfis" | "membros";
+  readonly escopo: "perfis" | "membros" | "admins";
 
-  constructor(escopo: "perfis" | "membros") {
+  constructor(escopo: "perfis" | "membros" | "admins") {
     super(`Não foi possível resolver a sessão (escopo: ${escopo}).`);
     this.name = "SessaoIndeterminadaError";
     this.escopo = escopo;

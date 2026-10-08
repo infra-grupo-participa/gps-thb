@@ -28,6 +28,12 @@ import {
   FRASE_FAVORITO_FASE_NAO_VOLTA,
   RAISE_FAVORITO_FASE_NAO_VOLTA,
 } from "@/lib/trajetoria-tipos";
+import {
+  FRASE_ADMIN_CONTA_RECUSADA,
+  FRASE_ADMIN_SEM_LOGIN,
+  FRASE_ADMIN_SO_EQUIPE,
+  FRASE_ADMIN_ULTIMO,
+} from "@/lib/admins-tipos";
 
 /** Shape comum de `PostgrestError` e do erro de `rpc()`. */
 export interface ErroDeBanco {
@@ -735,6 +741,13 @@ const FRASES_DO_BANCO: Record<string, string> = {
   // 22023
   "O cliente escolhido não pertence a este ambiente.":
     "Não encontramos este cliente neste ambiente. Atualize a página e escolha de novo.",
+
+  // ── gps.admin_definir (admins do programa, 08/10/2026). Textos VERBATIM do
+  // contrato do banco; os demais códigos dela estão em POR_CODIGO_DO_ESCOPO.
+  // 22023
+  [FRASE_ADMIN_SO_EQUIPE]: FRASE_ADMIN_SO_EQUIPE,
+  // P0002
+  [FRASE_ADMIN_SEM_LOGIN]: FRASE_ADMIN_SEM_LOGIN,
 };
 
 /**
@@ -768,6 +781,26 @@ const POR_CODIGO: Record<string, string> = {
   // dois membros: recusar é o certo, escolher um moveria dado da pessoa errada.
   "21000":
     "Este cadastro tem mais de um acesso no programa. Resolva a duplicidade antes de continuar.",
+};
+
+/**
+ * Tradução por CÓDIGO dentro de UM escopo (o 1º argumento de
+ * `traduzirErroBanco`). Existe para RPC cuja mensagem de `raise` não é
+ * conhecida verbatim, mas cujo código tem um significado só NAQUELA função —
+ * no mapa comum, P0001 cairia na frase genérica e P0002 em "Registro não
+ * encontrado.". Consultado depois das frases exatas e antes de POR_CODIGO.
+ */
+const POR_CODIGO_DO_ESCOPO: Record<string, Record<string, string>> = {
+  // gps.admin_definir. P0001 = último admin ativo OU remover a si mesmo; o
+  // segundo caso a action recusa ANTES da RPC (FRASE_ADMIN_SI_MESMO), então o
+  // P0001 que chega aqui é o do último admin.
+  "admin/definirAdmin": {
+    "42501": SEM_PERMISSAO,
+    // 22023 tem 3 causas no banco (motivo, formato/domínio, conta de aluno).
+    "22023": FRASE_ADMIN_CONTA_RECUSADA,
+    P0002: FRASE_ADMIN_SEM_LOGIN,
+    P0001: FRASE_ADMIN_ULTIMO,
+  },
 };
 
 /**
@@ -901,5 +934,9 @@ export function traduzirErroBanco(
   if (conhecida) return conhecida;
   if (porConstraint) return porConstraint.frase;
   if (bruto.startsWith(PREFIXO_DIREITO)) return bruto;
-  return POR_CODIGO[erro.code ?? ""] ?? GENERICA;
+  return (
+    POR_CODIGO_DO_ESCOPO[escopo]?.[erro.code ?? ""] ??
+    POR_CODIGO[erro.code ?? ""] ??
+    GENERICA
+  );
 }

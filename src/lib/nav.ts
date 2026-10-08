@@ -609,7 +609,7 @@ export function adminNavItems(
         // 🔴 Esta linha é a PORTA DE ENTRADA da tela — sem ela,
         // `/admin/operadores` existiria completa e só seria alcançável
         // digitando a URL.
-        { href: "/admin/operadores", label: "Operadores" },
+        { href: "/admin/operadores", label: "Equipe e admins" },
         // Pastas do Drive (07/10/2026): placar da criação automática + os
         // alunos antigos sem pasta, que ganham a pasta por clique. 🔴 PORTA
         // DE ENTRADA da tela — só no ramo `souAdmin` (a RPC é só admin).

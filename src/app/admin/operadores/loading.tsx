@@ -8,7 +8,7 @@ export default function AdminOperadoresLoading() {
       <HeaderSkeleton />
       <main id="conteudo" className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16">
         <PageHeader
-          titulo="Operadores"
+          titulo="Equipe e admins"
         />
         <ListaSkeleton linhas={4} />
       </main>

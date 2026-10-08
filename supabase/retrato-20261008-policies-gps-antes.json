@@ -1,0 +1,1142 @@
+[
+ {
+  "schemaname": "gps",
+  "tablename": "acessos_log",
+  "policyname": "acessos_log_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "agenda",
+  "policyname": "agenda_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "agenda",
+  "policyname": "agenda_owner_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "ajuda_artigos",
+  "policyname": "gps_ajuda_artigos_select_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "( SELECT COALESCE((gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)), false) AS \"coalesce\")",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "ajuda_artigos",
+  "policyname": "gps_ajuda_artigos_select_ativo",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "ativo",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "ajuda_feedback",
+  "policyname": "gps_ajuda_feedback_select_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "( SELECT COALESCE((gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)), false) AS \"coalesce\")",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "aluno_eventos",
+  "policyname": "gps_aluno_eventos_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "aluno_notas",
+  "policyname": "gps_aluno_notas_admin_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AND (autor_id = auth.uid()))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "aluno_notas",
+  "policyname": "gps_aluno_notas_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "aluno_notas",
+  "policyname": "gps_aluno_notas_admin_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "UPDATE",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "ambientes",
+  "policyname": "ambientes_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "ambientes",
+  "policyname": "ambientes_owner_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "ambientes",
+  "policyname": "ambientes_owner_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "UPDATE",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "chamado_mensagens",
+  "policyname": "gps_chamado_mensagens_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "gps.pode_ver_chamado(chamado_id)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "chamado_solicitacoes",
+  "policyname": "gps_chamado_solicitacoes_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "gps.pode_ver_chamado(chamado_id)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "chamados",
+  "policyname": "gps_chamados_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin) OR (aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "cliente_croquis",
+  "policyname": "cliente_croquis_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar) OR (EXISTS ( SELECT 1\n   FROM gps.etapa1_clientes c\n  WHERE ((c.id = cliente_croquis.cliente_id) AND (c.aluno_id = gps.aluno_atual())))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "cliente_decisores",
+  "policyname": "gps_cliente_decisores_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar) OR (EXISTS ( SELECT 1\n   FROM gps.etapa1_clientes c\n  WHERE ((c.id = cliente_decisores.cliente_id) AND (c.aluno_id = gps.aluno_atual())))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "cliente_etapa_tipos",
+  "policyname": "cliente_etapa_tipos_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "cliente_links_drive",
+  "policyname": "cliente_links_drive_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar) OR (EXISTS ( SELECT 1\n   FROM gps.etapa1_clientes c\n  WHERE ((c.id = cliente_links_drive.cliente_id) AND (c.aluno_id = gps.aluno_atual())))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "cliente_minutas",
+  "policyname": "cliente_minutas_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar) OR (EXISTS ( SELECT 1\n   FROM gps.etapa1_clientes c\n  WHERE ((c.id = cliente_minutas.cliente_id) AND (c.aluno_id = gps.aluno_atual())))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "cliente_trajetoria",
+  "policyname": "cliente_trajetoria_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar) OR (EXISTS ( SELECT 1\n   FROM gps.etapa1_clientes c\n  WHERE ((c.id = cliente_trajetoria.cliente_id) AND (c.aluno_id = gps.aluno_atual())))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "config",
+  "policyname": "gps_config_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "drive_arquivos",
+  "policyname": "drive_arquivos_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar) OR (EXISTS ( SELECT 1\n   FROM gps.etapa1_clientes c\n  WHERE ((c.id = drive_arquivos.cliente_id) AND (c.aluno_id = gps.aluno_atual())))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "drive_cursor",
+  "policyname": "drive_cursor_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "COALESCE((gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)), false)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "drive_pastas",
+  "policyname": "drive_pastas_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "COALESCE((gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)), false)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "drive_permissoes",
+  "policyname": "drive_permissoes_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "COALESCE((gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)), false)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "drive_tarefas",
+  "policyname": "drive_tarefas_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "COALESCE((gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)), false)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "entrevista_previa",
+  "policyname": "gps_entrevista_previa_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar) OR (EXISTS ( SELECT 1\n   FROM gps.etapa1_clientes c\n  WHERE ((c.id = entrevista_previa.cliente_id) AND (c.aluno_id = gps.aluno_atual())))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "entrevista_tentativas",
+  "policyname": "gps_entrevista_tentativas_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "gps.eh_equipe()",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa1_clientes",
+  "policyname": "clientes_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa1_clientes",
+  "policyname": "clientes_owner_delete",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "DELETE",
+  "qual": "(aluno_id = ( SELECT ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa1_clientes",
+  "policyname": "clientes_owner_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(aluno_id = gps.aluno_atual())"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa1_clientes",
+  "policyname": "clientes_owner_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(aluno_id = ( SELECT ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa1_clientes",
+  "policyname": "clientes_owner_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "UPDATE",
+  "qual": "(aluno_id = ( SELECT ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual) AS aluno_atual))",
+  "with_check": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa3_agendamentos",
+  "policyname": "etapa3_ag_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa3_agendamentos",
+  "policyname": "etapa3_ag_owner_delete",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "DELETE",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa3_agendamentos",
+  "policyname": "etapa3_ag_owner_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(aluno_id = gps.aluno_atual())"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa3_agendamentos",
+  "policyname": "etapa3_ag_owner_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa3_agendamentos",
+  "policyname": "etapa3_ag_owner_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "UPDATE",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa3_revisao",
+  "policyname": "etapa3_rev_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa3_revisao",
+  "policyname": "etapa3_rev_owner_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(aluno_id = gps.aluno_atual())"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa3_revisao",
+  "policyname": "etapa3_rev_owner_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa3_revisao",
+  "policyname": "etapa3_rev_owner_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "UPDATE",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa_liberacao_aluno",
+  "policyname": "etapa_liberacao_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapa_liberacao_aluno",
+  "policyname": "etapa_liberacao_owner_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapas",
+  "policyname": "etapas_admin_write",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "etapas",
+  "policyname": "etapas_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "lixeira_ambientes",
+  "policyname": "lixeira_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "membros",
+  "policyname": "membros_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "membros",
+  "policyname": "membros_self_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "((user_id = auth.uid()) OR (aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "membros",
+  "policyname": "membros_self_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "UPDATE",
+  "qual": "(user_id = auth.uid())",
+  "with_check": "(user_id = auth.uid())"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "nota_mencoes",
+  "policyname": "gps_nota_mencoes_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "onboarding_anexos",
+  "policyname": "gps_onboarding_anexos_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "onboarding_anexos",
+  "policyname": "gps_onboarding_anexos_dono_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(pessoa_aluno_id = gps.pessoa_atual())",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "onboarding_respostas",
+  "policyname": "gps_onboarding_respostas_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "onboarding_respostas",
+  "policyname": "gps_onboarding_respostas_dono_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(pessoa_aluno_id = gps.pessoa_atual())"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "onboarding_respostas",
+  "policyname": "gps_onboarding_respostas_dono_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(pessoa_aluno_id = gps.pessoa_atual())",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "onboarding_respostas",
+  "policyname": "gps_onboarding_respostas_dono_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "UPDATE",
+  "qual": "(pessoa_aluno_id = gps.pessoa_atual())",
+  "with_check": "(pessoa_aluno_id = gps.pessoa_atual())"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "operadores",
+  "policyname": "gps_operadores_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar) OR (user_id = auth.uid()))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "plantao_alunos",
+  "policyname": "gps_plantao_alunos_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "plantao_config",
+  "policyname": "gps_plantao_config_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "plantao_email_cliques",
+  "policyname": "plantao_email_cliques_admin_le",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "plantao_eventos",
+  "policyname": "gps_plantao_eventos_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "plantao_inscricoes",
+  "policyname": "gps_plantao_inscricoes_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "plantao_mentoras",
+  "policyname": "gps_plantao_mentoras_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "plantao_slots",
+  "policyname": "gps_plantao_slots_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "progresso",
+  "policyname": "progresso_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "progresso",
+  "policyname": "progresso_owner_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(aluno_id = gps.aluno_atual())"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "progresso",
+  "policyname": "progresso_owner_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "progresso",
+  "policyname": "progresso_owner_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "UPDATE",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "resgate_tentativas",
+  "policyname": "resgate_tentativas_admin_le",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "reuniao_agendamentos",
+  "policyname": "reuniao_agendamentos_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "reuniao_agendamentos",
+  "policyname": "reuniao_agendamentos_owner_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "reuniao_bloqueios",
+  "policyname": "reuniao_bloqueios_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "reuniao_bloqueios",
+  "policyname": "reuniao_bloqueios_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "reuniao_eventos",
+  "policyname": "reuniao_eventos_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "reuniao_eventos",
+  "policyname": "reuniao_eventos_owner_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "reuniao_horarios",
+  "policyname": "reuniao_horarios_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "reuniao_horarios",
+  "policyname": "reuniao_horarios_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "reuniao_preliminar_propostas",
+  "policyname": "gps_reuniao_preliminar_propostas_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar) OR (aluno_id = gps.aluno_atual()))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "sessao_agendamentos",
+  "policyname": "gps_sessao_agend_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))",
+  "with_check": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "sessao_agendamentos",
+  "policyname": "gps_sessao_agend_aluno_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(aluno_id = gps.aluno_atual())",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "sessao_agendamentos",
+  "policyname": "gps_sessao_agend_responsavel_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(responsavel_id = auth.uid())",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "sessao_bloqueios",
+  "policyname": "gps_sessao_bloqueios_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))",
+  "with_check": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "sessao_bloqueios",
+  "policyname": "gps_sessao_bloqueios_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "sessao_disponibilidade",
+  "policyname": "gps_sessao_disp_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))",
+  "with_check": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "sessao_disponibilidade",
+  "policyname": "gps_sessao_disp_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "sessao_eventos",
+  "policyname": "gps_sessao_eventos_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar) OR (EXISTS ( SELECT 1\n   FROM gps.sessao_agendamentos a\n  WHERE ((a.id = sessao_eventos.agendamento_id) AND (a.responsavel_id = auth.uid())))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "sessao_tipos",
+  "policyname": "gps_sessao_tipos_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))",
+  "with_check": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "sessao_tipos",
+  "policyname": "gps_sessao_tipos_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "socio_convite_tentativas",
+  "policyname": "socio_convite_tentativas_admin_le",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "solicitacoes_acesso",
+  "policyname": "solicitacoes_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "solicitacoes_acesso",
+  "policyname": "solicitacoes_self_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(user_id = auth.uid())"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "solicitacoes_acesso",
+  "policyname": "solicitacoes_self_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(user_id = auth.uid())",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "tarefa_enfase",
+  "policyname": "tarefa_enfase_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "ALL",
+  "qual": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)",
+  "with_check": "( SELECT ( SELECT (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)) AS gp_is_admin) AS gp_is_admin)"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "tarefa_enfase",
+  "policyname": "tarefa_enfase_owner_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "(aluno_id = ( SELECT ( SELECT gps.aluno_atual() AS aluno_atual) AS aluno_atual))",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "tutoriais",
+  "policyname": "gps_tutoriais_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))",
+  "with_check": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "tutoriais",
+  "policyname": "gps_tutoriais_select_publicado",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(publicado = true)",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "tutorial_reacoes",
+  "policyname": "gps_tutorial_reacoes_self_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "(pessoa_aluno_id = gps.pessoa_atual())",
+  "with_check": null
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "videos",
+  "policyname": "gps_videos_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "ALL",
+  "qual": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))",
+  "with_check": "(gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar))"
+ },
+ {
+  "schemaname": "gps",
+  "tablename": "videos",
+  "policyname": "gps_videos_select_publicado",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "((publicado = true) AND ((etapa IS NULL) OR COALESCE(( SELECT o.liberada\n   FROM gps.etapa_liberacao_aluno o\n  WHERE ((o.aluno_id = gps.aluno_atual()) AND (o.etapa = videos.etapa))), ( SELECT e.liberada\n   FROM gps.etapas e\n  WHERE (e.id = videos.etapa)), false)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_chamados_anexo_delete_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "DELETE",
+  "qual": "((bucket_id = 'gps-chamados'::text) AND (gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_chamados_anexo_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((bucket_id = 'gps-chamados'::text) AND gps.pode_anexar_chamado(name))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_chamados_anexo_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "((bucket_id = 'gps-chamados'::text) AND gps.pode_ver_anexo_chamado(name))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_croquis_delete_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "DELETE",
+  "qual": "((bucket_id = 'gps-croquis'::text) AND COALESCE((gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)), false))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_croquis_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((bucket_id = 'gps-croquis'::text) AND gps.pode_anexar_croqui(name))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_croquis_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "((bucket_id = 'gps-croquis'::text) AND gps.pode_ver_croqui(name))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_minutas_delete_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "DELETE",
+  "qual": "((bucket_id = 'gps-minutas'::text) AND COALESCE((gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)), false))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_minutas_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((bucket_id = 'gps-minutas'::text) AND gps.pode_anexar_minuta(name))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_minutas_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "((bucket_id = 'gps-minutas'::text) AND gps.pode_ver_minuta(name))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_onboarding_anexo_delete_admin",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "DELETE",
+  "qual": "((bucket_id = 'gps-onboarding'::text) AND COALESCE((gp_is_admin() OR ( SELECT gp_acesso_pode_editar('educacional'::text, NULL::text) AS gp_acesso_pode_editar)), false))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_onboarding_anexo_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((bucket_id = 'gps-onboarding'::text) AND gps.pode_anexar_onboarding(name))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "gps_onboarding_anexo_select",
+  "permissive": "PERMISSIVE",
+  "roles": "{authenticated}",
+  "cmd": "SELECT",
+  "qual": "((bucket_id = 'gps-onboarding'::text) AND gps.pode_ver_anexo_onboarding(name))",
+  "with_check": null
+ }
+]

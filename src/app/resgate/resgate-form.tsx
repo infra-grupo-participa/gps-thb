@@ -51,16 +51,16 @@ export function ResgateForm() {
           <CheckCircle2 aria-hidden className="mt-0.5 size-5 shrink-0 text-sucesso-foreground" />
           <div className="grid gap-1">
             <p className="corpo font-medium">Senha criada.</p>
-            <p className="corpo-sm text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               Agora entre com {passo2.email ? <strong>{passo2.email}</strong> : "seu e-mail"} e a
-              senha que você acabou de escolher.
+              nova senha.
             </p>
           </div>
         </div>
         {/* `Button` deste repo não tem `asChild` — o padrão da casa para
             "link com cara de botão" é `buttonVariants` no `Link`. */}
         <Link href="/login" className={buttonVariants()}>
-          Ir para a entrada
+          Entrar
         </Link>
       </div>
     );
@@ -72,16 +72,11 @@ export function ResgateForm() {
       <form action={agirPasso2} className="grid gap-4">
         <input type="hidden" name="token" value={token} />
 
-        <p className="corpo-sm text-muted-foreground">
-          Confirmamos que é você. Agora escolha a sua senha — ela é só sua, e ninguém da equipe a
-          vê.
-        </p>
-
         <div className="grid gap-2">
           <Label htmlFor="senha">Nova senha</Label>
           <InputSenha id="senha" name="senha" autoComplete="new-password" required autoFocus />
-          <p className="corpo-sm text-muted-foreground">
-            Ao menos {SENHA_MINIMO} caracteres.
+          <p className="text-base text-muted-foreground">
+            Mínimo de {SENHA_MINIMO} caracteres.
           </p>
         </div>
 
@@ -91,7 +86,7 @@ export function ResgateForm() {
         </div>
 
         {passo2.erro ? (
-          <p role="alert" className="corpo-sm text-risco-foreground">
+          <p role="alert" className="text-base text-risco-foreground">
             {passo2.erro}
           </p>
         ) : null}
@@ -101,8 +96,8 @@ export function ResgateForm() {
         </Button>
 
         {/* ⚠️ O prazo é dito ANTES de a pessoa descobrir no clique. */}
-        <p className="corpo-sm text-muted-foreground">
-          Você tem 15 minutos para concluir. Passou disso, é só recomeçar.
+        <p className="text-base text-muted-foreground">
+          Você tem 15 minutos para concluir.
         </p>
       </form>
     );
@@ -122,9 +117,6 @@ export function ResgateForm() {
           required
           autoFocus
         />
-        <p className="corpo-sm text-muted-foreground">
-          É o código que a equipe passou no grupo.
-        </p>
       </div>
 
       <div className="grid gap-2">
@@ -144,9 +136,6 @@ export function ResgateForm() {
           placeholder="voce@exemplo.com"
           required
         />
-        <p className="corpo-sm text-muted-foreground">
-          O mesmo que você usou na compra do programa.
-        </p>
       </div>
 
       <div className="grid gap-2">
@@ -161,13 +150,10 @@ export function ResgateForm() {
           onChange={(e) => setDocumento(mascaraCpfCnpj(e.target.value))}
           required
         />
-        <p className="corpo-sm text-muted-foreground">
-          É ele que confirma que é você, e não outra pessoa do grupo.
-        </p>
       </div>
 
       {passo1.erro ? (
-        <p role="alert" className="corpo-sm text-risco-foreground">
+        <p role="alert" className="text-base text-risco-foreground">
           {passo1.erro}
         </p>
       ) : null}

@@ -45,17 +45,13 @@ export default async function EntrarPage({
       <Card elevacao="raised" size="lg">
         <CardHeader>
           <h1 className="font-heading titulo-h2">Entrar no Programa</h1>
-          <p className="corpo-sm text-muted-foreground">
-            Informe o seu e-mail e o código que a equipe passou. Você cria a sua
-            senha assim que entrar.
-          </p>
         </CardHeader>
         <CardContent>
           <EntrarForm destino={destino} />
         </CardContent>
       </Card>
 
-      <p className="mt-6 text-center corpo-sm text-muted-foreground">
+      <p className="mt-6 text-center text-base text-muted-foreground">
         Problemas para entrar?{" "}
         <Link
           href="https://o.aceleraholding.com.br/monitoria"

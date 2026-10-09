@@ -16,7 +16,7 @@ export default function CadastroPage() {
           <p className="font-heading text-lg font-semibold">
             Implementação Assistida
           </p>
-          <p className="text-sm text-muted-foreground">Time Holding Brasil</p>
+          <p className="text-base text-muted-foreground">Time Holding Brasil</p>
         </div>
       </div>
 
@@ -30,18 +30,13 @@ export default function CadastroPage() {
               com um cadastro do Time Holding Brasil. Sem match, o gatilho abre
               uma SOLICITAÇÃO e a pessoa fica esperando alguém aprovar — a tela
               prometia o caminho feliz para os dois casos. */}
-          <p className="text-sm text-muted-foreground">
-            Cadastre-se com seu CPF/CNPJ e e-mail. Se o seu CPF/CNPJ estiver na
-            nossa base, você já entra; se não, sua solicitação fica registrada e
-            a equipe libera o acesso.
-          </p>
         </CardHeader>
         <CardContent>
           <CadastroForm />
         </CardContent>
       </Card>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-6 text-center text-base text-muted-foreground">
         Já tem conta?{" "}
         <Link href="/login" className="font-medium text-accent-foreground underline-offset-4 hover:underline">
           Entrar

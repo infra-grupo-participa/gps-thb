@@ -54,8 +54,7 @@ export function CompradoresHm({
   if (falhou) {
     return (
       <AvisoInline>
-        Não foi possível conferir os compradores do HM aguardando acesso agora.
-        Recarregue a página em instantes.
+        Não deu para carregar os compradores. Recarregue a página.
       </AvisoInline>
     );
   }
@@ -76,7 +75,7 @@ export function CompradoresHm({
     <Secao
       icone={<ShoppingBag />}
       titulo={`Compradores do HM aguardando acesso (${compradores.length})`}
-      descricao="Pagaram o Holding Masters cheio. Autorize para criar o login e enviar as credenciais."
+      descricao="Pagaram o Holding Masters. Autorize para criar o login."
       classeConteudo="grid gap-3"
       className="mb-8"
     >

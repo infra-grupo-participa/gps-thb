@@ -90,7 +90,7 @@ export function AdminsDoPrograma({
   return (
     <Secao
       titulo="Admins do programa"
-      descricao="Admin vê e edita todos os alunos do programa. Esta lista vale só para o Programa de Implementação Assistida. Mudanças de acesso em outros sistemas do grupo não alteram esta lista."
+      descricao="Admin vê e edita todos os parceiros. Vale só para este programa."
       classeConteudo="grid gap-4"
     >
       {erroAdmins || !admins ? (

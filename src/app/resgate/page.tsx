@@ -30,17 +30,13 @@ export default function ResgatePage() {
       <Card elevacao="raised" size="lg">
         <CardHeader>
           <h1 className="font-heading titulo-h2">Não consigo entrar</h1>
-          <p className="corpo-sm text-muted-foreground">
-            Com o código que a equipe divulgou, você cria a sua senha na hora — sem esperar e-mail
-            e sem falar com ninguém.
-          </p>
         </CardHeader>
         <CardContent>
           <ResgateForm />
         </CardContent>
       </Card>
 
-      <p className="mt-6 text-center corpo-sm text-muted-foreground">
+      <p className="mt-6 text-center text-base text-muted-foreground">
         Lembrou a senha?{" "}
         <Link
           href="/login"

@@ -17,9 +17,6 @@ export default function RedefinirSenhaPage() {
       <Card elevacao="raised" size="lg">
         <CardHeader>
           <h1 className="font-heading titulo-h2">Criar nova senha</h1>
-          <p className="text-sm text-muted-foreground">
-            Defina a nova senha da sua conta.
-          </p>
         </CardHeader>
         <CardContent>
           <RedefinirForm />

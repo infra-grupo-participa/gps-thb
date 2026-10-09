@@ -133,7 +133,7 @@ export function VideosAdmin({ videos }: { videos: VideoGps[] }) {
       {videos.length === 0 ? (
         <EmptyState
           titulo="Nenhum vídeo cadastrado."
-          descricao="Cole o link do YouTube (não listado) de uma gravação para começar."
+          descricao="Cole o link do YouTube para começar."
         />
       ) : (
         porEtapa.map(([etapa, itens]) => (

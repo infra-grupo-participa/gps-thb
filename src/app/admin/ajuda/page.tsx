@@ -45,8 +45,7 @@ export default async function AdminAjudaPage() {
         ) : (
           <div role="alert">
             <AvisoInline>
-              Não foi possível carregar os artigos agora. Nenhum artigo foi perdido — atualize
-              a página em instantes.
+              Não deu para carregar os artigos. Atualize a página.
             </AvisoInline>
           </div>
         )}

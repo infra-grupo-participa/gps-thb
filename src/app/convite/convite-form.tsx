@@ -26,8 +26,8 @@ export function ConviteForm({ token }: { token: string }) {
 
   if (state.ok) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Conta criada! Levando você para a entrada…
+      <p className="text-base text-muted-foreground">
+        Conta criada! Abrindo a entrada…
       </p>
     );
   }
@@ -71,13 +71,13 @@ export function ConviteForm({ token }: { token: string }) {
       </div>
 
       {state.erro ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-base text-destructive">
           {state.erro}
         </p>
       ) : null}
 
       <Button type="submit" disabled={pendente}>
-        {pendente ? "Criando conta…" : "Aceitar convite e criar minha conta"}
+        {pendente ? "Criando conta…" : "Aceitar convite"}
       </Button>
     </form>
   );

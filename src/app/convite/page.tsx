@@ -35,30 +35,25 @@ export default async function ConvitePage({
       <Card elevacao="raised" size="lg">
         <CardHeader>
           <h1 className="font-heading titulo-h2">Você foi convidado</h1>
-          <p className="corpo-sm text-muted-foreground">
-            Crie sua senha para entrar no Programa de Implementação Assistida como sócio(a) —
-            vocês vão compartilhar o mesmo ambiente: os mesmos clientes, tarefas e progresso.
-          </p>
         </CardHeader>
         <CardContent>
           {token ? (
             <ConviteForm token={token} />
           ) : (
-            <p className="corpo-sm text-muted-foreground">
-              Este link está incompleto ou foi copiado pela metade. Peça ao seu titular para
-              reenviar o convite pela aba Equipe.
+            <p className="text-base text-muted-foreground">
+              Link incompleto. Peça ao titular para reenviar o convite.
             </p>
           )}
         </CardContent>
       </Card>
 
-      <p className="mt-6 text-center corpo-sm text-muted-foreground">
-        Já tem conta em outro sistema do grupo?{" "}
+      <p className="mt-6 text-center text-base text-muted-foreground">
+        Já tem conta?{" "}
         <Link
           href="/login"
           className="font-medium text-accent-foreground underline-offset-4 hover:underline"
         >
-          Entre com a sua senha atual
+          Entrar com sua senha
         </Link>
       </p>
     </AuthLayout>

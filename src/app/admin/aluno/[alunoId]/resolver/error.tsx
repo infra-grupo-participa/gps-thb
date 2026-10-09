@@ -31,7 +31,7 @@ export default function ResolverError({
   return (
     <ErroPainel
       titulo="Não foi possível conferir este ambiente"
-      descricao="O diagnóstico não carregou. Nada foi alterado no ambiente do parceiro — tente de novo ou volte à ficha dele."
+      descricao="O diagnóstico não carregou. Nada foi alterado. Tente de novo."
       digest={error.digest}
     >
       <Button onClick={() => reset()}>Tentar de novo</Button>

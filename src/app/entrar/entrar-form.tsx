@@ -58,9 +58,6 @@ export function EntrarForm({ destino }: { destino: string }) {
           required
           autoFocus
         />
-        <p className="corpo-sm text-muted-foreground">
-          O mesmo e-mail que você usou na compra do programa.
-        </p>
       </div>
 
       <div className="grid gap-2">
@@ -76,7 +73,7 @@ export function EntrarForm({ destino }: { destino: string }) {
       </div>
 
       {state.erro ? (
-        <p role="alert" className="corpo-sm text-risco-foreground">
+        <p role="alert" className="text-base text-risco-foreground">
           {state.erro}
         </p>
       ) : null}
@@ -85,7 +82,7 @@ export function EntrarForm({ destino }: { destino: string }) {
         {pendente || state.ok ? "Entrando…" : "Entrar"}
       </Button>
 
-      <p className="text-center corpo-sm text-muted-foreground">
+      <p className="text-center text-base text-muted-foreground">
         Já tem uma senha?{" "}
         <Link
           href="/login"

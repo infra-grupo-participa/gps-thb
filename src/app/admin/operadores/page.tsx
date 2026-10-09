@@ -55,7 +55,7 @@ export default async function AdminOperadoresPage() {
         <div className="grid gap-12">
           <Secao
             titulo="Operadores"
-            descricao="Equipe da esteira: vê a fila de ligações e o dossiê de qualquer cliente."
+            descricao="Veem a fila de ligações e o dossiê dos clientes."
           >
             {erro ? (
               <p role="alert" className="corpo-sm text-destructive">

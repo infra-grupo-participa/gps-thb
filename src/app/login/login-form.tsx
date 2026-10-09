@@ -65,9 +65,8 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
             Sutil de propósito: quem já tem senha não pode achar que precisa
             trocar de caminho. Por isso "primeiro acesso", e não um convite
             a todo mundo usar o código. */}
-        <p className="corpo-sm text-muted-foreground">
-          Primeiro acesso ou esqueceu a senha? Use o código que a equipe
-          passou aqui mesmo, neste campo.
+        <p className="text-base text-muted-foreground">
+          Primeiro acesso? Digite o código da equipe.
         </p>
       </div>
 
@@ -75,7 +74,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
           login: o texto aparece na tela e o usuário cego fica sem retorno
           nenhum ao enviar o formulário (WCAG 3.3.1 / 4.1.3). */}
       {state.erro ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-base text-destructive">
           {state.erro}
         </p>
       ) : null}
@@ -101,19 +100,19 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
                       por aqui. */}
       {/* Discreto: o caminho principal agora é o próprio campo de senha
           acima. Estes ficam para quem prefere outro jeito. */}
-      <p className="text-center corpo-sm text-muted-foreground">
+      <p className="text-center text-base text-muted-foreground">
         <Link
           href="/esqueci-senha"
           className="underline-offset-4 hover:text-accent-foreground hover:underline"
         >
-          Receber um link por e-mail
+          Receber link por e-mail
         </Link>
         {" · "}
         <Link
           href="/resgate"
           className="underline-offset-4 hover:text-accent-foreground hover:underline"
         >
-          Recuperar com e-mail e CPF
+          Recuperar com CPF
         </Link>
       </p>
     </form>

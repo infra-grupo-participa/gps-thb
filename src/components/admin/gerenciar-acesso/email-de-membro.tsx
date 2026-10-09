@@ -112,7 +112,7 @@ export function EmailDeMembro({
       </label>
 
       <p className="text-xs text-muted-foreground">
-        O login vale para todos os portais do Grupo Participa. As sessões abertas dela caem.
+        O login vale em todos os portais do grupo. As sessões abertas caem.
       </p>
 
       <Button

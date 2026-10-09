@@ -664,7 +664,7 @@ function LinhaDaSessao({
         descricao={`${rotuloDoDia(sessao.data)}, ${inicio} — ${clienteNome ?? "cliente"}`}
         consequencia={
           <>
-            O horário atual volta a ficar livre. O motivo é obrigatório e o aluno o vê. O aluno será avisado por e-mail.
+            O horário volta a ficar livre. O motivo é obrigatório e o aluno o recebe por e-mail.
           </>
         }
         rotuloConfirmar="Remarcar sessão"

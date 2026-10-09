@@ -85,7 +85,7 @@ export function RedefinirForm() {
       </div>
       {/* Anunciado pelo leitor de tela (WCAG 3.3.1 / 4.1.3). */}
       {erro ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-base text-destructive">
           {erro}
         </p>
       ) : null}

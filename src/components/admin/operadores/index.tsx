@@ -37,7 +37,7 @@ export function Operadores({ operadores }: { operadores: Operador[] }) {
         {operadores.length === 0 ? (
           <EmptyState
             titulo="Nenhum operador cadastrado ainda"
-            descricao="Adicione um login existente acima para dar a ele a fila de ligações e o dossiê."
+            descricao="Adicione um login acima."
           />
         ) : (
           <Card elevacao="flat" className="[--card-spacing:--spacing(0)]">

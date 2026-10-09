@@ -25,7 +25,7 @@ export default function DiarioError({
   return (
     <ErroPainel
       titulo="Não foi possível carregar o diário"
-      descricao="A trilha do parceiro não veio agora. Nenhum registro foi perdido — tente de novo ou volte à ficha do parceiro."
+      descricao="A trilha não carregou. Nada foi perdido. Tente de novo."
       digest={error.digest}
     >
       <Button onClick={() => reset()}>Tentar de novo</Button>

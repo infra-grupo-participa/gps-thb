@@ -57,12 +57,11 @@ export function EsqueciForm() {
       // sondando a base. O que faltava era o prazo: o envio sai pelo SMTP
       // embutido do Supabase (baixa entrega, limite por hora), e a pessoa que
       // não recebia em 10 segundos concluía que o portal estava quebrado.
-      <div role="status" className="rounded-md border bg-muted/40 p-4 text-sm">
+      <div role="status" className="rounded-md border bg-muted/40 p-4 text-base">
         <p className="font-medium">Verifique seu e-mail</p>
         <p className="mt-1 text-muted-foreground">
-          Se existir uma conta com <strong>{email}</strong>, enviamos um link
-          para você criar uma nova senha. Pode levar alguns minutos; confira o
-          spam.
+          Se <strong>{email}</strong> tiver conta, o link chega em alguns
+          minutos. Olhe também o spam.
         </p>
       </div>
     );
@@ -91,12 +90,12 @@ export function EsqueciForm() {
       </div>
       {/* Anunciado pelo leitor de tela (WCAG 3.3.1 / 4.1.3). */}
       {erro ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-base text-destructive">
           {erro}
         </p>
       ) : null}
       <Button type="submit" disabled={enviando} className="mt-2">
-        {enviando ? "Enviando..." : "Enviar link de redefinição"}
+        {enviando ? "Enviando..." : "Enviar link"}
       </Button>
     </form>
   );

@@ -189,7 +189,7 @@ export function CardSlot({
           {slot.canceladoMotivo
             ? `Motivo: ${slot.canceladoMotivo}. `
             : "Cancelado sem motivo registrado. "}
-          Cada inscrito recebeu e-mail de cancelamento, salvo falha de envio. O plantão saiu do ar.
+          Os inscritos foram avisados por e-mail. O plantão saiu do ar.
         </p>
       ) : null}
 

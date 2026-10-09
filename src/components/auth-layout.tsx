@@ -26,7 +26,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
           <ThbLogo size="sm" className="size-11 ring-2 ring-white/80" />
           <div className="leading-tight">
             <div className="font-heading font-semibold">Time Holding Brasil</div>
-            <div className="text-sm text-white/85">
+            <div className="text-base text-white/85">
               Implementação Assistida
             </div>
           </div>
@@ -41,7 +41,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
           </p>
           <ul className="mt-10 grid gap-3.5">
             {DESTAQUES.map(({ Icon, texto }) => (
-              <li key={texto} className="flex items-center gap-3 corpo">
+              <li key={texto} className="flex items-center gap-3 text-base">
                 {/* Mesmo chip do resto do sistema (VIS2); aqui sobre o laranja
                     sólido, então a cor vem do override, não do token. */}
                 <IconeChip className="bg-black/15 text-white">
@@ -53,7 +53,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
           </ul>
         </div>
 
-        <div className="relative corpo-sm text-white/85">
+        <div className="relative text-base text-white/85">
           Programa de Implementação Assistida
         </div>
       </div>
@@ -64,7 +64,11 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         id="conteudo"
         className="flex min-h-screen items-center justify-center p-4"
       >
-        <div className="w-full max-w-sm">{children}</div>
+        {/* Público mais velho: rótulo, campo e botão em 16 px+ só nestas telas
+            (os componentes `ui/` são do sistema todo e não mudam). */}
+        <div className="w-full max-w-md [&_label]:text-base [&_input]:h-11 [&_input]:md:text-base [&_button[type=submit]]:h-11 [&_button[type=submit]]:text-base">
+          {children}
+        </div>
       </main>
     </div>
   );

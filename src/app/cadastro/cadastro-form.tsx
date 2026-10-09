@@ -45,7 +45,7 @@ export function CadastroForm() {
 
   if (state.sucesso) {
     return (
-      <div className="rounded-md border bg-muted/40 p-4 text-sm">
+      <div className="rounded-md border bg-muted/40 p-4 text-base">
         <p className="font-medium">Cadastro concluído!</p>
         <p className="mt-1 text-muted-foreground">
           {/* 🔴 NÃO promete e-mail. O projeto está com `mailer_autoconfirm`
@@ -54,8 +54,8 @@ export function CadastroForm() {
               confirmação (o GPS não tem esse envio em `email.ts`). Prometer
               um e-mail que não sai deixa a pessoa esperando para sempre. */}
           {state.precisaConfirmar
-            ? "Agora entre com o seu e-mail e a senha que você acabou de criar. Se não conseguir, fale com a equipe."
-            : "Redirecionando para o seu portal..."}
+            ? "Agora entre com seu e-mail e sua senha."
+            : "Abrindo o portal..."}
         </p>
       </div>
     );
@@ -80,7 +80,7 @@ export function CadastroForm() {
           {tipo ? (
             <span
               className={
-                "absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium " +
+                "absolute right-3 top-1/2 -translate-y-1/2 text-base font-medium " +
                 (docValido ? "text-accent-foreground" : "text-muted-foreground")
               }
             >
@@ -88,9 +88,6 @@ export function CadastroForm() {
             </span>
           ) : null}
         </div>
-        <p className="text-xs text-muted-foreground">
-          Usamos seu CPF/CNPJ para localizar seu cadastro no Time Holding Brasil.
-        </p>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -128,9 +125,9 @@ export function CadastroForm() {
         />
       </div>
 
-      <details className="text-sm">
+      <details className="text-base">
         <summary className="cursor-pointer text-muted-foreground">
-          Não é parceiro ainda? Informe seus dados
+          Ainda não é parceiro? Preencha seus dados
         </summary>
         <div className="mt-3 flex flex-col gap-4">
           <div className="flex flex-col gap-2">
@@ -154,7 +151,7 @@ export function CadastroForm() {
 
       {/* Anunciado pelo leitor de tela (WCAG 3.3.1 / 4.1.3). */}
       {state.erro ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-base text-destructive">
           {state.erro}
         </p>
       ) : null}

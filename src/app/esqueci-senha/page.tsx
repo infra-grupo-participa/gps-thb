@@ -40,16 +40,13 @@ export default async function EsqueciSenhaPage({
       <Card elevacao="raised" size="lg">
         <CardHeader>
           <h1 className="font-heading titulo-h2">Redefinir senha</h1>
-          <p className="text-sm text-muted-foreground">
-            Informe seu e-mail e enviaremos um link para criar uma nova senha.
-          </p>
         </CardHeader>
         <CardContent>
           <EsqueciForm />
         </CardContent>
       </Card>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-6 text-center text-base text-muted-foreground">
         Lembrou a senha?{" "}
         <Link
           href="/login"

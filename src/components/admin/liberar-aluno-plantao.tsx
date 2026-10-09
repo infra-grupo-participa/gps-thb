@@ -118,7 +118,7 @@ export function LiberarAlunoPlantao() {
         <DialogHeader>
           <DialogTitle>Liberar parceiro no Plantão</DialogTitle>
           <DialogDescription>
-            Use quando a pessoa comprou o Acelera Holding mas não está na lista abaixo. Não é atalho para quem não comprou.
+            Só para quem comprou o Acelera Holding e não está na lista.
           </DialogDescription>
         </DialogHeader>
 

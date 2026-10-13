@@ -84,6 +84,10 @@ export type PermissaoDrive = {
   emailAddress?: string;
 };
 
+export type PermissaoComHeranca = PermissaoDrive & {
+  permissionDetails?: { inherited?: boolean; inheritedFrom?: string; permissionType?: string }[];
+};
+
 export type PapelCompartilhamento = "reader" | "writer";
 
 export type GdriveConfig = {
@@ -586,10 +590,11 @@ export function criarGdrive(cfg: GdriveConfig) {
       email: string,
       papel: PapelCompartilhamento,
       mensagem?: string,
+      avisar = true,
     ): Promise<PermissaoDrive> {
       exigirId(id, "permissions.create");
       const params: Record<string, string> = {
-        sendNotificationEmail: "true",
+        sendNotificationEmail: avisar ? "true" : "false",
         fields: "id,type,role,emailAddress",
         ...DRIVES,
       };
@@ -608,6 +613,64 @@ export function criarGdrive(cfg: GdriveConfig) {
         }
         throw e;
       }
+    },
+
+    /** Pastas (não lixeira) cujo nome contém o termo — em todo o Drive que a conta enxerga. */
+    async buscarPastasPorNome(termo: string): Promise<ArquivoDrive[]> {
+      return await listar(
+        `name contains '${escaparQ(termo)}' and mimeType = '${MIME_PASTA}' and trashed = false`,
+        "list.nome",
+      );
+    },
+
+    /** Arquivos/atalhos (não lixeira) marcados com appProperties.gps_id = valor, em qualquer pasta. */
+    async buscarPorGpsIdEmQualquerLugar(gpsId: string): Promise<ArquivoDrive[]> {
+      return await listar(
+        `trashed = false and appProperties has { key='${CHAVE_GPS_ID}' and value='${escaparQ(gpsId)}' }`,
+        "list.gpsid",
+      );
+    },
+
+    /** Cria uma pasta na RAIZ do Meu Drive da conta (sem pai informado). */
+    async criarPastaNaRaiz(nome: string, gpsId: string): Promise<ArquivoDrive> {
+      const res = await api("POST", `/files?${qs({ fields: CAMPOS_ARQUIVO, ...DRIVES })}`, "create.raiz", {
+        escrita: true,
+        corpo: { name: nome, mimeType: MIME_PASTA, appProperties: { [CHAVE_GPS_ID]: gpsId } },
+      });
+      return await res.json();
+    },
+
+    /** Manda para a lixeira (reversível). Nunca apaga de vez. */
+    async lixeira(id: string): Promise<void> {
+      exigirId(id, "trash");
+      const res = await api("PATCH", `/files/${encodeURIComponent(id)}?${qs({ fields: "id", ...DRIVES })}`, "trash", {
+        escrita: true,
+        corpo: { trashed: true },
+      });
+      await res.body?.cancel();
+    },
+
+    /** Permissões com a origem da herança (`permissionDetails`). */
+    async permissoesComHeranca(id: string): Promise<PermissaoComHeranca[]> {
+      exigirId(id, "permissions.list");
+      const todos: PermissaoComHeranca[] = [];
+      let pageToken = "";
+      for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
+        const params: Record<string, string> = {
+          fields: "nextPageToken,permissions(id,type,role,emailAddress,permissionDetails(inherited,inheritedFrom,permissionType))",
+          pageSize: "100",
+          ...DRIVES,
+        };
+        if (pageToken) params.pageToken = pageToken;
+        const res = await api("GET", `/files/${encodeURIComponent(id)}/permissions?${qs(params)}`, "permissions.list", {
+          escrita: false,
+        });
+        const j = await res.json();
+        if (Array.isArray(j?.permissions)) todos.push(...j.permissions);
+        pageToken = typeof j?.nextPageToken === "string" ? j.nextPageToken : "";
+        if (!pageToken) return todos;
+      }
+      throw new GdriveErro("outro", 0, "permissions.list: paginação sem fim");
     },
 
     /**

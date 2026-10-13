@@ -61,25 +61,25 @@ export function TabelaClientesPrograma({
   const comFaixas =
     linhas.some((l) => l.acompanhadoEquipe) && linhas.some((l) => !l.acompanhadoEquipe);
   return (
-    <div className="overflow-hidden rounded-xl border border-borda-forte bg-card">
+    <div className="overflow-hidden rounded-xl border bg-card">
       <div
         aria-hidden
         className={cn(
           COLUNAS,
-          "hidden items-stretch border-b-2 border-borda-forte bg-superficie-afundada text-xs leading-tight font-semibold tracking-wide text-foreground uppercase lg:grid",
+          "hidden items-stretch border-b text-xs leading-tight font-medium text-muted-foreground lg:grid",
         )}
       >
         <span className={cn(CEL_CABECALHO, "lg:pl-4")}>Cliente</span>
-        <span className={cn(CEL_CABECALHO, CEL_LINHA)}>Fase</span>
+        <span className={CEL_CABECALHO}>Fase</span>
         {REUNIOES.map((r) => (
-          <span key={r.chave} className={cn(CEL_CABECALHO, CEL_LINHA)}>
+          <span key={r.chave} className={cn(CEL_CABECALHO, BANDA)}>
             {r.rotulo}
           </span>
         ))}
-        <span className={cn(CEL_CABECALHO, CEL_LINHA)}>Documentos</span>
-        <span className={cn(CEL_CABECALHO, CEL_LINHA, "lg:pr-4")}>Pasta</span>
+        <span className={CEL_CABECALHO}>Documentos</span>
+        <span className={cn(CEL_CABECALHO, "lg:pr-4")}>Pasta</span>
       </div>
-      <ul className="divide-y divide-borda-forte">
+      <ul className="divide-y divide-border/70">
         {linhas.map((c, i) => {
           const faixa =
             comFaixas && (i === 0 || linhas[i - 1].acompanhadoEquipe !== c.acompanhadoEquipe)
@@ -244,7 +244,7 @@ function CelulaData({
 }) {
   const data = dataCurta(em);
   return (
-    <div className={cn("min-w-0 tabular-nums lg:flex lg:flex-col lg:justify-center", CEL_DADO)}>
+    <div className={cn("min-w-0 tabular-nums lg:flex lg:flex-col lg:justify-center", CEL_DADO, BANDA)}>
       <span className="text-xs text-muted-foreground lg:sr-only">{rotulo} </span>
       {data ? (
         <>
@@ -394,9 +394,10 @@ function dataCurta(iso: string | null): string | null {
   return Number.isNaN(d.getTime()) ? null : FORMATO_CURTO.format(d);
 }
 
-/** Célula de dado em tela larga: filete vertical à esquerda + respiro. */
-const CEL_LINHA = "lg:border-l lg:border-borda-forte";
-const CEL_DADO = `${CEL_LINHA} lg:px-3 lg:py-3`;
+/** Célula de dado em tela larga: só respiro, sem filetes. */
+const CEL_DADO = "lg:px-3 lg:py-3";
+/** As 4 datas da agenda formam uma faixa de fundo suave, contínua de cima a baixo. */
+const BANDA = "lg:bg-superficie-afundada/50";
 const CEL_CABECALHO = "lg:flex lg:items-end lg:px-3 lg:py-2.5";
 
 /** As oito colunas em tela larga — o cabeçalho e cada linha usam a mesma. */

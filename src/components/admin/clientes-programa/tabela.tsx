@@ -61,23 +61,25 @@ export function TabelaClientesPrograma({
   const comFaixas =
     linhas.some((l) => l.acompanhadoEquipe) && linhas.some((l) => !l.acompanhadoEquipe);
   return (
-    <div className="rounded-xl border bg-card">
+    <div className="overflow-hidden rounded-xl border border-borda-forte bg-card">
       <div
         aria-hidden
         className={cn(
           COLUNAS,
-          "hidden items-end gap-x-3 border-b px-4 py-2 text-xs leading-tight font-medium text-muted-foreground lg:grid",
+          "hidden items-stretch border-b-2 border-borda-forte bg-superficie-afundada text-xs leading-tight font-semibold tracking-wide text-foreground uppercase lg:grid",
         )}
       >
-        <span>Cliente</span>
-        <span>Fase</span>
+        <span className={cn(CEL_CABECALHO, "lg:pl-4")}>Cliente</span>
+        <span className={cn(CEL_CABECALHO, CEL_LINHA)}>Fase</span>
         {REUNIOES.map((r) => (
-          <span key={r.chave}>{r.rotulo}</span>
+          <span key={r.chave} className={cn(CEL_CABECALHO, CEL_LINHA)}>
+            {r.rotulo}
+          </span>
         ))}
-        <span>Documentos</span>
-        <span>Pasta</span>
+        <span className={cn(CEL_CABECALHO, CEL_LINHA)}>Documentos</span>
+        <span className={cn(CEL_CABECALHO, CEL_LINHA, "lg:pr-4")}>Pasta</span>
       </div>
-      <ul className="divide-y">
+      <ul className="divide-y divide-borda-forte">
         {linhas.map((c, i) => {
           const faixa =
             comFaixas && (i === 0 || linhas[i - 1].acompanhadoEquipe !== c.acompanhadoEquipe)
@@ -118,7 +120,7 @@ export function TabelaClientesPrograma({
                   negrito. Sem estrela: tom apagado (token, nunca `opacity`). */}
               <li
                 className={cn(
-                  "flex flex-col gap-1.5 px-4 py-3 text-sm transition-colors lg:grid lg:items-center lg:gap-x-3 lg:gap-y-0",
+                  "flex flex-col gap-1.5 px-4 py-3 text-sm transition-colors lg:grid lg:items-stretch lg:gap-0 lg:px-0 lg:py-0",
                   COLUNAS,
                   c.acompanhadoEquipe
                     ? "bg-primary/5 shadow-[inset_3px_0_0_var(--color-primary)] hover:bg-primary/10"
@@ -126,7 +128,7 @@ export function TabelaClientesPrograma({
                 )}
               >
                 {/* Cliente: nome (+ fase só no estreito) / parceiro · telefone · grau/DISC */}
-                <div className="grid min-w-0 gap-0.5">
+                <div className="grid min-w-0 content-center gap-0.5 lg:py-3 lg:pr-3 lg:pl-4">
                   <div className="flex min-w-0 items-center gap-2">
                     <div
                       className={cn(
@@ -176,7 +178,7 @@ export function TabelaClientesPrograma({
                   ) : null}
                 </div>
 
-                <span className="hidden lg:block">{seloFase}</span>
+                <span className={cn("hidden lg:flex lg:items-center", CEL_DADO)}>{seloFase}</span>
 
                 {/* Estreito: grade 2×2 (+ pasta). Largo: `contents` — cada
                     célula vira coluna da linha. */}
@@ -189,7 +191,7 @@ export function TabelaClientesPrograma({
                       estado={datas[r.chave].estado}
                     />
                   ))}
-                  <div className="col-span-2 flex flex-wrap gap-x-4 gap-y-0.5 lg:col-span-1 lg:grid lg:gap-0.5">
+                  <div className={cn("col-span-2 flex flex-wrap gap-x-4 gap-y-0.5 lg:col-span-1 lg:grid lg:content-center lg:gap-0.5", CEL_DADO)}>
                     {!c.cqPdfStatus && !c.mnStatus ? (
                       <Vazio texto="sem anexo" />
                     ) : (
@@ -210,7 +212,7 @@ export function TabelaClientesPrograma({
                     )}
                   </div>
                   <span
-                    className="whitespace-nowrap text-xs text-muted-foreground lg:text-sm"
+                    className={cn("whitespace-nowrap text-xs text-muted-foreground lg:flex lg:items-center lg:pr-4 lg:text-sm", CEL_DADO)}
                     title={pasta?.[c.id]?.titulo}
                   >
                     <span className="lg:sr-only">Pasta </span>
@@ -242,7 +244,7 @@ function CelulaData({
 }) {
   const data = dataCurta(em);
   return (
-    <div className="min-w-0 tabular-nums">
+    <div className={cn("min-w-0 tabular-nums lg:flex lg:flex-col lg:justify-center", CEL_DADO)}>
       <span className="text-xs text-muted-foreground lg:sr-only">{rotulo} </span>
       {data ? (
         <>
@@ -391,6 +393,11 @@ function dataCurta(iso: string | null): string | null {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? null : FORMATO_CURTO.format(d);
 }
+
+/** Célula de dado em tela larga: filete vertical à esquerda + respiro. */
+const CEL_LINHA = "lg:border-l lg:border-borda-forte";
+const CEL_DADO = `${CEL_LINHA} lg:px-3 lg:py-3`;
+const CEL_CABECALHO = "lg:flex lg:items-end lg:px-3 lg:py-2.5";
 
 /** As oito colunas em tela larga — o cabeçalho e cada linha usam a mesma. */
 const COLUNAS =

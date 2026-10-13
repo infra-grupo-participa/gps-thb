@@ -173,6 +173,18 @@ const marcaOrigem = (p: Pendente) => ({
 
 /** Evento completo (modo criado). Nome só no título; descrição sem dado pessoal (LGPD). */
 export function montarEvento(p: Pendente): GcalEvento {
+  // Plantão Acelera Holding (…382): sem aluno e sem convidados (15+ inscritos).
+  if (p.origem === "plantao") {
+    return {
+      summary: "Plantão Acelera Holding - Implementação",
+      description:
+        "Plantão de mentoria do Acelera Holding.\nGerenciado pelo sistema GPS: alterações feitas aqui são sobrescritas.",
+      location: limparLink(p.link_reuniao),
+      ...horarios(p),
+      attendees: [],
+      extendedProperties: marcaOrigem(p),
+    };
+  }
   const tipo = limparTexto(p.tipo_nome, 40) || "Sessão";
   const email = limparEmail(p.responsavel_email);
   return {

@@ -185,6 +185,29 @@ D.test("payload: sem dado pessoal além do nome, só o responsável convidado", 
   igual(montarEvento(pendente({ responsavel_email: "lixo" })).attendees, []);
 });
 
+D.test("plantão: título fixo, link no local, sem convidados nem nome", () => {
+  const ev = montarEvento(
+    pendente({
+      origem: "plantao",
+      tipo_id: null,
+      tipo_etapa: null,
+      tipo_nome: "Plantão Acelera Holding",
+      aluno_nome: null,
+      cliente_nome: null,
+      responsavel_email: null,
+      inicio_em: "2026-10-13T17:00:00+00:00",
+      fim_em: "2026-10-13T19:00:00+00:00",
+      link_reuniao: "https://us02web.zoom.us/j/84735222069?pwd=abc",
+    }),
+  );
+  igual(ev.summary, "Plantão Acelera Holding - Implementação");
+  igual(ev.location, "https://us02web.zoom.us/j/84735222069?pwd=abc");
+  igual(ev.attendees, []);
+  igual(ev.start, { dateTime: "2026-10-13T14:00:00-03:00", timeZone: "America/Sao_Paulo" });
+  igual(ev.end, { dateTime: "2026-10-13T16:00:00-03:00", timeZone: "America/Sao_Paulo" });
+  igual(ev.extendedProperties, { private: { gps_origem: `plantao:${UUID1}` } });
+});
+
 D.test("segredo em tempo constante", async () => {
   ok(await segredoConfere(SEGREDO, SEGREDO), "igual deveria passar");
   ok(!(await segredoConfere(SEGREDO + "x", SEGREDO)), "diferente passou");

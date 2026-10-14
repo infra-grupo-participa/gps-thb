@@ -2070,7 +2070,8 @@ sem erro nenhum.
 **🗓️ Grade redesenhada em 14/10/2026 (migration `…384`, pedido do João, definitivo):**
 - **Cristiane — um calendário só para 4 tipos** (Reunião Preliminar 2, Viabilidade 3,
   Croqui 4 e **Apresentação da Minuta 6**, novo): seg–sex, blocos de **2h** em
-  09:30–11:30, 11:30–13:30 e 16:00–18:00 (15 blocos/semana). O bloqueio entre tipos
+  **10:00–12:00, 13:30–15:30 e 16:00–18:00** (15 blocos/semana; ajustado no mesmo
+  dia pela `…385` — a `…384` tinha 09:30 e 11:30, agora ativo=false). O bloqueio entre tipos
   já vinha da `sessao_sem_sobreposicao` (por responsável, não por tipo): marcar um
   tipo às 9:30 tira as 9:30 dos outros três. **Reunião Preliminar: 150 → 120 min**
   (revoga a D1 de 22/09 do Marcio: os 30 min de briefing saem do bloco).

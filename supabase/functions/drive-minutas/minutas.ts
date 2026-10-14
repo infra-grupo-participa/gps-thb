@@ -16,6 +16,8 @@
 //   blindar { ids, simular }  move até 25 pastas (cada id é REVALIDADO aqui:
 //                             pasta, nome com "minuta", dentro da árvore dos
 //                             alunos). `simular` só é falso se vier `false`.
+//   varrer { simular }        inventário + blindar das que apareceram na árvore
+//                             dos alunos (cron do banco; simular só é falso se vier `false`).
 //   desfazer { ids }          devolve ao pai original (achado pelo atalho) e
 //                             manda o atalho para a lixeira.
 //
@@ -279,6 +281,22 @@ export async function blindar(deps: Deps, ids: string[], simular: boolean): Prom
   };
 }
 
+/** Varredura automática: acha as pastas de minutas que voltaram a nascer na árvore dos alunos e as blinda.
+ *  Não recebe ids do pedido: o que entra vem do inventário (revalidado de novo dentro de `blindar`). */
+export async function varrer(deps: Deps, simular: boolean): Promise<Resultado> {
+  const inv = await inventario(deps);
+  const dentro = (inv.corpo.dentro_da_arvore_dos_alunos as { id: string }[]) ?? [];
+  const ids = dentro.map((d) => d.id).slice(0, MAX_IDS);
+  if (ids.length === 0) {
+    return { status: 200, corpo: { modo: "varrer", simular, novas: 0, parcial: inv.corpo.parcial, itens: [] } };
+  }
+  const b = await blindar(deps, ids, simular);
+  return {
+    status: b.status,
+    corpo: { ...b.corpo, modo: "varrer", novas: dentro.length, parcial: inv.corpo.parcial },
+  };
+}
+
 export async function desfazer(deps: Deps, ids: string[]): Promise<Resultado> {
   const ctx = criar(deps);
   const { drive, agora, prazo } = ctx;
@@ -335,6 +353,8 @@ export async function atender(req: Request, deps: Deps): Promise<Response> {
       r = await inventario(deps, Number.isInteger(ini) && ini > 0 ? ini : 0);
     } else if (modo === "blindar") {
       r = await blindar(deps, idsDoCorpo(corpo), (corpo as { simular?: unknown }).simular !== false);
+    } else if (modo === "varrer") {
+      r = await varrer(deps, (corpo as { simular?: unknown }).simular !== false);
     } else if (modo === "desfazer") {
       r = await desfazer(deps, idsDoCorpo(corpo));
     } else {

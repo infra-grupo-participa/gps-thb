@@ -10,6 +10,9 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore TS5097 — import com extensão .ts é o padrão do Deno
 import { atender } from "./provisionar.ts";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore TS5097
+import { varrer } from "../drive-minutas/minutas.ts";
 
 type DenoMin = {
   env: { get(k: string): string | undefined };
@@ -25,5 +28,10 @@ D.serve((req) =>
     env: (k) => D.env.get(k),
     fetch: (...a) => fetch(...a),
     emSegundoPlano: G.EdgeRuntime ? (p) => G.EdgeRuntime?.waitUntil(p) : undefined,
+    // Pasta nova de aluno já nasce blindada (as minutas saem da árvore dele). Não lê o
+    // interruptor do cron (drive_minutas_varrer_ativo): desligar aqui exige novo deploy.
+    aposLote: async (orcamentoMs) => {
+      await varrer({ env: (k) => D.env.get(k), fetch: (...a) => fetch(...a), orcamentoMs }, false);
+    },
   }),
 );

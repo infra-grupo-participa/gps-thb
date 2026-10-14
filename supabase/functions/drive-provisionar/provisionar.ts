@@ -136,7 +136,18 @@ export type Deps = {
   dormir?: (ms: number) => Promise<void>;
   /** Roda em segundo plano (EdgeRuntime.waitUntil). Sem ele, a resposta espera. */
   emSegundoPlano?: (p: Promise<unknown>) => void;
+  /**
+   * Depois do lote, se ele criou pasta de parceiro/cliente: dá o tempo que sobra
+   * (ms) à blindagem das minutas (drive-minutas). Melhor esforço — o cron
+   * `drive-minutas-varrer` cobre o que aqui ficar de fora. Nunca afeta a tarefa.
+   */
+  aposLote?: (restanteMs: number) => Promise<void>;
 };
+
+/** Limite de parede da edge: o lote já gastou parte; a blindagem usa o resto, com folga. */
+const PAREDE_EDGE_MS = 140_000;
+const MINIMO_PARA_BLINDAR_MS = 15_000;
+const TETO_BLINDAGEM_MS = 60_000;
 
 /** Falha de negócio: erro final, frase pronta para a tela. Não repete. */
 export class FalhaDeNegocio extends Error {
@@ -637,6 +648,7 @@ export async function executarLote(deps: Deps): Promise<{ status: number; corpo:
   };
 
   let credencialMorta: string | null = null;
+  let criouPasta = false;
   for (const t of tarefas) {
     if (credencialMorta) {
       await concluir(t, "transitorio", { detalhe: credencialMorta });
@@ -659,6 +671,7 @@ export async function executarLote(deps: Deps): Promise<{ status: number; corpo:
             ? await criarPastaDoCliente(ctx, t)
             : (await garantirParceiro(ctx, t)).avisos;
       await concluir(t, "feito", { aviso: avisos.length ? [...new Set(avisos)].join(",") : undefined });
+      if (t.tipo === "provisionar_parceiro" || t.tipo === "criar_pasta_cliente") criouPasta = true;
     } catch (e) {
       if (e instanceof Pausa) {
         await concluir(t, "pausa");
@@ -672,6 +685,19 @@ export async function executarLote(deps: Deps): Promise<{ status: number; corpo:
         await concluir(t, "erro", { erro: FRASE.credencial, detalhe: credencialMorta });
       } else {
         await concluir(t, "transitorio", { detalhe: textoDetalhe(e) });
+      }
+    }
+  }
+
+  // A pasta de minutas nasce dentro da árvore do aluno (matriz / subpastas do cliente):
+  // blinda já, sem esperar o cron. Tarefa já concluída — falha aqui não a desfaz.
+  if (criouPasta && deps.aposLote && !credencialMorta) {
+    const restante = Math.min(PAREDE_EDGE_MS - (agora() - inicio), TETO_BLINDAGEM_MS);
+    if (restante >= MINIMO_PARA_BLINDAR_MS) {
+      try {
+        await deps.aposLote(restante);
+      } catch (e) {
+        console.error("drive-provisionar: blindagem das minutas:", textoDetalhe(e));
       }
     }
   }

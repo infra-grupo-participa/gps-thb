@@ -95,7 +95,10 @@ async function resumoDeAcesso(drive: Gdrive, id: string): Promise<ResumoAcesso> 
 
 export type Resultado = { status: number; corpo: Record<string, unknown> };
 
-function criar(deps: Deps) {
+/** `orcamentoMs`: tempo que esta chamada pode gastar (padrão ORCAMENTO_MS); a drive-provisionar passa o que sobrou do lote. */
+export type DepsMinutas = Deps & { orcamentoMs?: number };
+
+function criar(deps: DepsMinutas) {
   const agora = deps.agora ?? Date.now;
   const drive = criarGdrive({
     clientId: deps.env("GDRIVE_CLIENT_ID") ?? "",
@@ -106,7 +109,7 @@ function criar(deps: Deps) {
     dormir: deps.dormir,
   });
   const raiz = (deps.env("GDRIVE_RAIZ_ID") ?? "").trim() || RAIZ_PADRAO;
-  const prazo = agora() + ORCAMENTO_MS;
+  const prazo = agora() + (deps.orcamentoMs ?? ORCAMENTO_MS);
   return { drive, raiz, agora, prazo, cache: new Map() as Cache };
 }
 
@@ -115,7 +118,7 @@ async function acharRaizEquipe(drive: Gdrive): Promise<ArquivoDrive | null> {
   return achados.find((a) => a.mimeType === MIME_PASTA) ?? null;
 }
 
-export async function inventario(deps: Deps, inicio = 0): Promise<Resultado> {
+export async function inventario(deps: DepsMinutas, inicio = 0): Promise<Resultado> {
   const { drive, raiz, agora, prazo, cache } = criar(deps);
   const raizEquipe = await acharRaizEquipe(drive);
   const acertos = await drive.buscarPastasPorNome("minuta");
@@ -208,7 +211,7 @@ function idsDoCorpo(corpo: unknown): string[] {
   return [...new Set(lista.filter((x): x is string => typeof x === "string" && ehIdDoDrive(x)))].slice(0, MAX_IDS);
 }
 
-export async function blindar(deps: Deps, ids: string[], simular: boolean): Promise<Resultado> {
+export async function blindar(deps: DepsMinutas, ids: string[], simular: boolean): Promise<Resultado> {
   const ctx = criar(deps);
   const { drive, raiz, agora, prazo, cache } = ctx;
   if (ids.length === 0) return { status: 400, corpo: { erro: "informe ids" } };
@@ -283,7 +286,7 @@ export async function blindar(deps: Deps, ids: string[], simular: boolean): Prom
 
 /** Varredura automática: acha as pastas de minutas que voltaram a nascer na árvore dos alunos e as blinda.
  *  Não recebe ids do pedido: o que entra vem do inventário (revalidado de novo dentro de `blindar`). */
-export async function varrer(deps: Deps, simular: boolean): Promise<Resultado> {
+export async function varrer(deps: DepsMinutas, simular: boolean): Promise<Resultado> {
   const inv = await inventario(deps);
   const dentro = (inv.corpo.dentro_da_arvore_dos_alunos as { id: string }[]) ?? [];
   const ids = dentro.map((d) => d.id).slice(0, MAX_IDS);

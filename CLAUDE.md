@@ -2080,6 +2080,18 @@ sem erro nenhum.
 - Faixas antigas ficaram `ativo=false` com `vigencia_fim=2026-10-14` (nunca apagar).
   Tipo 6 sem etapa exigida (igual a 3 e 4): elegibilidade = cliente favoritado.
   Reversão em UPDATE no cabeçalho da migration.
+- **Plantão BLOQUEIA a agenda (`…386`, João 14/10: "se ela tiver plantão na hora,
+  temos que bloquear").** `gps.sessao_grade_candidatos` marca `bloqueado` quando há
+  plantão publicado e não cancelado da mesma pessoa (vínculo
+  `plantao_mentoras.email` = `auth.users.email`, nunca por nome). É a ÚNICA função
+  que decide bloqueio (medido no `pg_proc`); `sessao_agendar` e `sessao_remarcar`
+  validam por `sessao_horarios_livres`, que lê dela — tela e gravação respeitam
+  juntos. Provado: 20/10 16h e 26/10 13:30 saíram da grade. O sentido contrário
+  (publicar plantão por cima de sessão marcada) NÃO é impedido — consulta "CHOQUES"
+  no fim da `…386` (0 em 14/10).
+- **Os 4 serviços da Cristiane não se sobrepõem:** provado por escrita em transação
+  desfeita — Preliminar, Viabilidade, Minuta e Croqui por cima de uma sessão dela
+  foram todos recusados com `23P01` (`sessao_sem_sobreposicao`, por pessoa, sem tipo).
 
 **⚠️ Pendências desta feature:** disponibilidade da **Dra. Elaine** (só a
 Cristiane tem grade, 4 blocos/semana — entra por INSERT, sem deploy) e

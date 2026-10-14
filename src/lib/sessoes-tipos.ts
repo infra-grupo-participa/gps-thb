@@ -43,6 +43,9 @@ export const TIPO_REUNIAO_PRELIMINAR = 2;
 export const TIPO_SESSAO_VIABILIDADE = 3;
 export const TIPO_CROQUI_ESTRUTURAL = 4;
 
+/** "Apresentação da Minuta" (migration `20261014000384`), também da Cristiane. */
+export const TIPO_APRESENTACAO_MINUTA = 6;
+
 /**
  * Ordem das seções em `/sessoes`: o fluxo do programa (Entrevista → Reunião
  * Preliminar → Viabilidade → Croqui). Tipo fora da lista vai para o fim, por
@@ -53,6 +56,7 @@ export const ORDEM_TIPOS_SESSAO: readonly number[] = [
   TIPO_REUNIAO_PRELIMINAR,
   TIPO_SESSAO_VIABILIDADE,
   TIPO_CROQUI_ESTRUTURAL,
+  TIPO_APRESENTACAO_MINUTA,
 ];
 
 /** Posição do tipo na ordem das seções; desconhecido = depois de todos. */

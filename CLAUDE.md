@@ -2067,6 +2067,19 @@ sem erro nenhum.
   Decisão: a Agenda substitui a esteira. As colunas `entrevista_*` ficam como
   **legado** — não se apaga histórico, mas também não se constrói em cima.
 
+**🗓️ Grade redesenhada em 14/10/2026 (migration `…384`, pedido do João, definitivo):**
+- **Cristiane — um calendário só para 4 tipos** (Reunião Preliminar 2, Viabilidade 3,
+  Croqui 4 e **Apresentação da Minuta 6**, novo): seg–sex, blocos de **2h** em
+  09:30–11:30, 11:30–13:30 e 16:00–18:00 (15 blocos/semana). O bloqueio entre tipos
+  já vinha da `sessao_sem_sobreposicao` (por responsável, não por tipo): marcar um
+  tipo às 9:30 tira as 9:30 dos outros três. **Reunião Preliminar: 150 → 120 min**
+  (revoga a D1 de 22/09 do Marcio: os 30 min de briefing saem do bloco).
+- **Marco — Entrevista Prévia, 1h** (era 40 min): 9h, 10h, 13h, 14h, 15h e 16h,
+  seg–sex. Independente da Cristiane. Reverte a exclusão das 13h pedida no Slack em 01/10.
+- Faixas antigas ficaram `ativo=false` com `vigencia_fim=2026-10-14` (nunca apagar).
+  Tipo 6 sem etapa exigida (igual a 3 e 4): elegibilidade = cliente favoritado.
+  Reversão em UPDATE no cabeçalho da migration.
+
 **⚠️ Pendências desta feature:** disponibilidade da **Dra. Elaine** (só a
 Cristiane tem grade, 4 blocos/semana — entra por INSERT, sem deploy) e
 **não existe e-mail de "sessão realizada"** (lacuna nomeada, não esquecida).

@@ -12,7 +12,7 @@
 import { atender } from "./provisionar.ts";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore TS5097
-import { varrer } from "../drive-minutas/minutas.ts";
+import { blindar } from "../drive-minutas/minutas.ts";
 
 type DenoMin = {
   env: { get(k: string): string | undefined };
@@ -30,8 +30,10 @@ D.serve((req) =>
     emSegundoPlano: G.EdgeRuntime ? (p) => G.EdgeRuntime?.waitUntil(p) : undefined,
     // Pasta nova de aluno já nasce blindada (as minutas saem da árvore dele). Não lê o
     // interruptor do cron (drive_minutas_varrer_ativo): desligar aqui exige novo deploy.
-    aposLote: async (orcamentoMs) => {
-      await varrer({ env: (k) => D.env.get(k), fetch: (...a) => fetch(...a), orcamentoMs }, false);
+    // Vai por id (as pastas que o lote acabou de criar): a busca por nome do Drive não
+    // enxerga pasta recém-criada. `blindar` revalida cada id (pasta, "minuta", árvore dos alunos).
+    aposLote: async (orcamentoMs, ids) => {
+      await blindar({ env: (k) => D.env.get(k), fetch: (...a) => fetch(...a), orcamentoMs }, ids.slice(0, 25), false);
     },
   }),
 );

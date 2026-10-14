@@ -137,11 +137,12 @@ export type Deps = {
   /** Roda em segundo plano (EdgeRuntime.waitUntil). Sem ele, a resposta espera. */
   emSegundoPlano?: (p: Promise<unknown>) => void;
   /**
-   * Depois do lote, se ele criou pasta de parceiro/cliente: dá o tempo que sobra
-   * (ms) à blindagem das minutas (drive-minutas). Melhor esforço — o cron
+   * Depois do lote: entrega os ids das pastas de minutas que ele acabou de criar e o
+   * tempo que sobra (ms) à blindagem (drive-minutas). Vai por ID porque a busca por
+   * nome do Drive demora a enxergar pasta recém-criada. Melhor esforço — o cron
    * `drive-minutas-varrer` cobre o que aqui ficar de fora. Nunca afeta a tarefa.
    */
-  aposLote?: (restanteMs: number) => Promise<void>;
+  aposLote?: (restanteMs: number, minutasIds: string[]) => Promise<void>;
 };
 
 /** Limite de parede da edge: o lote já gastou parte; a blindagem usa o resto, com folga. */
@@ -276,6 +277,8 @@ type Ctx = {
   cacheMatriz: Map<string, ArquivoDrive[]>;
   /** Id da pasta _Arquivados (achada/criada uma vez por execução). */
   arquivados?: string;
+  /** Pastas de minutas vistas nesta execução (nascem dentro da árvore do aluno): vão para a blindagem. */
+  minutas?: Set<string>;
 };
 
 function checarPrazo(ctx: Ctx): void {
@@ -419,6 +422,7 @@ export async function garantirParceiro(ctx: Ctx, t: Tarefa): Promise<Parceiro> {
 
   checarPrazo(ctx);
   const subpastas = await ctx.drive.listarFilhos(raiz.id, true);
+  for (const p of subpastas) if (normalizarNome(p.name).includes("MINUTA")) ctx.minutas?.add(p.id);
   const documentos = subpastas.find((p) => normalizarNome(p.name) === normalizarNome(NOME_DOCUMENTOS)) ?? null;
   let clientes =
     subpastas.find((p) => normalizarNome(p.name) === normalizarNome(NOME_CLIENTES)) ??
@@ -508,6 +512,7 @@ export async function criarPastaDoCliente(ctx: Ctx, t: Tarefa): Promise<string[]
     const g = gpsIdSubCliente(t.cliente_id as string, chave);
     const f = mapa.get(g) ?? (await ctx.drive.criarPasta(pai.id, nome, g));
     await registrar(ctx, t, f, "sub_cliente");
+    if (chave === "03") ctx.minutas?.add(f.id);
     return f;
   };
   const porGid = async (pai: ArquivoDrive) => {
@@ -629,6 +634,7 @@ export async function executarLote(deps: Deps): Promise<{ status: number; corpo:
     prazo: inicio + ORCAMENTO_MS,
     agora,
     cacheMatriz: new Map(),
+    minutas: new Set(),
   };
 
   const concluir = async (t: Tarefa, resultado: keyof Resumo, extra: { erro?: string; detalhe?: string; aviso?: string } = {}) => {
@@ -648,7 +654,6 @@ export async function executarLote(deps: Deps): Promise<{ status: number; corpo:
   };
 
   let credencialMorta: string | null = null;
-  let criouPasta = false;
   for (const t of tarefas) {
     if (credencialMorta) {
       await concluir(t, "transitorio", { detalhe: credencialMorta });
@@ -671,7 +676,6 @@ export async function executarLote(deps: Deps): Promise<{ status: number; corpo:
             ? await criarPastaDoCliente(ctx, t)
             : (await garantirParceiro(ctx, t)).avisos;
       await concluir(t, "feito", { aviso: avisos.length ? [...new Set(avisos)].join(",") : undefined });
-      if (t.tipo === "provisionar_parceiro" || t.tipo === "criar_pasta_cliente") criouPasta = true;
     } catch (e) {
       if (e instanceof Pausa) {
         await concluir(t, "pausa");
@@ -691,11 +695,11 @@ export async function executarLote(deps: Deps): Promise<{ status: number; corpo:
 
   // A pasta de minutas nasce dentro da árvore do aluno (matriz / subpastas do cliente):
   // blinda já, sem esperar o cron. Tarefa já concluída — falha aqui não a desfaz.
-  if (criouPasta && deps.aposLote && !credencialMorta) {
+  if ((ctx.minutas?.size ?? 0) > 0 && deps.aposLote && !credencialMorta) {
     const restante = Math.min(PAREDE_EDGE_MS - (agora() - inicio), TETO_BLINDAGEM_MS);
     if (restante >= MINIMO_PARA_BLINDAR_MS) {
       try {
-        await deps.aposLote(restante);
+        await deps.aposLote(restante, [...(ctx.minutas ?? [])]);
       } catch (e) {
         console.error("drive-provisionar: blindagem das minutas:", textoDetalhe(e));
       }

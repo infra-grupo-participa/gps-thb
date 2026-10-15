@@ -2080,6 +2080,10 @@ sem erro nenhum.
 - Faixas antigas ficaram `ativo=false` com `vigencia_fim=2026-10-14` (nunca apagar).
   Tipo 6 sem etapa exigida (igual a 3 e 4): elegibilidade = cliente favoritado.
   Reversão em UPDATE no cabeçalho da migration.
+- **Croqui Estrutural (tipo 4) só QUARTA e SEXTA (`…387`, João 15/10: "pro croqui,
+  mantemos o que ela falou no slack").** Origem: a Aldri viu um Croqui numa quinta
+  marcado dentro da grade seg–sex da `…384` (não foi furo). Preliminar, Viabilidade
+  e Minuta seguem seg–sex.
 - **Plantão BLOQUEIA a agenda (`…386`, João 14/10: "se ela tiver plantão na hora,
   temos que bloquear").** `gps.sessao_grade_candidatos` marca `bloqueado` quando há
   plantão publicado e não cancelado da mesma pessoa (vínculo

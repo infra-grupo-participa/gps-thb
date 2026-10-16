@@ -61,6 +61,9 @@ function frasesDasTravas(): Record<string, string> {
       "Esta sessão já começou. Só uma sessão futura pode ser remarcada.",
     "Esse horário já passou. Escolha outro.": "Esse horário já passou. Escolha outro.",
     "A sessão já está marcada nesse horário.": "A sessão já está marcada nesse horário.",
+    // …391: 48h de antecedência também na remarcação.
+    "Os agendamentos precisam de 48 horas de antecedência. Escolha um horário a partir de depois de amanhã.":
+      "Os agendamentos precisam de 48 horas de antecedência. Escolha um horário a partir de depois de amanhã.",
     "Esse horário não está na agenda livre desta profissional. Escolha outro na lista.":
       "Esse horário não está na agenda livre desta profissional. Escolha outro na lista.",
     "Alguém acabou de pegar esse horário. Escolha outro na lista.":

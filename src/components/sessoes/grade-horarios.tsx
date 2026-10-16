@@ -14,7 +14,11 @@ import {
   horaFimDeBloco,
 } from "@/components/sessoes/grade";
 import { juntarLivresEReservados } from "@/components/sessoes/juntar-grade";
-import type { HorarioLivre, SessaoTipo } from "@/lib/sessoes-tipos";
+import {
+  ANTECEDENCIA_MINIMA_HORAS,
+  type HorarioLivre,
+  type SessaoTipo,
+} from "@/lib/sessoes-tipos";
 
 /** Quantos dias a grade mostra de início, e quantos cada "Ver mais" soma. */
 const DIAS_POR_VEZ = 5;
@@ -206,6 +210,12 @@ export function GradeHorarios({
       {cabecalho ? (
         <p className="corpo text-muted-foreground">{cabecalho}</p>
       ) : null}
+      {/* …391: a regra dita em voz alta. Sem isto o aluno só veria os
+          horários de amanhã sumirem e acharia que a agenda está cheia. */}
+      <p className="corpo-sm font-medium text-foreground">
+        Todo agendamento precisa de {ANTECEDENCIA_MINIMA_HORAS} horas de
+        antecedência. Horários mais próximos não aparecem aqui.
+      </p>
 
       <div ref={gradeRef}>
         {diasNaTela.map((dia) => {

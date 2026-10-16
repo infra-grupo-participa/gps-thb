@@ -2100,6 +2100,20 @@ sem erro nenhum.
   da recusa estão em `frasesDasTravas()` (`src/app/sessoes/actions.ts`).
   **`sessao_remarcar` NÃO passa pela trava, de propósito:** só admin ou a própria
   profissional remarcam, e a equipe decide a exceção. O aluno não tem como furar.
+- **48 HORAS de antecedência para QUALQUER agendamento (`…391`, João 16/10).** Fonte
+  única `gps.sessao_antecedencia_minima()`; `sessao_grade_candidatos` só oferece
+  `inicio_em >= now() + 48h` (vale para grade, `sessao_agendar`, `sessao_remarcar` e
+  `sessao_horarios_reservados`), e agendar/remarcar recusam com a frase "Os
+  agendamentos precisam de 48 horas de antecedência…". Texto na grade:
+  `ANTECEDENCIA_MINIMA_HORAS` (`src/lib/sessoes-tipos.ts`), só para a tela.
+  Medido antes: 10 de 19 sessões dos 30 dias anteriores tinham sido marcadas com < 48h.
+- **"Precisa de atenção" virou painel de AÇÃO (`…392`, `gps.admin_atencao_acoes()`,
+  só admin, base inteira).** 4 cards em % (sem cliente · 30 ou mais · sem favorito ·
+  cadastrou e favoritou), lista na própria tela, painel do parceiro (agenda,
+  chamados, estágio, própria holding), CSV por grupo e relatório Markdown para o
+  Claude (sem telefone). Regras puras em `src/lib/atencao-acoes.ts` (+ `.test.mjs`).
+- Bloqueio pontual de agenda (ex.: Cristiane 21/10 15:30–18:00) = linha em
+  `gps.sessao_bloqueios`, direto no banco.
 - Não existe tela para editar `sessao_disponibilidade` nem `sessao_bloqueios`: mudar
   dia/horário da grade é migration. Em `/admin/sessoes` a equipe só conclui, marca
   falta, cancela e remarca.

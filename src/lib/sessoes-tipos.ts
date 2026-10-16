@@ -47,6 +47,14 @@ export const TIPO_CROQUI_ESTRUTURAL = 4;
 export const TIPO_APRESENTACAO_MINUTA = 6;
 
 /**
+ * Antecedência mínima para marcar/remarcar QUALQUER sessão (João, 16/10/2026).
+ * 🔴 A regra mora no banco (`gps.sessao_antecedencia_minima()`, …391): a grade
+ * nem oferece horário mais próximo e `sessao_agendar`/`sessao_remarcar`
+ * recusam. Este número é só para o TEXTO da tela; mudou lá, muda aqui.
+ */
+export const ANTECEDENCIA_MINIMA_HORAS = 48;
+
+/**
  * Ordem das seções em `/sessoes`: o fluxo do programa (Entrevista → Reunião
  * Preliminar → Viabilidade → Croqui). Tipo fora da lista vai para o fim, por
  * id — um tipo novo no catálogo aparece sem deploy.

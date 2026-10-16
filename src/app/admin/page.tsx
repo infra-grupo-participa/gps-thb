@@ -15,6 +15,7 @@ import {
 } from "@/lib/data";
 import { contarChamadosDoBadge } from "@/lib/chamados-data";
 import { getCompradoresHmAguardando } from "@/lib/data/compradores-hm";
+import { getAtencaoAcoes } from "@/lib/data/atencao-acoes";
 import { formatarDataHora } from "@/lib/datas";
 import { Inbox } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
@@ -54,6 +55,14 @@ function limiteDoPainel(mais: string | undefined): number {
   );
 }
 
+/**
+ * Fora do corpo do componente pelo mesmo motivo de `separarEncerradas` em
+ * `/admin/sessoes`: `react-hooks/purity` reprova `Date.now()` direto no render.
+ */
+function relogioDoServidor(): number {
+  return Date.now();
+}
+
 export default async function AdminPage({
   searchParams,
 }: {
@@ -80,6 +89,7 @@ export default async function AdminPage({
     alunosPorEmail,
     dashboard,
     filaHm,
+    atencaoAcoes,
   ] = await Promise.all([
     getAlunosGps({ limite }),
     pendentesPromise,
@@ -95,7 +105,13 @@ export default async function AdminPage({
     // ambiente (`gps.admin_compradores_hm_aguardando`, …317). Só leitura:
     // liberar é clique da equipe, na aba Solicitações.
     getCompradoresHmAguardando(),
+    // "Precisa de atenção" como painel de ação (…392): uma linha por
+    // parceiro, base INTEIRA (os % dos cards não podem depender do lote).
+    getAtencaoAcoes(),
   ]);
+  // O relógio do SERVIDOR desce por prop: o componente cliente refaz as
+  // mesmas contas de "passou / vai acontecer" na hidratação sem divergir.
+  const agoraMs = relogioDoServidor();
   const { alunos, total: totalAlunos } = pagina;
   // Map -> objeto simples porque `Map` não atravessa a fronteira Server ->
   // Client Component. Ambiente sem nota nenhuma não tem chave aqui.
@@ -231,6 +247,15 @@ export default async function AdminPage({
                 atendimento={atendimento}
                 clientes30={clientes30}
                 ambientesCarregados={alunos.length}
+                acoes={
+                  atencaoAcoes
+                    ? {
+                        linhas: atencaoAcoes,
+                        agora: agoraMs,
+                        apuradoEm: formatarDataHora(new Date(agoraMs).toISOString()),
+                      }
+                    : null
+                }
               />
             ) : (
               <AvisoInline>

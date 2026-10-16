@@ -1,13 +1,27 @@
 import Link from "next/link";
 
 import { Barras } from "@/components/ui/graficos";
+import { AvisoInline } from "@/components/ui/aviso-inline";
+import type { LinhaAtencao } from "@/lib/atencao-acoes";
 import type { Dashboard, ResumoAtendimento, ResumoClientes30 } from "@/lib/data/dashboard";
+import { AtencaoAcoes } from "./atencao-acoes";
 import { LINK_CLIENTES, LINK_LISTA, TOM_DA_FASE, diaCurto } from "./tipos";
 import { FASES_CLIENTE } from "@/lib/etapa1";
 
 /**
- * **Quem precisa de atenção** (`?vis=atencao`) — a fila da equipe, em duas
- * seções: **Parceiros** e **Clientes**.
+ * **Quem precisa de atenção** (`?vis=atencao`) — a fila da equipe.
+ *
+ * 🔑 **16/10/2026: o TOPO virou painel de AÇÃO** (`AtencaoAcoes`, pedido do
+ * João: "essas capes vão ser as principais para a gente tomar uma ação").
+ * Quatro cards com o % da base inteira (sem cliente · 30 ou mais · sem
+ * favorito · cadastrou e favoritou), a lista de cada um aberta na própria
+ * tela e o painel do parceiro com a situação da agenda. As seções abaixo
+ * ficam como "Outros sinais". O bloco "Sem nenhum cliente" que vivia aqui
+ * SAIU: o card novo tem o mesmo predicado (`clientes === 0`, nome
+ * preenchido) sobre a base inteira — dois números para a mesma pergunta é o
+ * erro que este arquivo já recusou duas vezes.
+ *
+ * Abaixo, a fila antiga, em duas seções: **Parceiros** e **Clientes**.
  *
  * 🔑 **23/09/2026: a sub-aba ganhou os números que o redesenho das 3 zonas
  * expulsou de "O programa".** Ela já era *"quem precisa de atenção"*; o que
@@ -106,7 +120,10 @@ export function PrecisaDeAtencao({
   atendimento,
   clientes30,
   ambientesCarregados,
+  acoes,
 }: {
+  /** O painel de ação (…392). `null` quando a RPC falhou. */
+  acoes: { linhas: LinhaAtencao[]; agora: number; apuradoEm: string } | null;
   dados: Dashboard;
   /** `resumoAtendimento(...)`, pura, sobre o lote carregado. */
   atendimento: ResumoAtendimento;
@@ -158,42 +175,12 @@ export function PrecisaDeAtencao({
       destino: null,
       encaminhamento: { texto: "Procure em Clientes", href: LINK_CLIENTES },
     },
-    // 3º — o parceiro não começou. Grave, mas ESTÁVEL. Único com link direto.
-    // 🔑 Veio TAMBÉM do par "Sem nenhum cliente" do KPI "Clientes
-    // cadastrados": o mesmo conjunto, que estava em dois lugares.
-    //
-    // 🔴 **O NÚMERO E O LINK PASSARAM A TER O MESMO PREDICADO** (24/09/2026,
-    // achado do João — mesma classe do que ele já reprovou no veredito
-    // anterior). Eram TRÊS definições de "sem nenhum cliente" convivendo:
-    //
-    //   · o número aqui   → coluna `ambiente_sem_cliente` da RPC (até 24/09;
-    //                       o mapeador não a lê mais): `not exists (etapa1_clientes)`
-    //   · o link `f=sem_cliente` → `clientesPreenchidos === 0` (`filtros.ts`)
-    //   · a barra em `base.tsx`  → `clientesComDados === 0`
-    //
-    // Clicar num número e cair numa lista com OUTRA contagem é a tela
-    // mentindo sobre o próprio recorte. O número agora vem do LOTE, com o
-    // predicado do filtro que o link abre (`semNenhumClienteCadastrado`,
-    // `clientesPreenchidos === 0`). `base.tsx` fica com `semNenhumCliente`
-    // porque lá a barra é a escada dos 30, medida em `clientesComDados` —
-    // eixo diferente, e o rótulo de lá diz o denominador dele.
-    //
-    // ⚠️ Como vem do lote, vale sobre `ambientesCarregados` — o rodapé de
-    // lote parcial desta seção já cobre isso, igual aos outros números puros.
-    {
-      chave: "ambiente_sem_cliente",
-      valor: clientes30.semNenhumClienteCadastrado,
-      rotulo: "Sem nenhum cliente",
-      destino:
-        clientes30.semNenhumClienteCadastrado > 0
-          ? {
-              href: `${LINK_LISTA}&f=sem_cliente`,
-              rotulo: "Ver os parceiros",
-              ariaLabel: `Ver os ${clientes30.semNenhumClienteCadastrado} parceiros sem nenhum cliente cadastrado`,
-            }
-          : null,
-      encaminhamento: null,
-    },
+    // 3º — "Sem nenhum cliente" SAIU daqui em 16/10/2026: virou o 1º card do
+    // painel de ação (`AtencaoAcoes`), com o MESMO predicado
+    // (`clientesPreenchidos === 0` ≡ nenhum cliente com nome) sobre a base
+    // inteira. Manter os dois seria o mesmo conjunto com dois números
+    // (aqui o do lote, lá o da base). O filtro `f=sem_cliente` da lista de
+    // Parceiros continua existindo.
     // 4º — o MAIOR número, e penúltimo entre as originais: difuso, conhecido,
     // e em boa parte a mesma gente do bloco 3.
     // 🔴 `sem_mensagem` ainda não existe na allowlist. Ver o cabeçalho.
@@ -358,6 +345,24 @@ export function PrecisaDeAtencao({
       <h2 id="precisa-de-atencao" className="sr-only">
         Quem precisa de atenção
       </h2>
+
+      {/* ═══════════ ONDE AGIR (16/10/2026) ═══════════ */}
+      {acoes ? (
+        <AtencaoAcoes
+          linhas={acoes.linhas}
+          agora={acoes.agora}
+          apuradoEm={acoes.apuradoEm}
+        />
+      ) : (
+        <AvisoInline>
+          Não foi possível carregar os grupos para ação agora. Os outros sinais
+          abaixo continuam valendo.
+        </AvisoInline>
+      )}
+
+      <h3 className="font-heading text-base font-semibold text-foreground">
+        Outros sinais
+      </h3>
 
       {/* ═══════════ SEÇÃO 1 · PARCEIROS ═══════════
           🔴 O denominador da seção está NO TÍTULO, uma vez. Os blocos não o

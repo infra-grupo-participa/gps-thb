@@ -86,6 +86,9 @@ function frasesDasTravas(): Record<string, string> {
       "Para marcar o Croqui Estrutural, a Sessão de Viabilidade deste cliente precisa estar marcada ou feita antes.",
     "Para marcar a Apresentação da Minuta, o Croqui Estrutural deste cliente precisa estar marcado ou feito antes.":
       "Para marcar a Apresentação da Minuta, o Croqui Estrutural deste cliente precisa estar marcado ou feito antes.",
+    // 48h de antecedência (…391, sessao_antecedencia_minima)
+    "Os agendamentos precisam de 48 horas de antecedência. Escolha um horário a partir de depois de amanhã.":
+      "Os agendamentos precisam de 48 horas de antecedência. Escolha um horário a partir de depois de amanhã.",
 
     // ── gps.sessao_cancelar ──────────────────────────────────────────────
     "Sessão não encontrada.": "Sessão não encontrada.",

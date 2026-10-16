@@ -28,6 +28,7 @@ import {
 import { logErro } from "@/lib/log";
 import { navDoAluno, navFixoDoAluno } from "@/lib/nav";
 import {
+  TIPO_APRESENTACAO_MINUTA,
   TIPO_CROQUI_ESTRUTURAL,
   TIPO_ENTREVISTA_PREVIA,
   TIPO_REUNIAO_PRELIMINAR,
@@ -761,12 +762,15 @@ function BlocoDoTipo({
         </p>
       ) : null}
       {tipo.id === TIPO_SESSAO_VIABILIDADE ||
-      tipo.id === TIPO_CROQUI_ESTRUTURAL ? (
+      tipo.id === TIPO_CROQUI_ESTRUTURAL ||
+      tipo.id === TIPO_APRESENTACAO_MINUTA ? (
         <p className="mt-0.5 max-w-[62ch] corpo-sm text-muted-foreground">
           {tipo.id === TIPO_SESSAO_VIABILIDADE
             ? "Aqui a equipe analisa se a holding é viável para o seu cliente."
-            : "Aqui a equipe apresenta o croqui da estrutura da holding do seu cliente."}{" "}
-          Quem conduz é a Cristiane.
+            : tipo.id === TIPO_CROQUI_ESTRUTURAL
+              ? "Aqui a equipe apresenta o croqui da estrutura da holding do seu cliente."
+              : "Aqui a equipe apresenta a minuta dos documentos da holding do seu cliente."}{" "}
+          Quem conduz é a Cristiane, às quartas e sextas.
         </p>
       ) : null}
       <div className="mt-4">

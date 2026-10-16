@@ -4,7 +4,7 @@ import { exigeLogin, exigeAdmin, entrar, registrarTela } from "./apoio";
 /**
  * A Entrevista Prévia com o Marco, a partir de 06/10/2026.
  *
- * O parceiro marca a EP (tipo 1, 40 min) em /sessoes; o Marco abre o
+ * O parceiro marca a EP (tipo 1, 60 min) em /sessoes; o Marco abre o
  * questionário do cliente direto da agenda (/admin/sessoes → "Abrir
  * entrevista"), sem as ~5 telas do espelho.
  *
@@ -23,8 +23,8 @@ const PERMITE_EMAIL = process.env.QA_PERMITE_EMAIL === "1";
 
 const CLIENTE_DE_TESTE = /CLIENTE DE TESTE \(QA\)/i;
 const TITULO_GRADE_EP = /^marque sua entrevista pr(é|e)via$/i;
-/** A grade do Marco: estes inícios, e só eles, de 06/10 em diante. */
-const HORARIOS_DO_MARCO = ["09:00", "11:00", "14:00", "15:00", "16:00"];
+/** A grade do Marco (seg–sex): estes inícios, e só eles. */
+const HORARIOS_DO_MARCO = ["09:00", "10:00", "13:00", "14:00", "15:00", "16:00"];
 const PRIMEIRO_DIA = "2026-10-06";
 const URL_ENTREVISTA_ADMIN = /\/admin\/aluno\/[^/]+\/clientes\/[0-9a-f-]{36}\/entrevista(\?.*)?$/i;
 
@@ -85,7 +85,7 @@ test.describe("EP com o Marco · /sessoes → /admin/sessoes → questionário",
   );
   test.describe.configure({ mode: "serial" });
 
-  test("o parceiro vê a EP de 40 min com os horários do Marco a partir de 06/10", async ({
+  test("o parceiro vê a EP de 60 min com os horários do Marco a partir de 06/10", async ({
     page,
   }, info) => {
     await entrar(page, parceiro!, "/sessoes");
@@ -94,7 +94,7 @@ test.describe("EP com o Marco · /sessoes → /admin/sessoes → questionário",
     await expect(grade, "Sem a grade da EP em /sessoes — favorito não é o cliente de teste?").toBeVisible({
       timeout: 15_000,
     });
-    await expect(grade.getByText(/40 min/).first()).toBeVisible();
+    await expect(grade.getByText(/60 min/).first()).toBeVisible();
 
     // A grade mostra 5 dias por vez: abre todos para a prova cobrir a janela
     // inteira, e confere que cada clique ACRESCENTA dias e leva o foco ao

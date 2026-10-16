@@ -49,6 +49,7 @@ import { FUSO } from "@/lib/datas";
 import { formatarNome } from "@/lib/nomes";
 import {
   ROTULO_ESTADO_SESSAO,
+  TIPO_APRESENTACAO_MINUTA,
   TIPO_CROQUI_ESTRUTURAL,
   TIPO_ENTREVISTA_PREVIA,
   TIPO_REUNIAO_PRELIMINAR,
@@ -58,13 +59,20 @@ import {
 } from "@/lib/sessoes-tipos";
 import { cn } from "@/lib/utils";
 
-type Filtro = "preliminar" | "entrevista" | "viabilidade" | "croqui" | "todas";
+type Filtro =
+  | "preliminar"
+  | "entrevista"
+  | "viabilidade"
+  | "croqui"
+  | "minuta"
+  | "todas";
 
 const FILTROS: { valor: Filtro; rotulo: string }[] = [
   { valor: "preliminar", rotulo: "Reunião Preliminar" },
   { valor: "entrevista", rotulo: "Entrevista Prévia" },
   { valor: "viabilidade", rotulo: "Sessão de Viabilidade" },
   { valor: "croqui", rotulo: "Croqui Estrutural" },
+  { valor: "minuta", rotulo: "Apresentação da Minuta" },
   { valor: "todas", rotulo: "Todas" },
 ];
 
@@ -73,6 +81,7 @@ const NOME_DO_TIPO: Record<number, string> = {
   [TIPO_REUNIAO_PRELIMINAR]: "Reunião Preliminar",
   [TIPO_SESSAO_VIABILIDADE]: "Sessão de Viabilidade",
   [TIPO_CROQUI_ESTRUTURAL]: "Croqui Estrutural",
+  [TIPO_APRESENTACAO_MINUTA]: "Apresentação da Minuta",
 };
 
 /** A cor de cada estado — a mesma linguagem do calendário do plantão. */
@@ -88,6 +97,7 @@ function passaNoFiltro(s: SessaoAgendamento, filtro: Filtro): boolean {
   if (filtro === "entrevista") return s.tipo_id === TIPO_ENTREVISTA_PREVIA;
   if (filtro === "viabilidade") return s.tipo_id === TIPO_SESSAO_VIABILIDADE;
   if (filtro === "croqui") return s.tipo_id === TIPO_CROQUI_ESTRUTURAL;
+  if (filtro === "minuta") return s.tipo_id === TIPO_APRESENTACAO_MINUTA;
   return true;
 }
 

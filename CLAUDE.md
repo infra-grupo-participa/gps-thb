@@ -2082,8 +2082,27 @@ sem erro nenhum.
   Reversão em UPDATE no cabeçalho da migration.
 - **Croqui Estrutural (tipo 4) só QUARTA e SEXTA (`…387`, João 15/10: "pro croqui,
   mantemos o que ela falou no slack").** Origem: a Aldri viu um Croqui numa quinta
-  marcado dentro da grade seg–sex da `…384` (não foi furo). Preliminar, Viabilidade
-  e Minuta seguem seg–sex.
+  marcado dentro da grade seg–sex da `…384` (não foi furo). ~~Preliminar, Viabilidade
+  e Minuta seguem seg–sex.~~ Superado pela `…388`.
+- **TODOS os 4 tipos da Cristiane só QUARTA e SEXTA (`…388`, áudio da Aldri 15/10:
+  "De segunda a sexta é o Marco… as outras reuniões, da Cristiane, somente quarta e
+  sexta").** 24 faixas ativas (4 tipos × qua/sex × 10:00/13:30/16:00). A Preliminar
+  de terça 20/10 (3fc34c54) foi cancelada à mão pela `sessao_cancelar`. Sem bloqueio
+  de feriado (Aldri: "A princípio não").
+- **Minuta conta como fase de EXECUÇÃO (`…389`)** em `gps.cliente_agenda_resumo`
+  (`when 6 then 'ex'`). Antes ela sumia do resumo.
+- **ORDEM obrigatória Preliminar → Viabilidade → Croqui → Minuta (`…390`, Aldri 16/10).**
+  `gps.sessao_ordem_pendente` (revogada de public/anon/authenticated) roda dentro de
+  `sessao_agendar`, sob o lock do cliente. "Antes" = `inicio_em` anterior, com a etapa
+  anterior agendada ou realizada (falta/cancelada não contam); também valem a ficha
+  `data_reuniao_preliminar` e `cliente_croquis.apresentado_em`. Exceção: cliente da
+  própria holding (`grau_relacao='eu_mesmo'`) pode começar pelo Croqui. As frases
+  da recusa estão em `frasesDasTravas()` (`src/app/sessoes/actions.ts`).
+  **`sessao_remarcar` NÃO passa pela trava, de propósito:** só admin ou a própria
+  profissional remarcam, e a equipe decide a exceção. O aluno não tem como furar.
+- Não existe tela para editar `sessao_disponibilidade` nem `sessao_bloqueios`: mudar
+  dia/horário da grade é migration. Em `/admin/sessoes` a equipe só conclui, marca
+  falta, cancela e remarca.
 - **Plantão BLOQUEIA a agenda (`…386`, João 14/10: "se ela tiver plantão na hora,
   temos que bloquear").** `gps.sessao_grade_candidatos` marca `bloqueado` quando há
   plantão publicado e não cancelado da mesma pessoa (vínculo

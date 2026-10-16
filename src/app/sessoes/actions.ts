@@ -79,6 +79,13 @@ function frasesDasTravas(): Record<string, string> {
     // gatilho trg_sessao_aluno_sem_choque (…376)
     "Você já tem outra reunião marcada nesse horário. Escolha outro na lista.":
       "Você já tem outra reunião marcada nesse horário. Escolha outro na lista.",
+    // ordem Preliminar → Viabilidade → Croqui → Minuta (…390, sessao_ordem_pendente)
+    "Para marcar a Sessão de Viabilidade, a Reunião Preliminar deste cliente precisa estar marcada ou feita antes.":
+      "Para marcar a Sessão de Viabilidade, a Reunião Preliminar deste cliente precisa estar marcada ou feita antes.",
+    "Para marcar o Croqui Estrutural, a Sessão de Viabilidade deste cliente precisa estar marcada ou feita antes.":
+      "Para marcar o Croqui Estrutural, a Sessão de Viabilidade deste cliente precisa estar marcada ou feita antes.",
+    "Para marcar a Apresentação da Minuta, o Croqui Estrutural deste cliente precisa estar marcado ou feito antes.":
+      "Para marcar a Apresentação da Minuta, o Croqui Estrutural deste cliente precisa estar marcado ou feito antes.",
 
     // ── gps.sessao_cancelar ──────────────────────────────────────────────
     "Sessão não encontrada.": "Sessão não encontrada.",
